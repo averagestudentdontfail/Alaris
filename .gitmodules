@@ -1,5 +1,5 @@
-[submodule "external/quantlib"]
-	path = external/quantlib
+[submodule "external/quant"]
+	path = external/quant
 	url = https://github.com/lballabio/QuantLib.git
 [submodule "external/lean"]
 	path = external/lean
