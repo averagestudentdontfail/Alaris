@@ -1,0 +1,3 @@
+[submodule "external/quantlib"]
+	path = external/quantlib
+	url = https://github.com/lballabio/QuantLib.git
