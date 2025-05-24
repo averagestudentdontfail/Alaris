@@ -1,1 +1,0 @@
-/usr/bin/c++ -O3 -DNDEBUG -march=native -mtune=native "CMakeFiles/yaml-cpp-read.dir/read.cpp.o" -o read  ../libyaml-cpp.a 

@@ -61,6 +61,11 @@ struct alignas(64) ControlMessage {
                       parameter2(0), value1(0), value2(0) {
         std::memset(data, 0, sizeof(data));
     }
+
+    explicit ControlMessage(uint32_t type) : timestamp(0), message_type(type), parameter1(0),
+                                           parameter2(0), value1(0), value2(0) {
+        std::memset(data, 0, sizeof(data));
+    }
 };
 
 // Message types for control channel

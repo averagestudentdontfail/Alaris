@@ -1,2 +1,0 @@
-/usr/bin/ar qc libalaris_pricing.a CMakeFiles/alaris_pricing.dir/pricing/alo_engine.cpp.o CMakeFiles/alaris_pricing.dir/pricing/pricing_service.cpp.o
-/usr/bin/ranlib libalaris_pricing.a

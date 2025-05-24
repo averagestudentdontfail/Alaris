@@ -1,2 +1,0 @@
-/usr/bin/ar qc libalaris_core.a CMakeFiles/alaris_core.dir/core/memory_pool.cpp.o CMakeFiles/alaris_core.dir/core/time_trigger.cpp.o CMakeFiles/alaris_core.dir/core/event_log.cpp.o CMakeFiles/alaris_core.dir/ipc/shared_memory.cpp.o
-/usr/bin/ranlib libalaris_core.a

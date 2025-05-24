@@ -1,1 +1,0 @@
-/usr/bin/c++ -O3 -DNDEBUG -march=native -mtune=native -fPIE -pie CMakeFiles/Bonds.dir/Bonds.cpp.o -o Bonds  -Wl,-rpath,/home/send2/.projects/Alaris/build/external/quant/ql: ../../ql/libQuantLib.so.1.39.0 

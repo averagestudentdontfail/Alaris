@@ -169,15 +169,19 @@ private:
         pricer_ = std::make_unique<Pricing::QuantLibALOEngine>(*mem_pool_);
         
         // Configure pricing engine
-        auto scheme_str = config_["pricing"]["alo_engine"]["scheme"].as<std::string>("ModifiedCraigSneyd");
-        if (scheme_str == "ModifiedCraigSneyd") {
-            pricer_->set_scheme(QuantLib::QdFpAmericanEngine::ModifiedCraigSneyd);
+        auto scheme_str = config_["pricing"]["alo_engine"]["scheme"].as<std::string>("accurate");
+        if (scheme_str == "accurate") {
+            // Uses QdFpLegendreTanhSinhScheme(25, 5, 13, 1e-8)
+            pricer_->set_iteration_scheme(QuantLib::QdFpAmericanEngine::accurateScheme());
+        } else if (scheme_str == "high_precision") {
+            // Uses QdFpTanhSinhIterationScheme(10, 30, 1e-10)
+            pricer_->set_iteration_scheme(QuantLib::QdFpAmericanEngine::highPrecisionScheme());
+        } else {
+            // Uses QdFpLegendreScheme(7, 2, 7, 27)
+            pricer_->set_iteration_scheme(QuantLib::QdFpAmericanEngine::fastScheme());
         }
         
-        pricer_->set_grid_parameters(
-            config_["pricing"]["alo_engine"]["time_steps"].as<QuantLib::Size>(800),
-            config_["pricing"]["alo_engine"]["asset_steps"].as<QuantLib::Size>(800)
-        );
+        // Note: Grid parameters are handled internally by the engine based on the scheme
         
         // Initialize strategy
         strategy_ = std::make_unique<Strategy::VolatilityArbitrageStrategy>(
