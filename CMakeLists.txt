@@ -50,8 +50,8 @@ check_submodules()
 # Find system dependencies
 find_system_dependencies()
 
-# Configure external dependencies
-configure_external_dependencies()
+# Build external dependencies first
+add_subdirectory(external)
 
 # Global include directories
 include_directories(
@@ -60,7 +60,6 @@ include_directories(
 )
 
 # Add subdirectories
-add_subdirectory(external)
 add_subdirectory(src/quantlib)
 
 # Add tests if this is the main project

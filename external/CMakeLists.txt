@@ -41,7 +41,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/quant/CMakeLists.txt")
     # Add QuantLib with specific target name
     add_subdirectory(quant)
     
-    # Ensure we have the right target name
+    # Ensure we have the right target name and export it
     if(TARGET QuantLib)
         set(QUANTLIB_TARGET QuantLib PARENT_SCOPE)
         message(STATUS "QuantLib target: QuantLib")
@@ -202,6 +202,14 @@ endif()
 if(TARGET ${YAML_CPP_TARGET})
     set_target_properties(${YAML_CPP_TARGET} PROPERTIES FOLDER "External")
 endif()
+
+# Export targets to parent scope
+set(EXTERNAL_TARGETS
+    External::All
+    ${QUANTLIB_TARGET}
+    ${YAML_CPP_TARGET}
+    PARENT_SCOPE
+)
 
 # Print external dependencies summary
 message(STATUS "External dependencies configured:")
