@@ -4,7 +4,7 @@
 # compile CXX with /usr/bin/c++
 CXX_DEFINES = -DQL_ENABLE_PARALLEL_UNIT_TEST_RUNNER=0 -DQL_ENABLE_THREAD_SAFE_OBSERVER_PATTERN=0 -DQL_HIGH_RESOLUTION_DATE
 
-CXX_INCLUDES = -I/home/send2/.projects/Alaris/src -I/home/send2/.projects/Alaris/external/quant
+CXX_INCLUDES = -I/home/send2/.projects/Alaris/src -I/home/send2/.projects/Alaris/external/quant -I/home/send2/.projects/Alaris/external/yaml-cpp/include
 
 CXX_FLAGS = -O3 -DNDEBUG -march=native -mtune=native -std=gnu++20
 

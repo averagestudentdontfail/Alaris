@@ -22,6 +22,16 @@ if(NOT QuantLib_FOUND)
     set(QuantLib_LIBRARIES QuantLib)
 endif()
 
+# yaml-cpp - try system first, fallback to external
+find_package(yaml-cpp QUIET)
+if(NOT yaml-cpp_FOUND)
+    message(STATUS "Using external yaml-cpp")
+    set(yaml-cpp_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/external/yaml-cpp/include")
+    # We'll build yaml-cpp as part of our build
+    add_subdirectory(external/yaml-cpp EXCLUDE_FROM_ALL)
+    set(yaml-cpp_LIBRARIES yaml-cpp)
+endif()
+
 # System libraries for shared memory and real-time
 find_library(RT_LIB rt REQUIRED)
 find_library(PTHREAD_LIB pthread REQUIRED)
@@ -30,6 +40,7 @@ find_library(PTHREAD_LIB pthread REQUIRED)
 include_directories(
     ${CMAKE_SOURCE_DIR}/src
     ${QuantLib_INCLUDE_DIRS}
+    ${yaml-cpp_INCLUDE_DIRS}
 )
 
 # Compiler definitions for deterministic execution
