@@ -1,0 +1,2 @@
+/usr/bin/ar qc libalaris_strategy.a CMakeFiles/alaris_strategy.dir/strategy/vol_arb.cpp.o CMakeFiles/alaris_strategy.dir/strategy/signal_gen.cpp.o
+/usr/bin/ranlib libalaris_strategy.a

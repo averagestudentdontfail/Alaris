@@ -1,0 +1,2 @@
+/usr/bin/ar qc libalaris_volatility.a CMakeFiles/alaris_volatility.dir/volatility/gjrgarch_wrapper.cpp.o CMakeFiles/alaris_volatility.dir/volatility/garch_wrapper.cpp.o CMakeFiles/alaris_volatility.dir/volatility/vol_forecast.cpp.o
+/usr/bin/ranlib libalaris_volatility.a

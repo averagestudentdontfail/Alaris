@@ -1,0 +1,32 @@
+# Lean Process Configuration
+algorithm:
+  name: "AlarisVolatilityArbitrage"
+  start_date: "2024-01-01"
+  end_date: "2024-12-31"
+  cash: 1000000
+
+brokerage:
+  type: "InteractiveBrokers"
+  gateway_host: "127.0.0.1"
+  gateway_port: 4001
+  account: "DU123456"  # UPDATE WITH YOUR ACCOUNT
+
+data:
+  provider: "InteractiveBrokers"
+  resolution: "Minute"
+  
+shared_memory:
+  signal_buffer: "/alaris_signals"
+  control_buffer: "/alaris_control"
+  
+risk_management:
+  max_position_size: 0.05
+  max_daily_loss: 0.02
+  
+universe:
+  symbols: ["SPY", "QQQ", "IWM", "EFA", "EEM"]
+  option_chains: true
+  
+logging:
+  level: "INFO"
+  file: "/var/log/alaris/lean.log"

@@ -1,0 +1,43 @@
+// src/csharp/Alaris.Lean.csproj
+using System;
+
+namespace Alaris
+{
+    // This would be the .csproj file content
+    public static class ProjectFile
+    {
+        public const string Content = @"
+<Project Sdk=""Microsoft.NET.Sdk"">
+  
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>Alaris.Lean</AssemblyName>
+    <RootNamespace>Alaris</RootNamespace>
+    <Nullable>enable</Nullable>
+    <ServerGarbageCollection>true</ServerGarbageCollection>
+    <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
+    <RetainVMGarbageCollection>true</RetainVMGarbageCollection>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=""'$(Configuration)'=='Release'"">
+    <Optimize>true</Optimize>
+    <DebugType>portable</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include=""QuantConnect.Lean"" Version=""2.5.16909"" />
+    <PackageReference Include=""QuantConnect.Brokerages.InteractiveBrokers"" Version=""2.5.16909"" />
+    <PackageReference Include=""System.IO.MemoryMappedFiles"" Version=""4.3.0"" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update=""config\lean_process.yaml"">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>";
+    }
+}

@@ -1,0 +1,18 @@
+global:
+  scrape_interval: 10s
+  evaluation_interval: 10s
+
+scrape_configs:
+  - job_name: 'alaris-quantlib'
+    static_configs:
+      - targets: ['quantlib-process:8080']
+    scrape_interval: 5s
+    
+  - job_name: 'alaris-lean'
+    static_configs:
+      - targets: ['lean-process:8081']
+    scrape_interval: 5s
+
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

@@ -15,31 +15,25 @@ I'm implementing a high-performance deterministic derivatives pricing system for
 
 ## Technical Architecture Diagram
 ```
-┌───────────────────────────┐      ┌───────────────────────────┐
-│     Market Connections    │      │      Order Execution      │
-│     (Lean C# Engine)      │      │      (Lean C# Engine)     │
-└───────────────┬───────────┘      └───────────┬───────────────┘
-                │                               │
-                ▼                               ▼
-┌───────────────────────────────────────────────────────────────┐
-│                     Interop Service Layer                     │
-│                                                               │
-│  ┌─────────────────┐         ┌─────────────────────────────┐  │
-│  │  Event Record   │◄───────►│  Cross-Language Message Bus │  │
-│  └─────────────────┘         └─────────────────────────────┘  │
-│                                                               │
-└───────────────────────────────┬───────────────────────────────┘
-                                │
-                                ▼
-┌───────────────────────────────────────────────────────────────┐
-│                 C++ Pricing & Strategy Core                   │
-│                                                               │
-│  ┌─────────────────┐   ┌───────────────┐   ┌───────────────┐  │
-│  │  QuantLib       │   │ Custom GARCH  │   │Trading Signal │  │
-│  │  ALO Engine     │   │ Volatility    │   │Generation     │  │
-│  └─────────────────┘   └───────────────┘   └───────────────┘  │
-│                                                               │
-└───────────────────────────────────────────────────────────────┘
+┌─────────────────────────┐    ┌─────────────────────────┐    ┌─────────────────────────┐
+│     Lean Process        │    │   Shared Memory Ring    │    │   QuantLib Process      │
+│     (C# .NET)           │    │       Buffers           │    │   (C++)          │
+│                         │    │                         │    │                         │
+│ ┌─────────────────────┐ │    │ ┌─────────────────────┐ │    │ ┌─────────────────────┐ │
+│ │  Market Data        │◄┼────┼►│  Market Data Buffer │◄┼────┼►│  QuantLib ALO       │ │
+│ │  Handler            │ │    │ │  (Lock-free)        │ │    │ │  Pricing Engine     │ │
+│ └─────────────────────┘ │    │ └─────────────────────┘ │    │ └─────────────────────┘ │
+│                         │    │                         │    │                         │
+│ ┌─────────────────────┐ │    │ ┌─────────────────────┐ │    │ ┌─────────────────────┐ │
+│ │  Order Execution    │◄┼────┼►│  Signal Buffer      │◄┼────┼►│ QuantLib GJR-GARCH  │ │
+│ │  Engine             │ │    │ │  (Lock-free)        │ │    │ │  Volatility Models  │ │
+│ └─────────────────────┘ │    │ └─────────────────────┘ │    │ └─────────────────────┘ │
+│                         │    │                         │    │                         │
+│ ┌─────────────────────┐ │    │ ┌─────────────────────┐ │    │ ┌─────────────────────┐ │
+│ │  Risk Management    │◄┼────┼►│  Control Buffer     │◄┼────┼►│  Trading Strategy   │ │
+│ │  & Compliance       │ │    │ │  (Lock-free)        │ │    │ │  & Event Logger     │ │
+│ └─────────────────────┘ │    │ └─────────────────────┘ │    │ └─────────────────────┘ │
+└─────────────────────────┘    └─────────────────────────┘    └─────────────────────────┘
 ```
 
 ## Time-Triggered Execution Architecture
@@ -68,146 +62,195 @@ The system uses a Time-Triggered Architecture (TTA) for deterministic execution:
 ```
 project/
 ├── build/
-│   ├── cpp/              # C++ build artifacts
+│   ├── quantlib/         # QuantLib process build artifacts
 │   │   └── release/
-│   │       ├── libquantlib.so      # QuantLib library (full or isolated)
-│   │       ├── libalo_wrapper.so   # Wrapper for QdFpAmericanEngine
-│   │       └── libtrading.so       # Trading system library
+│   │       ├── libquantlib.so          # Full QuantLib library
+│   │       ├── libtrading.so           # Trading system library
+│   │       └── quantlib_process        # Standalone QuantLib executable
 │   └── lean/             # Lean build artifacts
 │       └── release/
-│           └── QuantConnect.Algorithm.CSharp.dll
+│           ├── QuantConnect.Algorithm.CSharp.dll
+│           └── lean_process            # Standalone Lean executable
 ├── scripts/
 │   ├── build.sh          # Build script
-│   └── deploy.sh         # Deployment script
+│   ├── deploy.sh         # Deployment script
+│   ├── start_quantlib.sh # Start QuantLib process
+│   └── start_lean.sh     # Start Lean process
 ├── src/
-│   ├── pricing/          # Option pricing components
-│   │   ├── alo_wrapper.cpp         # Wrapper for QdFpAmericanEngine
-│   │   ├── alo_wrapper.h           # Header for wrapper
-│   │   ├── pricing_service.cpp     # Deterministic pricing service
-│   │   └── pricing_service.h       # Header for pricing service
-│   ├── volatility/       # Volatility modeling
-│   │   ├── gjrgarch.cpp            # GJR-GARCH implementation
-│   │   ├── gjrgarch.h              # Header for GJR-GARCH
-│   │   ├── vol_forecast.cpp        # Volatility forecasting
-│   │   └── vol_forecast.h          # Header for forecasting
-│   ├── strategy/         # Trading strategy
-│   │   ├── vol_arb.cpp             # Volatility arbitrage strategy
-│   │   ├── vol_arb.h               # Header for strategy
-│   │   ├── signal_gen.cpp          # Trading signal generation
-│   │   └── signal_gen.h            # Header for signal generator
-│   ├── interop/          # C++/C# interoperability
-│   │   ├── bridge.cpp              # Bridge between C++ and C#
-│   │   ├── bridge.h                # Header for bridge
-│   │   ├── marshaling.cpp          # Data marshaling
-│   │   └── marshaling.h            # Header for marshaling
-│   ├── core/             # Core system components
-│   │   ├── memory_pool.cpp         # Memory pooling
-│   │   ├── memory_pool.h           # Header for memory pooling
-│   │   ├── time_trigger.cpp        # Time-triggered execution
-│   │   ├── time_trigger.h          # Header for time-triggered execution
-│   │   ├── event_log.cpp           # Event logging for replay
-│   │   └── event_log.h             # Header for event logging
-│   └── lean/             # Lean integration (C#)
-│       ├── VolArbitrageAlgorithm.cs # Main algorithm
-│       ├── DeterministicExecution.cs # Deterministic execution handler
-│       └── QuantLibBridge.cs        # Bridge to C++ components
+│   ├── quantlib/         # QuantLib Process Components
+│   │   ├── pricing/      # Option pricing components
+│   │   │   ├── alo_engine.cpp          # QuantLib ALO engine wrapper
+│   │   │   ├── alo_engine.h            # Header for ALO engine
+│   │   │   ├── pricing_service.cpp     # Deterministic pricing service
+│   │   │   └── pricing_service.h       # Header for pricing service
+│   │   ├── volatility/   # QuantLib volatility models
+│   │   │   ├── gjrgarch_wrapper.cpp    # QuantLib GJR-GARCH wrapper
+│   │   │   ├── gjrgarch_wrapper.h      # Header for GJR-GARCH wrapper
+│   │   │   ├── garch_wrapper.cpp       # QuantLib GARCH wrapper
+│   │   │   ├── garch_wrapper.h         # Header for GARCH wrapper
+│   │   │   ├── vol_forecast.cpp        # Volatility forecasting
+│   │   │   └── vol_forecast.h          # Header for forecasting
+│   │   ├── strategy/     # Trading strategy
+│   │   │   ├── vol_arb.cpp             # Volatility arbitrage strategy
+│   │   │   ├── vol_arb.h               # Header for strategy
+│   │   │   ├── signal_gen.cpp          # Trading signal generation
+│   │   │   └── signal_gen.h            # Header for signal generator
+│   │   ├── ipc/          # Inter-process communication
+│   │   │   ├── shared_ring_buffer.h    # Lock-free ring buffer
+│   │   │   ├── shared_memory.cpp       # Shared memory management
+│   │   │   ├── shared_memory.h         # Header for shared memory
+│   │   │   ├── message_types.h         # IPC message definitions
+│   │   │   └── process_manager.cpp     # Process management utilities
+│   │   ├── core/         # Core system components
+│   │   │   ├── memory_pool.cpp         # Memory pooling
+│   │   │   ├── memory_pool.h           # Header for memory pooling
+│   │   │   ├── time_trigger.cpp        # Time-triggered execution
+│   │   │   ├── time_trigger.h          # Header for time-triggered execution
+│   │   │   ├── event_log.cpp           # Event logging for replay
+│   │   │   └── event_log.h             # Header for event logging
+│   │   └── main.cpp      # Main QuantLib process entry point
+│   └── csharp/           # C# Process Components
+│       ├── Algorithm/    # Lean algorithm implementation
+│       │   ├── DeterministicVolArbitrageAlgorithm.cs # Main algorithm
+│       │   ├── SharedMemoryBridge.cs   # Shared memory communication
+│       │   └── GCOptimizer.cs          # Garbage collection optimization
+│       ├── IPC/          # Inter-process communication
+│       │   ├── SharedRingBuffer.cs     # C# shared memory ring buffer
+│       │   ├── MessageTypes.cs         # Message type definitions
+│       │   └── ProcessCommunicator.cs  # Process communication handler
+│       ├── Monitoring/   # Performance monitoring
+│       │   ├── PerformanceMonitor.cs   # Real-time performance metrics
+│       │   └── MetricsCollector.cs     # Metrics collection
+│       └── Program.cs    # Main Lean process entry point
+├── config/              # Configuration files
+│   ├── quantlib_process.yaml    # QuantLib process configuration
+│   ├── lean_process.yaml        # Lean process configuration
+│   └── shared_memory.yaml       # Shared memory configuration
 └── test/                # Testing components
-    ├── pricing_test.cpp            # Tests for pricing
-    ├── vol_model_test.cpp          # Tests for volatility model
-    ├── strategy_test.cpp           # Tests for strategy
-    └── integration_test.cpp        # Integration tests
+    ├── quantlib/        # QuantLib tests
+    │   ├── pricing_test.cpp            # Tests for pricing
+    │   ├── vol_model_test.cpp          # Tests for volatility model
+    │   ├── strategy_test.cpp           # Tests for strategy
+    │   └── ipc_test.cpp                # IPC communication tests
+    ├── csharp/          # C# tests
+    │   ├── AlgorithmTest.cs            # Algorithm tests
+    │   └── IPCTest.cs                  # IPC tests
+    └── integration/     # Integration tests
+        ├── end_to_end_test.cpp         # Full system tests
+        └── performance_test.cpp        # Performance benchmarks
 ```
 
 ## Key Component Descriptions
 
 ### 1. QuantLib Integration
 
-The system requires a decision on whether to use the full QuantLib library or just the isolated QdFpAmericanEngine code:
+The system uses the full QuantLib library to leverage its comprehensive financial modeling capabilities, including the QdFpAmericanEngine for American option pricing and built-in volatility models.
 
-#### Option 1: Isolated QdFpAmericanEngine
+#### Full QuantLib Integration
 ```cpp
-// src/pricing/alo_wrapper.h
-class ALOEngineWrapper {
+// src/quantlib/pricing/alo_engine.h
+class QuantLibALOEngine {
 private:
-    // Direct references to isolated QdFpAmericanEngine code
-    std::unique_ptr<QdFpAmericanEngine> engine_;
+    // QuantLib components
+    ext::shared_ptr<QuantLib::QdFpAmericanEngine> engine_;
+    ext::shared_ptr<QuantLib::GeneralizedBlackScholesProcess> process_;
+    ext::shared_ptr<QuantLib::SimpleQuote> underlyingQuote_;
+    ext::shared_ptr<QuantLib::SimpleQuote> volatilityQuote_;
+    ext::shared_ptr<QuantLib::YieldTermStructure> riskFreeRate_;
+    ext::shared_ptr<QuantLib::YieldTermStructure> dividendYield_;
     
     // Memory management for deterministic execution
     MemoryPool& memPool_;
     
 public:
-    ALOEngineWrapper(MemoryPool& memPool);
-    
-    // Core pricing functions
-    double calculatePut(double S, double K, double r, double q, double vol, double T);
-    double calculateCall(double S, double K, double r, double q, double vol, double T);
-    
-    // Batch processing for multiple options
-    void batchCalculate(const std::vector<OptionData>& options, std::vector<double>& results);
-};
-```
-
-#### Option 2: Full QuantLib Integration
-```cpp
-// src/pricing/alo_wrapper.h
-class ALOEngineWrapper {
-private:
-    // QuantLib components
-    ext::shared_ptr<QuantLib::QdFpAmericanEngine> engine_;
-    ext::shared_ptr<QuantLib::GeneralizedBlackScholesProcess> process_;
-    
-    // Memory management
-    MemoryPool& memPool_;
-    
-public:
-    ALOEngineWrapper(MemoryPool& memPool);
+    QuantLibALOEngine(MemoryPool& memPool);
     
     // Core pricing functions using QuantLib
     double calculatePut(double S, double K, double r, double q, double vol, double T);
     double calculateCall(double S, double K, double r, double q, double vol, double T);
     
-    // Batch processing
+    // Batch processing for multiple options
     void batchCalculate(const std::vector<OptionData>& options, std::vector<double>& results);
     
     // Advanced QuantLib-specific functionality
-    void setScheme(PricingScheme scheme);
+    void setScheme(QuantLib::QdFpAmericanEngine::Scheme scheme);
+    void setGridParameters(Size timeSteps, Size assetSteps);
+    
+    // Greeks calculation
+    void calculateGreeks(const OptionData& option, OptionGreeks& greeks);
 };
 ```
 
-### 2. GJR-GARCH Volatility Model
+### 2. QuantLib Volatility Models
+
+The system leverages QuantLib's built-in volatility models, specifically the GJR-GARCH implementation for enhanced volatility forecasting.
 
 ```cpp
-// src/volatility/gjrgarch.h
-class GJRGARCHModel {
+// src/quantlib/volatility/gjrgarch_wrapper.h
+class QuantLibGJRGARCHModel {
 private:
-    // Model parameters
-    double omega_;
-    double alpha_;
-    double beta_;
-    double gamma_;
+    // QuantLib GJR-GARCH model
+    ext::shared_ptr<QuantLib::GJRGARCHModel> gjrGarchModel_;
     
-    // Internal state
-    double prevVolatility_;
-    double prevReturn_;
-    bool prevNegativeReturn_;
+    // Model parameters
+    QuantLib::Array omega_, alpha_, beta_, gamma_;
+    
+    // Internal state and calibration data
+    std::vector<QuantLib::Real> returns_;
+    QuantLib::Array parameters_;
     
     // Memory management for deterministic execution
     MemoryPool& memPool_;
     
 public:
-    GJRGARCHModel(MemoryPool& memPool);
+    QuantLibGJRGARCHModel(MemoryPool& memPool);
     
-    // Initialize model with parameters
-    void setParameters(double omega, double alpha, double beta, double gamma);
+    // Initialize model with QuantLib parameters
+    void setParameters(const QuantLib::Array& omega, const QuantLib::Array& alpha, 
+                      const QuantLib::Array& beta, const QuantLib::Array& gamma);
     
     // Update model with new market data
-    void update(double newReturn);
+    void update(QuantLib::Real newReturn);
     
-    // Generate volatility forecast
-    double forecastVolatility(int horizon);
+    // Generate volatility forecast using QuantLib methods
+    QuantLib::Real forecastVolatility(QuantLib::Size horizon);
     
     // Calibrate model to historical data with bounded execution time
-    void calibrate(const std::vector<double>& returns);
+    void calibrate(const std::vector<QuantLib::Real>& returns);
+    
+    // Access QuantLib model directly for advanced operations
+    ext::shared_ptr<QuantLib::GJRGARCHModel> getModel() const { return gjrGarchModel_; }
+    
+    // Model diagnostics and validation
+    QuantLib::Real logLikelihood() const;
+    QuantLib::Array getParameters() const;
+};
+
+// src/quantlib/volatility/garch_wrapper.h
+class QuantLibGARCHModel {
+private:
+    // QuantLib standard GARCH model
+    ext::shared_ptr<QuantLib::GarchModel> garchModel_;
+    
+    // Model parameters
+    QuantLib::Array omega_, alpha_, beta_;
+    
+    // Memory management
+    MemoryPool& memPool_;
+    
+public:
+    QuantLibGARCHModel(MemoryPool& memPool);
+    
+    // Standard GARCH model interface
+    void setParameters(const QuantLib::Array& omega, const QuantLib::Array& alpha, 
+                      const QuantLib::Array& beta);
+    
+    void update(QuantLib::Real newReturn);
+    QuantLib::Real forecastVolatility(QuantLib::Size horizon);
+    void calibrate(const std::vector<QuantLib::Real>& returns);
+    
+    // Access to underlying QuantLib model
+    ext::shared_ptr<QuantLib::GarchModel> getModel() const { return garchModel_; }
 };
 ```
 
@@ -349,18 +392,30 @@ public:
 ### 6. Volatility Arbitrage Strategy
 
 ```cpp
-// src/strategy/vol_arb.h
+// src/quantlib/strategy/vol_arb.h
 class VolatilityArbitrageStrategy {
 private:
-    // Components
-    GJRGARCHModel volModel_;
-    ALOEngineWrapper pricer_;
+    // QuantLib components
+    QuantLibGJRGARCHModel gjrGarchModel_;
+    QuantLibGARCHModel standardGarchModel_;
+    QuantLibALOEngine pricer_;
     PerCycleAllocator& allocator_;
+    
+    // Model selection and ensemble
+    enum class VolatilityModel {
+        GJR_GARCH,
+        STANDARD_GARCH,
+        ENSEMBLE
+    };
+    VolatilityModel activeModel_;
     
     // Strategy parameters
     double entryThreshold_;
     double exitThreshold_;
     double riskLimit_;
+    
+    // Performance tracking
+    double modelAccuracy_[3]; // Tracking accuracy of each model
     
 public:
     VolatilityArbitrageStrategy(PerCycleAllocator& allocator);
@@ -368,71 +423,185 @@ public:
     // Process market data update
     void onMarketData(const MarketData& data);
     
-    // Scan option chain for opportunities
+    // Scan option chain for opportunities using QuantLib models
     void scanOptions(const std::vector<OptionData>& options, 
                     std::vector<TradingSignal>& signals);
     
-    // Generate trading signals
+    // Generate trading signals using QuantLib volatility forecasts
     void generateSignals(std::vector<TradingSignal>& signals);
     
     // Set strategy parameters
     void setParameters(double entryThreshold, double exitThreshold, double riskLimit);
+    
+    // Model selection and management
+    void setVolatilityModel(VolatilityModel model);
+    void updateModelAccuracy(VolatilityModel model, double accuracy);
+    VolatilityModel getBestPerformingModel() const;
+    
+    // Advanced QuantLib integration
+    void calibrateModels(const std::vector<QuantLib::Real>& returns);
+    QuantLib::Real getEnsembleForecast(QuantLib::Size horizon);
 };
 ```
 
-### 7. Cross-Language Memory Management
+### 7. Process Isolation Architecture
 
-A significant challenge in this hybrid system is managing memory between the deterministic C++ components and the Lean .NET framework. Lean primarily uses .NET's garbage collector for memory management, which isn't suitable for deterministic real-time systems.
+The system employs **process isolation** as the primary solution for managing cross-language communication while maintaining deterministic execution. This approach eliminates the complexity of cross-language memory management entirely.
+
+#### Process Separation Strategy
+
+```
+┌─────────────────────────┐    ┌─────────────────────────┐    ┌─────────────────────────┐
+│     Lean Process        │    │   Shared Memory Ring    │    │   QuantLib Process      │
+│     (C# .NET)           │    │       Buffers           │    │   (Native C++)          │
+│                         │    │                         │    │                         │
+│ • Market Data Handler   │◄──►│ • Lock-free Buffers     │◄──►│ • QuantLib ALO Engine   │
+│ • Order Execution       │    │ • Memory-mapped Files   │    │ • QuantLib GJR-GARCH    │
+│ • Risk Management       │    │ • Bounded Latency       │    │ • QuantLib GARCH        │
+│ • Server GC Optimized   │    │ • Zero-copy Transfer    │    │ • Event Logging         │
+│                         │    │                         │    │ • Real-time Priority    │
+└─────────────────────────┘    └─────────────────────────┘    └─────────────────────────┘
+```
+
+#### Key Benefits of Process Isolation
+
+1. **Eliminates Cross-Language Memory Complexity**
+   - No need for memory pinning or GC coordination
+   - Each process manages its own memory optimally  
+   - No risk of GC affecting deterministic execution
+
+2. **Better Fault Isolation**
+   - If one process crashes, the other continues running
+   - Independent restart and recovery capabilities
+   - Easier debugging and profiling per component
+
+3. **Independent Optimization**
+   - QuantLib process: Real-time priority, SCHED_FIFO, core pinning
+   - C# process: Server GC, managed heap optimization
+   - No compromise between conflicting requirements
+
+4. **Simplified Architecture**
+   - Clear boundaries between components
+   - Lock-free shared memory communication
+   - Predictable performance characteristics
+
+#### Inter-Process Communication
 
 ```cpp
-// src/interop/memory_bridge.h
-class ManagedMemoryBridge {
+// Lock-free ring buffer for shared memory communication
+template<typename T, size_t Size>
+class SharedRingBuffer {
 private:
-    MemoryPool& nativePool_;
-    std::unordered_map<void*, IntPtr> nativeToManagedMap_;
-    std::mutex mapMutex_;
+    struct Header {
+        std::atomic<uint64_t> writeIndex{0};
+        std::atomic<uint64_t> readIndex{0};
+        char padding[64 - sizeof(std::atomic<uint64_t>) * 2]; // Cache line alignment
+    };
+    
+    Header* header_;
+    T* buffer_;
+    void* sharedMemory_;
     
 public:
-    ManagedMemoryBridge(MemoryPool& nativePool);
+    // Memory-mapped file constructor
+    SharedRingBuffer(const std::string& name, bool isProducer = true);
     
-    // Allocate managed object with reference to native memory
-    IntPtr allocateManagedObject(void* nativePtr, size_t size);
+    // Non-blocking operations
+    bool tryWrite(const T& item);
+    bool tryRead(T& item);
     
-    // Release managed object and associated native memory
-    void releaseManagedObject(IntPtr managedPtr);
-    
-    // Copy data from managed to native memory
-    void copyFromManaged(IntPtr managedSrc, void* nativeDest, size_t size);
-    
-    // Copy data from native to managed memory
-    void copyToManaged(void* nativeSrc, IntPtr managedDest, size_t size);
-    
-    // Pin managed memory for deterministic access
-    void* pinManagedMemory(IntPtr managedPtr, size_t& size);
-    
-    // Unpin managed memory
-    void unpinManagedMemory(IntPtr managedPtr);
+    // Performance monitoring
+    size_t size() const;
+    bool empty() const;
+    bool full() const;
 };
 ```
 
-#### Cross-Language Memory Strategy
+#### Message Types for IPC
 
-To maintain deterministic execution across the C++/C# boundary:
+```cpp
+// Standardized message structures for inter-process communication
+struct MarketDataMessage {
+    uint64_t timestamp;
+    double bid, ask, underlying;
+    uint32_t symbol;
+    char padding[32]; // Cache line alignment
+};
 
-1. **Preallocated Buffers**: Use preallocated, fixed-size buffers for cross-language data transfer
-2. **Memory Pinning**: Pin managed memory when accessing from C++ to prevent garbage collector relocation
-3. **Zero-Copy Where Possible**: Use memory mapping techniques to share data without copies
-4. **Bounded Transfer Sizes**: Limit the size of data transfers to ensure deterministic execution time
-5. **Explicit Management**: Explicitly manage object lifetimes across language boundaries
+struct TradingSignalMessage {
+    uint64_t timestamp;
+    uint32_t symbol;
+    double price, impliedVol, theoreticalValue;
+    int32_t quantity;
+    uint8_t side, urgency;
+    char padding[22];
+};
 
-#### Lean Integration Considerations
+struct ControlMessage {
+    uint64_t timestamp;
+    uint32_t messageType;
+    uint32_t parameter1, parameter2;
+    double value1, value2;
+    char data[32];
+};
+```
 
-Challenges with Lean's .NET memory model:
+#### Process Management
 
-1. **Garbage Collection Pauses**: Mitigate by using pinned memory and explicit control of GC timing
-2. **Allocation Unpredictability**: Use object pooling in .NET to minimize allocations during trading
-3. **Framework Memory Overhead**: Isolate Lean components to separate processes with explicit IPC
-4. **Predictable Execution**: Configure Lean to use server GC and implement critical sections in native code
+1. **QuantLib Process**
+   - Real-time priority (SCHED_FIFO)
+   - Core pinning to isolated CPU cores
+   - Memory locking (mlockall)
+   - Huge pages for deterministic memory access
+   - QuantLib-specific optimizations
+
+2. **C# Lean Process**
+   - Server GC configuration
+   - Managed object pooling
+   - Controlled GC timing during quiet periods
+   - Optimized for throughput over latency
+
+#### Deployment Configuration
+
+```yaml
+# quantlib_process.yaml
+process:
+  name: "quantlib_core"
+  priority: 80
+  cpu_affinity: [2, 3]  # Isolated cores
+  memory_lock: true
+  huge_pages: true
+
+quantlib:
+  threading: single
+  date_format: "ISO"
+  calendar: "UnitedStates"
+
+shared_memory:
+  market_data_buffer: "/trading_market_data"
+  signal_buffer: "/trading_signals" 
+  control_buffer: "/trading_control"
+  buffer_sizes:
+    market_data: 4096
+    signals: 1024
+    control: 256
+```
+
+#### Alternative Approaches (if process isolation is constrained)
+
+If deployment constraints prevent process isolation, these alternatives maintain elegance:
+
+1. **Memory-Mapped Files with Serialization**
+   - Use memory-mapped files with efficient serialization
+   - Avoids cross-language memory management entirely
+
+2. **Custom Allocator Bridge**
+   - Single memory pool accessible from both C++ and C#
+   - Custom allocation strategy for both languages
+
+3. **Native DLL with Managed Wrapper**
+   - QuantLib logic in native DLL
+   - Thin C# wrapper with minimal marshaling
 
 ## MVC Architecture
 
@@ -538,74 +707,209 @@ void setupProcessIsolation() {
 
 ## Implementation Approach
 
-1. **Phase 1**: Integrate isolated QdFpAmericanEngine
-   - Extract necessary components from QuantLib
-   - Wrap in deterministic interface
-   - Validate pricing accuracy
+1. **Phase 1**: Setup Process Isolation Infrastructure
+   - Implement shared memory ring buffers
+   - Create lock-free IPC message types
+   - Develop process management utilities
+   - Build and test basic communication
 
-2. **Phase 2**: Implement GJR-GARCH model
-   - Develop core volatility model
-   - Implement calibration with bounded execution time
-   - Create forecasting capability
+2. **Phase 2**: QuantLib Integration and Setup
+   - Integrate full QuantLib library
+   - Configure QuantLib for deterministic execution
+   - Wrap QdFpAmericanEngine for IPC communication
+   - Validate pricing accuracy against benchmarks
 
-3. **Phase 3**: Build deterministic execution framework
-   - Time-triggered architecture
-   - Memory pooling
-   - Event logging
+3. **Phase 3**: QuantLib Volatility Models Integration
+   - Implement QuantLib GJR-GARCH model wrapper
+   - Implement QuantLib standard GARCH model wrapper
+   - Create model calibration with bounded execution time
+   - Connect volatility forecasting to shared memory communication
 
-4. **Phase 4**: Implement volatility arbitrage strategy
-   - Option scanner
-   - Signal generator
-   - Risk management
+4. **Phase 4**: Build deterministic execution framework
+   - Time-triggered architecture for QuantLib process
+   - Memory pooling and huge page support
+   - Event logging and replay system
+   - Real-time process optimization
 
-5. **Phase 5**: Lean integration
-   - C#/C++ interop
+5. **Phase 5**: Implement volatility arbitrage strategy
+   - Option scanner with bounded execution time
+   - Signal generator with QuantLib model ensemble
+   - Risk management integration
+   - Signal publishing via IPC
+
+6. **Phase 6**: Lean process integration
+   - C# shared memory communication
    - Lean algorithm implementation
-   - End-to-end testing
+   - GC optimization and server GC configuration
+   - Signal consumption and order execution
 
-6. **Phase 6**: Production optimization
-   - OS tuning
-   - Performance monitoring
-   - Deployment configuration
+7. **Phase 7**: End-to-end testing and optimization
+   - Integration testing across processes
+   - Performance benchmarking with QuantLib models
+   - Latency optimization
+   - Error handling and recovery
+
+8. **Phase 8**: Production deployment
+   - Container orchestration setup
+   - Monitoring and alerting infrastructure
+   - OS tuning and system configuration
+   - Production deployment validation
 
 ## Technical Requirements
 
-1. Modern C++17/20 for deterministic components
-2. .NET Core for Lean integration
-3. SIMD intrinsics (AVX2) for numerical methods
-4. Custom memory management with huge pages
-5. Real-time OS tuning
-6. Lock-free inter-process communication
-7. High-precision timing and monitoring
-8. MVC Architecture for clear separation of concerns
-9. Comprehensive performance monitoring infrastructure
+1. Modern C++17/20 for QuantLib process components
+2. **Full QuantLib library** with GJR-GARCH and GARCH models
+3. .NET Core for Lean integration  
+4. SIMD intrinsics (AVX2) for numerical methods
+5. **Shared memory with memory-mapped files** for IPC
+6. **Process isolation with independent optimization**
+7. Real-time OS tuning for QuantLib process
+8. Lock-free inter-process communication
+9. High-precision timing and monitoring
+10. MVC Architecture for clear separation of concerns
+11. Comprehensive performance monitoring infrastructure
+12. **Container orchestration** for process management
+13. **System-level IPC** (shared memory, semaphores)
+14. **QuantLib-specific optimizations** for deterministic execution
+
+## Process Isolation Considerations
+
+### Development Environment
+- **Local Development**: Both processes can run on same machine with shared memory
+- **Testing**: Independent unit testing per process plus integration tests
+- **Debugging**: Process-specific debugging tools and shared memory inspection utilities
+- **QuantLib Integration**: Dedicated testing for QuantLib model accuracy and performance
+
+### Deployment Flexibility
+- **Single Node**: Both processes on same physical machine with shared memory
+- **Distributed**: Processes on different nodes with network-based communication fallback
+- **Hybrid**: Multiple QuantLib processes serving single Lean instance
+- **Model-Specific Scaling**: Different QuantLib processes for different volatility models
+
+### Operational Benefits
+- **Independent Scaling**: Scale QuantLib processes based on computational load
+- **Rolling Updates**: Update processes independently without full system restart  
+- **Resource Management**: Dedicated CPU/memory allocation per process type
+- **Fault Isolation**: Process-level failure containment and recovery
+- **Model Isolation**: Different volatility models in separate processes for reliability
+
+### Communication Patterns
+- **High-Frequency Data**: Market data via shared memory ring buffers
+- **Control Messages**: QuantLib parameter updates via dedicated channels
+- **Model Results**: Volatility forecasts and option prices via signal buffers
+- **Event Logging**: Centralized logging with process-specific event streams
+- **Health Monitoring**: Process-level health checks and performance metrics
 
 ## Production Deployment
 
-The system is designed for production deployment with:
+The system is designed for production deployment with process isolation:
 
-1. **Docker containerization** for consistent environment
-2. **Kubernetes orchestration** for scaling and management
-3. **Prometheus/Grafana** for monitoring and alerting
-4. **Centralized logging** with ELK stack
-5. **Redundant deployment** across multiple availability zones
+1. **Container Orchestration**
+   - Separate containers for QuantLib and C# processes
+   - Shared memory volumes between containers
+   - Process health monitoring and restart policies
+   - Resource limits and CPU affinity configuration
 
-## QuantLib Integration Recommendation
+2. **Kubernetes Deployment**
+   ```yaml
+   # Example pod configuration
+   apiVersion: v1
+   kind: Pod
+   spec:
+     containers:
+     - name: quantlib-core
+       image: trading/quantlib-core:latest
+       resources:
+         requests:
+           cpu: "2000m"
+           memory: "4Gi"
+         limits:
+           cpu: "2000m" 
+           memory: "4Gi"
+       securityContext:
+         capabilities:
+           add: ["SYS_NICE", "IPC_LOCK"]
+       env:
+       - name: QUANTLIB_THREADING
+         value: "single"
+     - name: lean-engine
+       image: trading/lean-engine:latest
+       resources:
+         requests:
+           cpu: "1000m"
+           memory: "2Gi"
+   ```
 
-### Recommendation: Use Isolated QdFpAmericanEngine
+3. **Process Management with systemd**
+   - Service definitions for each process
+   - Automatic restart on failure
+   - Dependency management between processes
+   - Log aggregation and rotation
 
-For your specific needs, I recommend using the isolated QdFpAmericanEngine implementation rather than the full QuantLib library for the following reasons:
+4. **Monitoring and Alerting**
+   - Prometheus metrics from both processes
+   - Grafana dashboards for real-time monitoring
+   - AlertManager rules for process health
+   - Shared memory utilization monitoring
+   - QuantLib-specific performance metrics
 
-1. **Focused Functionality**: You specifically need the ALO algorithm for American options pricing, not the entire QuantLib feature set.
+5. **Centralized Logging**
+   - ELK stack for log aggregation
+   - Structured logging from both processes
+   - Performance metrics and error tracking
+   - Distributed tracing for end-to-end visibility
 
-2. **Deterministic Execution**: An isolated implementation is easier to make deterministic by controlling memory allocation and execution paths.
+6. **High Availability**
+   - Redundant deployment across availability zones
+   - Load balancing for market data feeds
+   - Failover mechanisms for critical components
+   - Data replication and backup strategies
 
-3. **Performance Optimization**: With the isolated code, you have more direct control to optimize for your specific use case, potentially adding SIMD optimization later.
+## QuantLib Integration Approach
 
-4. **Reduced Dependencies**: Fewer dependencies means easier deployment, smaller container sizes, and less maintenance.
+### Full QuantLib Library Integration
 
-5. **Memory Management**: Better control over memory usage patterns which is critical for deterministic real-time systems.
+The system uses the complete QuantLib library to leverage its comprehensive financial modeling capabilities and proven implementations. This approach provides several key advantages:
 
-6. **Simpler Integration**: The integration effort is more straightforward with just the components you need.
+1. **Comprehensive Functionality**: Access to QuantLib's full suite of financial models including:
+   - QdFpAmericanEngine for American options pricing using the Anderson-Lake-Offengenden algorithm
+   - GJRGARCHModel for enhanced volatility modeling with leverage effects
+   - GarchModel for standard GARCH volatility modeling
+   - Extensive term structure and calibration capabilities
 
-If your requirements change in the future to need more QuantLib functionality, you can always expand your integration to include more components from the library.
+2. **Proven Implementation**: QuantLib's models are extensively tested and validated by the quantitative finance community, providing confidence in accuracy and reliability.
+
+3. **Advanced Volatility Modeling**: Built-in GJR-GARCH implementation handles:
+   - Asymmetric volatility clustering
+   - Leverage effects in equity markets
+   - Multi-step volatility forecasting
+   - Maximum likelihood estimation for calibration
+
+4. **Performance Optimization**: QuantLib is optimized for numerical computation and can be configured for deterministic execution through:
+   - Single-threaded operation mode
+   - Custom memory allocators
+   - Controlled random number generation
+   - Deterministic date/time handling
+
+5. **Extensibility**: The full library provides foundation for future enhancements such as:
+   - Additional volatility models (Heston, etc.)
+   - Interest rate models
+   - Exotic option pricing
+   - Risk management calculations
+
+6. **Industry Standard**: QuantLib is the de facto standard for quantitative finance, ensuring compatibility and maintainability.
+
+### QuantLib Configuration for Deterministic Execution
+
+```cpp
+// Configure QuantLib for deterministic operation
+QuantLib::Settings::instance().evaluationDate() = QuantLib::Date(1, QuantLib::January, 2024);
+QuantLib::Settings::instance().includeReferenceDateEvents() = false;
+QuantLib::Settings::instance().includeTodaysCashFlows() = false;
+
+// Use deterministic random number generation
+QuantLib::PseudoRandom::rsg_type rsg = QuantLib::PseudoRandom::make_sequence_generator(
+    dimension, seed);
+```
+
+This integration approach ensures robust, accurate, and maintainable quantitative modeling while meeting the system's deterministic execution requirements.

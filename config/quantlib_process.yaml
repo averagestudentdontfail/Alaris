@@ -1,0 +1,46 @@
+# QuantLib Process Configuration
+process:
+  name: "alaris_quantlib"
+  priority: 80
+  cpu_affinity: [2, 3]
+  memory_lock: true
+  huge_pages: true
+
+quantlib:
+  threading: single
+  date_format: "ISO"
+  calendar: "UnitedStates"
+  enable_debug: false
+
+shared_memory:
+  market_data_buffer: "/alaris_market_data"
+  signal_buffer: "/alaris_signals" 
+  control_buffer: "/alaris_control"
+  buffer_sizes:
+    market_data: 4096
+    signals: 1024
+    control: 256
+
+pricing:
+  alo_engine:
+    scheme: "ModifiedCraigSneyd"
+    time_steps: 800
+    asset_steps: 800
+  
+volatility:
+  gjr_garch:
+    max_iterations: 1000
+    tolerance: 1e-6
+  update_frequency_ms: 100
+
+strategy:
+  vol_arbitrage:
+    entry_threshold: 0.05
+    exit_threshold: 0.02
+    risk_limit: 0.10
+    model_selection: "ensemble"
+
+logging:
+  level: "INFO"
+  file: "/var/log/alaris/quantlib.log"
+  enable_performance_log: true

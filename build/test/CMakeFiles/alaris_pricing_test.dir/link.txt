@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG -march=native -mtune=native CMakeFiles/alaris_pricing_test.dir/quantlib/alo_engine_test.cpp.o -o alaris_pricing_test  ../src/quantlib/libalaris_pricing.a ../src/quantlib/libalaris_core.a -lQuantLib /usr/lib/x86_64-linux-gnu/librt.a /usr/lib/x86_64-linux-gnu/libpthread.a 

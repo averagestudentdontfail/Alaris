@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG -march=native -mtune=native CMakeFiles/alaris_core_test.dir/quantlib/memory_pool_test.cpp.o -o alaris_core_test  ../src/quantlib/libalaris_core.a -lQuantLib /usr/lib/x86_64-linux-gnu/librt.a /usr/lib/x86_64-linux-gnu/libpthread.a 

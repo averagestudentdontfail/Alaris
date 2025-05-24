@@ -1,0 +1,61 @@
+FROM ubuntu:22.04 as builder
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    git \
+    libboost-all-dev \
+    wget \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install QuantLib from source for latest version
+WORKDIR /tmp
+RUN wget https://github.com/lballabio/QuantLib/releases/download/v1.32/QuantLib-1.32.tar.gz \
+    && tar xzf QuantLib-1.32.tar.gz \
+    && cd QuantLib-1.32 \
+    && ./configure --disable-static CXXFLAGS='-O3 -g0' \
+    && make -j$(nproc) \
+    && make install \
+    && ldconfig
+
+# Copy source code
+COPY src/quantlib /usr/src/alaris/src/quantlib
+COPY CMakeLists.txt /usr/src/alaris/
+COPY src/quantlib/CMakeLists.txt /usr/src/alaris/src/quantlib/
+COPY test/ /usr/src/alaris/test/
+
+# Build Alaris
+WORKDIR /usr/src/alaris/build
+RUN cmake -DCMAKE_BUILD_TYPE=Release .. \
+    && make -j$(nproc) quantlib_process
+
+# Production image
+FROM ubuntu:22.04
+
+RUN apt-get update && apt-get install -y \
+    libboost-filesystem1.74.0 \
+    libboost-system1.74.0 \
+    libboost-thread1.74.0 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy QuantLib libraries
+COPY --from=builder /usr/local/lib/libQuantLib.so* /usr/local/lib/
+RUN ldconfig
+
+# Copy Alaris binary
+COPY --from=builder /usr/src/alaris/build/src/quantlib/quantlib_process /opt/alaris/bin/
+COPY scripts/health_check.sh /opt/alaris/bin/
+
+RUN chmod +x /opt/alaris/bin/* \
+    && groupadd -r alaris \
+    && useradd -r -g alaris alaris \
+    && mkdir -p /var/log/alaris \
+    && chown -R alaris:alaris /var/log/alaris
+
+USER alaris
+WORKDIR /opt/alaris
+
+ENTRYPOINT ["/opt/alaris/bin/quantlib_process"]
+CMD ["/opt/alaris/config/quantlib_process.yaml"]

@@ -1,0 +1,1 @@
+/usr/bin/c++ -fPIC -O3 -DNDEBUG -march=native -mtune=native -shared -Wl,-soname,libQuantLib.so.1 -o libQuantLib.so.1.39.0 @CMakeFiles/ql_library.dir/objects1.rsp 
