@@ -10,7 +10,7 @@ function(manage_dependencies)
     set(FETCHCONTENT_UPDATES_DISCONNECTED ON)
     
     # Configure dependency versions
-    set(QUANTLIB_VERSION "1.29" CACHE STRING "QuantLib version")
+    set(QUANTLIB_VERSION "1.28" CACHE STRING "QuantLib version")
     set(YAML_CPP_VERSION "0.8.0" CACHE STRING "yaml-cpp version")
     set(BOOST_VERSION "1.75.0" CACHE STRING "Boost version")
     
