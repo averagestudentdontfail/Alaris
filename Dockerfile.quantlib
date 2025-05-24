@@ -1,61 +1,281 @@
-FROM ubuntu:22.04 as builder
+# docker/Dockerfile.quantlib
+# Multi-stage Dockerfile for Alaris QuantLib Process
+
+# Build arguments
+ARG BUILD_TYPE=Release
+ARG CMAKE_BUILD_PARALLEL_LEVEL=4
+ARG ENABLE_OPTIMIZATIONS=ON
+ARG BASE_IMAGE=ubuntu:22.04
+
+# =============================================================================
+# Build Stage
+# =============================================================================
+FROM ${BASE_IMAGE} as builder
+
+# Build arguments
+ARG BUILD_TYPE
+ARG CMAKE_BUILD_PARALLEL_LEVEL
+ARG ENABLE_OPTIMIZATIONS
+ARG DEBIAN_FRONTEND=noninteractive
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y \
+    # Build tools
     build-essential \
     cmake \
+    ninja-build \
+    ccache \
     git \
-    libboost-all-dev \
-    wget \
     pkg-config \
-    && rm -rf /var/lib/apt/lists/*
+    \
+    # Libraries
+    libboost-all-dev \
+    libyaml-cpp-dev \
+    \
+    # System libraries
+    librt-dev \
+    \
+    # Performance tools
+    linux-tools-generic \
+    \
+    # Cleanup
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
 
-# Install QuantLib from source for latest version
-WORKDIR /tmp
-RUN wget https://github.com/lballabio/QuantLib/releases/download/v1.32/QuantLib-1.32.tar.gz \
-    && tar xzf QuantLib-1.32.tar.gz \
-    && cd QuantLib-1.32 \
-    && ./configure --disable-static CXXFLAGS='-O3 -g0' \
-    && make -j$(nproc) \
-    && make install \
-    && ldconfig
+# Set up build environment
+ENV CC=gcc
+ENV CXX=g++
+ENV CMAKE_BUILD_PARALLEL_LEVEL=${CMAKE_BUILD_PARALLEL_LEVEL}
+
+# Configure ccache
+RUN ccache --set-config=cache_dir=/tmp/ccache \
+    && ccache --set-config=max_size=2G \
+    && ccache --set-config=compression=true
+
+# Create build user for security
+RUN groupadd -r alaris && useradd -r -g alaris -u 1000 alaris
+RUN mkdir -p /workspace /opt/alaris && chown -R alaris:alaris /workspace /opt/alaris
+
+# Switch to build user
+USER alaris
+WORKDIR /workspace
 
 # Copy source code
-COPY src/quantlib /usr/src/alaris/src/quantlib
-COPY CMakeLists.txt /usr/src/alaris/
-COPY src/quantlib/CMakeLists.txt /usr/src/alaris/src/quantlib/
-COPY test/ /usr/src/alaris/test/
+COPY --chown=alaris:alaris . .
 
-# Build Alaris
-WORKDIR /usr/src/alaris/build
-RUN cmake -DCMAKE_BUILD_TYPE=Release .. \
-    && make -j$(nproc) quantlib_process
+# Initialize submodules
+RUN git submodule update --init --recursive
 
-# Production image
-FROM ubuntu:22.04
+# Configure CMake
+RUN cmake -B build \
+    -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
+    -DCMAKE_CXX_STANDARD=20 \
+    -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+    -DCMAKE_INSTALL_PREFIX=/opt/alaris \
+    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+    -DALARIS_BUILD_WITH_BENCHMARK=OFF \
+    -DALARIS_BUILD_WITH_GTEST=OFF \
+    -GNinja
 
+# Build the project
+RUN cmake --build build --config ${BUILD_TYPE} --parallel ${CMAKE_BUILD_PARALLEL_LEVEL}
+
+# Install to staging area
+RUN cmake --install build --prefix /workspace/install
+
+# =============================================================================
+# Runtime Stage
+# =============================================================================
+FROM ${BASE_IMAGE} as runtime
+
+# Runtime arguments
+ARG DEBIAN_FRONTEND=noninteractive
+
+# Install runtime dependencies
 RUN apt-get update && apt-get install -y \
-    libboost-filesystem1.74.0 \
+    # Runtime libraries
     libboost-system1.74.0 \
+    libboost-filesystem1.74.0 \
+    libboost-date-time1.74.0 \
     libboost-thread1.74.0 \
-    && rm -rf /var/lib/apt/lists/*
+    libboost-program-options1.74.0 \
+    libboost-serialization1.74.0 \
+    libyaml-cpp0.7 \
+    \
+    # System tools
+    util-linux \
+    procps \
+    htop \
+    strace \
+    gdb \
+    \
+    # Networking tools
+    iproute2 \
+    iputils-ping \
+    netcat-openbsd \
+    \
+    # Real-time tools
+    rt-tests \
+    \
+    # Cleanup
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
 
-# Copy QuantLib libraries
-COPY --from=builder /usr/local/lib/libQuantLib.so* /usr/local/lib/
-RUN ldconfig
-
-# Copy Alaris binary
-COPY --from=builder /usr/src/alaris/build/src/quantlib/quantlib_process /opt/alaris/bin/
-COPY scripts/health_check.sh /opt/alaris/bin/
-
-RUN chmod +x /opt/alaris/bin/* \
-    && groupadd -r alaris \
-    && useradd -r -g alaris alaris \
+# Create runtime user and directories
+RUN groupadd -r alaris && useradd -r -g alaris -u 1000 -s /bin/bash alaris
+RUN mkdir -p /opt/alaris/{bin,config,data,logs} \
     && mkdir -p /var/log/alaris \
-    && chown -R alaris:alaris /var/log/alaris
+    && mkdir -p /dev/shm/alaris \
+    && chown -R alaris:alaris /opt/alaris /var/log/alaris
 
+# Copy built artifacts from builder stage
+COPY --from=builder --chown=alaris:alaris /workspace/install/ /opt/alaris/
+
+# Copy configuration files
+COPY --chown=alaris:alaris config/quantlib_process.yaml /opt/alaris/config/
+COPY --chown=alaris:alaris scripts/health_check.sh /opt/alaris/bin/
+RUN chmod +x /opt/alaris/bin/health_check.sh
+
+# Set up environment
+ENV PATH="/opt/alaris/bin:${PATH}"
+ENV ALARIS_CONFIG_FILE="/opt/alaris/config/quantlib_process.yaml"
+ENV ALARIS_LOG_LEVEL="INFO"
+
+# Performance optimizations
+ENV OMP_NUM_THREADS=1
+ENV MALLOC_ARENA_MAX=1
+ENV MALLOC_MMAP_THRESHOLD_=131072
+ENV MALLOC_TRIM_THRESHOLD_=131072
+ENV MALLOC_TOP_PAD_=131072
+
+# Set resource limits for real-time performance
+RUN echo "alaris soft rtprio 99" >> /etc/security/limits.conf \
+    && echo "alaris hard rtprio 99" >> /etc/security/limits.conf \
+    && echo "alaris soft memlock unlimited" >> /etc/security/limits.conf \
+    && echo "alaris hard memlock unlimited" >> /etc/security/limits.conf
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD ["/opt/alaris/bin/health_check.sh"]
+
+# Switch to runtime user
 USER alaris
 WORKDIR /opt/alaris
 
-ENTRYPOINT ["/opt/alaris/bin/quantlib_process"]
-CMD ["/opt/alaris/config/quantlib_process.yaml"]
+# Create startup script
+RUN cat > /opt/alaris/bin/start.sh << 'EOF'
+#!/bin/bash
+set -e
+
+echo "🚀 Starting Alaris QuantLib Process..."
+echo "Build Info:"
+/opt/alaris/bin/alaris_sysinfo --version
+echo ""
+
+echo "System Check:"
+/opt/alaris/bin/alaris_sysinfo --health-check || echo "⚠️  System check warnings detected"
+echo ""
+
+echo "Configuration Validation:"
+/opt/alaris/bin/alaris_config_validator ${ALARIS_CONFIG_FILE}
+echo ""
+
+echo "Starting QuantLib process with config: ${ALARIS_CONFIG_FILE}"
+exec /opt/alaris/bin/quantlib_process ${ALARIS_CONFIG_FILE}
+EOF
+
+RUN chmod +x /opt/alaris/bin/start.sh
+
+# Expose ports for monitoring (if needed)
+EXPOSE 8080
+
+# Set default command
+CMD ["/opt/alaris/bin/start.sh"]
+
+# =============================================================================
+# Development Stage (optional)
+# =============================================================================
+FROM builder as development
+
+USER root
+
+# Install development tools
+RUN apt-get update && apt-get install -y \
+    # Debugging tools
+    gdb \
+    valgrind \
+    strace \
+    ltrace \
+    \
+    # Profiling tools
+    perf-tools-unstable \
+    linux-tools-generic \
+    \
+    # Editors
+    vim \
+    nano \
+    \
+    # Additional utilities
+    tree \
+    wget \
+    curl \
+    \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install additional debugging libraries
+RUN apt-get update && apt-get install -y \
+    libboost-all-dev \
+    libyaml-cpp-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+USER alaris
+
+# Development environment variables
+ENV CMAKE_BUILD_TYPE=Debug
+ENV ALARIS_ENABLE_PROFILING=true
+ENV ALARIS_LOG_LEVEL=DEBUG
+
+# Keep source code for development
+WORKDIR /workspace
+
+# Development command (keep container running)
+CMD ["tail", "-f", "/dev/null"]
+
+# =============================================================================
+# Production Stage (final)
+# =============================================================================
+FROM runtime as production
+
+# Production-specific optimizations
+USER root
+
+# Configure kernel parameters for production
+RUN echo "kernel.sched_rt_runtime_us = -1" >> /etc/sysctl.conf \
+    && echo "kernel.sched_rt_period_us = 1000000" >> /etc/sysctl.conf \
+    && echo "vm.swappiness = 1" >> /etc/sysctl.conf \
+    && echo "kernel.numa_balancing = 0" >> /etc/sysctl.conf
+
+# Set CPU frequency governor to performance (if available)
+RUN echo 'GOVERNOR="performance"' > /etc/default/cpufrequtils || true
+
+# Remove unnecessary packages to reduce attack surface
+RUN apt-get update && apt-get remove -y \
+    gdb \
+    strace \
+    && apt-get autoremove -y \
+    && rm -rf /var/lib/apt/lists/*
+
+USER alaris
+
+# Production environment variables
+ENV ALARIS_ENABLE_PROFILING=false
+ENV ALARIS_LOG_LEVEL=INFO
+
+# Labels for container identification
+LABEL maintainer="Alaris Trading Systems"
+LABEL version="1.0.0"
+LABEL description="Alaris QuantLib Process - High-performance derivatives trading engine"
+LABEL org.opencontainers.image.source="https://github.com/alaris-trading/alaris"
+LABEL org.opencontainers.image.vendor="Alaris Trading Systems"
+LABEL org.opencontainers.image.title="Alaris QuantLib Process"
+LABEL org.opencontainers.image.description="Production-ready QuantLib-based options pricing and volatility arbitrage engine"

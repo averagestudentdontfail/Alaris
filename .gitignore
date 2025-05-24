@@ -1,0 +1,435 @@
+# Alaris Trading System - Git Ignore Configuration
+
+# =============================================================================
+# Build directories and artifacts
+# =============================================================================
+build/
+Build/
+builds/
+out/
+bin/
+obj/
+lib/
+dist/
+target/
+
+# CMake specific
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+cmake_install.cmake
+Makefile
+cmake-build-*/
+CTestTestfile.cmake
+Testing/
+_deps/
+
+# Ninja
+.ninja_deps
+.ninja_log
+
+# =============================================================================
+# IDE and Editor files
+# =============================================================================
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# Visual Studio
+.vs/
+*.vcxproj.user
+*.vcxproj.filters
+*.VC.db
+*.VC.VC.opendb
+*.sdf
+*.opensdf
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# JetBrains IDEs (CLion, IntelliJ, etc.)
+.idea/
+*.iml
+*.ipr
+*.iws
+cmake-build-*/
+
+# Qt Creator
+CMakeLists.txt.user
+CMakeLists.txt.user.*
+
+# Xcode
+*.xcodeproj/
+*.xcworkspace/
+xcuserdata/
+DerivedData/
+
+# Eclipse CDT
+.cproject
+.project
+.settings/
+
+# Code::Blocks
+*.cbp
+*.layout
+*.depend
+
+# Dev-C++
+*.dev
+
+# =============================================================================
+# Compiler and build system outputs
+# =============================================================================
+
+# Object files
+*.o
+*.obj
+*.elf
+*.map
+
+# Precompiled headers
+*.gch
+*.pch
+
+# Libraries
+*.lib
+*.a
+*.la
+*.lo
+
+# Shared libraries
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+*.dSYM/
+
+# Debug symbols
+*.pdb
+*.ilk
+
+# =============================================================================
+# .NET specific
+# =============================================================================
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio 2015/2017 cache/options directory
+.vs/
+
+# MSTest test Results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+
+# NUnit
+*.VisualState.xml
+TestResult.xml
+nunit-*.xml
+
+# Coverage
+coverage*.json
+coverage*.xml
+coverage*.info
+
+# .NET Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# ASP.NET Scaffolding
+ScaffoldingReadMe.txt
+
+# StyleCop
+StyleCopReport.xml
+
+# =============================================================================
+# Testing and coverage
+# =============================================================================
+*.gcda
+*.gcno
+*.gcov
+lcov.info
+coverage/
+coverage.xml
+.coverage
+*.cover
+*.py,cover
+
+# Google Test
+googletest/
+gtest/
+gmock/
+
+# CTest
+CTestTestfile.cmake
+Testing/
+
+# =============================================================================
+# Package managers and dependencies
+# =============================================================================
+
+# Conan
+conanfile.txt.user
+conanbuildinfo.*
+conaninfo.txt
+graph_info.json
+
+# vcpkg
+vcpkg_installed/
+.vcpkg-root
+
+# Hunter
+_3rdParty/
+
+# npm/node (if using any Node.js tools)
+node_modules/
+npm-debug.log*
+
+# Python (if using any Python tools)
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.Python
+env/
+venv/
+.venv/
+
+# =============================================================================
+# System and temporary files
+# =============================================================================
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Windows shortcuts
+*.lnk
+
+# =============================================================================
+# Log files and runtime data
+# =============================================================================
+*.log
+*.log.*
+logs/
+log/
+
+# Runtime configuration
+*.pid
+*.seed
+*.pid.lock
+
+# Crash dumps
+core
+core.*
+*.core
+*.stackdump
+*.dmp
+
+# =============================================================================
+# Documentation generated files
+# =============================================================================
+doc/html/
+doc/latex/
+docs/_build/
+docs/build/
+site/
+
+# Doxygen
+Doxyfile.local
+html/
+latex/
+
+# =============================================================================
+# Security and configuration
+# =============================================================================
+
+# Credentials and secrets
+*.key
+*.pem
+*.p12
+*.pfx
+secrets/
+.env
+.env.local
+.env.*.local
+
+# Configuration with sensitive data
+*secret*
+*password*
+*credential*
+config/local.*
+config/production.*
+
+# =============================================================================
+# Docker
+# =============================================================================
+.dockerignore
+
+# =============================================================================
+# Monitoring and data
+# =============================================================================
+data/
+logs/
+metrics/
+prometheus-data/
+grafana-data/
+redis-data/
+
+# =============================================================================
+# Backup and archive files
+# =============================================================================
+*.bak
+*.backup
+*.orig
+*.rej
+*.diff
+*.patch
+
+# =============================================================================
+# Profiling and performance
+# =============================================================================
+*.prof
+*.gprof
+perf.data*
+*.vgcore
+cachegrind.out.*
+callgrind.out.*
+massif.out.*
+
+# =============================================================================
+# Memory debugging
+# =============================================================================
+vgcore.*
+*.vgcore
+helgrind.out.*
+drd.out.*
+
+# =============================================================================
+# Static analysis
+# =============================================================================
+.cppcheck/
+cppcheck-result.xml
+clang-tidy-result.txt
+static-analysis-report.*
+
+# =============================================================================
+# Benchmarking
+# =============================================================================
+benchmark_results.*
+*.benchmark
+
+# =============================================================================
+# Installation and packaging
+# =============================================================================
+install_manifest.txt
+*.deb
+*.rpm
+*.msi
+*.dmg
+*.pkg
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.zip
+
+# =============================================================================
+# ccache and build acceleration
+# =============================================================================
+.ccache/
+
+# =============================================================================
+# Shared memory and IPC files
+# =============================================================================
+/dev/shm/alaris/
+
+# =============================================================================
+# Trading system specific
+# =============================================================================
+
+# Market data
+market_data/
+historical_data/
+tick_data/
+
+# Trading logs
+trading_logs/
+execution_logs/
+performance_logs/
+
+# Temporary trading files
+*.trade
+*.position
+*.order
+
+# Configuration overrides
+config/local/
+config/override/
+config/*.local.*
+
+# =============================================================================
+# Clang tools
+# =============================================================================
+.clangd/
+compile_commands.json
+.cache/
+
+# =============================================================================
+# Git and version control
+# =============================================================================
+*.orig
+*.rej
+
+# Patch files
+*.patch
+*.diff
+
+# =============================================================================
+# Custom ignores for Alaris
+# =============================================================================
+
+# Build info (auto-generated)
+src/quantlib/alaris_build_info.h
+
+# Configuration summary
+configuration_summary.txt
+build_info.txt
+
+# Performance test results
+performance_*.json
+benchmark_*.json
+
+# System information output
+system_info.txt
+
+# Development symlinks
+quantlib_process
+lean_process

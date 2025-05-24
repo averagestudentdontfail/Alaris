@@ -1,28 +1,38 @@
 #!/bin/bash
 
-# Alaris Trading System Build Script
-# This script ensures proper setup and building of the QuantLib-based trading system
+# Enhanced Alaris Trading System Build Script
+# This script provides a robust build system with dependency management,
+# cross-platform support, and comprehensive error handling.
 
 set -e  # Exit on any error
 
 # Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+readonly RED='\033[0;31m'
+readonly GREEN='\033[0;32m'
+readonly YELLOW='\033[1;33m'
+readonly BLUE='\033[0;34m'
+readonly PURPLE='\033[0;35m'
+readonly CYAN='\033[0;36m'
+readonly NC='\033[0m' # No Color
 
-# Configuration
-BUILD_TYPE=${1:-Release}
-BUILD_DIR="build"
-EXTERNAL_DIR="external"
-JOBS=$(nproc 2>/dev/null || echo 4)  # Default to 4 if nproc not available
+# Script configuration
+readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+readonly BUILD_DIR="${PROJECT_ROOT}/build"
+readonly EXTERNAL_DIR="${PROJECT_ROOT}/external"
 
-echo -e "${BLUE}=== Alaris Trading System Build Script ===${NC}"
-echo -e "${BLUE}Build type: ${BUILD_TYPE}${NC}"
-echo -e "${BLUE}Using ${JOBS} parallel jobs${NC}"
+# Default values
+BUILD_TYPE="Release"
+JOBS=$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
+VERBOSE=false
+CLEAN_BUILD=false
+RUN_TESTS=false
+INSTALL=false
+UPDATE_SUBMODULES=false
+USE_CCACHE=true
+USE_NINJA=false
 
-# Function to print status
+# Function to print colored output
 print_status() {
     echo -e "${GREEN}[INFO]${NC} $1"
 }
@@ -35,267 +45,499 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# Check for required tools
-print_status "Checking build requirements..."
+print_header() {
+    echo -e "${BLUE}=== $1 ===${NC}"
+}
 
-check_command() {
-    if ! command -v $1 &> /dev/null; then
-        print_error "$1 is required but not installed"
+print_step() {
+    echo -e "${CYAN}[STEP]${NC} $1"
+}
+
+# Function to show usage
+show_usage() {
+    cat << EOF
+Usage: $0 [OPTIONS]
+
+OPTIONS:
+    -t, --type TYPE         Build type (Debug|Release|RelWithDebInfo|MinSizeRel) [default: Release]
+    -j, --jobs N           Number of parallel jobs [default: auto-detected]
+    -c, --clean            Clean build directory before building
+    -r, --run-tests        Run tests after building
+    -i, --install          Install after building
+    -u, --update           Update git submodules before building
+    -v, --verbose          Enable verbose output
+    -n, --ninja            Use Ninja generator instead of Make
+    --no-ccache            Disable ccache even if available
+    --sanitize             Enable address and undefined behavior sanitizers (Debug builds)
+    --coverage             Enable code coverage (Debug builds)
+    -h, --help             Show this help message
+
+EXAMPLES:
+    $0                     # Build with default settings (Release)
+    $0 -t Debug -r         # Debug build and run tests
+    $0 -c -j 8             # Clean build with 8 parallel jobs
+    $0 --update --install  # Update submodules, build, and install
+    $0 --sanitize -t Debug # Debug build with sanitizers
+
+EOF
+}
+
+# Parse command line arguments
+parse_arguments() {
+    while [[ $# -gt 0 ]]; do
         case $1 in
-            cmake)
-                echo "Install with: sudo apt-get install cmake  # Ubuntu/Debian"
-                echo "           or: sudo yum install cmake     # CentOS/RHEL"
+            -t|--type)
+                BUILD_TYPE="$2"
+                shift 2
                 ;;
-            make)
-                echo "Install with: sudo apt-get install build-essential  # Ubuntu/Debian"
-                echo "           or: sudo yum groupinstall 'Development Tools'  # CentOS/RHEL"
+            -j|--jobs)
+                JOBS="$2"
+                shift 2
                 ;;
-            g++)
-                echo "Install with: sudo apt-get install g++  # Ubuntu/Debian"
-                echo "           or: sudo yum install gcc-c++ # CentOS/RHEL"
+            -c|--clean)
+                CLEAN_BUILD=true
+                shift
                 ;;
-            git)
-                echo "Install with: sudo apt-get install git  # Ubuntu/Debian"
-                echo "           or: sudo yum install git     # CentOS/RHEL"
+            -r|--run-tests)
+                RUN_TESTS=true
+                shift
+                ;;
+            -i|--install)
+                INSTALL=true
+                shift
+                ;;
+            -u|--update)
+                UPDATE_SUBMODULES=true
+                shift
+                ;;
+            -v|--verbose)
+                VERBOSE=true
+                shift
+                ;;
+            -n|--ninja)
+                USE_NINJA=true
+                shift
+                ;;
+            --no-ccache)
+                USE_CCACHE=false
+                shift
+                ;;
+            --sanitize)
+                ENABLE_SANITIZERS=true
+                shift
+                ;;
+            --coverage)
+                ENABLE_COVERAGE=true
+                shift
+                ;;
+            -h|--help)
+                show_usage
+                exit 0
+                ;;
+            *)
+                print_error "Unknown option: $1"
+                show_usage
+                exit 1
                 ;;
         esac
+    done
+
+    # Validate build type
+    case $BUILD_TYPE in
+        Debug|Release|RelWithDebInfo|MinSizeRel)
+            ;;
+        *)
+            print_error "Invalid build type: $BUILD_TYPE"
+            print_error "Valid types: Debug, Release, RelWithDebInfo, MinSizeRel"
+            exit 1
+            ;;
+    esac
+}
+
+# Function to detect platform
+detect_platform() {
+    case "$(uname -s)" in
+        Linux*)     PLATFORM=Linux;;
+        Darwin*)    PLATFORM=Mac;;
+        MINGW*)     PLATFORM=Windows;;
+        MSYS*)      PLATFORM=Windows;;
+        CYGWIN*)    PLATFORM=Windows;;
+        *)          PLATFORM="Unknown";;
+    esac
+    
+    print_status "Detected platform: $PLATFORM"
+}
+
+# Function to check system requirements
+check_requirements() {
+    print_step "Checking build requirements"
+
+    # Check for required tools
+    local required_tools=("git" "cmake")
+    
+    if [[ $USE_NINJA == true ]]; then
+        required_tools+=("ninja")
+    else
+        required_tools+=("make")
+    fi
+
+    for tool in "${required_tools[@]}"; do
+        if ! command -v "$tool" &> /dev/null; then
+            print_error "$tool is required but not installed"
+            
+            # Provide installation hints
+            case $tool in
+                cmake)
+                    print_error "Install with:"
+                    print_error "  Ubuntu/Debian: sudo apt-get install cmake"
+                    print_error "  CentOS/RHEL:   sudo yum install cmake"
+                    print_error "  macOS:         brew install cmake"
+                    print_error "  Windows:       Download from https://cmake.org"
+                    ;;
+                make)
+                    print_error "Install with:"
+                    print_error "  Ubuntu/Debian: sudo apt-get install build-essential"
+                    print_error "  CentOS/RHEL:   sudo yum groupinstall 'Development Tools'"
+                    print_error "  macOS:         xcode-select --install"
+                    ;;
+                ninja)
+                    print_error "Install with:"
+                    print_error "  Ubuntu/Debian: sudo apt-get install ninja-build"
+                    print_error "  CentOS/RHEL:   sudo yum install ninja-build"
+                    print_error "  macOS:         brew install ninja"
+                    ;;
+                git)
+                    print_error "Install with:"
+                    print_error "  Ubuntu/Debian: sudo apt-get install git"
+                    print_error "  CentOS/RHEL:   sudo yum install git"
+                    print_error "  macOS:         brew install git"
+                    ;;
+            esac
+            exit 1
+        fi
+    done
+
+    # Check CMake version
+    local cmake_version
+    cmake_version=$(cmake --version | head -n1 | sed 's/cmake version //')
+    print_status "CMake version: $cmake_version"
+
+    # Check minimum CMake version (3.20)
+    if ! cmake --version | head -n1 | grep -qE 'cmake version ([3-9]\.[2-9][0-9]|[4-9]\.[0-9]+)'; then
+        print_error "CMake 3.20 or higher is required, found $cmake_version"
+        exit 1
+    fi
+
+    # Check C++ compiler
+    if command -v g++ &> /dev/null; then
+        local gcc_version
+        gcc_version=$(g++ --version | head -n1)
+        print_status "Compiler: $gcc_version"
+        
+        # Check for C++20 support (GCC 10+)
+        local gcc_major
+        gcc_major=$(g++ -dumpversion | cut -d. -f1)
+        if [[ $gcc_major -lt 10 ]]; then
+            print_warning "GCC 10+ recommended for full C++20 support, found GCC $gcc_major"
+        fi
+    elif command -v clang++ &> /dev/null; then
+        local clang_version
+        clang_version=$(clang++ --version | head -n1)
+        print_status "Compiler: $clang_version"
+    else
+        print_error "No C++ compiler found (g++ or clang++)"
+        exit 1
+    fi
+
+    # Check for optional tools
+    if command -v ccache &> /dev/null && [[ $USE_CCACHE == true ]]; then
+        print_status "ccache found: $(ccache --version | head -n1)"
+    elif [[ $USE_CCACHE == true ]]; then
+        print_warning "ccache not found - builds will be slower"
+        USE_CCACHE=false
+    fi
+
+    # Check for Boost libraries
+    if [[ $PLATFORM == "Linux" ]]; then
+        if ! ldconfig -p | grep -q libboost; then
+            print_warning "Boost libraries may not be installed"
+            print_warning "Install with: sudo apt-get install libboost-all-dev  # Ubuntu/Debian"
+            print_warning "           or: sudo yum install boost-devel          # CentOS/RHEL"
+        fi
+    fi
+}
+
+# Function to update git submodules
+update_submodules() {
+    if [[ $UPDATE_SUBMODULES == true ]]; then
+        print_step "Updating git submodules"
+        cd "$PROJECT_ROOT"
+        
+        git submodule update --init --recursive
+        
+        # Update to latest versions
+        git submodule update --recursive --remote
+        
+        print_status "Submodules updated successfully"
+    fi
+}
+
+# Function to setup build directory
+setup_build_directory() {
+    print_step "Setting up build directory"
+
+    if [[ $CLEAN_BUILD == true && -d "$BUILD_DIR" ]]; then
+        print_status "Cleaning build directory"
+        rm -rf "$BUILD_DIR"
+    fi
+
+    mkdir -p "$BUILD_DIR"
+    cd "$BUILD_DIR"
+}
+
+# Function to configure CMake
+configure_cmake() {
+    print_step "Configuring with CMake"
+
+    local cmake_args=(
+        "-DCMAKE_BUILD_TYPE=$BUILD_TYPE"
+        "-DCMAKE_CXX_STANDARD=20"
+        "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+    )
+
+    # Generator selection
+    if [[ $USE_NINJA == true ]]; then
+        cmake_args+=("-G" "Ninja")
+    fi
+
+    # CCache configuration
+    if [[ $USE_CCACHE == true ]]; then
+        cmake_args+=("-DCMAKE_CXX_COMPILER_LAUNCHER=ccache")
+    fi
+
+    # Debug build options
+    if [[ $BUILD_TYPE == "Debug" ]]; then
+        if [[ $ENABLE_SANITIZERS == true ]]; then
+            cmake_args+=("-DENABLE_SANITIZERS=ON")
+        fi
+        
+        if [[ $ENABLE_COVERAGE == true ]]; then
+            cmake_args+=("-DENABLE_COVERAGE=ON")
+        fi
+    fi
+
+    # Verbose configuration
+    if [[ $VERBOSE == true ]]; then
+        cmake_args+=("-DCMAKE_VERBOSE_MAKEFILE=ON")
+    fi
+
+    # Platform-specific configuration
+    case $PLATFORM in
+        Mac)
+            cmake_args+=("-DCMAKE_OSX_DEPLOYMENT_TARGET=10.15")
+            ;;
+        Windows)
+            cmake_args+=("-DCMAKE_WINDOWS_EXPORT_ALL_SYMBOLS=ON")
+            ;;
+    esac
+
+    print_status "CMake configuration:"
+    for arg in "${cmake_args[@]}"; do
+        print_status "  $arg"
+    done
+
+    # Run CMake
+    cmake "${cmake_args[@]}" "$PROJECT_ROOT"
+    
+    if [[ $? -eq 0 ]]; then
+        print_status "CMake configuration successful"
+    else
+        print_error "CMake configuration failed"
         exit 1
     fi
 }
 
-# Check required tools
-check_command cmake
-check_command make
-check_command g++
-check_command git
+# Function to build the project
+build_project() {
+    print_step "Building project with $JOBS parallel jobs"
 
-# Check CMake version
-CMAKE_VERSION=$(cmake --version | head -n1 | sed 's/cmake version //')
-print_status "Using CMake version: $CMAKE_VERSION"
-
-# Check minimum CMake version (3.20)
-cmake_major=$(echo $CMAKE_VERSION | cut -d. -f1)
-cmake_minor=$(echo $CMAKE_VERSION | cut -d. -f2)
-if [ "$cmake_major" -lt 3 ] || ([ "$cmake_major" -eq 3 ] && [ "$cmake_minor" -lt 20 ]); then
-    print_error "CMake 3.20 or higher is required, found $CMAKE_VERSION"
-    exit 1
-fi
-
-# Check C++ compiler version
-if command -v g++ &> /dev/null; then
-    GXX_VERSION=$(g++ --version | head -n1)
-    print_status "Using compiler: $GXX_VERSION"
+    local build_args=()
     
-    # Check for C++20 support (GCC 10+)
-    gcc_major=$(g++ -dumpversion | cut -d. -f1)
-    if [ "$gcc_major" -lt 10 ]; then
-        print_warning "GCC 10+ recommended for full C++20 support, found GCC $gcc_major"
+    if [[ $USE_NINJA == true ]]; then
+        build_args+=("ninja")
+        if [[ $VERBOSE == true ]]; then
+            build_args+=("-v")
+        fi
+    else
+        build_args+=("make" "-j$JOBS")
+        if [[ $VERBOSE == true ]]; then
+            build_args+=("VERBOSE=1")
+        fi
     fi
-fi
 
-# Check for Boost libraries (required by QuantLib)
-print_status "Checking for Boost libraries..."
-if ! ldconfig -p | grep -q libboost; then
-    print_warning "Boost libraries may not be installed"
-    echo "Install with: sudo apt-get install libboost-all-dev  # Ubuntu/Debian"
-    echo "           or: sudo yum install boost-devel          # CentOS/RHEL"
-fi
+    local start_time
+    start_time=$(date +%s)
 
-# Setup external dependencies
-print_status "Setting up external dependencies..."
+    # Build the project
+    "${build_args[@]}"
+    local build_status=$?
 
-# Create external directory if it doesn't exist
-mkdir -p ${EXTERNAL_DIR}
+    local end_time
+    end_time=$(date +%s)
+    local build_duration=$((end_time - start_time))
 
-# Check for QuantLib
-if [ ! -d "${EXTERNAL_DIR}/quant" ]; then
-    print_warning "QuantLib not found, cloning from GitHub..."
-    cd ${EXTERNAL_DIR}
-    
-    # Clone QuantLib
-    if ! git clone https://github.com/lballabio/QuantLib.git quant; then
-        print_error "Failed to clone QuantLib repository"
+    if [[ $build_status -eq 0 ]]; then
+        print_status "Build completed successfully in ${build_duration}s"
+        show_build_artifacts
+    else
+        print_error "Build failed after ${build_duration}s"
+        print_error "Check the output above for error details"
         exit 1
     fi
-    
-    cd quant
-    
-    # Use a stable release
-    if ! git checkout v1.32; then
-        print_warning "Could not checkout v1.32, using default branch"
-    fi
-    
-    cd ../..
-    print_status "QuantLib cloned successfully"
-else
-    print_status "QuantLib found in ${EXTERNAL_DIR}/quant"
-    
-    # Check if it's a git repository and update if requested
-    if [ "$2" == "update" ] && [ -d "${EXTERNAL_DIR}/quant/.git" ]; then
-        print_status "Updating QuantLib..."
-        cd ${EXTERNAL_DIR}/quant
-        git fetch origin
-        git checkout v1.32
-        cd ../..
-    fi
-fi
+}
 
-# Check for yaml-cpp
-if [ ! -d "${EXTERNAL_DIR}/yaml-cpp" ]; then
-    print_warning "yaml-cpp not found, cloning from GitHub..."
-    cd ${EXTERNAL_DIR}
+# Function to show built artifacts
+show_build_artifacts() {
+    print_status "Built artifacts:"
     
-    if ! git clone https://github.com/jbeder/yaml-cpp.git; then
-        print_error "Failed to clone yaml-cpp repository"
-        exit 1
-    fi
+    local artifacts=(
+        "src/quantlib/quantlib_process"
+        "test/alaris_core_test"
+        "test/alaris_integration_test"
+    )
     
-    cd yaml-cpp
-    
-    # Use a stable release
-    if ! git checkout yaml-cpp-0.7.0; then
-        print_warning "Could not checkout yaml-cpp-0.7.0, using default branch"
-    fi
-    
-    cd ../..
-    print_status "yaml-cpp cloned successfully"
-else
-    print_status "yaml-cpp found in ${EXTERNAL_DIR}/yaml-cpp"
-    
-    # Update if requested
-    if [ "$2" == "update" ] && [ -d "${EXTERNAL_DIR}/yaml-cpp/.git" ]; then
-        print_status "Updating yaml-cpp..."
-        cd ${EXTERNAL_DIR}/yaml-cpp
-        git fetch origin
-        git checkout yaml-cpp-0.7.0
-        cd ../..
-    fi
-fi
+    for artifact in "${artifacts[@]}"; do
+        if [[ -f "$artifact" ]]; then
+            echo -e "  ${GREEN}✓${NC} $artifact"
+            ls -lh "$artifact" | awk '{print "    Size: " $5 ", Modified: " $6 " " $7 " " $8}'
+        else
+            echo -e "  ${RED}✗${NC} $artifact (not found)"
+        fi
+    done
+}
 
-# Clean build directory if requested
-if [ "$2" == "clean" ] || [ "$3" == "clean" ]; then
-    print_status "Cleaning build directory..."
-    rm -rf ${BUILD_DIR}
-fi
-
-# Create build directory
-mkdir -p ${BUILD_DIR}
-cd ${BUILD_DIR}
-
-# Configure with CMake
-print_status "Configuring build with CMake..."
-
-# Set additional CMake options based on build type
-CMAKE_OPTIONS=""
-if [ "$BUILD_TYPE" == "Debug" ]; then
-    CMAKE_OPTIONS="-DCMAKE_VERBOSE_MAKEFILE=ON"
-fi
-
-cmake .. \
-    -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
-    -DCMAKE_CXX_STANDARD=20 \
-    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-    ${CMAKE_OPTIONS}
-
-if [ $? -ne 0 ]; then
-    print_error "CMake configuration failed!"
-    exit 1
-fi
-
-# Build the project
-print_status "Building project with ${JOBS} parallel jobs..."
-make -j${JOBS}
-
-BUILD_STATUS=$?
-
-if [ $BUILD_STATUS -eq 0 ]; then
-    print_status "Build completed successfully!"
-    
-    # Show built targets
-    echo
-    echo -e "${GREEN}Built targets:${NC}"
-    
-    if [ -f "src/quantlib/quantlib_process" ]; then
-        echo "  ✓ quantlib_process"
-        ls -lh src/quantlib/quantlib_process
-    else
-        echo "  ✗ quantlib_process (missing)"
-    fi
-    
-    if [ -f "test/alaris_core_test" ]; then
-        echo "  ✓ alaris_core_test"
-    else
-        echo "  ✗ alaris_core_test (missing)"
-    fi
-    
-    if [ -f "test/alaris_integration_test" ]; then
-        echo "  ✓ alaris_integration_test"
-    else
-        echo "  ✗ alaris_integration_test (missing)"
-    fi
-    
-    if [ -f "test/alaris_performance_test" ]; then
-        echo "  ✓ alaris_performance_test"
-    else
-        echo "  ✗ alaris_performance_test (missing)"
-    fi
-    
-    echo
-    
-    # Run tests if requested
-    if [ "$3" == "test" ] || [ "$2" == "test" ]; then
-        print_status "Running tests..."
+# Function to run tests
+run_tests() {
+    if [[ $RUN_TESTS == true ]]; then
+        print_step "Running tests"
+        
         if command -v ctest &> /dev/null; then
-            ctest --output-on-failure -j${JOBS}
-            TEST_STATUS=$?
-            if [ $TEST_STATUS -eq 0 ]; then
+            local ctest_args=(
+                "--output-on-failure"
+                "--parallel" "$JOBS"
+            )
+            
+            if [[ $VERBOSE == true ]]; then
+                ctest_args+=("--verbose")
+            fi
+            
+            print_status "Running CTest with arguments: ${ctest_args[*]}"
+            ctest "${ctest_args[@]}"
+            local test_status=$?
+            
+            if [[ $test_status -eq 0 ]]; then
                 print_status "All tests passed!"
             else
-                print_warning "Some tests failed (exit code: $TEST_STATUS)"
+                print_warning "Some tests failed (exit code: $test_status)"
+                return $test_status
             fi
         else
-            print_warning "ctest not available, running tests manually..."
-            if [ -f "test/alaris_core_test" ]; then
-                echo "Running core tests..."
+            print_warning "CTest not available, running tests manually"
+            
+            if [[ -f "test/alaris_core_test" ]]; then
+                print_status "Running core tests..."
                 ./test/alaris_core_test
+            fi
+            
+            if [[ -f "test/alaris_integration_test" ]]; then
+                print_status "Running integration tests..."
+                ./test/alaris_integration_test
             fi
         fi
     fi
-    
-    # Install if requested
-    if [ "$4" == "install" ] || [ "$3" == "install" ] || [ "$2" == "install" ]; then
-        print_status "Installing..."
-        make install
+}
+
+# Function to install
+install_project() {
+    if [[ $INSTALL == true ]]; then
+        print_step "Installing"
+        
+        if [[ $USE_NINJA == true ]]; then
+            ninja install
+        else
+            make install
+        fi
+        
+        print_status "Installation completed"
     fi
+}
+
+# Function to print build summary
+print_summary() {
+    print_header "Build Summary"
     
-    echo
-    echo -e "${GREEN}=== Build Complete ===${NC}"
-    echo -e "${BLUE}To run the QuantLib process:${NC}"
-    echo -e "  cd ${BUILD_DIR} && ./src/quantlib/quantlib_process"
-    echo
-    echo -e "${BLUE}To run tests:${NC}"
-    echo -e "  cd ${BUILD_DIR} && ctest --output-on-failure"
-    echo
-    echo -e "${BLUE}Available make targets:${NC}"
-    echo -e "  make core          # Build core library only"
-    echo -e "  make pricing       # Build pricing library only"
-    echo -e "  make volatility    # Build volatility library only"
-    echo -e "  make strategy      # Build strategy library only"
-    echo -e "  make test_core     # Run core tests only"
-    echo -e "  make test_all      # Run all tests"
-    echo
+    echo -e "${CYAN}Project:${NC}       Alaris Trading System"
+    echo -e "${CYAN}Build Type:${NC}    $BUILD_TYPE"
+    echo -e "${CYAN}Platform:${NC}      $PLATFORM"
+    echo -e "${CYAN}Jobs:${NC}          $JOBS"
+    echo -e "${CYAN}Generator:${NC}     $(if [[ $USE_NINJA == true ]]; then echo "Ninja"; else echo "Make"; fi)"
+    echo -e "${CYAN}CCache:${NC}        $(if [[ $USE_CCACHE == true ]]; then echo "Enabled"; else echo "Disabled"; fi)"
     
-else
-    print_error "Build failed with exit code: $BUILD_STATUS"
-    echo
+    echo ""
+    echo -e "${CYAN}Next steps:${NC}"
+    echo -e "  ${GREEN}•${NC} To run the QuantLib process:"
+    echo -e "    cd $BUILD_DIR && ./src/quantlib/quantlib_process"
+    echo ""
+    echo -e "  ${GREEN}•${NC} To run tests:"
+    echo -e "    cd $BUILD_DIR && ctest --output-on-failure"
+    echo ""
+    echo -e "  ${GREEN}•${NC} To clean and rebuild:"
+    echo -e "    $0 --clean"
+    echo ""
+    echo -e "  ${GREEN}•${NC} Available make targets:"
+    if [[ $USE_NINJA == true ]]; then
+        echo -e "    ninja -t targets"
+    else
+        echo -e "    make help"
+    fi
+}
+
+# Function to handle errors
+handle_error() {
+    local exit_code=$?
+    print_error "Build script failed with exit code $exit_code"
+    
+    echo ""
     echo -e "${YELLOW}Troubleshooting tips:${NC}"
-    echo "1. Check that all dependencies are installed:"
-    echo "   - libboost-all-dev (Ubuntu) or boost-devel (CentOS)"
-    echo "   - build-essential (Ubuntu) or 'Development Tools' (CentOS)"
-    echo "2. Try cleaning and rebuilding:"
-    echo "   ./scripts/build.sh $BUILD_TYPE clean"
+    echo "1. Check that all dependencies are installed"
+    echo "2. Try cleaning and rebuilding: $0 --clean"
     echo "3. Check the CMake configuration output above for errors"
     echo "4. Ensure you have sufficient disk space and memory"
-    echo
-    exit 1
-fi
+    echo "5. Run with --verbose for more detailed output"
+    
+    exit $exit_code
+}
+
+# Main function
+main() {
+    # Set up error handling
+    trap handle_error ERR
+
+    print_header "Alaris Trading System Build Script"
+    
+    parse_arguments "$@"
+    detect_platform
+    check_requirements
+    update_submodules
+    setup_build_directory
+    configure_cmake
+    build_project
+    run_tests
+    install_project
+    print_summary
+    
+    print_status "Build script completed successfully!"
+}
+
+# Run main function with all arguments
+main "$@"
