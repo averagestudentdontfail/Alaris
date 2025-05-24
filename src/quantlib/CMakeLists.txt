@@ -46,61 +46,8 @@ if(TARGET Platform::Libraries)
     list(APPEND ALARIS_COMMON_LINK_LIBRARIES Platform::Libraries)
 endif()
 
-# Function to create Alaris library with common settings
-function(add_alaris_library target_name)
-    cmake_parse_arguments(
-        ARG
-        "HEADER_ONLY"
-        ""
-        "SOURCES;HEADERS;DEPENDENCIES;PRIVATE_DEPENDENCIES"
-        ${ARGN}
-    )
-    
-    if(ARG_HEADER_ONLY)
-        add_library(${target_name} INTERFACE)
-        target_include_directories(${target_name} INTERFACE ${ALARIS_COMMON_INCLUDE_DIRS})
-        if(ARG_DEPENDENCIES)
-            target_link_libraries(${target_name} INTERFACE ${ARG_DEPENDENCIES})
-        endif()
-    else()
-        add_library(${target_name} STATIC ${ARG_SOURCES} ${ARG_HEADERS})
-        
-        target_include_directories(${target_name} 
-            PUBLIC ${ALARIS_COMMON_INCLUDE_DIRS}
-        )
-        
-        target_compile_options(${target_name} 
-            PRIVATE ${ALARIS_COMMON_COMPILE_OPTIONS}
-        )
-        
-        target_link_libraries(${target_name} 
-            PUBLIC ${ALARIS_COMMON_LINK_LIBRARIES}
-        )
-        
-        if(ARG_DEPENDENCIES)
-            target_link_libraries(${target_name} PUBLIC ${ARG_DEPENDENCIES})
-        endif()
-        
-        if(ARG_PRIVATE_DEPENDENCIES)
-            target_link_libraries(${target_name} PRIVATE ${ARG_PRIVATE_DEPENDENCIES})
-        endif()
-        
-        # Set folder for IDE organization
-        set_target_properties(${target_name} PROPERTIES FOLDER "Alaris/Libraries")
-        
-        # Add deterministic execution flags
-        target_compile_definitions(${target_name} PRIVATE
-            $<$<CONFIG:Release>:NDEBUG>
-            $<$<CONFIG:Release>:ALARIS_OPTIMIZED>
-            $<$<CONFIG:Debug>:ALARIS_DEBUG>
-        )
-    endif()
-    
-    message(STATUS "Configured library: ${target_name}")
-endfunction()
-
 # Core utilities library
-add_alaris_library(alaris_core
+create_modern_library(alaris_core
     SOURCES
         core/memory_pool.cpp
         core/time_trigger.cpp
@@ -114,30 +61,28 @@ add_alaris_library(alaris_core
         ipc/shared_memory.h
         ipc/shared_ring_buffer.h
         ipc/message_types.h
+    PUBLIC_DEPS
+        ${YAML_CPP_TARGET}
+    PRIVATE_DEPS
+        ${ALARIS_COMMON_LINK_LIBRARIES}
 )
 
-# Additional dependencies for core library
-target_link_libraries(alaris_core PUBLIC ${YAML_CPP_TARGET})
-
-# Add explicit dependencies to ensure build order
-add_dependencies(alaris_core ${QUANTLIB_TARGET} ${YAML_CPP_TARGET})
-
 # Pricing engine library
-add_alaris_library(alaris_pricing
+create_modern_library(alaris_pricing
     SOURCES
         pricing/alo_engine.cpp
         pricing/pricing_service.cpp
     HEADERS
         pricing/alo_engine.h
         pricing/pricing_service.h
-    DEPENDENCIES
+    PUBLIC_DEPS
         alaris_core
+    PRIVATE_DEPS
+        ${ALARIS_COMMON_LINK_LIBRARIES}
 )
 
-add_dependencies(alaris_pricing alaris_core)
-
 # Volatility models library
-add_alaris_library(alaris_volatility
+create_modern_library(alaris_volatility
     SOURCES
         volatility/gjrgarch_wrapper.cpp
         volatility/garch_wrapper.cpp
@@ -146,63 +91,39 @@ add_alaris_library(alaris_volatility
         volatility/gjrgarch_wrapper.h
         volatility/garch_wrapper.h
         volatility/vol_forecast.h
-    DEPENDENCIES
+    PUBLIC_DEPS
         alaris_core
+    PRIVATE_DEPS
+        ${ALARIS_COMMON_LINK_LIBRARIES}
 )
 
-add_dependencies(alaris_volatility alaris_core)
-
 # Trading strategy library
-add_alaris_library(alaris_strategy
+create_modern_library(alaris_strategy
     SOURCES
         strategy/vol_arb.cpp
         strategy/signal_gen.cpp
     HEADERS
         strategy/vol_arb.h
         strategy/signal_gen.h
-    DEPENDENCIES
+    PUBLIC_DEPS
         alaris_core
         alaris_pricing
         alaris_volatility
+    PRIVATE_DEPS
+        ${ALARIS_COMMON_LINK_LIBRARIES}
 )
-
-add_dependencies(alaris_strategy alaris_core alaris_pricing alaris_volatility)
 
 # Main QuantLib process executable
-add_executable(quantlib_process main.cpp)
-
-target_include_directories(quantlib_process PRIVATE ${ALARIS_COMMON_INCLUDE_DIRS})
-
-# Executable-specific compile options for maximum performance
-target_compile_options(quantlib_process PRIVATE
-    ${ALARIS_COMMON_COMPILE_OPTIONS}
-    $<$<CONFIG:Release>:-ffast-math>
-    $<$<CONFIG:Release>:-funroll-loops>
-)
-
-# Link all libraries to the main executable
-target_link_libraries(quantlib_process PRIVATE
-    alaris_core
-    alaris_pricing
-    alaris_volatility
-    alaris_strategy
-    ${YAML_CPP_TARGET}
-    ${ALARIS_COMMON_LINK_LIBRARIES}
-)
-
-# Add dependencies to ensure proper build order
-add_dependencies(quantlib_process 
-    alaris_core 
-    alaris_pricing 
-    alaris_volatility 
-    alaris_strategy
-)
-
-# Set executable properties
-set_target_properties(quantlib_process PROPERTIES
-    OUTPUT_NAME "quantlib_process"
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
-    FOLDER "Alaris/Executables"
+create_modern_executable(quantlib_process
+    SOURCES
+        main.cpp
+    DEPS
+        alaris_core
+        alaris_pricing
+        alaris_volatility
+        alaris_strategy
+        ${YAML_CPP_TARGET}
+        ${ALARIS_COMMON_LINK_LIBRARIES}
 )
 
 # Platform-specific optimizations and linker flags
@@ -250,7 +171,31 @@ add_custom_target(core DEPENDS alaris_core)
 add_custom_target(pricing DEPENDS alaris_pricing)
 add_custom_target(volatility DEPENDS alaris_volatility)
 add_custom_target(strategy DEPENDS alaris_strategy)
-add_custom_target(main DEPENDS quantlib_process)
+add_custom_target(process DEPENDS quantlib_process)
+
+# Set up folder organization for IDE
+set_target_properties(
+    alaris_core
+    alaris_pricing
+    alaris_volatility
+    alaris_strategy
+    PROPERTIES FOLDER "Alaris/Libraries"
+)
+
+set_target_properties(
+    quantlib_process
+    PROPERTIES FOLDER "Alaris/Executables"
+)
+
+# Export targets to parent scope
+set(ALARIS_TARGETS
+    alaris_core
+    alaris_pricing
+    alaris_volatility
+    alaris_strategy
+    quantlib_process
+    PARENT_SCOPE
+)
 
 # Performance testing executable (optional)
 if(BENCHMARK_AVAILABLE)

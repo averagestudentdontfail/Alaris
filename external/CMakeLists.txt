@@ -42,7 +42,6 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/quant/CMakeLists.txt")
     add_subdirectory(quant)
     
     # Create an alias target to ensure we have a known target name
-    # This handles the case where QuantLib creates different target names
     if(TARGET QuantLib)
         set(QUANTLIB_TARGET QuantLib PARENT_SCOPE)
         message(STATUS "✓ QuantLib target: QuantLib")
@@ -55,14 +54,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/quant/CMakeLists.txt")
         add_library(QuantLib ALIAS ql)
         message(STATUS "✓ QuantLib target: ql (aliased as QuantLib)")
     else()
-        # Create a dummy target to prevent build failures and print available targets
-        execute_process(
-            COMMAND ${CMAKE_COMMAND} --build ${CMAKE_CURRENT_BINARY_DIR}/quant --target help
-            OUTPUT_VARIABLE AVAILABLE_TARGETS
-            ERROR_QUIET
-        )
-        message(STATUS "Available targets after QuantLib build: ${AVAILABLE_TARGETS}")
-        message(FATAL_ERROR "QuantLib target not found. Available targets: ${AVAILABLE_TARGETS}")
+        message(FATAL_ERROR "QuantLib target not found")
     endif()
     
     # Set include directories for parent scope
@@ -72,7 +64,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/quant/CMakeLists.txt")
         PARENT_SCOPE
     )
     
-    # Add deterministic compilation flags to QuantLib if we can access the target
+    # Add deterministic compilation flags to QuantLib
     if(TARGET ${QUANTLIB_TARGET})
         target_compile_definitions(${QUANTLIB_TARGET} PUBLIC
             QL_HIGH_RESOLUTION_DATE
@@ -148,55 +140,6 @@ else()
     set(LEAN_AVAILABLE FALSE PARENT_SCOPE)
 endif()
 
-# Optional: Add any additional external libraries here
-# For example, if we need testing frameworks, additional math libraries, etc.
-
-# Google Test (if we want to add it later)
-option(ALARIS_BUILD_WITH_GTEST "Build with Google Test" OFF)
-if(ALARIS_BUILD_WITH_GTEST)
-    message(STATUS "Configuring Google Test...")
-    
-    include(FetchContent)
-    FetchContent_Declare(
-        googletest
-        GIT_REPOSITORY https://github.com/google/googletest.git
-        GIT_TAG release-1.12.1
-    )
-    
-    # For Windows: Prevent overriding the parent project's compiler/linker settings
-    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-    
-    FetchContent_MakeAvailable(googletest)
-    
-    set(GTEST_AVAILABLE TRUE PARENT_SCOPE)
-    message(STATUS "Google Test configured")
-else()
-    set(GTEST_AVAILABLE FALSE PARENT_SCOPE)
-endif()
-
-# Benchmark library (optional for performance testing)
-option(ALARIS_BUILD_WITH_BENCHMARK "Build with Google Benchmark" OFF)
-if(ALARIS_BUILD_WITH_BENCHMARK)
-    message(STATUS "Configuring Google Benchmark...")
-    
-    include(FetchContent)
-    FetchContent_Declare(
-        googlebenchmark
-        GIT_REPOSITORY https://github.com/google/benchmark.git
-        GIT_TAG v1.8.3
-    )
-    
-    set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "Disable benchmark testing" FORCE)
-    set(BENCHMARK_ENABLE_GTEST_TESTS OFF CACHE BOOL "Disable gtest tests" FORCE)
-    
-    FetchContent_MakeAvailable(googlebenchmark)
-    
-    set(BENCHMARK_AVAILABLE TRUE PARENT_SCOPE)
-    message(STATUS "Google Benchmark configured")
-else()
-    set(BENCHMARK_AVAILABLE FALSE PARENT_SCOPE)
-endif()
-
 # Create a consolidated external libraries target for convenience
 add_library(External::All INTERFACE)
 
@@ -238,10 +181,4 @@ if(LEAN_AVAILABLE)
     if(DOTNET_VERSION)
         message(STATUS "    .NET SDK: ${DOTNET_VERSION}")
     endif()
-endif()
-if(GTEST_AVAILABLE)
-    message(STATUS "  ✓ Google Test: Available")
-endif()
-if(BENCHMARK_AVAILABLE)
-    message(STATUS "  ✓ Google Benchmark: Available")
 endif()

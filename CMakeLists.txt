@@ -28,39 +28,30 @@ message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/modules")
 
 # Include helper functions
-include(cmake/utils/CompilerFlags.cmake)
-include(cmake/utils/Dependencies.cmake)
-include(cmake/utils/Submodules.cmake)
-include(cmake/utils/Platform.cmake)
+include(cmake/utils/ModernCMake.cmake)
+include(cmake/utils/DependencyManager.cmake)
+include(cmake/utils/BuildConfig.cmake)
 
-# Set global properties
-set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+# Enforce modern CMake practices
+enforce_modern_cmake()
 
-# Platform-specific configuration
-configure_platform()
+# Configure build options
+configure_build_options()
 
-# Configure compiler flags
-configure_compiler_flags()
+# Configure sanitizers
+configure_sanitizers()
 
-# Check and initialize submodules
-check_submodules()
+# Configure code coverage
+configure_coverage()
 
-# Find system dependencies
-find_system_dependencies()
+# Manage dependencies
+manage_dependencies()
 
-# Build external dependencies first
-add_subdirectory(external)
-
-# Global include directories
-include_directories(
-    ${CMAKE_SOURCE_DIR}/src
-    ${CMAKE_SOURCE_DIR}/src/quantlib
-)
+# Create dependency graph
+create_dependency_graph()
 
 # Add subdirectories
-add_subdirectory(src/quantlib)
+add_subdirectory(src)
 
 # Add tests if this is the main project
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
