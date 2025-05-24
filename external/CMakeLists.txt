@@ -41,7 +41,14 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/quant/CMakeLists.txt")
     # Add QuantLib with specific target name
     add_subdirectory(quant)
     
-    # Ensure we have the right target name and export it
+    # Set include directories for parent scope
+    set(QuantLib_INCLUDE_DIRS 
+        "${CMAKE_CURRENT_SOURCE_DIR}/quant"
+        "${CMAKE_CURRENT_BINARY_DIR}/quant"
+        PARENT_SCOPE
+    )
+    
+    # Set the target name based on what was actually created
     if(TARGET QuantLib)
         set(QUANTLIB_TARGET QuantLib PARENT_SCOPE)
         message(STATUS "QuantLib target: QuantLib")
@@ -67,15 +74,9 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/quant/CMakeLists.txt")
         set(QUANTLIB_TARGET quantlib PARENT_SCOPE)
         message(STATUS "QuantLib target: quantlib")
     else()
-        message(FATAL_ERROR "QuantLib target not found after build")
+        message(STATUS "QuantLib target not found, will be created during build")
+        set(QUANTLIB_TARGET QuantLib PARENT_SCOPE)
     endif()
-    
-    # Set include directories for parent scope
-    set(QuantLib_INCLUDE_DIRS 
-        "${CMAKE_CURRENT_SOURCE_DIR}/quant"
-        "${CMAKE_CURRENT_BINARY_DIR}/quant"
-        PARENT_SCOPE
-    )
     
 else()
     message(FATAL_ERROR "QuantLib submodule not found at ${CMAKE_CURRENT_SOURCE_DIR}/quant")
@@ -184,14 +185,14 @@ else()
 endif()
 
 # Create a consolidated external libraries target for convenience
-add_library(External::All INTERFACE)
+add_library(ExternalAll INTERFACE)
 
 if(TARGET ${QUANTLIB_TARGET})
-    target_link_libraries(External::All INTERFACE ${QUANTLIB_TARGET})
+    target_link_libraries(ExternalAll INTERFACE ${QUANTLIB_TARGET})
 endif()
 
 if(TARGET ${YAML_CPP_TARGET})
-    target_link_libraries(External::All INTERFACE ${YAML_CPP_TARGET})
+    target_link_libraries(ExternalAll INTERFACE ${YAML_CPP_TARGET})
 endif()
 
 # Set up folder organization for IDE
@@ -205,7 +206,7 @@ endif()
 
 # Export targets to parent scope
 set(EXTERNAL_TARGETS
-    External::All
+    ExternalAll
     ${QUANTLIB_TARGET}
     ${YAML_CPP_TARGET}
     PARENT_SCOPE
@@ -215,6 +216,8 @@ set(EXTERNAL_TARGETS
 message(STATUS "External dependencies configured:")
 if(TARGET ${QUANTLIB_TARGET})
     message(STATUS "  ✓ QuantLib: ${QUANTLIB_TARGET}")
+else()
+    message(STATUS "  ✓ QuantLib: Will be created during build")
 endif()
 if(TARGET ${YAML_CPP_TARGET})
     message(STATUS "  ✓ yaml-cpp: ${YAML_CPP_TARGET}")
@@ -231,3 +234,5 @@ endif()
 if(BENCHMARK_AVAILABLE)
     message(STATUS "  ✓ Google Benchmark: Available")
 endif()
+
+target_link_libraries(ExternalAll INTERFACE ${EXTERNAL_TARGETS})

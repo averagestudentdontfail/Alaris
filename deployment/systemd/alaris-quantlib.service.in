@@ -1,0 +1,28 @@
+[Unit]
+Description=Alaris QuantLib Trading Process
+After=network.target
+
+[Service]
+Type=simple
+User=@ALARIS_USER@
+Group=@ALARIS_GROUP@
+WorkingDirectory=@ALARIS_WORKING_DIR@
+ExecStart=@ALARIS_BINDIR@/quantlib_process
+Restart=always
+RestartSec=5
+Environment=ALARIS_CONFIG_DIR=@ALARIS_CONFIGDIR@
+Environment=ALARIS_DATA_DIR=@ALARIS_DATADIR@
+Environment=ALARIS_LOG_DIR=@ALARIS_LOGDIR@
+
+# Real-time and performance settings
+CPUSchedulingPolicy=fifo
+CPUSchedulingPriority=99
+MemoryDenyWriteExecute=yes
+NoNewPrivileges=yes
+ProtectSystem=full
+ProtectHome=yes
+PrivateTmp=yes
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_RAW
+
+[Install]
+WantedBy=multi-user.target 

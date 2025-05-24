@@ -1,0 +1,47 @@
+if(NOT EXISTS "@CMAKE_BINARY_DIR@/install_manifest.txt")
+    message(FATAL_ERROR "Cannot find install manifest: @CMAKE_BINARY_DIR@/install_manifest.txt")
+endif()
+
+file(READ "@CMAKE_BINARY_DIR@/install_manifest.txt" files)
+string(REGEX REPLACE "\n" ";" files "${files}")
+
+foreach(file ${files})
+    message(STATUS "Uninstalling $ENV{DESTDIR}${file}")
+    if(IS_SYMLINK "$ENV{DESTDIR}${file}" OR EXISTS "$ENV{DESTDIR}${file}")
+        exec_program(
+            "@CMAKE_COMMAND@" ARGS "-E remove \"$ENV{DESTDIR}${file}\""
+            OUTPUT_VARIABLE rm_out
+            RETURN_VALUE rm_retval
+        )
+        if(NOT "${rm_retval}" STREQUAL 0)
+            message(FATAL_ERROR "Problem when removing $ENV{DESTDIR}${file}")
+        endif()
+    else()
+        message(STATUS "File $ENV{DESTDIR}${file} does not exist.")
+    endif()
+endforeach()
+
+# Remove empty directories
+file(GLOB_RECURSE dirs
+    "$ENV{DESTDIR}@CMAKE_INSTALL_PREFIX@/bin"
+    "$ENV{DESTDIR}@CMAKE_INSTALL_PREFIX@/lib"
+    "$ENV{DESTDIR}@CMAKE_INSTALL_PREFIX@/include"
+    "$ENV{DESTDIR}@CMAKE_INSTALL_PREFIX@/share"
+)
+
+foreach(dir ${dirs})
+    if(IS_DIRECTORY "${dir}")
+        file(GLOB files "${dir}/*")
+        list(LENGTH files file_count)
+        if(file_count EQUAL 0)
+            exec_program(
+                "@CMAKE_COMMAND@" ARGS "-E remove_directory \"${dir}\""
+                OUTPUT_VARIABLE rm_out
+                RETURN_VALUE rm_retval
+            )
+            if(NOT "${rm_retval}" STREQUAL 0)
+                message(FATAL_ERROR "Problem when removing directory ${dir}")
+            endif()
+        endif()
+    endif()
+endforeach() 

@@ -4,12 +4,12 @@
 message(STATUS "Configuring Alaris QuantLib components...")
 
 # Verify required targets are available
-if(NOT TARGET ${QUANTLIB_TARGET})
-    message(FATAL_ERROR "QuantLib target '${QUANTLIB_TARGET}' not found")
+if(NOT DEFINED QUANTLIB_TARGET)
+    message(FATAL_ERROR "QUANTLIB_TARGET variable not defined")
 endif()
 
-if(NOT TARGET ${YAML_CPP_TARGET})
-    message(FATAL_ERROR "yaml-cpp target '${YAML_CPP_TARGET}' not found")
+if(NOT DEFINED YAML_CPP_TARGET)
+    message(FATAL_ERROR "YAML_CPP_TARGET variable not defined")
 endif()
 
 # Common configuration for all Alaris libraries

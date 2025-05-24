@@ -36,31 +36,31 @@ endif()
 
 # Install configuration files
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/config/
+    COMPONENT Configuration
     DESTINATION ${ALARIS_INSTALL_CONFIGDIR}
     FILES_MATCHING PATTERN "*.yaml"
     PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
-    COMPONENT Configuration
 )
 
 # Install scripts
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/scripts/
+    COMPONENT Scripts
     DESTINATION ${ALARIS_INSTALL_BINDIR}
     FILES_MATCHING PATTERN "*.sh"
     PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE 
                GROUP_READ GROUP_EXECUTE 
                WORLD_READ WORLD_EXECUTE
-    COMPONENT Scripts
 )
 
 # Install monitoring configuration
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/monitoring/
+    COMPONENT Monitoring
     DESTINATION ${ALARIS_INSTALL_DATADIR}/monitoring
     FILES_MATCHING 
         PATTERN "*.yml" 
         PATTERN "*.yaml"
         PATTERN "*.json"
     PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
-    COMPONENT Monitoring
 )
 
 # Install documentation
@@ -75,10 +75,10 @@ install(FILES
 # Install headers (for development installations)
 if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR ALARIS_INSTALL_DEVELOPMENT)
     install(DIRECTORY ${CMAKE_SOURCE_DIR}/src/quantlib/
+        COMPONENT Development
         DESTINATION ${ALARIS_INSTALL_INCLUDEDIR}
         FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
         PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
-        COMPONENT Development
     )
 endif()
 

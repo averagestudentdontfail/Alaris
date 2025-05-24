@@ -3,61 +3,7 @@
 
 include(InstallRequiredSystemLibraries)
 
-# Basic package information
-set(CPACK_PACKAGE_NAME "Alaris")
-set(CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
-set(CPACK_PACKAGE_VERSION_MINOR ${PROJECT_VERSION_MINOR})
-set(CPACK_PACKAGE_VERSION_PATCH ${PROJECT_VERSION_PATCH})
-set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
-
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "High-Performance Derivatives Trading System")
-set(CPACK_PACKAGE_DESCRIPTION "Alaris is a production-grade derivatives trading system designed for volatility arbitrage using American options with process isolation and deterministic execution.")
-
-set(CPACK_PACKAGE_VENDOR "Alaris Trading Systems")
-set(CPACK_PACKAGE_CONTACT "admin@alaris-trading.com")
-set(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/alaris-trading/alaris")
-
-# Package file naming
-set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}")
-
-# Resource files
-set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE")
-set(CPACK_RESOURCE_FILE_README "${CMAKE_SOURCE_DIR}/README.md")
-
-# Package metadata
-set(CPACK_PACKAGE_CHECKSUM SHA256)
-set(CPACK_PACKAGE_RELOCATABLE TRUE)
-
-# Source package configuration
-set(CPACK_SOURCE_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-source")
-set(CPACK_SOURCE_IGNORE_FILES
-    "/\\.git/"
-    "/build/"
-    "/\\.vscode/"
-    "/\\.idea/"
-    "\\.swp$"
-    "\\.orig$"
-    "/CMakeLists\\.txt\\.user$"
-    "/Makefile$"
-    "/CMakeCache\\.txt$"
-    "/CMakeFiles/"
-    "/cmake_install\\.cmake$"
-    "/CTestTestfile\\.cmake$"
-    "/Testing/"
-    "/_CPack_Packages/"
-    "/\\.DS_Store$"
-    "/Thumbs\\.db$"
-)
-
-# Platform-specific package configuration
-if(WIN32)
-    configure_windows_package()
-elseif(APPLE)
-    configure_macos_package()
-elseif(UNIX)
-    configure_linux_package()
-endif()
-
+# Function definitions
 function(configure_windows_package)
     # Windows-specific packaging with NSIS
     set(CPACK_GENERATOR "NSIS;ZIP" PARENT_SCOPE)
@@ -114,31 +60,6 @@ function(configure_macos_package)
     endif()
 endfunction()
 
-function(configure_linux_package)
-    # Linux distribution detection
-    if(EXISTS /etc/os-release)
-        file(STRINGS /etc/os-release DISTRO_INFO)
-        foreach(line ${DISTRO_INFO})
-            if(line MATCHES "^ID=(.+)")
-                set(LINUX_DISTRO ${CMAKE_MATCH_1})
-                string(REPLACE "\"" "" LINUX_DISTRO ${LINUX_DISTRO})
-                break()
-            endif()
-        endforeach()
-    endif()
-    
-    # Set generators based on distribution
-    if(LINUX_DISTRO MATCHES "ubuntu|debian")
-        set(CPACK_GENERATOR "DEB;TGZ" PARENT_SCOPE)
-        configure_deb_package()
-    elseif(LINUX_DISTRO MATCHES "centos|rhel|fedora")
-        set(CPACK_GENERATOR "RPM;TGZ" PARENT_SCOPE)
-        configure_rpm_package()
-    else()
-        set(CPACK_GENERATOR "TGZ" PARENT_SCOPE)
-    endif()
-endfunction()
-
 function(configure_deb_package)
     # Debian/Ubuntu package configuration
     set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Alaris Trading Systems <admin@alaris-trading.com>" PARENT_SCOPE)
@@ -189,6 +110,86 @@ function(configure_rpm_package)
     set(CPACK_RPM_SPEC_MORE_DEFINE "%define _unpackaged_files_terminate_build 0" PARENT_SCOPE)
     set(CPACK_RPM_SPEC_MORE_DEFINE "%define _missing_doc_files_terminate_build 0" PARENT_SCOPE)
 endfunction()
+
+function(configure_linux_package)
+    # Linux distribution detection
+    if(EXISTS /etc/os-release)
+        file(STRINGS /etc/os-release DISTRO_INFO)
+        foreach(line ${DISTRO_INFO})
+            if(line MATCHES "^ID=(.+)")
+                set(LINUX_DISTRO ${CMAKE_MATCH_1})
+                string(REPLACE "\"" "" LINUX_DISTRO ${LINUX_DISTRO})
+                break()
+            endif()
+        endforeach()
+    endif()
+    
+    # Set generators based on distribution
+    if(LINUX_DISTRO MATCHES "ubuntu|debian")
+        set(CPACK_GENERATOR "DEB;TGZ" PARENT_SCOPE)
+        configure_deb_package()
+    elseif(LINUX_DISTRO MATCHES "centos|rhel|fedora")
+        set(CPACK_GENERATOR "RPM;TGZ" PARENT_SCOPE)
+        configure_rpm_package()
+    else()
+        set(CPACK_GENERATOR "TGZ" PARENT_SCOPE)
+    endif()
+endfunction()
+
+# Basic package information
+set(CPACK_PACKAGE_NAME "Alaris")
+set(CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
+set(CPACK_PACKAGE_VERSION_MINOR ${PROJECT_VERSION_MINOR})
+set(CPACK_PACKAGE_VERSION_PATCH ${PROJECT_VERSION_PATCH})
+set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
+
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "High-Performance Derivatives Trading System")
+set(CPACK_PACKAGE_DESCRIPTION "Alaris is a production-grade derivatives trading system designed for volatility arbitrage using American options with process isolation and deterministic execution.")
+
+set(CPACK_PACKAGE_VENDOR "Alaris Trading Systems")
+set(CPACK_PACKAGE_CONTACT "admin@alaris-trading.com")
+set(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/alaris-trading/alaris")
+
+# Package file naming
+set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}")
+
+# Resource files
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE")
+set(CPACK_RESOURCE_FILE_README "${CMAKE_SOURCE_DIR}/README.md")
+
+# Package metadata
+set(CPACK_PACKAGE_CHECKSUM SHA256)
+set(CPACK_PACKAGE_RELOCATABLE TRUE)
+
+# Source package configuration
+set(CPACK_SOURCE_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-source")
+set(CPACK_SOURCE_IGNORE_FILES
+    "/\\.git/"
+    "/build/"
+    "/\\.vscode/"
+    "/\\.idea/"
+    "\\.swp$"
+    "\\.orig$"
+    "/CMakeLists\\.txt\\.user$"
+    "/Makefile$"
+    "/CMakeCache\\.txt$"
+    "/CMakeFiles/"
+    "/cmake_install\\.cmake$"
+    "/CTestTestfile\\.cmake$"
+    "/Testing/"
+    "/_CPack_Packages/"
+    "/\\.DS_Store$"
+    "/Thumbs\\.db$"
+)
+
+# Platform-specific package configuration
+if(WIN32)
+    configure_windows_package()
+elseif(APPLE)
+    configure_macos_package()
+elseif(UNIX)
+    configure_linux_package()
+endif()
 
 # Archive generators configuration
 set(CPACK_ARCHIVE_COMPONENT_INSTALL ON)
