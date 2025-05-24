@@ -46,17 +46,4 @@ private:
     double calculate_signal_confidence(double vol_diff, const SignalParams& params);
 };
 
-// Global interface functions
-void initialize_signal_generator();
-
-IPC::TradingSignalMessage create_trading_signal(uint32_t symbol_id,
-                                               double theoretical_price,
-                                               double market_price,
-                                               double forecast_vol,
-                                               double implied_vol,
-                                               const SignalGenerator::SignalParams& params);
-
-bool should_generate_trading_signal(double forecast_vol, double implied_vol,
-                                   const SignalGenerator::SignalParams& params);
-
 } // namespace Alaris::Strategy

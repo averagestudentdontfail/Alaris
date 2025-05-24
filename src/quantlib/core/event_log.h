@@ -7,6 +7,7 @@
 #include <string>
 #include <chrono>
 #include <functional>
+#include <atomic>
 
 namespace Alaris::Core {
 
