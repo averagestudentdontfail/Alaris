@@ -69,7 +69,12 @@ function(add_alaris_test target_name)
     # Add any additional dependencies
     if(ARG_DEPENDENCIES)
         target_link_libraries(${target_name} PRIVATE ${ARG_DEPENDENCIES})
-        add_dependencies(${target_name} ${ARG_DEPENDENCIES})
+        # Only add dependencies to other targets, not to the target itself
+        foreach(dep ${ARG_DEPENDENCIES})
+            if(NOT dep STREQUAL target_name)
+                add_dependencies(${target_name} ${dep})
+            endif()
+        endforeach()
     endif()
     
     # Set output directory
@@ -119,7 +124,7 @@ function(add_alaris_test target_name)
     message(STATUS "Configured test: ${target_name}")
 endfunction()
 
-# Test helper library
+# Test helper library (separate from test executables to avoid circular dependencies)
 add_library(alaris_test_helpers STATIC
     test_helpers.cpp
 )
@@ -353,24 +358,24 @@ if(BENCHMARK_AVAILABLE)
     )
 endif()
 
-# Combined test targets
-set(ALL_TEST_DEPENDS alaris_test_helpers)
+# Combined test targets - FIXED: Separate test executables from helper library
+set(TEST_EXECUTABLES)
 if(TARGET alaris_core_test)
-    list(APPEND ALL_TEST_DEPENDS alaris_core_test)
+    list(APPEND TEST_EXECUTABLES alaris_core_test)
 endif()
 if(TARGET alaris_integration_test)
-    list(APPEND ALL_TEST_DEPENDS alaris_integration_test)
+    list(APPEND TEST_EXECUTABLES alaris_integration_test)
 endif()
 if(TARGET alaris_benchmark_test)
-    list(APPEND ALL_TEST_DEPENDS alaris_benchmark_test)
+    list(APPEND TEST_EXECUTABLES alaris_benchmark_test)
 endif()
 if(TARGET alaris_gtest_suite)
-    list(APPEND ALL_TEST_DEPENDS alaris_gtest_suite)
+    list(APPEND TEST_EXECUTABLES alaris_gtest_suite)
 endif()
 
 add_custom_target(test_all
     COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure --parallel ${SYSTEM_CPU_CORES}
-    DEPENDS ${ALL_TEST_DEPENDS}
+    DEPENDS ${TEST_EXECUTABLES}
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     COMMENT "Running all tests"
 )
@@ -386,7 +391,7 @@ add_custom_target(test_quick
 # Test with verbose output
 add_custom_target(test_verbose
     COMMAND ${CMAKE_CTEST_COMMAND} -V --output-on-failure
-    DEPENDS ${ALL_TEST_DEPENDS}
+    DEPENDS ${TEST_EXECUTABLES}
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     COMMENT "Running tests with verbose output"
 )
@@ -412,10 +417,13 @@ add_custom_target(prepare_test_data
     COMMENT "Preparing test data"
 )
 
-# Add dependency on test data for all tests
-if(ALL_TEST_DEPENDS)
-    add_dependencies(${ALL_TEST_DEPENDS} prepare_test_data)
+# FIXED: Add dependency on test data for test executables only, not helper library
+if(TEST_EXECUTABLES)
+    add_dependencies(${TEST_EXECUTABLES} prepare_test_data)
 endif()
+
+# Also make the test helper library depend on prepare_test_data separately
+add_dependencies(alaris_test_helpers prepare_test_data)
 
 # Copy test configuration files
 if(EXISTS ${CMAKE_SOURCE_DIR}/test/data/)
@@ -454,7 +462,7 @@ if(ALARIS_ENABLE_COVERAGE AND CMAKE_BUILD_TYPE STREQUAL "Debug")
     setup_target_for_coverage_gcovr_html(
         NAME alaris_coverage
         EXECUTABLE ctest
-        DEPENDENCIES ${ALL_TEST_DEPENDS}
+        DEPENDENCIES ${TEST_EXECUTABLES}
         BASE_DIRECTORY ${CMAKE_SOURCE_DIR}/src
         EXCLUDE "${CMAKE_SOURCE_DIR}/external/*" "${CMAKE_SOURCE_DIR}/test/*"
     )
