@@ -1,46 +1,15 @@
 # cmake/utils/DependencyManager.cmake
 # Modern dependency management for Alaris
 
-include(FetchContent)
-
 # Function to manage external dependencies
 function(manage_dependencies)
-    # Set up FetchContent
-    set(FETCHCONTENT_QUIET FALSE)
-    set(FETCHCONTENT_UPDATES_DISCONNECTED ON)
-    
-    # Configure dependency versions
-    set(QUANTLIB_VERSION "1.28" CACHE STRING "QuantLib version")
-    set(YAML_CPP_VERSION "0.8.0" CACHE STRING "yaml-cpp version")
-    set(BOOST_VERSION "1.75.0" CACHE STRING "Boost version")
-    
-    # Configure QuantLib
-    FetchContent_Declare(
-        quantlib
-        GIT_REPOSITORY https://github.com/lballabio/QuantLib.git
-        GIT_TAG v${QUANTLIB_VERSION}
-    )
-    
-    # Configure yaml-cpp
-    FetchContent_Declare(
-        yaml-cpp
-        GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
-        GIT_TAG yaml-cpp-${YAML_CPP_VERSION}
-    )
-    
-    # Configure Boost
-    if(NOT Boost_FOUND)
-        FetchContent_Declare(
-            boost
-            URL https://boostorg.jfrog.io/artifactory/main/release/${BOOST_VERSION}/source/boost_${BOOST_VERSION//./_}.tar.gz
-            URL_HASH SHA256=953db31e016db7bb228f3dc2dbbeba1a3cef0a7f3c0b7a6c9f1f9a3f0c0c0c0c
-        )
+    # Check for required submodules
+    if(NOT EXISTS "${CMAKE_SOURCE_DIR}/external/quant/CMakeLists.txt")
+        message(FATAL_ERROR "QuantLib submodule not found. Please run: git submodule update --init --recursive")
     endif()
     
-    # Make dependencies available
-    FetchContent_MakeAvailable(quantlib yaml-cpp)
-    if(NOT Boost_FOUND)
-        FetchContent_MakeAvailable(boost)
+    if(NOT EXISTS "${CMAKE_SOURCE_DIR}/external/yaml-cpp/CMakeLists.txt")
+        message(FATAL_ERROR "yaml-cpp submodule not found. Please run: git submodule update --init --recursive")
     endif()
     
     # Configure QuantLib options
@@ -58,6 +27,23 @@ function(manage_dependencies)
     set(YAML_CPP_BUILD_TOOLS OFF CACHE BOOL "Build yaml-cpp tools")
     set(YAML_CPP_BUILD_CONTRIB OFF CACHE BOOL "Build yaml-cpp contrib")
     set(YAML_CPP_INSTALL OFF CACHE BOOL "Install yaml-cpp")
+    
+    # Add QuantLib submodule
+    add_subdirectory(${CMAKE_SOURCE_DIR}/external/quant)
+    set(QUANTLIB_TARGET QuantLib PARENT_SCOPE)
+    set(QuantLib_INCLUDE_DIRS 
+        "${CMAKE_SOURCE_DIR}/external/quant"
+        "${CMAKE_BINARY_DIR}/external/quant"
+        PARENT_SCOPE
+    )
+    
+    # Add yaml-cpp submodule
+    add_subdirectory(${CMAKE_SOURCE_DIR}/external/yaml-cpp)
+    set(YAML_CPP_TARGET yaml-cpp PARENT_SCOPE)
+    set(yaml-cpp_INCLUDE_DIRS 
+        "${CMAKE_SOURCE_DIR}/external/yaml-cpp/include"
+        PARENT_SCOPE
+    )
     
     # Create imported targets for system libraries
     if(UNIX)
