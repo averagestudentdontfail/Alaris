@@ -138,7 +138,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/lean")
     
     # Add custom target for Lean build
     add_custom_target(lean_build
-        COMMAND ${DOTNET_EXECUTABLE} build "${LEAN_ROOT}/Lean.sln" -c Release
+        COMMAND ${DOTNET_EXECUTABLE} build "${LEAN_ROOT}/QuantConnect.Lean.sln" -c Release
         WORKING_DIRECTORY "${LEAN_ROOT}"
         COMMENT "Building Lean from source"
     )
