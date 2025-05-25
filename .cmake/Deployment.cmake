@@ -1,190 +1,138 @@
+# .cmake/Deployment.cmake
 # Deployment configuration for Alaris
-include(GNUInstallDirs)
+include(GNUInstallDirs) # Defines CMAKE_INSTALL_BINDIR, LIBDIR, INCLUDEDIR, etc.
 
-# Installation paths
-set(ALARIS_INSTALL_PATHS
-    BINDIR     ${CMAKE_INSTALL_BINDIR}
-    LIBDIR     ${CMAKE_INSTALL_LIBDIR}
-    INCLUDEDIR ${CMAKE_INSTALL_INCLUDEDIR}/alaris
-    CONFIGDIR  ${CMAKE_INSTALL_SYSCONFDIR}/alaris
-    DATADIR    ${CMAKE_INSTALL_DATADIR}/alaris
-    DOCDIR     ${CMAKE_INSTALL_DOCDIR}
-)
+# Define standard installation directories relative to CMAKE_INSTALL_PREFIX
+set(ALARIS_INSTALL_BINDIR ${CMAKE_INSTALL_BINDIR})
+set(ALARIS_INSTALL_LIBDIR ${CMAKE_INSTALL_LIBDIR})
+set(ALARIS_INSTALL_INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}") # e.g. include/Alaris
+set(ALARIS_INSTALL_CONFIGDIR "${CMAKE_INSTALL_SYSCONFDIR}/${PROJECT_NAME}") # e.g. etc/Alaris
+set(ALARIS_INSTALL_DATADIR "${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}")     # e.g. share/Alaris
+set(ALARIS_INSTALL_DOCDIR "${CMAKE_INSTALL_DOCDIR}/${PROJECT_NAME}")       # e.g. share/doc/Alaris
 
-# Installation components
-set(ALARIS_COMPONENTS
-    Runtime
-    Configuration
-    Scripts
-    Monitoring
-    Documentation
-    Development
-    SystemIntegration
-    Desktop
-    PostInstall
-)
+# Function to install main application targets (executables, libraries)
+# This is called from src/quantlib/CMakeLists.txt and other places where targets are defined
+# For simplicity, individual install commands are now directly with target definitions.
+# This file will focus on installing non-target files and setting up uninstall.
 
-# Component configuration
-foreach(COMPONENT ${ALARIS_COMPONENTS})
-    string(TOUPPER ${COMPONENT} COMPONENT_UPPER)
-    set(CPACK_COMPONENT_${COMPONENT_UPPER}_DISPLAY_NAME "${COMPONENT}")
-    set(CPACK_COMPONENT_${COMPONENT_UPPER}_DESCRIPTION "${COMPONENT} files")
-    if(COMPONENT STREQUAL "Runtime" OR COMPONENT STREQUAL "Configuration")
-        set(CPACK_COMPONENT_${COMPONENT_UPPER}_REQUIRED TRUE)
-    endif()
-endforeach()
-
-# Install targets
-function(install_alaris_targets)
-    if(TARGET quantlib_process)
-        install(TARGETS quantlib_process
-            RUNTIME DESTINATION ${ALARIS_INSTALL_PATHS_BINDIR}
-            PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE 
-                       GROUP_READ GROUP_EXECUTE 
-                       WORLD_READ WORLD_EXECUTE
-            COMPONENT Runtime
-        )
-    endif()
-
-    if(TARGET alaris_core)
-        get_target_property(ALARIS_CORE_TYPE alaris_core TYPE)
-        if(ALARIS_CORE_TYPE STREQUAL "SHARED_LIBRARY")
-            install(TARGETS alaris_core
-                LIBRARY DESTINATION ${ALARIS_INSTALL_PATHS_LIBDIR}
-                RUNTIME DESTINATION ${ALARIS_INSTALL_PATHS_BINDIR}
-                COMPONENT Runtime
-            )
-        endif()
-    endif()
-endfunction()
-
-# Install files and directories
-function(install_alaris_files)
+# Install common files and directories
+function(install_common_files)
     # Configuration files
-    install(DIRECTORY ${CMAKE_SOURCE_DIR}/config/
-        COMPONENT Configuration
-        DESTINATION ${ALARIS_INSTALL_PATHS_CONFIGDIR}
-        FILES_MATCHING PATTERN "*.yaml"
-        PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
-    )
+    install(DIRECTORY "${CMAKE_SOURCE_DIR}/config/"
+            DESTINATION "${ALARIS_INSTALL_CONFIGDIR}"
+            COMPONENT Configuration
+            FILES_MATCHING PATTERN "*.yaml"
+            PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
 
-    # Scripts
-    install(DIRECTORY ${CMAKE_SOURCE_DIR}/scripts/
-        COMPONENT Scripts
-        DESTINATION ${ALARIS_INSTALL_PATHS_BINDIR}
-        FILES_MATCHING PATTERN "*.sh"
-        PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE 
-                   GROUP_READ GROUP_EXECUTE 
-                   WORLD_READ WORLD_EXECUTE
-    )
+    # Scripts (ensure they are executable)
+    install(DIRECTORY "${CMAKE_SOURCE_DIR}/scripts/"
+            DESTINATION "${ALARIS_INSTALL_BINDIR}" # Scripts often go to bin
+            COMPONENT Scripts
+            FILES_MATCHING PATTERN "*.sh"
+            PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
+                        GROUP_READ GROUP_EXECUTE
+                        WORLD_READ WORLD_EXECUTE)
 
-    # Monitoring
-    install(DIRECTORY ${CMAKE_SOURCE_DIR}/monitoring/
-        COMPONENT Monitoring
-        DESTINATION ${ALARIS_INSTALL_PATHS_DATADIR}/monitoring
-        FILES_MATCHING 
-            PATTERN "*.yml" 
-            PATTERN "*.yaml"
-            PATTERN "*.json"
-        PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
-    )
+    # Monitoring files
+    install(DIRECTORY "${CMAKE_SOURCE_DIR}/monitoring/"
+            DESTINATION "${ALARIS_INSTALL_DATADIR}/monitoring"
+            COMPONENT Monitoring
+            FILES_MATCHING PATTERN "*.yml" PATTERN "*.yaml" PATTERN "*.json"
+            PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
 
     # Documentation
     install(FILES
-        ${CMAKE_SOURCE_DIR}/README.md
-        ${CMAKE_SOURCE_DIR}/docs/DEPLOYMENT.md
-        DESTINATION ${ALARIS_INSTALL_PATHS_DOCDIR}
-        PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
-        COMPONENT Documentation
-    )
+            "${CMAKE_SOURCE_DIR}/README.md"
+            "${CMAKE_SOURCE_DIR}/docs/DEPLOYMENT.md" # Assuming this exists
+            DESTINATION "${ALARIS_INSTALL_DOCDIR}"
+            COMPONENT Documentation
+            PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
 
-    # Development files
-    if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR ALARIS_INSTALL_DEVELOPMENT)
-        install(DIRECTORY ${CMAKE_SOURCE_DIR}/src/quantlib/
-            COMPONENT Development
-            DESTINATION ${ALARIS_INSTALL_PATHS_INCLUDEDIR}
-            FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
-            PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
-        )
-    endif()
+    # Development headers (if ALARIS_INSTALL_DEVELOPMENT is ON)
+    # Header installation is now handled per-library in their respective CMakeLists.txt
+    # if(ALARIS_INSTALL_DEVELOPMENT)
+    #     # This is a placeholder; actual header installation should be more specific
+    #     # and typically handled alongside library definitions.
+    #     message(STATUS "Development file installation enabled (placeholder in Deployment.cmake)")
+    # endif()
 endfunction()
 
-# System integration
-function(install_system_integration)
-    if(UNIX AND NOT APPLE)
+# System integration (e.g., systemd services, desktop files)
+function(setup_system_integration)
+    if(UNIX AND NOT APPLE AND EXISTS "${CMAKE_SOURCE_DIR}/cmake/templates/alaris-quantlib.service.in")
         # Systemd service
-        configure_file(
-            ${CMAKE_SOURCE_DIR}/deployment/systemd/alaris-quantlib.service.in
-            ${CMAKE_BINARY_DIR}/systemd/alaris-quantlib.service
-            @ONLY
-        )
-        
-        install(FILES ${CMAKE_BINARY_DIR}/systemd/alaris-quantlib.service
-            DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/systemd/system
-            PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
-            COMPONENT SystemIntegration
-            OPTIONAL
-        )
+        set(SERVICE_INSTALL_DIR "lib/systemd/system") # Common path
+        # Or use CMAKE_INSTALL_SYSTEMD_SERVICEDIR if defined/available for your CMake version
 
-        # Desktop entry
         configure_file(
-            ${CMAKE_SOURCE_DIR}/deployment/desktop/alaris.desktop.in
-            ${CMAKE_BINARY_DIR}/desktop/alaris.desktop
+            "${CMAKE_SOURCE_DIR}/cmake/templates/alaris-quantlib.service.in"
+            "${CMAKE_BINARY_DIR}/alaris-quantlib.service"
             @ONLY
         )
-        
-        install(FILES ${CMAKE_BINARY_DIR}/desktop/alaris.desktop
-            DESTINATION ${CMAKE_INSTALL_DATADIR}/applications
-            PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
-            COMPONENT Desktop
-            OPTIONAL
+        install(FILES "${CMAKE_BINARY_DIR}/alaris-quantlib.service"
+                DESTINATION "${SERVICE_INSTALL_DIR}"
+                COMPONENT SystemIntegration
+                PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+                OPTIONAL)
+    endif()
+    # Add desktop file installation similarly if needed
+endfunction()
+
+# Post-install script setup
+function(setup_post_install_script)
+    if(EXISTS "${CMAKE_SOURCE_DIR}/scripts/post-install.sh") # Assuming post-install.sh does not need @ONLY configure_file
+        install(PROGRAMS "${CMAKE_SOURCE_DIR}/scripts/post-install.sh"
+                DESTINATION "${ALARIS_INSTALL_BINDIR}"
+                COMPONENT PostInstall
+                RENAME post-install-alaris.sh) # Optional rename
+    elseif(EXISTS "${CMAKE_SOURCE_DIR}/scripts/post-install.sh.in")
+         configure_file(
+            "${CMAKE_SOURCE_DIR}/scripts/post-install.sh.in"
+            "${CMAKE_BINARY_DIR}/post-install.sh"
+            @ONLY
         )
+        install(PROGRAMS "${CMAKE_BINARY_DIR}/post-install.sh"
+                DESTINATION "${ALARIS_INSTALL_BINDIR}"
+                COMPONENT PostInstall
+                RENAME post-install-alaris.sh) # Optional rename
     endif()
 endfunction()
 
-# Post-install setup
-function(setup_post_install)
-    configure_file(
-        ${CMAKE_SOURCE_DIR}/scripts/post-install.sh.in
-        ${CMAKE_BINARY_DIR}/post-install.sh
-        @ONLY
-    )
-
-    install(PROGRAMS ${CMAKE_BINARY_DIR}/post-install.sh
-        DESTINATION ${ALARIS_INSTALL_PATHS_BINDIR}
-        COMPONENT PostInstall
-    )
-endfunction()
-
-# Uninstall target
-function(setup_uninstall)
-    if(NOT TARGET uninstall)
+# Uninstall target setup
+function(setup_cmake_uninstall_target)
+    if(EXISTS "${CMAKE_SOURCE_DIR}/.cmake/templates/cmake_uninstall.cmake.in")
         configure_file(
-            ${CMAKE_SOURCE_DIR}/cmake/templates/cmake_uninstall.cmake.in
-            ${CMAKE_BINARY_DIR}/cmake_uninstall.cmake
+            "${CMAKE_SOURCE_DIR}/.cmake/templates/cmake_uninstall.cmake.in"
+            "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
             IMMEDIATE @ONLY
         )
-
         add_custom_target(uninstall
-            COMMAND ${CMAKE_COMMAND} -P ${CMAKE_BINARY_DIR}/cmake_uninstall.cmake
-            COMMENT "Uninstalling Alaris"
+            COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
+            COMMENT "Uninstalling ${PROJECT_NAME} from ${CMAKE_INSTALL_PREFIX}"
         )
+    else()
+        message(WARNING "${CMAKE_SOURCE_DIR}/.cmake/templates/cmake_uninstall.cmake.in not found. Uninstall target will not be created.")
     endif()
 endfunction()
 
-# Execute installation steps
-install_alaris_targets()
-install_alaris_files()
-install_system_integration()
-setup_post_install()
-setup_uninstall()
+# Call the functions to set up installations
+install_common_files()
+setup_system_integration()
+setup_post_install_script()
+setup_cmake_uninstall_target()
 
-# Print installation summary
-message(STATUS "Installation configuration:")
-message(STATUS "  Prefix:        ${CMAKE_INSTALL_PREFIX}")
-message(STATUS "  Binaries:      ${CMAKE_INSTALL_PREFIX}/${ALARIS_INSTALL_PATHS_BINDIR}")
-message(STATUS "  Libraries:     ${CMAKE_INSTALL_PREFIX}/${ALARIS_INSTALL_PATHS_LIBDIR}")
-message(STATUS "  Headers:       ${CMAKE_INSTALL_PREFIX}/${ALARIS_INSTALL_PATHS_INCLUDEDIR}")
-message(STATUS "  Config:        ${CMAKE_INSTALL_PREFIX}/${ALARIS_INSTALL_PATHS_CONFIGDIR}")
-message(STATUS "  Data:          ${CMAKE_INSTALL_PREFIX}/${ALARIS_INSTALL_PATHS_DATADIR}")
-message(STATUS "  Documentation: ${CMAKE_INSTALL_PREFIX}/${ALARIS_INSTALL_PATHS_DOCDIR}") 
+# Print installation summary (GNUInstallDirs paths are relative to CMAKE_INSTALL_PREFIX)
+message(STATUS "Installation Summary (relative to CMAKE_INSTALL_PREFIX='${CMAKE_INSTALL_PREFIX}'):")
+message(STATUS "  Binaries:      ${ALARIS_INSTALL_BINDIR}")
+message(STATUS "  Libraries:     ${ALARIS_INSTALL_LIBDIR}")
+message(STATUS "  Headers:       ${ALARIS_INSTALL_INCLUDEDIR}")
+message(STATUS "  Config:        ${ALARIS_INSTALL_CONFIGDIR}")
+message(STATUS "  Data:          ${ALARIS_INSTALL_DATADIR}")
+message(STATUS "  Documentation: ${ALARIS_INSTALL_DOCDIR}")
+
+# Export an installation an AlarisConfig.cmake file so other projects can find it
+# This part is more advanced and depends on how you want your project to be findable
+# include(CMakePackageConfigHelpers)
+# configure_package_config_file(...)
+# install(EXPORT AlarisTargets ... )
+# install(FILES "${PROJECT_BINARY_DIR}/AlarisConfig.cmake" DESTINATION "lib/cmake/Alaris")
