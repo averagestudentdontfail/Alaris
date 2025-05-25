@@ -1,319 +1,383 @@
-// src/quantlib/volatility/gjrgarch_wrapper.cpp  
+// src/quantlib/volatility/gjrgarch_wrapper.cpp
 #include "gjrgarch_wrapper.h"
-#include <ql/math/optimization/levenbergmarquardt.hpp>
-#include <ql/math/optimization/problem.hpp>
+#include <ql/math/optimization/levenbergmarquardt.hpp> // Only if advanced calibration is used
+#include <ql/math/optimization/problem.hpp>          // Only if advanced calibration is used
 #include <algorithm>
 #include <cmath>
+#include <numeric> // For std::accumulate if used in calibration/diagnostics
+#include <limits>  // For std::numeric_limits
 
 namespace Alaris::Volatility {
 
-QuantLibGJRGARCHModel::QuantLibGJRGARCHModel(Core::MemoryPool& mem_pool,
-                                            QuantLib::Size lag_p,
-                                            QuantLib::Size lag_q)
-    : mem_pool_(mem_pool), lag_p_(lag_p), lag_q_(lag_q),
+QuantLibGJRGARCHModel::QuantLibGJRGARCHModel(Core::MemoryPool& mem_pool)
+    : mem_pool_(mem_pool),
       max_history_length_(2520), // ~10 years of daily data
-      tolerance_(1e-6), max_iterations_(1000),
-      current_variance_(0.04), current_volatility_(0.2),
-      forecast_count_(0), cumulative_error_(0.0) {
-    
+      tolerance_(1e-6),
+      max_iterations_(1000), // For calibration routines
+      current_variance_(0.04), // Default initial variance (20% annualized vol)
+      current_volatility_(0.2),
+      forecast_count_(0) {
     initialize_parameters();
 }
 
 void QuantLibGJRGARCHModel::initialize_parameters() {
-    // Initialize with typical GJR-GARCH(1,1) parameters
-    omega_.resize(1);
-    alpha_.resize(lag_q_);
-    beta_.resize(lag_p_);
-    gamma_.resize(lag_q_);
-    
-    // Default parameters (will be calibrated)
-    omega_[0] = 0.00001;  // Small constant
-    alpha_[0] = 0.05;     // ARCH parameter
-    beta_[0] = 0.90;      // GARCH parameter
-    gamma_[0] = 0.05;     // Asymmetry parameter
+    // Default GJR-GARCH(1,1) parameters (to be refined by calibration)
+    omega_ = 1e-6; // Small positive constant
+    alpha_ = 0.08; // ARCH effect
+    beta_  = 0.90; // GARCH effect (persistence)
+    gamma_ = 0.05; // Asymmetry (leverage effect)
 }
 
-void QuantLibGJRGARCHModel::set_parameters(const QuantLib::Array& omega,
-                                          const QuantLib::Array& alpha,
-                                          const QuantLib::Array& beta,
-                                          const QuantLib::Array& gamma) {
+void QuantLibGJRGARCHModel::set_parameters(QuantLib::Real omega,
+                                           QuantLib::Real alpha,
+                                           QuantLib::Real beta,
+                                           QuantLib::Real gamma) {
     omega_ = omega;
     alpha_ = alpha;
-    beta_ = beta;
+    beta_  = beta;
     gamma_ = gamma;
-    
-    // Recalculate variance series with new parameters
-    update_variance_series();
+
+    // Parameters have changed, recalculate variance series if data exists
+    if (!returns_.empty()) {
+        update_variance_series();
+    }
 }
 
 void QuantLibGJRGARCHModel::update(QuantLib::Real new_return) {
-    // Add new return
     returns_.push_back(new_return);
     squared_returns_.push_back(new_return * new_return);
     negative_returns_.push_back(new_return < 0.0);
-    
-    // Maintain maximum history length
+
     if (returns_.size() > max_history_length_) {
         returns_.pop_front();
         squared_returns_.pop_front();
         negative_returns_.pop_front();
-    }
-    
-    // Calculate new conditional variance
-    if (returns_.size() >= std::max(lag_p_, lag_q_)) {
-        QuantLib::Real new_variance = omega_[0];
-        
-        // ARCH terms
-        for (QuantLib::Size i = 0; i < lag_q_ && i < squared_returns_.size(); ++i) {
-            QuantLib::Real lagged_return_sq = squared_returns_[squared_returns_.size() - 1 - i];
-            new_variance += alpha_[i] * lagged_return_sq;
-            
-            // GJR asymmetry term
-            if (negative_returns_[negative_returns_.size() - 1 - i]) {
-                new_variance += gamma_[i] * lagged_return_sq;
-            }
-        }
-        
-        // GARCH terms
-        for (QuantLib::Size i = 0; i < lag_p_ && i < conditional_variances_.size(); ++i) {
-            new_variance += beta_[i] * conditional_variances_[conditional_variances_.size() - 1 - i];
-        }
-        
-        current_variance_ = std::max(new_variance, 1e-8); // Ensure positive variance
-        current_volatility_ = std::sqrt(current_variance_);
-        
-        conditional_variances_.push_back(current_variance_);
-        
-        // Maintain variance history
-        if (conditional_variances_.size() > max_history_length_) {
+        if (!conditional_variances_.empty()) { // Ensure conditional_variances_ is also trimmed if it mirrors returns_
             conditional_variances_.pop_front();
         }
+    }
+
+    if (returns_.empty()) { // Should not happen if new_return is just added.
+        current_variance_ = 0.04; // Default if no data
+        current_volatility_ = 0.2;
+        conditional_variances_.push_back(current_variance_);
+        return;
+    }
+    
+    // Ensure we have at least one previous variance to work with
+    // If conditional_variances_ is empty, initialize with current_variance_ (e.g. sample variance from first few returns or a default)
+    if (conditional_variances_.empty()) {
+         // Initialize with a reasonable default or calculate from initial returns if available
+        QuantLib::Real initial_variance = current_variance_; // Use the member default or a startup calculated one
+        if (returns_.size() > 1) { // Attempt to calculate from first few returns
+            QuantLib::Real sum_sq = 0.0;
+            for(const auto& r : returns_) sum_sq += r*r;
+            initial_variance = sum_sq / returns_.size();
+            initial_variance = std::max(initial_variance, 1e-8); // Ensure positive
+        }
+        conditional_variances_.push_back(initial_variance);
+        current_variance_ = initial_variance;
+    }
+
+
+    // GJR-GARCH(1,1) update equation:
+    // sigma_t^2 = omega + alpha * r_{t-1}^2 + gamma * r_{t-1}^2 * I_{t-1} + beta * sigma_{t-1}^2
+    // where I_{t-1} = 1 if r_{t-1} < 0, and 0 otherwise.
+
+    QuantLib::Real last_squared_return = squared_returns_.back();
+    bool last_return_was_negative = negative_returns_.back();
+    QuantLib::Real last_variance = conditional_variances_.back(); // Use the most recent calculated variance
+
+    QuantLib::Real new_variance = omega_;
+    new_variance += alpha_ * last_squared_return;
+    if (last_return_was_negative) {
+        new_variance += gamma_ * last_squared_return;
+    }
+    new_variance += beta_ * last_variance;
+
+    current_variance_ = std::max(new_variance, 1e-8); // Ensure positive variance
+    current_volatility_ = std::sqrt(current_variance_);
+
+    conditional_variances_.push_back(current_variance_);
+    if (conditional_variances_.size() > max_history_length_) { // Keep it aligned with returns_
+        conditional_variances_.pop_front();
+    }
+}
+
+void QuantLibGJRGARCHModel::update_batch(const std::vector<QuantLib::Real>& returns_batch) {
+    for (QuantLib::Real r : returns_batch) {
+        update(r);
     }
 }
 
 QuantLib::Real QuantLibGJRGARCHModel::forecast_volatility(QuantLib::Size horizon) {
-    if (horizon == 1) {
+    if (returns_.empty() || conditional_variances_.empty()) {
+        return 0.2; // Default if no data
+    }
+
+    QuantLib::Real forecast_variance = current_variance_;
+    
+    // Long-run variance for GJR-GARCH(1,1): omega / (1 - alpha - beta - gamma * E[I])
+    // Assuming E[I] (probability of negative return) is 0.5 for forecasting.
+    QuantLib::Real unconditional_alpha_gamma = alpha_ + 0.5 * gamma_;
+    if (1.0 - unconditional_alpha_gamma - beta_ <= 1e-8) { // Avoid division by zero or instability
+        // If non-stationary or close to it, just persist current variance or return error
         return current_volatility_;
     }
-    
-    // Multi-step forecast using iteration
-    QuantLib::Real forecast_variance = current_variance_;
-    QuantLib::Real unconditional_variance = omega_[0] / (1.0 - alpha_[0] - 0.5 * gamma_[0] - beta_[0]);
-    
+    QuantLib::Real long_run_variance = omega_ / (1.0 - unconditional_alpha_gamma - beta_);
+    long_run_variance = std::max(long_run_variance, 1e-8);
+
     for (QuantLib::Size h = 1; h < horizon; ++h) {
-        // Forecast converges to unconditional variance
-        QuantLib::Real persistence = alpha_[0] + 0.5 * gamma_[0] + beta_[0];
-        forecast_variance = omega_[0] + persistence * forecast_variance;
-        
-        // Add convergence to long-run variance
-        forecast_variance += (1.0 - std::pow(persistence, h)) * 
-                           (unconditional_variance - forecast_variance);
+        // Iterated forecast: E[sigma_{t+h}^2 | F_t] = omega + (alpha + beta + gamma*0.5) * E[sigma_{t+h-1}^2 | F_t]
+        // This converges to the long-run variance.
+        forecast_variance = omega_ + (unconditional_alpha_gamma + beta_) * forecast_variance;
     }
-    
-    forecast_count_++;
+     // A more direct way to forecast h steps ahead for GARCH(1,1) like models:
+     // forecast_variance_h = long_run_variance + (alpha_ + beta_ + 0.5*gamma_)^(h-1) * (current_variance_ - long_run_variance)
+     // for h >= 1. If h=1, it's current_variance predicted for next step.
+    if (horizon > 1) {
+        QuantLib::Real persistence_factor = unconditional_alpha_gamma + beta_;
+        forecast_variance = long_run_variance + 
+                            std::pow(persistence_factor, static_cast<QuantLib::Real>(horizon - 1)) * (current_variance_ - long_run_variance);
+    } else { // horizon == 1
+        // The next step variance is already computed by the last call to update() and is current_variance_
+        // However, forecast_volatility(1) is typically the forecast for t+1 based on info at t.
+        // The current_variance_ is sigma_t^2. The forecast for sigma_{t+1}^2 is needed.
+        // E[sigma_{t+1}^2] = omega + alpha*r_t^2 + gamma*r_t^2*I_t + beta*sigma_t^2.
+        // This is effectively what `update` calculates and stores as the new `current_variance_`.
+        // So, if `current_variance_` always reflects the LATEST known variance (sigma_t^2),
+        // then a 1-step ahead forecast would be:
+        forecast_variance = omega_ + alpha_ * current_variance_ + // E[r_t^2] is sigma_t^2 (current_variance)
+                            gamma_ * current_variance_ * 0.5 +   // E[r_t^2 * I_t] is sigma_t^2 * 0.5
+                            beta_  * current_variance_;
+        // This calculation uses current_variance_ as an estimate for the squared return term's expectation.
+        // More accurately, the last update() call would have already set current_variance_ to be sigma_{t+1}^2
+        // if new_return was r_t.
+        // Let's assume current_variance_ is sigma_t^2 (variance at time t).
+        // Then sigma_{t+1}^2 = omega_ + (alpha_ + 0.5*gamma_)*E[r_t^2] + beta_*sigma_t^2
+        // where E[r_t^2] = sigma_t^2.
+        // So, sigma_{t+1}^2 = omega_ + (alpha_ + 0.5*gamma_ + beta_)*sigma_t^2
+        // This formula is for iterative forecasting beyond the immediate next step if the last return isn't known yet.
+        // If current_variance_ is sigma_t^2, and r_t is known (last element in returns_), then:
+        // sigma_{t+1}^2 = omega_ + alpha_ * returns_.back()^2 + (negative_returns_.back() ? gamma_ * returns_.back()^2 : 0.0) + beta_ * current_variance_;
+        // This is what `update()` computes. So, `current_volatility_` should be sqrt of this.
+        // The forecast_volatility(1) should return current_volatility_ as calculated by the last update.
+         return current_volatility_; // This assumes current_volatility_ IS the 1-step ahead forecast.
+    }
+
+
+    forecast_count_++; // Potentially track per horizon if needed
     return std::sqrt(std::max(forecast_variance, 1e-8));
 }
 
-std::vector<QuantLib::Real> 
+std::vector<QuantLib::Real>
 QuantLibGJRGARCHModel::forecast_volatility_path(QuantLib::Size horizon) {
     std::vector<QuantLib::Real> forecasts;
+    if (horizon == 0) return forecasts;
     forecasts.reserve(horizon);
-    
-    for (QuantLib::Size h = 1; h <= horizon; ++h) {
-        forecasts.push_back(forecast_volatility(h));
+
+    if (returns_.empty() || conditional_variances_.empty()) {
+        for (QuantLib::Size h = 1; h <= horizon; ++h) {
+            forecasts.push_back(0.2); // Default if no data
+        }
+        return forecasts;
+    }
+
+    QuantLib::Real forecast_variance = current_variance_;
+    QuantLib::Real unconditional_alpha_gamma = alpha_ + 0.5 * gamma_;
+    QuantLib::Real long_run_variance = 1e-8; // Default to small positive
+    if (1.0 - unconditional_alpha_gamma - beta_ > 1e-8) {
+         long_run_variance = omega_ / (1.0 - unconditional_alpha_gamma - beta_);
+         long_run_variance = std::max(long_run_variance, 1e-8);
+    }
+
+
+    // First step forecast (h=1)
+    // This uses the actual last return if available, matching how current_variance_ is updated.
+    // Real forecast for t+1 using info up to t (r_t, sigma_t^2)
+    QuantLib::Real next_step_variance = omega_ + alpha_ * squared_returns_.back() +
+                               (negative_returns_.back() ? gamma_ * squared_returns_.back() : 0.0) +
+                               beta_ * current_variance_;
+    next_step_variance = std::max(next_step_variance, 1e-8);
+    forecasts.push_back(std::sqrt(next_step_variance));
+    forecast_variance = next_step_variance; // This is now sigma_{t+1}^2
+
+    // Subsequent steps (h > 1)
+    for (QuantLib::Size h = 2; h <= horizon; ++h) {
+         // forecast_variance_h = long_run_variance + (alpha_ + beta_ + 0.5*gamma_)^(h-1) * (sigma_{t+1}^2 - long_run_variance)
+        QuantLib::Real persistence_factor = unconditional_alpha_gamma + beta_;
+         if (1.0 - unconditional_alpha_gamma - beta_ <= 1e-8) { // non-stationary case
+             // forecast is just based on persistence from the last forecast_variance
+             forecast_variance = omega_ + persistence_factor * forecast_variance;
+         } else {
+            forecast_variance = long_run_variance +
+                                std::pow(persistence_factor, static_cast<QuantLib::Real>(h - 1)) *
+                                (next_step_variance - long_run_variance);
+         }
+        forecasts.push_back(std::sqrt(std::max(forecast_variance, 1e-8)));
     }
     
+    forecast_count_ += horizon;
     return forecasts;
 }
 
-bool QuantLibGJRGARCHModel::calibrate(const std::vector<QuantLib::Real>& returns) {
-    if (returns.size() < 100) {
-        return false; // Insufficient data
+
+bool QuantLibGJRGARCHModel::calibrate(const std::vector<QuantLib::Real>& historical_returns) {
+    if (historical_returns.size() < 50) { // Need sufficient data for GARCH type models
+        // Not enough data, keep current parameters or defaults
+        return false;
     }
-    
-    // Clear existing data and add new returns
+
+    // Clear existing internal data and use provided historical_returns
     returns_.clear();
     squared_returns_.clear();
     negative_returns_.clear();
     conditional_variances_.clear();
-    
-    for (QuantLib::Real ret : returns) {
+
+    for (QuantLib::Real ret : historical_returns) {
         returns_.push_back(ret);
         squared_returns_.push_back(ret * ret);
         negative_returns_.push_back(ret < 0.0);
     }
-    
-    // Initialize conditional variances with sample variance
+
+    // Basic estimation (e.g., method of moments or a simple heuristic)
+    // This is a placeholder. Robust calibration uses MLE (Maximum Likelihood Estimation)
+    // which involves numerical optimization (e.g., Levenberg-Marquardt, BFGS).
+    // Implementing full MLE is complex.
+    // For now, a very simplified heuristic or use defaults:
     QuantLib::Real sample_variance = 0.0;
-    for (QuantLib::Real ret : returns) {
-        sample_variance += ret * ret;
+    QuantLib::Real sum_returns = 0.0;
+    for(QuantLib::Real r : historical_returns) {
+        sum_returns += r;
+        sample_variance += r * r;
     }
-    sample_variance /= returns.size();
-    
-    // Fill initial variances
-    for (size_t i = 0; i < std::max(lag_p_, lag_q_); ++i) {
-        conditional_variances_.push_back(sample_variance);
-    }
-    
-    current_variance_ = sample_variance;
-    current_volatility_ = std::sqrt(sample_variance);
-    
-    // Simple calibration using method of moments
-    // In production, would use MLE with optimization
-    
-    // Estimate parameters using sample statistics
-    QuantLib::Real mean_return = 0.0;
-    for (QuantLib::Real ret : returns) {
-        mean_return += ret;
-    }
-    mean_return /= returns.size();
-    
-    // Basic parameter estimation
-    omega_[0] = sample_variance * 0.1;
-    alpha_[0] = 0.05;
-    beta_[0] = 0.90;
-    gamma_[0] = 0.05;
-    
-    // Ensure stationarity
+    QuantLib::Real mean_return = sum_returns / historical_returns.size();
+    sample_variance = sample_variance / historical_returns.size() - (mean_return * mean_return);
+    sample_variance = std::max(sample_variance, 1e-7); // Ensure positive
+
+    // Heuristic parameters (common starting points for daily data)
+    omega_ = sample_variance * 0.01; // Small fraction of unconditional variance
+    alpha_ = 0.08;
+    beta_  = 0.90;
+    gamma_ = 0.05; // Leverage usually positive
+
+    // Ensure stationarity after setting parameters from heuristic
     if (!is_stationary()) {
-        alpha_[0] = 0.03;
-        beta_[0] = 0.85;
-        gamma_[0] = 0.03;
+        // Adjust to typical stationary values if heuristic fails
+        beta_  = 0.85; // Reduce persistence
+        alpha_ = 0.05;
+        gamma_ = 0.03;
+        omega_ = sample_variance * (1.0 - alpha_ - beta_ - 0.5 * gamma_);
+        omega_ = std::max(omega_, 1e-7);
     }
-    
+    if (omega_ <=0) omega_ = 1e-7; // Ensure omega is positive
+
+
+    // After calibration, re-calculate the internal variance series based on new parameters
     update_variance_series();
-    
-    return true;
+    if (!conditional_variances_.empty()) {
+        current_variance_ = conditional_variances_.back();
+        current_volatility_ = std::sqrt(current_variance_);
+    } else {
+         // Fallback if update_variance_series couldn't populate
+        current_variance_ = sample_variance;
+        current_volatility_ = std::sqrt(sample_variance);
+    }
+
+
+    return true; // Placeholder for actual calibration success
 }
 
 void QuantLibGJRGARCHModel::update_variance_series() {
-    if (returns_.size() < std::max(lag_p_, lag_q_)) {
+    if (returns_.empty()) {
         return;
     }
-    
+
     conditional_variances_.clear();
     
-    // Initialize with sample variance
-    QuantLib::Real sample_var = 0.0;
-    for (size_t i = 0; i < std::min(static_cast<size_t>(50), returns_.size()); ++i) {
-        sample_var += squared_returns_[i];
+    // Initialize first variance: use overall sample variance of the returns history
+    QuantLib::Real initial_variance_estimate = 0.0;
+    if (returns_.size() > 1) {
+        QuantLib::Real sum_sq = 0.0;
+        for(const auto& r : returns_) sum_sq += r*r; // Using squared returns directly for variance estimate
+        initial_variance_estimate = sum_sq / returns_.size();
+    } else if (!returns_.empty()) {
+        initial_variance_estimate = returns_.front() * returns_.front();
     }
-    sample_var /= std::min(static_cast<size_t>(50), returns_.size());
+    initial_variance_estimate = std::max(initial_variance_estimate, 1e-8); // Ensure positive
     
-    for (size_t i = 0; i < std::max(lag_p_, lag_q_); ++i) {
-        conditional_variances_.push_back(sample_var);
-    }
-    
-    // Calculate conditional variances
-    for (size_t t = std::max(lag_p_, lag_q_); t < returns_.size(); ++t) {
-        QuantLib::Real variance = omega_[0];
-        
-        // ARCH terms
-        for (QuantLib::Size i = 0; i < lag_q_; ++i) {
-            if (t > i) {
-                QuantLib::Real lagged_return_sq = squared_returns_[t - 1 - i];
-                variance += alpha_[i] * lagged_return_sq;
-                
-                // GJR asymmetry
-                if (negative_returns_[t - 1 - i]) {
-                    variance += gamma_[i] * lagged_return_sq;
-                }
-            }
+    conditional_variances_.push_back(initial_variance_estimate);
+
+    // Calculate historical conditional variances using the current parameters
+    for (size_t t = 1; t < returns_.size(); ++t) {
+        QuantLib::Real lagged_sq_return = squared_returns_[t - 1];
+        bool lagged_negative_return = negative_returns_[t - 1];
+        QuantLib::Real lagged_variance = conditional_variances_[t - 1];
+
+        QuantLib::Real variance = omega_;
+        variance += alpha_ * lagged_sq_return;
+        if (lagged_negative_return) {
+            variance += gamma_ * lagged_sq_return;
         }
-        
-        // GARCH terms
-        for (QuantLib::Size i = 0; i < lag_p_; ++i) {
-            if (t > i && conditional_variances_.size() > i) {
-                variance += beta_[i] * conditional_variances_[conditional_variances_.size() - 1 - i];
-            }
-        }
-        
-        variance = std::max(variance, 1e-8);
-        conditional_variances_.push_back(variance);
+        variance += beta_ * lagged_variance;
+        conditional_variances_.push_back(std::max(variance, 1e-8));
     }
-    
+
     if (!conditional_variances_.empty()) {
         current_variance_ = conditional_variances_.back();
         current_volatility_ = std::sqrt(current_variance_);
     }
 }
 
+
 bool QuantLibGJRGARCHModel::is_stationary() const {
-    // Check stationarity condition for GJR-GARCH
-    QuantLib::Real persistence = 0.0;
-    
-    for (QuantLib::Size i = 0; i < alpha_.size(); ++i) {
-        persistence += alpha_[i] + 0.5 * gamma_[i]; // E[I(r<0)] ≈ 0.5
-    }
-    
-    for (QuantLib::Size i = 0; i < beta_.size(); ++i) {
-        persistence += beta_[i];
-    }
-    
-    return persistence < 1.0;
+    // Stationarity condition for GJR-GARCH(1,1): alpha + beta + gamma/2 < 1
+    // Assumes E[I] (indicator for negative return) is 0.5
+    return (alpha_ + beta_ + 0.5 * gamma_) < 1.0;
 }
 
 QuantLib::Real QuantLibGJRGARCHModel::log_likelihood() const {
-    if (conditional_variances_.size() != returns_.size() - std::max(lag_p_, lag_q_)) {
-        return -std::numeric_limits<QuantLib::Real>::infinity();
+    if (returns_.size() != conditional_variances_.size() || returns_.empty()) {
+        return -std::numeric_limits<QuantLib::Real>::infinity(); // Not enough data or mismatch
     }
-    
-    QuantLib::Real log_likelihood = 0.0;
+
+    QuantLib::Real ll = 0.0;
     const QuantLib::Real log_2pi = std::log(2.0 * M_PI);
-    
-    size_t start_idx = std::max(lag_p_, lag_q_);
-    
-    for (size_t t = start_idx; t < returns_.size(); ++t) {
-        size_t var_idx = t - start_idx;
-        if (var_idx < conditional_variances_.size()) {
-            QuantLib::Real variance = conditional_variances_[var_idx];
-            QuantLib::Real return_val = returns_[t];
-            
-            log_likelihood -= 0.5 * (log_2pi + std::log(variance) + 
-                                    return_val * return_val / variance);
-        }
+
+    for (size_t t = 0; t < returns_.size(); ++t) {
+        QuantLib::Real variance = conditional_variances_[t];
+        if (variance <= 1e-9) return -std::numeric_limits<QuantLib::Real>::infinity(); // Invalid variance
+        QuantLib::Real return_val = returns_[t];
+        ll -= 0.5 * (log_2pi + std::log(variance) + (return_val * return_val) / variance);
     }
-    
-    return log_likelihood;
+    return ll;
 }
 
-QuantLib::Array QuantLibGJRGARCHModel::get_parameters() const {
-    QuantLib::Array params(omega_.size() + alpha_.size() + beta_.size() + gamma_.size());
-    
-    size_t idx = 0;
-    for (size_t i = 0; i < omega_.size(); ++i, ++idx) {
-        params[idx] = omega_[i];
-    }
-    for (size_t i = 0; i < alpha_.size(); ++i, ++idx) {
-        params[idx] = alpha_[i];
-    }
-    for (size_t i = 0; i < beta_.size(); ++i, ++idx) {
-        params[idx] = beta_[i];
-    }
-    for (size_t i = 0; i < gamma_.size(); ++i, ++idx) {
-        params[idx] = gamma_[i];
-    }
-    
-    return params;
+std::vector<QuantLib::Real> QuantLibGJRGARCHModel::get_parameters() const {
+    return {omega_, alpha_, beta_, gamma_};
 }
 
 bool QuantLibGJRGARCHModel::is_model_valid() const {
-    // Check parameter constraints
-    if (omega_[0] <= 0.0) return false;
-    
-    for (size_t i = 0; i < alpha_.size(); ++i) {
-        if (alpha_[i] < 0.0) return false;
+    if (omega_ <= 0.0 || alpha_ < 0.0 || beta_ < 0.0 || gamma_ < 0.0) {
+        return false; // Parameters must be non-negative (omega strictly positive)
     }
-    
-    for (size_t i = 0; i < beta_.size(); ++i) {
-        if (beta_[i] < 0.0) return false;
-    }
-    
-    for (size_t i = 0; i < gamma_.size(); ++i) {
-        if (gamma_[i] < 0.0) return false;
-    }
-    
     return is_stationary();
 }
+
+void QuantLibGJRGARCHModel::set_max_history_length(QuantLib::Size length) {
+    max_history_length_ = length;
+    // Trim history if current history is longer than new max length
+    while (returns_.size() > max_history_length_) returns_.pop_front();
+    while (squared_returns_.size() > max_history_length_) squared_returns_.pop_front();
+    while (negative_returns_.size() > max_history_length_) negative_returns_.pop_front();
+    while (conditional_variances_.size() > max_history_length_) conditional_variances_.pop_front();
+}
+
+void QuantLibGJRGARCHModel::set_calibration_parameters(QuantLib::Real tolerance, QuantLib::Size max_iterations) {
+    tolerance_ = tolerance;
+    max_iterations_ = max_iterations;
+}
+
+// Implementations for QuantLibGARCHModel and related utilities are removed.
 
 } // namespace Alaris::Volatility
