@@ -86,6 +86,16 @@ namespace {
     bool is_power_of_two(size_t value) {
         return value != 0 && (value & (value - 1)) == 0;
     }
+
+    // Calculate padding needed to align a pointer to the given alignment
+    size_t calculate_padding(const void* ptr, size_t alignment) {
+        uintptr_t addr = reinterpret_cast<uintptr_t>(ptr);
+        size_t padding = 0;
+        if (addr % alignment != 0) {
+            padding = alignment - (addr % alignment);
+        }
+        return padding;
+    }
 } // anonymous namespace
 
 

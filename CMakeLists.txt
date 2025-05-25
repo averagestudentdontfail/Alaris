@@ -84,4 +84,31 @@ include(${CMAKE_SOURCE_DIR}/cmake/Summary.cmake)
 # Call functions defined in the summary module
 print_configuration_summary() # From Summary.cmake
 
+# Store original compiler flags
+set(CMAKE_CXX_FLAGS_ORIG "${CMAKE_CXX_FLAGS}")
+
+# Add warning flags for our code
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    add_compile_options(-Wall -Wextra -Wpedantic -Werror)
+endif()
+
+# Function to set compiler flags for external dependencies
+function(set_external_compiler_flags target)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(${target} PRIVATE
+            -Wno-conversion
+            -Wno-sign-conversion
+            -Wno-unused-parameter
+            -Wno-unused-variable
+            -Wno-unused-function
+            -Wno-deprecated-declarations
+        )
+    endif()
+endfunction()
+
+# Apply to external dependencies
+if(TARGET QuantLib)
+    set_external_compiler_flags(QuantLib)
+endif()
+
 message(STATUS "Alaris project configuration finished.")

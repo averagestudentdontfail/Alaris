@@ -20,13 +20,14 @@ private:
         char padding[64 - sizeof(std::atomic<uint64_t>) * 2];
     };
     
-    Header* header_;
-    T* buffer_;
-    void* shared_memory_region_;  // Changed from shared_memory_ to match implementation
-    bool is_owner_;
-    int shm_fd_;                  // Added for shared memory file descriptor
-    std::string shm_name_;        // Added for shared memory name
-    static constexpr const char* UNLINKED_SHM_NAME = "UNLINKED"; // Added constant
+    // Member variables ordered to match initialization order in constructor
+    void* shared_memory_region_;  // Must be initialized first as it's used by other members
+    Header* header_;              // Initialized second, depends on shared_memory_region_
+    T* buffer_;                   // Initialized third, depends on header_
+    bool is_owner_;               // Simple bool, no dependencies
+    int shm_fd_;                  // File descriptor, no dependencies
+    std::string shm_name_;        // String, no dependencies
+    static constexpr const char* UNLINKED_SHM_NAME = "UNLINKED";
     
     static constexpr uint64_t MASK = Size - 1;
     
