@@ -20,7 +20,7 @@ endif()
 
 project(Alaris
     VERSION 1.0.0
-    LANGUAGES CXX # CSharp removed to resolve previous error
+    LANGUAGES CXX
     DESCRIPTION "High-Performance Derivatives Trading System"
 )
 
@@ -37,46 +37,43 @@ message(STATUS "Project: ${PROJECT_NAME}")
 message(STATUS "Version: ${PROJECT_VERSION}")
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
-# Add custom CMake module directories to CMAKE_MODULE_PATH
-# This allows 'include(ModuleName)' if ModuleName.cmake is in one of these paths.
+# Add custom CMake module directories
 list(APPEND CMAKE_MODULE_PATH
     "${CMAKE_SOURCE_DIR}/cmake/modules"
     "${CMAKE_SOURCE_DIR}/cmake/utils"
-    "${CMAKE_SOURCE_DIR}/cmake" # For Install.cmake, Package.cmake, Summary.cmake if included by name
+    "${CMAKE_SOURCE_DIR}/cmake"
 )
 
-# Include helper functions and build configurations using explicit paths for clarity
-# These files define functions that will be called subsequently.
+# Include helper functions and build configurations
 include(${CMAKE_SOURCE_DIR}/cmake/utils/ModernCMake.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/utils/DependencyManager.cmake) # Assumes this is from the comprehensive "Dependencies.txt"
+include(${CMAKE_SOURCE_DIR}/cmake/utils/DependencyManager.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/utils/BuildConfig.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/utils/CompilerFlags.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/utils/Platform.cmake)     # Added Platform configuration
-include(${CMAKE_SOURCE_DIR}/cmake/utils/Submodules.cmake)   # Added Submodule checks
+include(${CMAKE_SOURCE_DIR}/cmake/utils/Platform.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/utils/Submodules.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/utils/DotNetConfig.cmake)
 
-# --- Call functions defined in the above utils ---
-enforce_modern_cmake()      # From ModernCMake.cmake
-check_submodules()          # From Submodules.cmake
-configure_platform()        # From Platform.cmake
-configure_build_options()   # From BuildConfig.cmake
-configure_compiler_flags()  # From CompilerFlags.cmake
-configure_sanitizers()      # From BuildConfig.cmake
-configure_coverage()        # From BuildConfig.cmake
-manage_dependencies()       # From DependencyManager.cmake (should call find_system_dependencies and configure_external_dependencies)
+# Configure build components
+enforce_modern_cmake()
+check_submodules()
+configure_platform()
+configure_build_options()
+configure_compiler_flags()
+configure_sanitizers()
+configure_coverage()
+manage_dependencies()
+configure_dotnet_build()
 
-# The GitInfo.cmake module from cmake/modules/GitInfo.cmake auto-runs get_git_info()
-# upon inclusion if 'include(GitInfo)' is used.
-# If you want to explicitly call its functions, you can:
-include(GitInfo) # Searches CMAKE_MODULE_PATH, finds cmake/modules/GitInfo.cmake
-# get_git_info() # This is already called at the end of GitInfo.cmake
-# setup_git_hooks() # Call this if you want to set up git hooks
+# Include Git information
+include(GitInfo)
 
 # Add source code subdirectories
 add_subdirectory(src)
 
-# Add C# subdirectory if .NET SDK is found
+# Add C# components if .NET SDK is found
 if(DOTNET_EXECUTABLE)
-    add_subdirectory(src/csharp)
+    add_dotnet_project(lean_build "${CMAKE_SOURCE_DIR}/external/lean/QuantConnect.Lean.sln")
+    add_dotnet_project(Alaris.Lean "${CMAKE_SOURCE_DIR}/src/csharp/Alaris.Lean.csproj")
     message(STATUS "C# components configured.")
 else()
     message(STATUS "C# components skipped - .NET SDK not found.")
@@ -91,64 +88,16 @@ else()
     message(STATUS "Test suite not found or not configured.")
 endif()
 
-# Ensure Lean is built before the main project
-if(TARGET lean_build)
-    add_dependencies(alaris_core lean_build)
-endif()
-
-# Configure Lean build with security warning suppression
-set(LEAN_BUILD_ARGS 
-    "build" 
-    "${CMAKE_CURRENT_SOURCE_DIR}/external/lean/QuantConnect.Lean.sln" 
-    "--configuration" "Release"
-    "--verbosity" "minimal"
-    "-p:WarningsNotAsErrors=NU1903"
-    "-p:TreatWarningsAsErrors=false"
-    "-p:NoWarn=NU1903"
-    "-p:SuppressWarnings=NU1903"
-    "-p:GenerateFullPaths=true"
-    "-p:RestorePackagesPath=${CMAKE_CURRENT_SOURCE_DIR}/external/lean/packages"
-    "-p:TargetFramework=net${CMAKE_DOTNET_VERSION}"
-)
-
-# Only create lean_build target if dotnet is found
-if(DOTNET_EXECUTABLE AND NOT TARGET lean_build)
-    add_custom_target(lean_build
-        COMMAND ${CMAKE_COMMAND} -E echo "Building Lean with security warning suppressed..."
-        COMMAND ${DOTNET_EXECUTABLE} restore "${CMAKE_CURRENT_SOURCE_DIR}/external/lean/QuantConnect.Lean.sln" --no-warn NU1903
-        COMMAND ${DOTNET_EXECUTABLE} ${LEAN_BUILD_ARGS}
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-        COMMENT "Building QuantConnect Lean"
-        DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/external/lean/QuantConnect.Lean.sln"
-    )
-endif()
-
-# Installation configuration: Include the file to execute its commands
-include(${CMAKE_SOURCE_DIR}/cmake/Install.cmake)
-# Packaging configuration: Include the file to execute its CPack settings
-include(${CMAKE_SOURCE_DIR}/cmake/Package.cmake)
-
-# Store original compiler flags
-set(CMAKE_CXX_FLAGS_ORIG "${CMAKE_CXX_FLAGS}")
-
-# Add warning flags for our code
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    add_compile_options(-Wall -Wextra -Wpedantic -Werror)
-endif()
-
-# Function to set compiler flags for external dependencies
+# Configure compiler flags for external dependencies
 function(set_external_compiler_flags target)
     if(NOT TARGET ${target})
         return()
     endif()
     
-    # Check if target is a library or executable
     get_target_property(target_type ${target} TYPE)
     if(NOT target_type STREQUAL "INTERFACE_LIBRARY")
         if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-            target_compile_options(${target} PRIVATE
-                -w  # Disable all warnings
-            )
+            target_compile_options(${target} PRIVATE -w)
         endif()
     endif()
 endfunction()
@@ -162,7 +111,8 @@ if(TARGET yaml-cpp)
     set_external_compiler_flags(yaml-cpp)
 endif()
 
-# Note: Lean is handled differently as it's a .NET project
-# We don't need to set C++ compiler flags for it
+# Include installation and packaging configuration
+include(${CMAKE_SOURCE_DIR}/cmake/Install.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/Package.cmake)
 
 message(STATUS "Alaris project configuration finished.")
