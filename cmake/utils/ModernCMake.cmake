@@ -55,6 +55,10 @@ function(create_modern_library)
     
     cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     
+    if(NOT ARG_NAME)
+        message(FATAL_ERROR "create_modern_library: NAME argument is required")
+    endif()
+    
     if(ARG_INTERFACE)
         add_library(${ARG_NAME} INTERFACE)
     elseif(ARG_SHARED)
@@ -94,6 +98,10 @@ function(create_modern_executable)
     
     cmake_parse_arguments(ARG "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     
+    if(NOT ARG_NAME)
+        message(FATAL_ERROR "create_modern_executable: NAME argument is required")
+    endif()
+    
     add_executable(${ARG_NAME} ${ARG_SOURCES} ${ARG_HEADERS})
     
     if(ARG_DEPS)
@@ -114,6 +122,10 @@ function(create_modern_test)
     set(multiValueArgs SOURCES HEADERS DEPS)
     
     cmake_parse_arguments(ARG "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    
+    if(NOT ARG_NAME)
+        message(FATAL_ERROR "create_modern_test: NAME argument is required")
+    endif()
     
     add_executable(${ARG_NAME} ${ARG_SOURCES} ${ARG_HEADERS})
     

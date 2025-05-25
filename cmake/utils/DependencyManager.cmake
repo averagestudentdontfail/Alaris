@@ -65,23 +65,27 @@ function(manage_dependencies)
         set_target_properties(System::PThread PROPERTIES IMPORTED_LOCATION ${PTHREAD_LIB})
     endif()
     
-    # Create imported target for OpenMP
+    # Find OpenMP
     find_package(OpenMP)
     if(OpenMP_CXX_FOUND)
-        add_library(OpenMP::OpenMP_CXX INTERFACE IMPORTED)
-        set_target_properties(OpenMP::OpenMP_CXX PROPERTIES
-            INTERFACE_COMPILE_OPTIONS ${OpenMP_CXX_FLAGS}
-            INTERFACE_LINK_LIBRARIES ${OpenMP_CXX_LIBRARIES}
-        )
+        if(NOT TARGET OpenMP::OpenMP_CXX)
+            add_library(OpenMP::OpenMP_CXX INTERFACE IMPORTED)
+            set_target_properties(OpenMP::OpenMP_CXX PROPERTIES
+                INTERFACE_COMPILE_OPTIONS "${OpenMP_CXX_FLAGS}"
+                INTERFACE_LINK_LIBRARIES "${OpenMP_CXX_LIBRARIES}"
+            )
+        endif()
     endif()
     
     # Create imported target for Boost
     if(Boost_FOUND)
-        add_library(Boost::boost INTERFACE IMPORTED)
-        set_target_properties(Boost::boost PROPERTIES
-            INTERFACE_INCLUDE_DIRECTORIES ${Boost_INCLUDE_DIRS}
-            INTERFACE_LINK_LIBRARIES ${Boost_LIBRARIES}
-        )
+        if(NOT TARGET Boost::boost)
+            add_library(Boost::boost INTERFACE IMPORTED)
+            set_target_properties(Boost::boost PROPERTIES
+                INTERFACE_INCLUDE_DIRECTORIES "${Boost_INCLUDE_DIRS}"
+                INTERFACE_LINK_LIBRARIES "${Boost_LIBRARIES}"
+            )
+        endif()
     endif()
 endfunction()
 

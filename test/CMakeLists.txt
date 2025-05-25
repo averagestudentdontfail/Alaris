@@ -48,11 +48,10 @@ if(TARGET Platform::Libraries)
 endif()
 
 # Test helper library
-create_modern_library(alaris_test_helpers
-    SOURCES
-        test_helpers.cpp
-    PUBLIC_DEPS
-        ${TEST_COMMON_LIBRARIES}
+create_modern_library(
+    NAME alaris_test_helpers
+    SOURCES test_helpers.cpp
+    PUBLIC_DEPS ${TEST_COMMON_LIBRARIES}
 )
 
 # Core component tests
@@ -110,7 +109,8 @@ endforeach()
 
 # Create core test executable
 if(CORE_TEST_SOURCES)
-    create_modern_test(alaris_core_test
+    create_modern_test(
+        NAME alaris_core_test
         SOURCES ${CORE_TEST_SOURCES}
         DEPS alaris_test_helpers
     )
@@ -163,7 +163,8 @@ endforeach()
 
 # Create integration test executable
 if(INTEGRATION_TEST_SOURCES)
-    create_modern_test(alaris_integration_test
+    create_modern_test(
+        NAME alaris_integration_test
         SOURCES ${INTEGRATION_TEST_SOURCES}
         DEPS alaris_test_helpers
     )
