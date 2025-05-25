@@ -107,8 +107,8 @@ function(set_external_compiler_flags target)
 endfunction()
 
 # Apply to external dependencies
-if(TARGET QuantLib)
-    set_external_compiler_flags(QuantLib)
+if(TARGET ql_library)
+    set_external_compiler_flags(ql_library)
 endif()
 
 message(STATUS "Alaris project configuration finished.")
