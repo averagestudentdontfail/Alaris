@@ -10,6 +10,7 @@ Alaris is a production-grade derivatives trading system designed for volatility 
 - GCC 9.0+ with C++20 support
 - QuantLib development libraries
 - .NET 8 SDK (for Lean process)
+- Interactive Brokers TWS/Gateway
 
 ### Build System
 ```bash
@@ -27,7 +28,7 @@ cd build && make test
 
 ### Configuration
 1. Edit `config/lean_process.yaml` with your Interactive Brokers credentials
-2. Update `config/quantlib_process.yaml` for your system
+2. Update `config/quantlib_process.yaml` for your system settings
 
 ### Start Trading
 ```bash
@@ -41,17 +42,36 @@ cd src/csharp && dotnet run
 ## 📊 Monitoring
 - System logs: `logs/`
 - Performance metrics via shared memory
-- Real-time health monitoring
+- Real-time health monitoring via Grafana dashboards
+- Prometheus metrics collection
 
 ## 🔧 Architecture
-- **QuantLib Process (C++)**: Option pricing, volatility models, signal generation
-- **Lean Process (C#)**: Market data, order execution, risk management
-- **Shared Memory IPC**: Lock-free communication between processes
+
+### Core Components
+- **QuantLib Process (C++)**: 
+  - Option pricing engine (ALO)
+  - GJR-GARCH volatility models
+  - Signal generation
+  - Real-time market data processing
+  - Lock-free shared memory IPC
+
+- **Lean Process (C#)**:
+  - Market data handling
+  - Order execution
+  - Risk management
+  - Interactive Brokers integration
+  - Performance monitoring
+
+### System Features
+- Process-isolated architecture for stability
+- Lock-free shared memory communication
+- Real-time priority scheduling
+- Memory pool optimization
+- Deterministic execution guarantees
+- Comprehensive monitoring and logging
 
 ## ⚠️ Risk Warning
 This is sophisticated trading software. Always test thoroughly with paper trading before using real capital.
-
-For detailed documentation, see `docs/` directory.
 
 ## 🐳 Production Deployment
 
