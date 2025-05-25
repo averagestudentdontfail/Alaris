@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 if(POLICY CMP0135)
-    cmake_policy(SET CMP0135 NEW) # Required for project() to not set CMAKE_PROJECT_VERSION
+    cmake_policy(SET CMP0135 NEW)
 endif()
 
 project(Alaris
@@ -10,48 +10,89 @@ project(Alaris
     DESCRIPTION "High-Performance Derivatives Trading System"
 )
 
-# Add external dependencies first.
-# This ensures targets like YAML_CPP_TARGET and QUANTLIB_TARGET are defined
-# before other CMake modules or source directories try to use them.
+# First, add external dependencies to ensure targets are available
 add_subdirectory(external)
 
 # Add custom CMake module path
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/.cmake")
 
-# Include build system configurations
-include(Config)        # Handles dependency configuration (Boost, and uses external for QL, yaml-cpp)
-include(BuildSystem)   # Handles global build settings, CXX flags, .NET config
-include(Deployment)    # Handles installation rules
-include(GitInfo)       # Extracts Git information (call get_git_info() where needed)
+# Include helper functions first
+include(Helpers)
 
-# Detect .NET SDK (moved after project() and GitInfo potentially, though BuildSystem now handles it)
-# BuildSystem.cmake now has configure_dotnet_build(), which relies on DOTNET_EXECUTABLE
-find_program(DOTNET_EXECUTABLE dotnet QUIET) # QUIET as BuildSystem.cmake will message
+# Include build system configurations
+include(Config)        # Handles dependency configuration
+include(BuildSystem)   # Handles global build settings
+include(Deployment)    # Handles installation rules
+include(GitInfo)       # Extracts Git information
+
+# Detect .NET SDK
+find_program(DOTNET_EXECUTABLE dotnet QUIET)
 if(DOTNET_EXECUTABLE)
     execute_process(
         COMMAND ${DOTNET_EXECUTABLE} --version
         OUTPUT_VARIABLE DOTNET_VERSION
         OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
     )
     set(CMAKE_DOTNET_VERSION ${DOTNET_VERSION} CACHE STRING ".NET SDK version")
+    message(STATUS ".NET SDK found: ${DOTNET_VERSION}")
+else()
+    message(WARNING ".NET SDK not found - C# components will not be built")
 endif()
 
-# Call functions from included modules if they don't run automatically
-get_git_info() # From GitInfo.cmake
+# Standard CMake includes
+include(GNUInstallDirs)
+include(CTest)
 
-# Add source code and test subdirectories
+# Find Threads (required by many components)
+find_package(Threads REQUIRED)
+
+# Add source code
 add_subdirectory(src)
 
-if(BUILD_TESTS) # BUILD_TESTS is an option defined in BuildSystem.cmake
+# Add tests if enabled
+if(BUILD_TESTS)
     enable_testing()
     add_subdirectory(test)
-    message(STATUS "Test suite configured.")
+    message(STATUS "Test suite configured")
 else()
-    message(STATUS "Test suite not configured (BUILD_TESTS is OFF).")
+    message(STATUS "Test suite disabled (BUILD_TESTS is OFF)")
 endif()
 
-# The C# project handling seems to be in external/CMakeLists.txt and BuildSystem.cmake (add_dotnet_project)
-# No need to add Alaris.Lean.csproj separately here if it's part of the solution built by external/lean_build
-# or managed via add_dotnet_project from BuildSystem.cmake.
+# Create uninstall target
+if(NOT TARGET uninstall)
+    configure_file(
+        "${CMAKE_SOURCE_DIR}/.cmake/templates/cmake_uninstall.cmake.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
+        IMMEDIATE @ONLY
+    )
+    add_custom_target(uninstall
+        COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
+    )
+endif()
 
-message(STATUS "Alaris project root configuration finished.")
+# Print configuration summary
+message(STATUS "")
+message(STATUS "=== Configuration Summary ===")
+message(STATUS "Project: ${PROJECT_NAME} v${PROJECT_VERSION}")
+message(STATUS "Build Type: ${CMAKE_BUILD_TYPE}")
+message(STATUS "Install Prefix: ${CMAKE_INSTALL_PREFIX}")
+message(STATUS "C++ Standard: ${CMAKE_CXX_STANDARD}")
+message(STATUS "Compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
+message(STATUS "")
+message(STATUS "Options:")
+message(STATUS "  BUILD_TESTS: ${BUILD_TESTS}")
+message(STATUS "  BUILD_DOCS: ${BUILD_DOCS}")
+message(STATUS "  ENABLE_SANITIZERS: ${ENABLE_SANITIZERS}")
+message(STATUS "  ENABLE_COVERAGE: ${ENABLE_COVERAGE}")
+message(STATUS "")
+message(STATUS "Dependencies:")
+message(STATUS "  QuantLib: ${QUANTLIB_TARGET}")
+message(STATUS "  yaml-cpp: ${YAML_CPP_TARGET}")
+message(STATUS "  Boost: ${Boost_VERSION}")
+message(STATUS "  .NET SDK: ${CMAKE_DOTNET_VERSION}")
+message(STATUS "=============================")
+message(STATUS "")
+
+# Export compilation database for tools
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
