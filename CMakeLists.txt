@@ -82,12 +82,15 @@ set(LEAN_BUILD_ARGS
     "--verbosity" "minimal"
     "-p:WarningsNotAsErrors=NU1903"
     "-p:TreatWarningsAsErrors=false"
+    "-p:NoWarn=NU1903"
+    "-p:SuppressWarnings=NU1903"
 )
 
 # Only create lean_build target if it doesn't already exist
 if(NOT TARGET lean_build)
     add_custom_target(lean_build
         COMMAND ${CMAKE_COMMAND} -E echo "Building Lean with security warning suppressed..."
+        COMMAND dotnet restore "${CMAKE_CURRENT_SOURCE_DIR}/external/lean/QuantConnect.Lean.sln" --no-warn NU1903
         COMMAND dotnet ${LEAN_BUILD_ARGS}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMENT "Building QuantConnect Lean"
