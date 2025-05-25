@@ -24,45 +24,15 @@ project(Alaris
     DESCRIPTION "High-Performance Derivatives Trading System"
 )
 
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type (Debug, Release, RelWithDebInfo, MinSizeRel)" FORCE)
-    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
-endif()
-
-message(STATUS "Project: ${PROJECT_NAME}")
-message(STATUS "Version: ${PROJECT_VERSION}")
-message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
-
 # Add custom CMake module directories
 list(APPEND CMAKE_MODULE_PATH
     "${CMAKE_SOURCE_DIR}/cmake/modules"
     "${CMAKE_SOURCE_DIR}/cmake/utils"
-    "${CMAKE_SOURCE_DIR}/cmake"
 )
 
-# Include helper functions and build configurations
-include(${CMAKE_SOURCE_DIR}/cmake/utils/ModernCMake.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/utils/DependencyManager.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/utils/BuildConfig.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/utils/CompilerFlags.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/utils/Platform.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/utils/Submodules.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/utils/DotNetConfig.cmake)
-
-# Configure build components
-enforce_modern_cmake()
-check_submodules()
-configure_platform()
-configure_build_options()
-configure_compiler_flags()
-configure_sanitizers()
-configure_coverage()
-manage_dependencies()
-configure_dotnet_build()
+# Include build system configuration
+include(${CMAKE_SOURCE_DIR}/cmake/utils/BuildSystem.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/utils/Deployment.cmake)
 
 # Include Git information
 include(GitInfo)
@@ -110,9 +80,5 @@ endif()
 if(TARGET yaml-cpp)
     set_external_compiler_flags(yaml-cpp)
 endif()
-
-# Include installation and packaging configuration
-include(${CMAKE_SOURCE_DIR}/cmake/Install.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/Package.cmake)
 
 message(STATUS "Alaris project configuration finished.")

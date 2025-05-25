@@ -1,9 +1,5 @@
 #!/bin/bash
 
-# Enhanced Alaris Trading System Build Script
-# This script provides a robust build system with dependency management,
-# cross-platform support, and comprehensive error handling.
-
 set -e  # Exit on any error
 
 # Colors for output
@@ -34,26 +30,10 @@ USE_NINJA=false
 ENABLE_SANITIZERS=false # Initialize to avoid unbound variable error if not set
 ENABLE_COVERAGE=false   # Initialize to avoid unbound variable error if not set
 
-# Function to print colored output
-print_status() {
-    echo -e "${GREEN}[INFO]${NC} $1"
-}
-
-print_warning() {
-    echo -e "${YELLOW}[WARN]${NC} $1"
-}
-
-print_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
-
-print_header() {
-    echo -e "${BLUE}=== $1 ===${NC}"
-}
-
-print_step() {
-    echo -e "${CYAN}[STEP]${NC} $1"
-}
+# Helper functions
+log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
+log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
+log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
 # Function to show usage
 show_usage() {
@@ -61,7 +41,7 @@ show_usage() {
 Usage: $0 [OPTIONS]
 
 OPTIONS:
-    -t, --type TYPE          Build type (Debug|Release|RelWithDebInfo|MinSizeRel) [default: Release]
+    -t, --type TYPE          Build type (Debug|Release) [default: Release]
     -j, --jobs N             Number of parallel jobs [default: auto-detected]
     -c, --clean              Clean build directory before building
     -r, --run-tests          Run tests after building
@@ -137,7 +117,7 @@ parse_arguments() {
                 exit 0
                 ;;
             *)
-                print_error "Unknown option: $1"
+                log_error "Unknown option: $1"
                 show_usage
                 exit 1
                 ;;
@@ -146,11 +126,10 @@ parse_arguments() {
 
     # Validate build type
     case $BUILD_TYPE in
-        Debug|Release|RelWithDebInfo|MinSizeRel)
+        Debug|Release)
             ;;
         *)
-            print_error "Invalid build type: $BUILD_TYPE"
-            print_error "Valid types: Debug, Release, RelWithDebInfo, MinSizeRel"
+            log_error "Invalid build type: $BUILD_TYPE"
             exit 1
             ;;
     esac
@@ -167,12 +146,12 @@ detect_platform() {
         *)        PLATFORM="Unknown";;
     esac
 
-    print_status "Detected platform: $PLATFORM"
+    log_info "Detected platform: $PLATFORM"
 }
 
 # Function to check system requirements
 check_requirements() {
-    print_step "Checking build requirements"
+    log_info "Checking build requirements"
 
     # Check for required tools
     local required_tools=("git" "cmake")
@@ -185,34 +164,34 @@ check_requirements() {
 
     for tool in "${required_tools[@]}"; do
         if ! command -v "$tool" &> /dev/null; then
-            print_error "$tool is required but not installed"
+            log_error "$tool is required but not installed"
 
             # Provide installation hints
             case $tool in
                 cmake)
-                    print_error "Install with:"
-                    print_error "  Ubuntu/Debian: sudo apt-get install cmake"
-                    print_error "  CentOS/RHEL:   sudo yum install cmake"
-                    print_error "  macOS:         brew install cmake"
-                    print_error "  Windows:       Download from https://cmake.org"
+                    log_error "Install with:"
+                    log_error "  Ubuntu/Debian: sudo apt-get install cmake"
+                    log_error "  CentOS/RHEL:   sudo yum install cmake"
+                    log_error "  macOS:         brew install cmake"
+                    log_error "  Windows:       Download from https://cmake.org"
                     ;;
                 make)
-                    print_error "Install with:"
-                    print_error "  Ubuntu/Debian: sudo apt-get install build-essential"
-                    print_error "  CentOS/RHEL:   sudo yum groupinstall 'Development Tools'"
-                    print_error "  macOS:         xcode-select --install"
+                    log_error "Install with:"
+                    log_error "  Ubuntu/Debian: sudo apt-get install build-essential"
+                    log_error "  CentOS/RHEL:   sudo yum groupinstall 'Development Tools'"
+                    log_error "  macOS:         xcode-select --install"
                     ;;
                 ninja)
-                    print_error "Install with:"
-                    print_error "  Ubuntu/Debian: sudo apt-get install ninja-build"
-                    print_error "  CentOS/RHEL:   sudo yum install ninja-build"
-                    print_error "  macOS:         brew install ninja"
+                    log_error "Install with:"
+                    log_error "  Ubuntu/Debian: sudo apt-get install ninja-build"
+                    log_error "  CentOS/RHEL:   sudo yum install ninja-build"
+                    log_error "  macOS:         brew install ninja"
                     ;;
                 git)
-                    print_error "Install with:"
-                    print_error "  Ubuntu/Debian: sudo apt-get install git"
-                    print_error "  CentOS/RHEL:   sudo yum install git"
-                    print_error "  macOS:         brew install git"
+                    log_error "Install with:"
+                    log_error "  Ubuntu/Debian: sudo apt-get install git"
+                    log_error "  CentOS/RHEL:   sudo yum install git"
+                    log_error "  macOS:         brew install git"
                     ;;
             esac
             exit 1
@@ -222,11 +201,11 @@ check_requirements() {
     # Check CMake version
     local cmake_version
     cmake_version=$(cmake --version | head -n1 | sed 's/cmake version //')
-    print_status "CMake version: $cmake_version"
+    log_info "CMake version: $cmake_version"
 
     # Check minimum CMake version (3.20)
     if ! cmake --version | head -n1 | grep -qE 'cmake version ([3-9]\.(2[0-9]|[3-9][0-9])|[4-9]\.[0-9]+|[1-9][0-9]+\.[0-9]+)'; then
-        print_error "CMake 3.20 or higher is required, found $cmake_version"
+        log_error "CMake 3.20 or higher is required, found $cmake_version"
         exit 1
     fi
 
@@ -234,38 +213,38 @@ check_requirements() {
     if command -v g++ &> /dev/null; then
         local gcc_version
         gcc_version=$(g++ --version | head -n1)
-        print_status "Compiler: $gcc_version"
+        log_info "Compiler: $gcc_version"
 
         # Check for C++20 support (GCC 10+)
         local gcc_major
         gcc_major=$(g++ -dumpversion | cut -d. -f1)
         if [[ $gcc_major -lt 10 ]]; then
-            print_warning "GCC 10+ recommended for full C++20 support, found GCC $gcc_major"
+            log_warn "GCC 10+ recommended for full C++20 support, found GCC $gcc_major"
         fi
     elif command -v clang++ &> /dev/null; then
         local clang_version
         clang_version=$(clang++ --version | head -n1)
-        print_status "Compiler: $clang_version"
+        log_info "Compiler: $clang_version"
     else
-        print_error "No C++ compiler found (g++ or clang++)"
+        log_error "No C++ compiler found (g++ or clang++)"
         exit 1
     fi
 
     # Check for optional tools
     if command -v ccache &> /dev/null && [[ $USE_CCACHE == true ]]; then
-        print_status "ccache found: $(ccache --version | head -n1)"
+        log_info "ccache found: $(ccache --version | head -n1)"
     elif [[ $USE_CCACHE == true ]]; then
-        print_warning "ccache not found - builds will be slower"
+        log_warn "ccache not found - builds will be slower"
         USE_CCACHE=false
     fi
 
     # Check for Boost libraries
     if [[ $PLATFORM == "Linux" ]]; then
         if ! ldconfig -p | grep -q libboost_system; then # Checking for a common boost lib
-            print_warning "Boost libraries may not be installed or not in ldconfig cache."
-            print_warning "Install with: sudo apt-get install libboost-all-dev  # Ubuntu/Debian"
-            print_warning "              or: sudo yum install boost-devel       # CentOS/RHEL"
-            print_warning "After installation, you might need to run 'sudo ldconfig'."
+            log_warn "Boost libraries may not be installed or not in ldconfig cache."
+            log_warn "Install with: sudo apt-get install libboost-all-dev  # Ubuntu/Debian"
+            log_warn "              or: sudo yum install boost-devel       # CentOS/RHEL"
+            log_warn "After installation, you might need to run 'sudo ldconfig'."
         fi
     fi
 }
@@ -273,7 +252,7 @@ check_requirements() {
 # Function to update git submodules
 update_submodules() {
     if [[ $UPDATE_SUBMODULES == true ]]; then
-        print_step "Updating git submodules"
+        log_info "Updating git submodules"
         cd "$PROJECT_ROOT"
 
         git submodule update --init --recursive
@@ -281,16 +260,16 @@ update_submodules() {
         # Update to latest versions
         git submodule update --recursive --remote
 
-        print_status "Submodules updated successfully"
+        log_info "Submodules updated successfully"
     fi
 }
 
 # Function to setup build directory
 setup_build_directory() {
-    print_step "Setting up build directory"
+    log_info "Setting up build directory"
 
     if [[ $CLEAN_BUILD == true && -d "$BUILD_DIR" ]]; then
-        print_status "Cleaning build directory: $BUILD_DIR"
+        log_info "Cleaning build directory: $BUILD_DIR"
         rm -rf "$BUILD_DIR"
     fi
 
@@ -300,7 +279,7 @@ setup_build_directory() {
 
 # Function to configure CMake
 configure_cmake() {
-    print_step "Configuring with CMake"
+    log_info "Configuring with CMake"
 
     local cmake_args=(
         "-DCMAKE_BUILD_TYPE=$BUILD_TYPE"
@@ -322,17 +301,16 @@ configure_cmake() {
     if [[ $BUILD_TYPE == "Debug" ]]; then
         if [[ $ENABLE_SANITIZERS == true ]]; then
             cmake_args+=("-DENABLE_SANITIZERS=ON")
-            print_status "Sanitizers enabled for Debug build."
+            log_info "Sanitizers enabled for Debug build."
         fi
 
         if [[ $ENABLE_COVERAGE == true ]]; then
             cmake_args+=("-DENABLE_COVERAGE=ON")
-            print_status "Code coverage enabled for Debug build."
+            log_info "Code coverage enabled for Debug build."
         fi
     elif [[ $ENABLE_SANITIZERS == true || $ENABLE_COVERAGE == true ]]; then
-        print_warning "Sanitizers and Code Coverage are typically used with Debug builds. Current build type: $BUILD_TYPE"
+        log_warn "Sanitizers and Code Coverage are typically used with Debug builds. Current build type: $BUILD_TYPE"
     fi
-
 
     # Verbose configuration
     if [[ $VERBOSE == true ]]; then
@@ -349,25 +327,25 @@ configure_cmake() {
             ;;
     esac
 
-    print_status "CMake configuration arguments:"
+    log_info "CMake configuration arguments:"
     for arg in "${cmake_args[@]}"; do
-        print_status "  $arg"
+        log_info "  $arg"
     done
 
     # Run CMake
     cmake "${cmake_args[@]}" "$PROJECT_ROOT"
 
     if [[ $? -eq 0 ]]; then
-        print_status "CMake configuration successful"
+        log_info "CMake configuration successful"
     else
-        print_error "CMake configuration failed"
+        log_error "CMake configuration failed"
         exit 1
     fi
 }
 
 # Function to build the project
 build_project() {
-    print_step "Building project with $JOBS parallel jobs"
+    log_info "Building project with $JOBS parallel jobs"
 
     local build_args=()
     # Ensure BUILD_DIR exists before creating the output file path
@@ -386,7 +364,7 @@ build_project() {
         fi
     fi
 
-    print_status "Compilation output will be saved to: $output_file"
+    log_info "Compilation output will be saved to: $output_file"
 
     local start_time
     start_time=$(date +%s)
@@ -413,25 +391,25 @@ build_project() {
     local build_duration=$((end_time - start_time))
 
     if [[ $build_status -eq 0 ]]; then
-        print_status "Build completed successfully in ${build_duration}s"
+        log_info "Build completed successfully in ${build_duration}s"
         show_build_artifacts
     else
-        print_error "Build failed after ${build_duration}s (Exit code: $build_status)"
-        print_error "Check the output above and in '$output_file' for error details"
+        log_error "Build failed after ${build_duration}s (Exit code: $build_status)"
+        log_error "Check the output above and in '$output_file' for error details"
         exit 1
     fi
 }
 
 # Function to show built artifacts
 show_build_artifacts() {
-    print_status "Built artifacts (relative to $BUILD_DIR):"
+    log_info "Built artifacts (relative to $BUILD_DIR):"
 
     # Ensure we are in BUILD_DIR for artifact checking if paths are relative
     # However, the original script listed paths that might be relative to BUILD_DIR already.
     # Let's assume they are meant to be checked from BUILD_DIR.
     local current_dir_artifacts=$(pwd)
     if [[ "$current_dir_artifacts" != "$BUILD_DIR" ]]; then
-        print_warning "Not in BUILD_DIR ($BUILD_DIR), artifact paths might be incorrect if relative."
+        log_warn "Not in BUILD_DIR ($BUILD_DIR), artifact paths might be incorrect if relative."
     fi
 
     local artifacts=(
@@ -460,7 +438,7 @@ show_build_artifacts() {
 # Function to run tests
 run_tests() {
     if [[ $RUN_TESTS == true ]]; then
-        print_step "Running tests"
+        log_info "Running tests"
 
         # Ensure we are in the build directory to run tests
         cd "$BUILD_DIR"
@@ -475,46 +453,46 @@ run_tests() {
                 ctest_args+=("--verbose")
             fi
 
-            print_status "Running CTest with arguments: ${ctest_args[*]}"
+            log_info "Running CTest with arguments: ${ctest_args[*]}"
             ctest "${ctest_args[@]}"
             local test_status=$?
 
             if [[ $test_status -eq 0 ]]; then
-                print_status "All tests passed!"
+                log_info "All tests passed!"
             else
-                print_warning "Some tests failed (CTest exit code: $test_status)"
+                log_warn "Some tests failed (CTest exit code: $test_status)"
                 # Do not exit here, let the script continue or main error handler catch it if necessary.
                 # Consider if a test failure should halt the script. If so, `exit $test_status`.
                 return $test_status # Propagate test failure
             fi
         else
-            print_warning "CTest not available, attempting to run tests manually"
+            log_warn "CTest not available, attempting to run tests manually"
             local overall_test_status=0
 
             if [[ -f "test/alaris_core_test" && -x "test/alaris_core_test" ]]; then
-                print_status "Running core tests..."
+                log_info "Running core tests..."
                 ./test/alaris_core_test
                 if [[ $? -ne 0 ]]; then
-                    print_warning "Core tests failed."
+                    log_warn "Core tests failed."
                     overall_test_status=1
                 else
-                    print_status "Core tests passed."
+                    log_info "Core tests passed."
                 fi
             else
-                print_warning "Core test executable 'test/alaris_core_test' not found or not executable."
+                log_warn "Core test executable 'test/alaris_core_test' not found or not executable."
             fi
 
             if [[ -f "test/alaris_integration_test" && -x "test/alaris_integration_test" ]]; then
-                print_status "Running integration tests..."
+                log_info "Running integration tests..."
                 ./test/alaris_integration_test
                 if [[ $? -ne 0 ]]; then
-                    print_warning "Integration tests failed."
+                    log_warn "Integration tests failed."
                     overall_test_status=1
                 else
-                    print_status "Integration tests passed."
+                    log_info "Integration tests passed."
                 fi
             else
-                print_warning "Integration test executable 'test/alaris_integration_test' not found or not executable."
+                log_warn "Integration test executable 'test/alaris_integration_test' not found or not executable."
             fi
 
             if [[ $overall_test_status -ne 0 ]]; then
@@ -528,29 +506,29 @@ run_tests() {
 # Function to install
 install_project() {
     if [[ $INSTALL == true ]]; then
-        print_step "Installing project"
+        log_info "Installing project"
         cd "$BUILD_DIR" # Ensure we are in the build directory
 
         if [[ $USE_NINJA == true ]]; then
             if command -v ninja &> /dev/null; then
                 ninja install
             else
-                print_error "Ninja not found, cannot install with Ninja."
+                log_error "Ninja not found, cannot install with Ninja."
                 exit 1
             fi
         else
             if command -v make &> /dev/null; then
                 make install
             else
-                print_error "Make not found, cannot install with Make."
+                log_error "Make not found, cannot install with Make."
                 exit 1
             fi
         fi
 
         if [[ $? -eq 0 ]]; then
-            print_status "Installation completed successfully"
+            log_info "Installation completed successfully"
         else
-            print_error "Installation failed"
+            log_error "Installation failed"
             exit 1
         fi
     fi
@@ -558,7 +536,7 @@ install_project() {
 
 # Function to print build summary
 print_summary() {
-    print_header "Build Summary"
+    log_info "Build Summary"
 
     echo -e "${CYAN}Project:${NC}          Alaris Trading System"
     echo -e "${CYAN}Build Type:${NC}       $BUILD_TYPE"
@@ -604,7 +582,7 @@ handle_error() {
     local exit_code=$?
     # Do not print error if exit_code is 0 (e.g. from `exit 0` in help)
     if [[ $exit_code -ne 0 ]]; then
-        print_error "Build script failed with exit code $exit_code on line $BASH_LINENO"
+        log_error "Build script failed with exit code $exit_code on line $BASH_LINENO"
         echo ""
         echo -e "${YELLOW}Troubleshooting tips:${NC}"
         echo "1. Check that all dependencies are installed (run script with no options for initial checks)."
@@ -622,7 +600,7 @@ main() {
     # Set up error handling to call handle_error on ERR signal
     trap 'handle_error $LINENO' ERR
 
-    print_header "Alaris Trading System Build Script"
+    log_info "Alaris Trading System Build Script"
 
     parse_arguments "$@"
     detect_platform
@@ -638,11 +616,11 @@ main() {
     print_summary
 
     if [[ $run_tests_result -ne 0 ]]; then
-        print_warning "Build completed, but some tests failed. Check summary and logs."
+        log_warn "Build completed, but some tests failed. Check summary and logs."
         exit $run_tests_result
     fi
 
-    print_status "Build script completed successfully!"
+    log_info "Build script completed successfully!"
 }
 
 # Run main function with all arguments
