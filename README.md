@@ -226,14 +226,3 @@ tar -czf alaris-logs-$(date +%Y%m%d).tar.gz logs/
 # Clean up old containers
 docker system prune -f
 ```
-
-## 📞 Support & Contact
-
-- **Documentation**: See `docs/` directory
-- **Issues**: Create GitHub issues for bugs
-- **Performance**: Monitor via Grafana dashboards
-- **Security**: Follow security best practices for production trading
-
----
-
-**⚠️ Risk Disclaimer**: This software involves financial trading. Always test thoroughly with paper trading before deploying with real capital. Trading involves substantial risk of loss.
