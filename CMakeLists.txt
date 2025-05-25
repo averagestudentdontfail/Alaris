@@ -84,22 +84,20 @@ set(LEAN_BUILD_ARGS
     "-p:TreatWarningsAsErrors=false"
 )
 
-add_custom_target(lean_build
-    COMMAND ${CMAKE_COMMAND} -E echo "Building Lean with security warning suppressed..."
-    COMMAND dotnet ${LEAN_BUILD_ARGS}
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    COMMENT "Building QuantConnect Lean"
-)
+# Only create lean_build target if it doesn't already exist
+if(NOT TARGET lean_build)
+    add_custom_target(lean_build
+        COMMAND ${CMAKE_COMMAND} -E echo "Building Lean with security warning suppressed..."
+        COMMAND dotnet ${LEAN_BUILD_ARGS}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMENT "Building QuantConnect Lean"
+    )
+endif()
 
 # Installation configuration: Include the file to execute its commands
 include(${CMAKE_SOURCE_DIR}/cmake/Install.cmake)
 # Packaging configuration: Include the file to execute its CPack settings
 include(${CMAKE_SOURCE_DIR}/cmake/Package.cmake)
-# Summary: Include the file to define summary functions
-include(${CMAKE_SOURCE_DIR}/cmake/Summary.cmake)
-
-# Call functions defined in the summary module
-print_configuration_summary() # From Summary.cmake
 
 # Store original compiler flags
 set(CMAKE_CXX_FLAGS_ORIG "${CMAKE_CXX_FLAGS}")
