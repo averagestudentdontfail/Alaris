@@ -24,36 +24,58 @@ endif()
 # Dependency configuration
 set(ALARIS_REQUIRED_PACKAGES
     Boost
-    yaml-cpp
-    QuantLib
+    # yaml-cpp # Removed: built from external/
+    # QuantLib # Removed: built from external/
 )
 
-# Find and configure dependencies
+# Find and configure dependencies that are expected to be found as packages
+# This loop will now only process packages remaining in ALARIS_REQUIRED_PACKAGES (e.g., Boost)
 foreach(PACKAGE ${ALARIS_REQUIRED_PACKAGES})
     find_package(${PACKAGE} REQUIRED)
-    if(NOT ${PACKAGE}_FOUND)
-        message(FATAL_ERROR "${PACKAGE} not found. Please install it.")
+    if(NOT ${PACKAGE}_FOUND) # Should be redundant due to REQUIRED, but good for clarity
+        message(FATAL_ERROR "${PACKAGE} not found. Please install it or ensure it's correctly pathed.")
     endif()
 endforeach()
 
-# Configure QuantLib
-if(QuantLib_FOUND)
+# Configure QuantLib (expected to be provided by add_subdirectory(external))
+# external/CMakeLists.txt sets QUANTLIB_TARGET and QuantLib_INCLUDE_DIRS in PARENT_SCOPE.
+# These variables should be defined because add_subdirectory(external) is called first in the root CMakeLists.txt.
+if(TARGET ${QUANTLIB_TARGET} AND DEFINED QuantLib_INCLUDE_DIRS)
     set(ALARIS_QUANTLIB_INCLUDE_DIRS ${QuantLib_INCLUDE_DIRS})
-    set(ALARIS_QUANTLIB_LIBRARIES ${QuantLib_LIBRARIES})
-    set(ALARIS_QUANTLIB_DEFINITIONS ${QuantLib_DEFINITIONS})
+    set(ALARIS_QUANTLIB_LIBRARIES ${QUANTLIB_TARGET}) # Use the target name for linking
+    # external/CMakeLists.txt applies compile definitions directly to the QuantLib target,
+    # so ALARIS_QUANTLIB_DEFINITIONS might not be needed here if linking against the target.
+    message(STATUS "Configured QuantLib from external build target: ${QUANTLIB_TARGET}")
+else()
+    message(FATAL_ERROR "QuantLib was NOT configured. "
+                        "Expected QUANTLIB_TARGET (cmake variable value: '${QUANTLIB_TARGET}') and "
+                        "QuantLib_INCLUDE_DIRS (cmake variable value: '${QuantLib_INCLUDE_DIRS}') "
+                        "to be set by 'external/CMakeLists.txt' processing. "
+                        "Ensure 'add_subdirectory(external)' is called in the root CMakeLists.txt "
+                        "BEFORE including this Config.cmake file, and that external/CMakeLists.txt is correct.")
 endif()
 
-# Configure Boost
+# Configure Boost (from find_package)
 if(Boost_FOUND)
     set(ALARIS_BOOST_INCLUDE_DIRS ${Boost_INCLUDE_DIRS})
-    set(ALARIS_BOOST_LIBRARIES ${Boost_LIBRARIES})
+    set(ALARIS_BOOST_LIBRARIES ${Boost_LIBRARIES}) # This might be a list of component targets or an imported target
     set(ALARIS_BOOST_DEFINITIONS ${Boost_DEFINITIONS})
+    message(STATUS "Configured Boost from find_package.")
 endif()
 
-# Configure yaml-cpp
-if(yaml-cpp_FOUND)
-    set(ALARIS_YAMLCPP_INCLUDE_DIRS ${YAML_CPP_INCLUDE_DIRS})
-    set(ALARIS_YAMLCPP_LIBRARIES ${YAML_CPP_LIBRARIES})
+# Configure yaml-cpp (expected to be provided by add_subdirectory(external) )
+# external/CMakeLists.txt should have set YAML_CPP_TARGET and yaml-cpp_INCLUDE_DIRS
+if(TARGET ${YAML_CPP_TARGET} AND DEFINED yaml-cpp_INCLUDE_DIRS)
+    set(ALARIS_YAMLCPP_INCLUDE_DIRS ${yaml-cpp_INCLUDE_DIRS})
+    set(ALARIS_YAMLCPP_LIBRARIES ${YAML_CPP_TARGET}) # Use the target name for linking
+    message(STATUS "Configured yaml-cpp from external build target: ${YAML_CPP_TARGET}")
+else()
+    message(FATAL_ERROR "yaml-cpp was NOT configured. "
+                        "Expected YAML_CPP_TARGET (cmake variable value: '${YAML_CPP_TARGET}') and "
+                        "yaml-cpp_INCLUDE_DIRS (cmake variable value: '${yaml-cpp_INCLUDE_DIRS}') "
+                        "to be set by 'external/CMakeLists.txt' processing. "
+                        "Ensure 'add_subdirectory(external)' is called in the root CMakeLists.txt "
+                        "BEFORE including this Config.cmake file, and that external/CMakeLists.txt is correct.")
 endif()
 
 # Build configuration
@@ -83,7 +105,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
         -Werror=format-security
         -Werror=missing-braces
         -Werror=reorder
-        -Werror=return-type
+        # -Werror=return-type # Duplicate, removed
         -Werror=switch
         -Werror=uninitialized
         -Wno-unused-parameter
@@ -110,10 +132,12 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
 
     # Set flags based on build type
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ALARIS_COMMON_FLAGS} ${ALARIS_DEBUG_FLAGS}")
-    else()
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ALARIS_COMMON_FLAGS} ${ALARIS_RELEASE_FLAGS}")
+        set(CMAKE_CXX_FLAGS_INIT "${ALARIS_COMMON_FLAGS} ${ALARIS_DEBUG_FLAGS}")
+    else() # Release, RelWithDebInfo etc.
+        set(CMAKE_CXX_FLAGS_INIT "${ALARIS_COMMON_FLAGS} ${ALARIS_RELEASE_FLAGS}")
     endif()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_INIT} ${CMAKE_CXX_FLAGS}" CACHE STRING "Flags used by the C++ compiler" FORCE)
+
 endif()
 
 # Sanitizer configuration
@@ -122,25 +146,27 @@ if(ENABLE_SANITIZERS AND CMAKE_BUILD_TYPE STREQUAL "Debug")
         set(ALARIS_SANITIZER_FLAGS
             -fsanitize=address
             -fsanitize=undefined
-            -fno-omit-frame-pointer
+            -fno-omit-frame-pointer # Already in debug, but explicit for sanitizers
         )
+        # Append to existing flags rather than overwriting
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ALARIS_SANITIZER_FLAGS}")
         set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${ALARIS_SANITIZER_FLAGS}")
+        set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${ALARIS_SANITIZER_FLAGS}")
     endif()
 endif()
 
 # Coverage configuration
 if(ENABLE_COVERAGE AND CMAKE_BUILD_TYPE STREQUAL "Debug")
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-        set(ALARIS_COVERAGE_FLAGS
-            --coverage
-            -fprofile-arcs
-            -ftest-coverage
-        )
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ALARIS_COVERAGE_FLAGS}")
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${ALARIS_COVERAGE_FLAGS}")
+        # For GCC/gcov:
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fprofile-arcs -ftest-coverage")
+        set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fprofile-arcs -ftest-coverage")
+        # For Clang/llvm-cov, you might use:
+        # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-instr-generate -fcoverage-mapping")
+        # set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fprofile-instr-generate")
     endif()
 endif()
 
 # Export configuration
-set(ALARIS_CONFIGURED TRUE CACHE INTERNAL "Alaris configuration complete" FORCE) 
+set(ALARIS_CONFIGURED TRUE CACHE INTERNAL "Alaris configuration complete" FORCE)
