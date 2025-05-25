@@ -4,6 +4,7 @@
 #include <atomic>
 #include <cstdint>
 #include <type_traits>
+#include <string>
 
 namespace Alaris::IPC {
 
@@ -21,8 +22,11 @@ private:
     
     Header* header_;
     T* buffer_;
-    void* shared_memory_;
+    void* shared_memory_region_;  // Changed from shared_memory_ to match implementation
     bool is_owner_;
+    int shm_fd_;                  // Added for shared memory file descriptor
+    std::string shm_name_;        // Added for shared memory name
+    static constexpr const char* UNLINKED_SHM_NAME = "UNLINKED"; // Added constant
     
     static constexpr uint64_t MASK = Size - 1;
     

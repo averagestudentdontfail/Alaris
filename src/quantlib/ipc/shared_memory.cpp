@@ -16,16 +16,17 @@ namespace Alaris::IPC {
 
 template<typename T, size_t Size>
 SharedRingBuffer<T, Size>::SharedRingBuffer(const char* name, bool create) 
-    : shared_memory_region_(nullptr), // Changed member name from shared_memory_ for clarity
+    : shared_memory_region_(nullptr),
       header_(nullptr),
       buffer_(nullptr),
-      is_owner_(create) {
-    
+      is_owner_(create),
+      shm_fd_(-1),
+      shm_name_(name)
+{
     static_assert(std::is_trivially_copyable_v<T>, "SharedRingBuffer type T must be trivially copyable for safe shared memory usage.");
     static_assert((Size > 0) && ((Size & (Size - 1)) == 0), "SharedRingBuffer Size must be a positive power of 2.");
 
     const size_t total_region_size = sizeof(Header) + (sizeof(T) * Size);
-    shm_fd_ = -1; // Initialize shm_fd_
 
     if (create) {
         // Create new shared memory object
@@ -38,7 +39,6 @@ SharedRingBuffer<T, Size>::SharedRingBuffer(const char* name, bool create)
                     perror(("SharedRingBuffer: shm_open failed to open existing EEXIST for " + std::string(name)).c_str());
                     throw std::runtime_error("Failed to open existing shared memory: " + std::string(name));
                 }
-                // If we open existing, we don't ftruncate or initialize header/buffer with memset
             } else {
                 perror(("SharedRingBuffer: shm_open O_CREAT failed for " + std::string(name)).c_str());
                 throw std::runtime_error("Failed to create shared memory: " + std::string(name));
@@ -52,7 +52,7 @@ SharedRingBuffer<T, Size>::SharedRingBuffer(const char* name, bool create)
                 throw std::runtime_error("Failed to set shared memory size for " + std::string(name));
             }
         }
-    } else { // Open existing shared memory object (consumer case)
+    } else {
         is_owner_ = false;
         shm_fd_ = shm_open(name, O_RDWR, 0660);
         if (shm_fd_ == -1) {
@@ -64,14 +64,12 @@ SharedRingBuffer<T, Size>::SharedRingBuffer(const char* name, bool create)
     // Map shared memory object to process address space
     shared_memory_region_ = mmap(nullptr, total_region_size, PROT_READ | PROT_WRITE, 
                                MAP_SHARED, shm_fd_, 0);
-    // close(shm_fd_); // fd can be closed after mmap, but keep it if needed for fstat/info for existing shm
-                   // It's safer to close it to avoid fd exhaustion.
 
     if (shared_memory_region_ == MAP_FAILED) {
         perror(("SharedRingBuffer: mmap failed for " + std::string(name)).c_str());
         if (shm_fd_ != -1) close(shm_fd_);
-        if (is_owner_ && shm_name_ != UNLINKED_SHM_NAME) { // Store name for unlink
-             shm_unlink(name); // Clean up if owner and mapping failed
+        if (is_owner_ && shm_name_ != UNLINKED_SHM_NAME) {
+            shm_unlink(name); // Clean up if owner and mapping failed
         }
         throw std::runtime_error("Failed to map shared memory for " + std::string(name));
     }
@@ -79,14 +77,12 @@ SharedRingBuffer<T, Size>::SharedRingBuffer(const char* name, bool create)
     // Assign pointers to header and buffer region
     header_ = static_cast<Header*>(shared_memory_region_);
     buffer_ = reinterpret_cast<T*>(static_cast<std::byte*>(shared_memory_region_) + sizeof(Header));
-    shm_name_ = name; // Store name for unlink in destructor if owner
     
     // Initialize header and buffer memory only if this process created the shared memory segment
-    if (is_owner_) { // Check if *this specific call* was the creator via O_EXCL success
+    if (is_owner_) {
         new (static_cast<void*>(header_)) Header(); // Placement new for the header (initializes atomics)
         
         // Initialize the buffer objects using placement new default construction
-        // This runs the constructor for each object T in the buffer.
         for (size_t i = 0; i < Size; ++i) {
             new (static_cast<void*>(&buffer_[i])) T(); 
         }
