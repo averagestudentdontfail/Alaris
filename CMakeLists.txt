@@ -4,6 +4,20 @@ if(POLICY CMP0135)
     cmake_policy(SET CMP0135 NEW)
 endif()
 
+# Detect .NET SDK
+find_program(DOTNET_EXECUTABLE dotnet)
+if(DOTNET_EXECUTABLE)
+    execute_process(
+        COMMAND ${DOTNET_EXECUTABLE} --version
+        OUTPUT_VARIABLE DOTNET_VERSION
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    message(STATUS "Found .NET SDK version: ${DOTNET_VERSION}")
+    set(CMAKE_DOTNET_VERSION ${DOTNET_VERSION} CACHE STRING ".NET SDK version")
+else()
+    message(WARNING ".NET SDK not found. C# components will be skipped.")
+endif()
+
 project(Alaris
     VERSION 1.0.0
     LANGUAGES CXX # CSharp removed to resolve previous error
@@ -60,6 +74,14 @@ include(GitInfo) # Searches CMAKE_MODULE_PATH, finds cmake/modules/GitInfo.cmake
 # Add source code subdirectories
 add_subdirectory(src)
 
+# Add C# subdirectory if .NET SDK is found
+if(DOTNET_EXECUTABLE)
+    add_subdirectory(src/csharp)
+    message(STATUS "C# components configured.")
+else()
+    message(STATUS "C# components skipped - .NET SDK not found.")
+endif()
+
 # Add test subdirectory
 if(EXISTS "${CMAKE_SOURCE_DIR}/test/CMakeLists.txt")
     enable_testing()
@@ -84,16 +106,20 @@ set(LEAN_BUILD_ARGS
     "-p:TreatWarningsAsErrors=false"
     "-p:NoWarn=NU1903"
     "-p:SuppressWarnings=NU1903"
+    "-p:GenerateFullPaths=true"
+    "-p:RestorePackagesPath=${CMAKE_CURRENT_SOURCE_DIR}/external/lean/packages"
+    "-p:TargetFramework=net${CMAKE_DOTNET_VERSION}"
 )
 
-# Only create lean_build target if it doesn't already exist
-if(NOT TARGET lean_build)
+# Only create lean_build target if dotnet is found
+if(DOTNET_EXECUTABLE AND NOT TARGET lean_build)
     add_custom_target(lean_build
         COMMAND ${CMAKE_COMMAND} -E echo "Building Lean with security warning suppressed..."
-        COMMAND dotnet restore "${CMAKE_CURRENT_SOURCE_DIR}/external/lean/QuantConnect.Lean.sln" --no-warn NU1903
-        COMMAND dotnet ${LEAN_BUILD_ARGS}
+        COMMAND ${DOTNET_EXECUTABLE} restore "${CMAKE_CURRENT_SOURCE_DIR}/external/lean/QuantConnect.Lean.sln" --no-warn NU1903
+        COMMAND ${DOTNET_EXECUTABLE} ${LEAN_BUILD_ARGS}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMENT "Building QuantConnect Lean"
+        DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/external/lean/QuantConnect.Lean.sln"
     )
 endif()
 
