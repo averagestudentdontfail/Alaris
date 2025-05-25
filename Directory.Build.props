@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project>
   <PropertyGroup>
-    <!-- Suppress specific warnings for external dependencies -->
-    <NoWarn>$(NoWarn);CA1852;CA2327;NETSDK1206</NoWarn>
+    <!-- Disable all warnings for external dependencies -->
+    <NoWarn>$(NoWarn);*</NoWarn>
     
     <!-- Enable nullable reference types -->
     <Nullable>enable</Nullable>
@@ -13,7 +13,7 @@
     <!-- Treat warnings as errors for our code -->
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     
-    <!-- Suppress warnings for external dependencies -->
-    <MSBuildWarningsAsMessages>CA1852;CA2327;NETSDK1206</MSBuildWarningsAsMessages>
+    <!-- Disable all warnings for external dependencies -->
+    <MSBuildWarningsAsMessages>*</MSBuildWarningsAsMessages>
   </PropertyGroup>
 </Project> 

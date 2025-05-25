@@ -117,10 +117,16 @@ function(configure_linux)
     add_library(Platform::Libraries INTERFACE IMPORTED)
     target_link_libraries(Platform::Libraries INTERFACE ${LINUX_LIBS})
 
-    # Linux-specific features
+    # Check for real-time capabilities
+    include(CheckIncludeFileCXX)
+    check_include_file_cxx("sched.h" HAVE_SCHED_H)
+    check_include_file_cxx("sys/mman.h" HAVE_SYS_MMAN_H)
+    
+    # Set platform features based on actual detection
     set(PLATFORM_HAS_SHARED_MEMORY TRUE PARENT_SCOPE)
-    set(PLATFORM_HAS_REALTIME TRUE PARENT_SCOPE)
+    set(PLATFORM_HAS_REALTIME ${HAVE_SCHED_H} PARENT_SCOPE)
     set(PLATFORM_HAS_CPU_AFFINITY TRUE PARENT_SCOPE)
+    set(PLATFORM_HAS_MEMORY_LOCKING ${HAVE_SYS_MMAN_H} PARENT_SCOPE)
 
     # Check for specific Linux distributions
     if(EXISTS /etc/os-release)

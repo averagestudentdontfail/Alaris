@@ -90,6 +90,13 @@ function(print_configuration_summary)
         message(STATUS "║   yaml-cpp:             ✗ Not found")
     endif()
     
+    # Lean
+    if(EXISTS "${CMAKE_SOURCE_DIR}/external/lean")
+        message(STATUS "║   Lean:                 ✓ Configured (external/lean)")
+    else()
+        message(STATUS "║   Lean:                 ✗ Not found")
+    endif()
+    
     # Boost
     if(Boost_FOUND)
         message(STATUS "║   Boost:                ✓ ${Boost_VERSION} (system)")

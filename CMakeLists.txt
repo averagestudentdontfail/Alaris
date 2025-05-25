@@ -94,10 +94,18 @@ endif()
 
 # Function to set compiler flags for external dependencies
 function(set_external_compiler_flags target)
-    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-        target_compile_options(${target} PRIVATE
-            -w  # Disable all warnings
-        )
+    if(NOT TARGET ${target})
+        return()
+    endif()
+    
+    # Check if target is a library or executable
+    get_target_property(target_type ${target} TYPE)
+    if(NOT target_type STREQUAL "INTERFACE_LIBRARY")
+        if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+            target_compile_options(${target} PRIVATE
+                -w  # Disable all warnings
+            )
+        endif()
     endif()
 endfunction()
 
@@ -110,8 +118,7 @@ if(TARGET yaml-cpp)
     set_external_compiler_flags(yaml-cpp)
 endif()
 
-if(TARGET lean_build)
-    set_external_compiler_flags(lean_build)
-endif()
+# Note: Lean is handled differently as it's a .NET project
+# We don't need to set C++ compiler flags for it
 
 message(STATUS "Alaris project configuration finished.")
