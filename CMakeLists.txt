@@ -96,19 +96,22 @@ endif()
 function(set_external_compiler_flags target)
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
         target_compile_options(${target} PRIVATE
-            -Wno-conversion
-            -Wno-sign-conversion
-            -Wno-unused-parameter
-            -Wno-unused-variable
-            -Wno-unused-function
-            -Wno-deprecated-declarations
+            -w  # Disable all warnings
         )
     endif()
 endfunction()
 
-# Apply to external dependencies
+# Apply to all external dependencies
 if(TARGET ql_library)
     set_external_compiler_flags(ql_library)
+endif()
+
+if(TARGET yaml-cpp)
+    set_external_compiler_flags(yaml-cpp)
+endif()
+
+if(TARGET lean_build)
+    set_external_compiler_flags(lean_build)
 endif()
 
 message(STATUS "Alaris project configuration finished.")
