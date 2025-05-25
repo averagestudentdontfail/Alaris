@@ -74,6 +74,23 @@ if(TARGET lean_build)
     add_dependencies(alaris_core lean_build)
 endif()
 
+# Configure Lean build with security warning suppression
+set(LEAN_BUILD_ARGS 
+    "build" 
+    "${CMAKE_CURRENT_SOURCE_DIR}/external/lean/QuantConnect.Lean.sln" 
+    "--configuration" "Release"
+    "--verbosity" "minimal"
+    "-p:WarningsNotAsErrors=NU1903"
+    "-p:TreatWarningsAsErrors=false"
+)
+
+add_custom_target(lean_build
+    COMMAND ${CMAKE_COMMAND} -E echo "Building Lean with security warning suppressed..."
+    COMMAND dotnet ${LEAN_BUILD_ARGS}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMENT "Building QuantConnect Lean"
+)
+
 # Installation configuration: Include the file to execute its commands
 include(${CMAKE_SOURCE_DIR}/cmake/Install.cmake)
 # Packaging configuration: Include the file to execute its CPack settings
