@@ -26,16 +26,14 @@ project(Alaris
 
 # Add custom CMake module directories
 list(APPEND CMAKE_MODULE_PATH
-    "${CMAKE_SOURCE_DIR}/cmake/modules"
-    "${CMAKE_SOURCE_DIR}/cmake/utils"
+    "${CMAKE_SOURCE_DIR}/.cmake"
 )
 
 # Include build system configuration
-include(${CMAKE_SOURCE_DIR}/cmake/utils/BuildSystem.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/utils/Deployment.cmake)
-
-# Include Git information
-include(GitInfo)
+include(${CMAKE_SOURCE_DIR}/.cmake/Config.cmake)
+include(${CMAKE_SOURCE_DIR}/.cmake/BuildSystem.cmake)
+include(${CMAKE_SOURCE_DIR}/.cmake/Deployment.cmake)
+include(${CMAKE_SOURCE_DIR}/.cmake/GitInfo.cmake)
 
 # Add source code subdirectories
 add_subdirectory(src)
