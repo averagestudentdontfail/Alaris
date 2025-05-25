@@ -15,11 +15,12 @@ function(check_submodules)
     set(REQUIRED_SUBMODULES
         "external/quant"
         "external/yaml-cpp"
+        "external/lean"
     )
 
     # List of optional submodules
     set(OPTIONAL_SUBMODULES
-        "external/lean"
+        # No optional submodules currently
     )
 
     set(MISSING_REQUIRED FALSE)

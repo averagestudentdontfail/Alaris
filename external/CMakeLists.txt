@@ -117,24 +117,50 @@ else()
     message(FATAL_ERROR "yaml-cpp submodule directory 'external/yaml-cpp' does not contain CMakeLists.txt.")
 endif()
 
-
-# --- Lean (Informational) ---
+# --- Lean Integration ---
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/lean")
-    message(STATUS "Lean submodule found at 'external/lean' (managed separately via .NET).")
-    set(LEAN_AVAILABLE TRUE PARENT_SCOPE)
+    message(STATUS "Configuring Lean from source (external/lean)...")
     
-    # .NET SDK check is now better placed in DependencyManager.cmake or root
+    # Check for .NET SDK
+    find_program(DOTNET_EXECUTABLE dotnet)
+    if(NOT DOTNET_EXECUTABLE)
+        message(FATAL_ERROR "dotnet executable not found. Please install .NET SDK.")
+    endif()
+    
+    # Set Lean paths
+    set(LEAN_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/lean")
+    set(LEAN_AVAILABLE TRUE PARENT_SCOPE)
+    set(LEAN_ROOT_DIR "${LEAN_ROOT}" PARENT_SCOPE)
+    
+    # Configure Lean build
+    set(LEAN_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/lean")
+    file(MAKE_DIRECTORY "${LEAN_BUILD_DIR}")
+    
+    # Add custom target for Lean build
+    add_custom_target(lean_build
+        COMMAND ${DOTNET_EXECUTABLE} build "${LEAN_ROOT}/Lean.sln" -c Release
+        WORKING_DIRECTORY "${LEAN_ROOT}"
+        COMMENT "Building Lean from source"
+    )
+    
+    # Set Lean output directories
+    set(LEAN_BIN_DIR "${LEAN_ROOT}/Launcher/bin/Release" PARENT_SCOPE)
+    set(LEAN_ALGORITHM_DIR "${LEAN_ROOT}/Algorithm.CSharp/bin/Release" PARENT_SCOPE)
+    
+    message(STATUS "✓ Lean configuration complete")
 else()
-    message(STATUS "Lean submodule 'external/lean' not found (this is optional for C++ components).")
-    set(LEAN_AVAILABLE FALSE PARENT_SCOPE)
+    message(FATAL_ERROR "Lean submodule 'external/lean' not found or empty. This is required for the build.")
 endif()
 
 # Set up folder organization for IDE for external targets built here
 if(TARGET ${QUANTLIB_TARGET})
     set_target_properties(${QUANTLIB_TARGET} PROPERTIES FOLDER "External/Libs")
 endif()
-if(TARGET yaml-cpp) # Actual target name from yaml-cpp's CMake
+if(TARGET yaml-cpp)
     set_target_properties(yaml-cpp PROPERTIES FOLDER "External/Libs")
+endif()
+if(TARGET lean_build)
+    set_target_properties(lean_build PROPERTIES FOLDER "External/Libs")
 endif()
 
 message(STATUS "External dependencies configuration finished.")

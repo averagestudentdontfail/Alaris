@@ -69,6 +69,11 @@ else()
     message(STATUS "Test suite not found or not configured.")
 endif()
 
+# Ensure Lean is built before the main project
+if(TARGET lean_build)
+    add_dependencies(alaris_core lean_build)
+endif()
+
 # Installation configuration: Include the file to execute its commands
 include(${CMAKE_SOURCE_DIR}/cmake/Install.cmake)
 # Packaging configuration: Include the file to execute its CPack settings
