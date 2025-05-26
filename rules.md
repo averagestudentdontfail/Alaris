@@ -136,34 +136,6 @@ project/
 ## Build System Structure
 ```
 project/
-├── CMakeLists.txt              # Root CMake configuration
-├── .cmake/                     # CMake module directory
-│   ├── BuildSystem.cmake       # Core build system configuration
-│   ├── Config.cmake           # Project configuration and options
-│   ├── Deployment.cmake       # Deployment and packaging rules
-│   ├── GitInfo.cmake         # Git version and metadata handling
-│   └── Helpers.cmake         # Common CMake helper functions
-├── src/
-│   ├── CMakeLists.txt         # Source root configuration
-│   └── quantlib/
-│       └── CMakeLists.txt     # QuantLib process build configuration
-├── test/                      # Test directory │
-│   └── CMakeLists.txt         # Test root configuration
-├── external/                   # External dependencies
-│   └── CMakeLists.txt         # External dependencies configuration
-└── build/                     # Build output directory
-    ├── CMakeCache.txt         # CMake cache
-    ├── CMakeFiles/            # CMake generated files
-    ├── compile_commands.json  # Compilation database
-    └── Makefile              # Generated build system
-```
-
-## Proposed Build System Reorganization
-
-A more elegant approach would be to centralize all build configuration in the `.cmake` directory, eliminating the need for multiple `CMakeLists.txt` files. Here's the proposed structure:
-
-```
-project/
 ├── CMakeLists.txt              # Single entry point for all builds
 ├── .cmake/                     # Centralized build system
 │   ├── BuildSystem.cmake       # Core build system configuration
