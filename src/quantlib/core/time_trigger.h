@@ -64,8 +64,11 @@ private:
     std::vector<CyclePerformanceMetrics> cycle_history_; // Stores metrics for recent cycles
     static constexpr size_t MAX_CYCLE_HISTORY = 1000;   // Max history to keep for metrics
 
+    // Private helper methods
     void execute_tasks_for_current_frame(TimePoint current_frame_ideal_start_time);
     void record_cycle_metrics(const CyclePerformanceMetrics& metrics);
+    bool should_execute_task(const Task& task, TimePoint cycle_start) const;
+    void execute_task(Task& task, TimePoint cycle_start);
 
 public:
     /**
@@ -115,25 +118,25 @@ public:
      * @brief Checks if the executor is currently running.
      * @return True if running, false otherwise.
      */
-    bool is_running() const; // Removed internal running_ flag, use executor_thread state or similar if threaded
+    bool is_running() const;
 
     // Performance Metrics Structure
     struct PerformanceReport {
-        double average_major_frame_time_us;
-        double max_major_frame_time_us;
-        double min_major_frame_time_us;
-        double average_jitter_us; // Jitter in major frame start times
-        double max_jitter_us;
-        uint64_t total_major_frames_executed;
-        uint64_t total_task_deadlines_missed_overall;
+        double average_major_frame_time_us = 0.0;
+        double max_major_frame_time_us = 0.0;
+        double min_major_frame_time_us = 0.0;
+        double average_jitter_us = 0.0; // Jitter in major frame start times
+        double max_jitter_us = 0.0;
+        uint64_t total_major_frames_executed = 0;
+        uint64_t total_task_deadlines_missed_overall = 0;
 
         struct TaskReport {
             std::string name;
-            uint64_t execution_count;
-            uint64_t missed_deadlines_count;
-            double average_execution_time_us;
-            double max_execution_time_us;
-            double miss_rate_percent; // (missed_deadlines_count / execution_count) * 100
+            uint64_t execution_count = 0;
+            uint64_t missed_deadlines_count = 0;
+            double average_execution_time_us = 0.0;
+            double max_execution_time_us = 0.0;
+            double miss_rate_percent = 0.0; // (missed_deadlines_count / execution_count) * 100
         };
         std::vector<TaskReport> task_reports;
     };

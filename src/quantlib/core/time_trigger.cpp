@@ -14,7 +14,8 @@ namespace Alaris::Core {
 TimeTriggeredExecutor::TimeTriggeredExecutor(Duration major_frame)
     : major_frame_(major_frame),
       stop_requested_(false),
-      current_major_frame_count_(0) {
+      current_major_frame_count_(0),
+      executor_start_time_(TimePoint::min()) {
     tasks_.reserve(16); // Pre-allocate for a typical number of tasks
     cycle_history_.reserve(MAX_CYCLE_HISTORY);
 
@@ -34,8 +35,8 @@ TimeTriggeredExecutor::TimeTriggeredExecutor(Duration major_frame)
 }
 
 TimeTriggeredExecutor::~TimeTriggeredExecutor() {
-    if (is_running()) { // Check if it might be considered running
-        stop(); // Ensure stop is signaled if it was running in a managed thread (not the case here)
+    if (is_running()) {
+        stop();
     }
 }
 
@@ -47,7 +48,6 @@ void TimeTriggeredExecutor::register_task(
     Duration deadline) {
 
     if (period.count() == 0 || period < major_frame_ || period.count() % major_frame_.count() != 0) {
-        // Consider throwing an exception or logging an error
         std::cerr << "TimeTriggeredExecutor: Error - Task '" << task_name << "' period must be a non-zero multiple of major_frame." << std::endl;
         return;
     }
@@ -66,38 +66,48 @@ void TimeTriggeredExecutor::register_task(
     tasks_.emplace_back(std::move(task_name), std::move(func), period, phase_offset, deadline);
 }
 
+bool TimeTriggeredExecutor::should_execute_task(const Task& task, TimePoint cycle_start) const {
+    if (executor_start_time_ == TimePoint::min()) {
+        return false; // Not properly started yet
+    }
+    
+    Duration time_elapsed = cycle_start - executor_start_time_;
+    
+    if (time_elapsed >= task.phase_offset) {
+        Duration time_since_phase = time_elapsed - task.phase_offset;
+        return time_since_phase.count() % task.period.count() == 0;
+    }
+    
+    return false;
+}
+
+void TimeTriggeredExecutor::execute_task(Task& task, TimePoint cycle_start) {
+    task.last_execution_scheduled_time = cycle_start + task.phase_offset;
+    task.last_execution_actual_start_time = Clock::now();
+    
+    task.function(); // Execute the task
+    
+    auto actual_task_end_time = Clock::now();
+    Duration actual_execution_duration = actual_task_end_time - task.last_execution_actual_start_time;
+    
+    task.execution_count++;
+    task.total_execution_time_ns += actual_execution_duration;
+    task.max_execution_time_ns = std::max(task.max_execution_time_ns, actual_execution_duration);
+
+    // Deadline check
+    if (actual_execution_duration > task.deadline) {
+        task.missed_deadlines_count++;
+    }
+}
+
 void TimeTriggeredExecutor::execute_tasks_for_current_frame(TimePoint current_frame_ideal_start_time) {
     Duration time_elapsed_since_executor_start = current_frame_ideal_start_time - executor_start_time_;
 
     for (auto& task : tasks_) {
-        // Check if the task is due in this major frame based on its phase and period
-        // A task is due if (time_elapsed_since_executor_start - task.phase_offset) is a non-negative multiple of task.period
         if (time_elapsed_since_executor_start >= task.phase_offset) {
             Duration time_since_phase_offset = time_elapsed_since_executor_start - task.phase_offset;
             if (time_since_phase_offset.count() % task.period.count() == 0) {
-                // Task is scheduled to run now
-                task.last_execution_scheduled_time = current_frame_ideal_start_time + task.phase_offset; 
-                                                    // More accurately, this specific task's ideal start time.
-                                                    // For simplicity of TTA, tasks start at frame boundaries.
-
-                task.last_execution_actual_start_time = Clock::now();
-                task.function(); // Execute the task
-                auto actual_task_end_time = Clock::now();
-                
-                Duration actual_execution_duration = actual_task_end_time - task.last_execution_actual_start_time;
-                task.execution_count++;
-                task.total_execution_time_ns += actual_execution_duration;
-                task.max_execution_time_ns = std::max(task.max_execution_time_ns, actual_execution_duration);
-
-                // Deadline check: deadline is relative to scheduled start
-                // If task execution overran its deadline for this instance
-                if (actual_execution_duration > task.deadline) {
-                    task.missed_deadlines_count++;
-                    // Optionally log deadline misses immediately
-                    // std::cerr << "Task '" << task.name << "' missed deadline. Executed in "
-                    //           << std::chrono::duration_cast<std::chrono::microseconds>(actual_execution_duration).count()
-                    //           << "us, Deadline: " << std::chrono::duration_cast<std::chrono::microseconds>(task.deadline).count() << "us" << std::endl;
-                }
+                execute_task(task, current_frame_ideal_start_time);
             }
         }
     }
@@ -105,18 +115,17 @@ void TimeTriggeredExecutor::execute_tasks_for_current_frame(TimePoint current_fr
 
 void TimeTriggeredExecutor::record_cycle_metrics(const CyclePerformanceMetrics& metrics) {
     if (cycle_history_.size() >= MAX_CYCLE_HISTORY) {
-        cycle_history_.erase(cycle_history_.begin()); // Keep history bounded
+        cycle_history_.erase(cycle_history_.begin());
     }
     cycle_history_.push_back(metrics);
 }
 
-
 void TimeTriggeredExecutor::run(Duration duration, std::atomic<bool>& stop_flag) {
-    auto start_time = std::chrono::steady_clock::now();
-    auto end_time = start_time + duration;
+    executor_start_time_ = Clock::now();
+    auto end_time = executor_start_time_ + duration;
     
-    while (!stop_flag && std::chrono::steady_clock::now() < end_time) {
-        auto cycle_start = std::chrono::steady_clock::now();
+    while (!stop_flag.load() && !stop_requested_.load() && Clock::now() < end_time) {
+        auto cycle_start = Clock::now();
         
         // Execute tasks for this cycle
         for (auto& task : tasks_) {
@@ -126,25 +135,41 @@ void TimeTriggeredExecutor::run(Duration duration, std::atomic<bool>& stop_flag)
         }
         
         // Calculate and record cycle metrics
-        auto cycle_end = std::chrono::steady_clock::now();
-        auto cycle_duration = cycle_end - cycle_start;
-        auto jitter = std::abs(std::chrono::duration_cast<std::chrono::nanoseconds>(cycle_duration).count() - 
-                             major_frame_ns_);
+        auto cycle_end = Clock::now();
+        Duration cycle_duration = cycle_end - cycle_start;
         
-        // Update performance metrics
-        total_frame_time_ns_ += cycle_duration;
-        total_jitter_ns_ += std::chrono::nanoseconds(jitter);
-        history_count_++;
+        CyclePerformanceMetrics metrics;
+        metrics.actual_start_time = cycle_start;
+        metrics.actual_duration_ns = cycle_duration;
+        metrics.intended_duration_ns = major_frame_;
+        metrics.jitter_ns = std::chrono::abs(cycle_duration - major_frame_);
+        metrics.tasks_executed_in_cycle = 0; // Count executed tasks
+        metrics.deadlines_missed_in_cycle = 0; // Count missed deadlines
+        
+        // Count tasks and missed deadlines for this cycle
+        for (const auto& task : tasks_) {
+            if (should_execute_task(task, cycle_start)) {
+                metrics.tasks_executed_in_cycle++;
+                if (cycle_duration > task.deadline) {
+                    metrics.deadlines_missed_in_cycle++;
+                }
+            }
+        }
+        
+        record_cycle_metrics(metrics);
+        current_major_frame_count_++;
         
         // Sleep until next cycle
-        auto next_cycle = cycle_start + std::chrono::nanoseconds(major_frame_ns_);
+        auto next_cycle = cycle_start + major_frame_;
         std::this_thread::sleep_until(next_cycle);
     }
 }
 
 void TimeTriggeredExecutor::run_continuous(std::atomic<bool>& stop_flag) {
-    while (!stop_flag) {
-        auto cycle_start = std::chrono::steady_clock::now();
+    executor_start_time_ = Clock::now();
+    
+    while (!stop_flag.load() && !stop_requested_.load()) {
+        auto cycle_start = Clock::now();
         
         // Execute tasks for this cycle
         for (auto& task : tasks_) {
@@ -154,63 +179,103 @@ void TimeTriggeredExecutor::run_continuous(std::atomic<bool>& stop_flag) {
         }
         
         // Calculate and record cycle metrics
-        auto cycle_end = std::chrono::steady_clock::now();
-        auto cycle_duration = cycle_end - cycle_start;
-        auto jitter = std::abs(std::chrono::duration_cast<std::chrono::nanoseconds>(cycle_duration).count() - 
-                             major_frame_ns_);
+        auto cycle_end = Clock::now();
+        Duration cycle_duration = cycle_end - cycle_start;
         
-        // Update performance metrics
-        total_frame_time_ns_ += cycle_duration;
-        total_jitter_ns_ += std::chrono::nanoseconds(jitter);
-        history_count_++;
+        CyclePerformanceMetrics metrics;
+        metrics.actual_start_time = cycle_start;
+        metrics.actual_duration_ns = cycle_duration;
+        metrics.intended_duration_ns = major_frame_;
+        metrics.jitter_ns = std::chrono::abs(cycle_duration - major_frame_);
+        metrics.tasks_executed_in_cycle = 0;
+        metrics.deadlines_missed_in_cycle = 0;
+        
+        // Count tasks and missed deadlines for this cycle
+        for (const auto& task : tasks_) {
+            if (should_execute_task(task, cycle_start)) {
+                metrics.tasks_executed_in_cycle++;
+                if (cycle_duration > task.deadline) {
+                    metrics.deadlines_missed_in_cycle++;
+                }
+            }
+        }
+        
+        record_cycle_metrics(metrics);
+        current_major_frame_count_++;
         
         // Sleep until next cycle
-        auto next_cycle = cycle_start + std::chrono::nanoseconds(major_frame_ns_);
+        auto next_cycle = cycle_start + major_frame_;
         std::this_thread::sleep_until(next_cycle);
     }
 }
 
 void TimeTriggeredExecutor::stop() {
-    stop_requested_ = true;
+    stop_requested_.store(true);
 }
 
 bool TimeTriggeredExecutor::is_running() const {
-    // If run() or run_continuous() are blocking and called from a thread,
-    // this method would need to check the state of that thread or a specific atomic flag set by run methods.
-    // If they are blocking in the caller's thread, "running" is true while the method is on the stack.
-    // For now, assume it's "running" if not explicitly stopped and start_time_ is not min.
     return executor_start_time_ != TimePoint::min() && !stop_requested_.load(std::memory_order_relaxed);
 }
 
 TimeTriggeredExecutor::PerformanceReport TimeTriggeredExecutor::get_performance_metrics() const {
     PerformanceReport report;
+    report.total_major_frames_executed = current_major_frame_count_;
+    report.total_task_deadlines_missed_overall = 0;
     
-    if (history_count_ > 0) {
-        // Use explicit casts to avoid conversion warnings
+    // Calculate frame-level metrics from cycle history
+    if (!cycle_history_.empty()) {
+        Duration total_frame_time = Duration::zero();
+        Duration total_jitter = Duration::zero();
+        Duration max_frame_time = Duration::zero();
+        Duration min_frame_time = Duration::max();
+        Duration max_jitter = Duration::zero();
+        
+        for (const auto& cycle : cycle_history_) {
+            total_frame_time += cycle.actual_duration_ns;
+            total_jitter += cycle.jitter_ns;
+            max_frame_time = std::max(max_frame_time, cycle.actual_duration_ns);
+            min_frame_time = std::min(min_frame_time, cycle.actual_duration_ns);
+            max_jitter = std::max(max_jitter, cycle.jitter_ns);
+            report.total_task_deadlines_missed_overall += cycle.deadlines_missed_in_cycle;
+        }
+        
+        size_t history_count = cycle_history_.size();
         report.average_major_frame_time_us = static_cast<double>(
-            std::chrono::duration_cast<std::chrono::microseconds>(total_frame_time_ns_).count()) / 
-            static_cast<double>(history_count_);
-            
+            std::chrono::duration_cast<std::chrono::microseconds>(total_frame_time).count()) / 
+            static_cast<double>(history_count);
         report.average_jitter_us = static_cast<double>(
-            std::chrono::duration_cast<std::chrono::microseconds>(total_jitter_ns_).count()) / 
-            static_cast<double>(history_count_);
+            std::chrono::duration_cast<std::chrono::microseconds>(total_jitter).count()) / 
+            static_cast<double>(history_count);
+        report.max_major_frame_time_us = static_cast<double>(
+            std::chrono::duration_cast<std::chrono::microseconds>(max_frame_time).count());
+        report.min_major_frame_time_us = static_cast<double>(
+            std::chrono::duration_cast<std::chrono::microseconds>(min_frame_time).count());
+        report.max_jitter_us = static_cast<double>(
+            std::chrono::duration_cast<std::chrono::microseconds>(max_jitter).count());
     }
     
     // Task-specific metrics
     for (const auto& task : tasks_) {
-        TaskPerformanceReport task_rep;
-        task_rep.task_name = task.name;
+        PerformanceReport::TaskReport task_report;
+        task_report.name = task.name;
+        task_report.execution_count = task.execution_count;
+        task_report.missed_deadlines_count = task.missed_deadlines_count;
         
         if (task.execution_count > 0) {
-            task_rep.average_execution_time_us = static_cast<double>(
+            task_report.average_execution_time_us = static_cast<double>(
                 std::chrono::duration_cast<std::chrono::microseconds>(task.total_execution_time_ns).count()) / 
                 static_cast<double>(task.execution_count);
-                
-            task_rep.miss_rate_percent = (static_cast<double>(task.missed_deadlines_count) / 
-                                        static_cast<double>(task.execution_count)) * 100.0;
+            task_report.miss_rate_percent = (static_cast<double>(task.missed_deadlines_count) / 
+                                           static_cast<double>(task.execution_count)) * 100.0;
+        } else {
+            task_report.average_execution_time_us = 0.0;
+            task_report.miss_rate_percent = 0.0;
         }
         
-        report.task_metrics.push_back(task_rep);
+        task_report.max_execution_time_us = static_cast<double>(
+            std::chrono::duration_cast<std::chrono::microseconds>(task.max_execution_time_ns).count());
+        
+        report.task_reports.push_back(task_report);
     }
     
     return report;
@@ -218,7 +283,8 @@ TimeTriggeredExecutor::PerformanceReport TimeTriggeredExecutor::get_performance_
 
 void TimeTriggeredExecutor::reset_metrics() {
     cycle_history_.clear();
-    current_major_frame_count_ = 0; // Reset frame count
+    current_major_frame_count_ = 0;
+    
     for (auto& task : tasks_) {
         task.execution_count = 0;
         task.missed_deadlines_count = 0;

@@ -13,10 +13,54 @@ option(USE_SYSTEM_YAMLCPP "Use system-installed yaml-cpp" ON)
 # QuantLib Configuration
 # ========================================
 if(USE_SYSTEM_QUANTLIB)
+    # Try multiple approaches to find QuantLib
     find_package(QuantLib QUIET)
+    
+    if(NOT QuantLib_FOUND)
+        # Try pkg-config approach
+        find_package(PkgConfig QUIET)
+        if(PKG_CONFIG_FOUND)
+            pkg_check_modules(QUANTLIB QUIET quantlib)
+            if(QUANTLIB_FOUND)
+                # Create imported target from pkg-config
+                add_library(QuantLib::QuantLib INTERFACE IMPORTED)
+                target_include_directories(QuantLib::QuantLib INTERFACE ${QUANTLIB_INCLUDE_DIRS})
+                target_link_libraries(QuantLib::QuantLib INTERFACE ${QUANTLIB_LIBRARIES})
+                target_compile_options(QuantLib::QuantLib INTERFACE ${QUANTLIB_CFLAGS_OTHER})
+                set(QuantLib_FOUND TRUE)
+                set(QUANTLIB_TARGET QuantLib::QuantLib)
+                message(STATUS "Using system QuantLib via pkg-config: ${QUANTLIB_VERSION}")
+            endif()
+        endif()
+    endif()
+    
+    if(NOT QuantLib_FOUND)
+        # Try direct library search
+        find_path(QUANTLIB_INCLUDE_DIR 
+            NAMES ql/quantlib.hpp
+            PATHS /usr/include /usr/local/include /opt/local/include
+            PATH_SUFFIXES quantlib QuantLib
+        )
+        
+        find_library(QUANTLIB_LIBRARY
+            NAMES QuantLib quantlib
+            PATHS /usr/lib /usr/local/lib /opt/local/lib
+            PATH_SUFFIXES x86_64-linux-gnu lib64
+        )
+        
+        if(QUANTLIB_INCLUDE_DIR AND QUANTLIB_LIBRARY)
+            add_library(QuantLib::QuantLib INTERFACE IMPORTED)
+            target_include_directories(QuantLib::QuantLib INTERFACE ${QUANTLIB_INCLUDE_DIR})
+            target_link_libraries(QuantLib::QuantLib INTERFACE ${QUANTLIB_LIBRARY})
+            set(QuantLib_FOUND TRUE)
+            set(QUANTLIB_TARGET QuantLib::QuantLib)
+            message(STATUS "Using system QuantLib via direct search: ${QUANTLIB_INCLUDE_DIR}")
+        endif()
+    endif()
+    
     if(QuantLib_FOUND)
         set(QUANTLIB_TARGET QuantLib::QuantLib)
-        message(STATUS "Using system QuantLib: ${QuantLib_VERSION}")
+        message(STATUS "Using system QuantLib")
     else()
         message(STATUS "System QuantLib not found, will attempt to build from source")
         set(USE_SYSTEM_QUANTLIB OFF)
@@ -27,18 +71,51 @@ if(NOT USE_SYSTEM_QUANTLIB)
     # Check if external directories exist and add them directly
     if(EXISTS "${CMAKE_SOURCE_DIR}/external/QuantLib/CMakeLists.txt")
         message(STATUS "Building QuantLib from external/QuantLib")
+        
+        # Configure QuantLib build options
+        set(QL_BUILD_EXAMPLES OFF CACHE BOOL "Don't build QuantLib examples")
+        set(QL_BUILD_TEST_SUITE OFF CACHE BOOL "Don't build QuantLib tests")
+        set(QL_BUILD_BENCHMARK OFF CACHE BOOL "Don't build QuantLib benchmarks")
+        set(QL_USE_STD_SHARED_PTR ON CACHE BOOL "Use std::shared_ptr")
+        
         add_subdirectory(${CMAKE_SOURCE_DIR}/external/QuantLib EXCLUDE_FROM_ALL)
         set(QUANTLIB_TARGET QuantLib)
+        
     elseif(EXISTS "${CMAKE_SOURCE_DIR}/external/quant/CMakeLists.txt")
         message(STATUS "Building QuantLib from external/quant")
         add_subdirectory(${CMAKE_SOURCE_DIR}/external/quant EXCLUDE_FROM_ALL)
         set(QUANTLIB_TARGET QuantLib)
+        
     else()
-        message(FATAL_ERROR 
-            "QuantLib source not found. Either:\n"
-            "  1. Install system package: sudo apt install libquantlib0-dev\n"
-            "  2. Initialize git submodules: git submodule update --init --recursive"
-        )
+        # Provide helpful installation instructions
+        message(STATUS "")
+        message(STATUS "=== QuantLib NOT FOUND ===")
+        message(STATUS "QuantLib is required but not found. Please choose one of these options:")
+        message(STATUS "")
+        message(STATUS "Option 1 - Install system QuantLib (Ubuntu/Debian):")
+        message(STATUS "  sudo apt update")
+        message(STATUS "  sudo apt install libquantlib0-dev")
+        message(STATUS "")
+        message(STATUS "Option 2 - Install system QuantLib (Fedora/RHEL):")
+        message(STATUS "  sudo dnf install QuantLib-devel")
+        message(STATUS "")
+        message(STATUS "Option 3 - Build from source via git submodules:")
+        message(STATUS "  git submodule add https://github.com/lballabio/QuantLib.git external/QuantLib")
+        message(STATUS "  git submodule update --init --recursive")
+        message(STATUS "")
+        message(STATUS "Option 4 - Manual build from source:")
+        message(STATUS "  cd /tmp")
+        message(STATUS "  git clone https://github.com/lballabio/QuantLib.git")
+        message(STATUS "  cd QuantLib")
+        message(STATUS "  cmake -S . -B build -DCMAKE_BUILD_TYPE=Release")
+        message(STATUS "  cmake --build build --parallel $(nproc)")
+        message(STATUS "  sudo cmake --install build")
+        message(STATUS "")
+        message(STATUS "Then reconfigure this project:")
+        message(STATUS "  cmake -S . -B build")
+        message(STATUS "")
+        
+        message(FATAL_ERROR "QuantLib configuration failed")
     endif()
 endif()
 
@@ -57,7 +134,10 @@ if(USE_SYSTEM_YAMLCPP)
         if(PKG_CONFIG_FOUND)
             pkg_check_modules(YAML_CPP QUIET yaml-cpp)
             if(YAML_CPP_FOUND)
-                set(YAML_CPP_TARGET PkgConfig::YAML_CPP)
+                add_library(yaml-cpp::yaml-cpp INTERFACE IMPORTED)
+                target_include_directories(yaml-cpp::yaml-cpp INTERFACE ${YAML_CPP_INCLUDE_DIRS})
+                target_link_libraries(yaml-cpp::yaml-cpp INTERFACE ${YAML_CPP_LIBRARIES})
+                set(YAML_CPP_TARGET yaml-cpp::yaml-cpp)
                 set(yaml-cpp_INCLUDE_DIRS ${YAML_CPP_INCLUDE_DIRS})
                 message(STATUS "Using system yaml-cpp via PkgConfig: ${YAML_CPP_VERSION}")
             else()
@@ -85,11 +165,20 @@ if(NOT USE_SYSTEM_YAMLCPP)
         set(YAML_CPP_TARGET yaml-cpp)
         set(yaml-cpp_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/external/yaml-cpp/include)
     else()
-        message(FATAL_ERROR 
-            "yaml-cpp source not found. Either:\n"
-            "  1. Install system package: sudo apt install libyaml-cpp-dev\n"
-            "  2. Initialize git submodules: git submodule update --init --recursive"
-        )
+        message(STATUS "")
+        message(STATUS "=== yaml-cpp NOT FOUND ===")
+        message(STATUS "yaml-cpp is required but not found. Please choose one of these options:")
+        message(STATUS "")
+        message(STATUS "Option 1 - Install system yaml-cpp (Ubuntu/Debian):")
+        message(STATUS "  sudo apt update")
+        message(STATUS "  sudo apt install libyaml-cpp-dev")
+        message(STATUS "")
+        message(STATUS "Option 2 - Build from source via git submodules:")
+        message(STATUS "  git submodule add https://github.com/jbeder/yaml-cpp.git external/yaml-cpp")
+        message(STATUS "  git submodule update --init --recursive")
+        message(STATUS "")
+        
+        message(FATAL_ERROR "yaml-cpp configuration failed")
     endif()
 endif()
 
@@ -128,11 +217,13 @@ if(BUILD_TESTS)
                     # Create imported targets for compatibility
                     if(NOT TARGET GTest::GTest)
                         add_library(GTest::GTest INTERFACE IMPORTED)
-                        target_link_libraries(GTest::GTest INTERFACE PkgConfig::GTEST)
+                        target_link_libraries(GTest::GTest INTERFACE ${GTEST_LIBRARIES})
+                        target_include_directories(GTest::GTest INTERFACE ${GTEST_INCLUDE_DIRS})
                     endif()
                     if(NOT TARGET GTest::Main)
                         add_library(GTest::Main INTERFACE IMPORTED)
-                        target_link_libraries(GTest::Main INTERFACE PkgConfig::GTEST_MAIN)
+                        target_link_libraries(GTest::Main INTERFACE ${GTEST_MAIN_LIBRARIES})
+                        target_include_directories(GTest::Main INTERFACE ${GTEST_MAIN_INCLUDE_DIRS})
                     endif()
                 endif()
             endif()
@@ -166,21 +257,12 @@ endif()
 # Validation
 # ========================================
 # Validate that required target variables are set
-# Note: We only check if variables are set, not if targets exist (they'll be created later)
 if(NOT QUANTLIB_TARGET)
-    message(FATAL_ERROR 
-        "QuantLib not configured. Either:\n"
-        "  1. Install system package: sudo apt install libquantlib0-dev\n"
-        "  2. Initialize git submodules: git submodule update --init --recursive"
-    )
+    message(FATAL_ERROR "QuantLib configuration failed - see instructions above")
 endif()
 
 if(NOT YAML_CPP_TARGET)
-    message(FATAL_ERROR 
-        "yaml-cpp not configured. Either:\n"
-        "  1. Install system package: sudo apt install libyaml-cpp-dev\n"
-        "  2. Initialize git submodules: git submodule update --init --recursive"
-    )
+    message(FATAL_ERROR "yaml-cpp configuration failed - see instructions above")
 endif()
 
 # ========================================

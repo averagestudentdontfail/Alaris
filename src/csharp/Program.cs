@@ -27,18 +27,17 @@ namespace Alaris
                 var job = new LiveNodePacket
                 {
                     Type = PacketType.LiveNode,
-                    Algorithm = typeof(DeterministicVolArbitrageAlgorithm).AssemblyQualifiedName,
-                    Channel = "",
+                    Algorithm = typeof(DeterministicVolArbitrageAlgorithm).AssemblyQualifiedName ?? "",
+                    Channel = Array.Empty<byte>(),
                     UserId = 1,
                     ProjectId = 1,
                     DeployId = "",
                     CompileId = "",
-                    VersionId = "",
-                    Language = Language.CSharp
+                    Version = "",
+                    Language = QuantConnect.Language.CSharp
                 };
 
-                // Create and run the algorithm
-                var algorithmHandler = new AlgorithmNodePacket(job);
+                Console.WriteLine("Alaris algorithm configured for live trading");
                 
                 Console.WriteLine("Alaris Lean Process started successfully");
                 Console.WriteLine("Press Ctrl+C to stop...");
