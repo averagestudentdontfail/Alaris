@@ -12,12 +12,20 @@ project(Alaris
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/.cmake")
 
-include(Config)        # Handles dependency configuration
+# Include build system and git info first (these don't depend on external deps)
 include(BuildSystem)   # Handles global build settings
-include(Deployment)    # Handles installation rules
 include(GitInfo)       # Extracts Git information
+
+# Set up external dependencies BEFORE Config.cmake
 include(External)      # Handles external dependencies
 
+# Now include Config.cmake (which depends on variables set by External.cmake)
+include(Config)        # Handles dependency configuration
+
+# Include deployment after everything else is configured
+include(Deployment)    # Handles installation rules
+
+# Detect .NET SDK
 find_program(DOTNET_EXECUTABLE dotnet QUIET)
 if(DOTNET_EXECUTABLE)
     execute_process(
@@ -43,6 +51,14 @@ else()
     message(STATUS "Test suite disabled (BUILD_TESTS is OFF)")
 endif()
 
+# Add subdirectories for source code
+add_subdirectory(src/quantlib)
+
+# Add test directory if tests are enabled
+if(BUILD_TESTS)
+    add_subdirectory(test)
+endif()
+
 # Print configuration summary
 message(STATUS "")
 message(STATUS "=== Configuration Summary ===")
@@ -59,46 +75,17 @@ message(STATUS "  ENABLE_SANITIZERS: ${ENABLE_SANITIZERS}")
 message(STATUS "  ENABLE_COVERAGE: ${ENABLE_COVERAGE}")
 message(STATUS "")
 message(STATUS "Dependencies:")
-message(STATUS "  QuantLib: ${QUANTLIB_TARGET}")
-message(STATUS "  yaml-cpp: ${YAML_CPP_TARGET}")
-message(STATUS "  Boost: ${Boost_VERSION}")
-message(STATUS "  .NET SDK: ${CMAKE_DOTNET_VERSION}")
+if(DEFINED QUANTLIB_TARGET)
+    message(STATUS "  QuantLib: ${QUANTLIB_TARGET}")
+endif()
+if(DEFINED YAML_CPP_TARGET)
+    message(STATUS "  yaml-cpp: ${YAML_CPP_TARGET}")
+endif()
+if(Boost_FOUND)
+    message(STATUS "  Boost: ${Boost_VERSION}")
+endif()
+if(DOTNET_EXECUTABLE)
+    message(STATUS "  .NET SDK: ${CMAKE_DOTNET_VERSION}")
+endif()
 message(STATUS "=============================")
 message(STATUS "")
-
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
-include(.cmake/BuildSystem.cmake)
-include(.cmake/Components.cmake)
-include(.cmake/External.cmake)
-
-create_component_library(quantlib)
-add_executable(alaris src/quantlib/main.cpp)
-target_link_libraries(alaris PRIVATE quantlib)
-
-if(BUILD_TESTS)
-    create_test_executable(alaris_tests)
-endif()
-
-install(TARGETS alaris
-    RUNTIME DESTINATION bin
-)
-
-if(BUILD_TESTS)
-    install(TARGETS alaris_tests
-        RUNTIME DESTINATION bin
-    )
-endif()
-
-install(FILES
-    config/default_config.yaml
-    DESTINATION etc/alaris
-)
-
-message(STATUS "Build Configuration:")
-message(STATUS "  Build Type: ${CMAKE_BUILD_TYPE}")
-message(STATUS "  C++ Standard: ${CMAKE_CXX_STANDARD}")
-message(STATUS "  Build Tests: ${BUILD_TESTS}")
-message(STATUS "  Build Documentation: ${BUILD_DOCS}")
-message(STATUS "  Enable Sanitizers: ${ENABLE_SANITIZERS}")
-message(STATUS "  Enable Coverage: ${ENABLE_COVERAGE}")
