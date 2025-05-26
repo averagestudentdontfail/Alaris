@@ -27,7 +27,7 @@ namespace Alaris
                 var job = new LiveNodePacket
                 {
                     Type = PacketType.LiveNode,
-                    Algorithm = typeof(DeterministicVolArbitrageAlgorithm).AssemblyQualifiedName ?? "",
+                    Algorithm = System.Text.Encoding.UTF8.GetBytes(typeof(DeterministicVolArbitrageAlgorithm).AssemblyQualifiedName ?? ""),
                     Channel = "",
                     UserId = 1,
                     ProjectId = 1,
