@@ -33,7 +33,7 @@ namespace Alaris
                     ProjectId = 1,
                     DeployId = "",
                     CompileId = "",
-                    Version = System.Text.Encoding.UTF8.GetBytes(""),
+                    Version = "1.0.0",
                     Language = QuantConnect.Language.CSharp
                 };
 
@@ -78,7 +78,7 @@ namespace Alaris
             // Interactive Brokers configuration
             Config.Set("ib-host", "127.0.0.1");
             Config.Set("ib-port", "4001"); // TWS/IB Gateway port
-            Config.Set("ib-account", "DU123456"); // Demo account - update with real account
+            Config.Set("ib-account", "DU123456");
             Config.Set("ib-user-name", "");
             Config.Set("ib-password", "");
             Config.Set("ib-agent-description", "Individual");
