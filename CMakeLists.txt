@@ -76,7 +76,8 @@ if(QUANTLIB_SOURCES)
     # Create the QuantLib core library
     add_library(quantlib_core STATIC ${QUANTLIB_SOURCES} ${QUANTLIB_HEADERS})
     
-    target_compile_options(quantlib_core PRIVATE "-Wall -Wextra -Wpedantic")
+    # FIXED: Remove duplicate compiler options - these are now handled in Config.cmake
+    # target_compile_options(quantlib_core PRIVATE "-Wall -Wextra -Wpedantic")
     
     # Set target properties
     target_include_directories(quantlib_core PUBLIC
@@ -99,7 +100,7 @@ if(QUANTLIB_SOURCES)
         target_link_libraries(quantlib_core PUBLIC ${Boost_LIBRARIES})
     endif()
     
-    # Set compiler features and optimizations
+    # Set compiler features
     target_compile_features(quantlib_core PUBLIC cxx_std_20)
     
     # Add performance optimizations for Release builds
@@ -108,8 +109,6 @@ if(QUANTLIB_SOURCES)
             target_compile_options(quantlib_core PRIVATE
                 -march=native
                 -mtune=native
-                -O3
-                -DNDEBUG
             )
         endif()
     endif()
@@ -117,7 +116,8 @@ if(QUANTLIB_SOURCES)
     # Create the main executable
     add_executable(alaris_quantlib ${QUANTLIB_SOURCES})
     
-    target_compile_options(alaris_quantlib PRIVATE "-Wall -Wextra -Wpedantic")
+    # FIXED: Remove duplicate compiler options
+    # target_compile_options(alaris_quantlib PRIVATE "-Wall -Wextra -Wpedantic")
     
     # Link the executable against the core library  
     target_link_libraries(alaris_quantlib PRIVATE quantlib_core)
@@ -143,7 +143,8 @@ if(BUILD_TESTS AND GTest_FOUND AND TEST_SOURCES)
     # Create test executable
     add_executable(alaris_tests ${TEST_SOURCES} ${TEST_HEADERS})
     
-    target_compile_options(alaris_tests PRIVATE "-Wall -Wextra -Wpedantic")
+    # FIXED: Remove duplicate compiler options
+    # target_compile_options(alaris_tests PRIVATE "-Wall -Wextra -Wpedantic")
     
     # Link against required libraries
     target_link_libraries(alaris_tests PRIVATE
@@ -208,7 +209,7 @@ endif()
 # .NET Components
 # ========================================
 
-if(DOTNET_EXECUTABLE AND EXISTS "${CMAKE_SOURCE_DIR}/external/lean")
+if(DOTNET_EXECUTABLE AND EXISTS "${CMAKE_SOURCE_DIR}/src/csharp")
     message(STATUS "Configuring .NET components")
     
     # Find C# source files
@@ -219,7 +220,7 @@ if(DOTNET_EXECUTABLE AND EXISTS "${CMAKE_SOURCE_DIR}/external/lean")
     if(CSHARP_SOURCES)
         # Create custom target for C# build
         add_custom_target(alaris_csharp ALL
-            COMMAND ${DOTNET_EXECUTABLE} build -c ${CMAKE_BUILD_TYPE}
+            COMMAND ${DOTNET_EXECUTABLE} build ${CMAKE_SOURCE_DIR}/src/csharp/Alaris.Lean.csproj -c ${CMAKE_BUILD_TYPE}
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/src/csharp
             COMMENT "Building C# components"
             SOURCES ${CSHARP_SOURCES}

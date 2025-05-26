@@ -69,63 +69,33 @@ option(ENABLE_SANITIZERS "Enable sanitizers (for Debug builds)" OFF)
 option(ENABLE_COVERAGE "Enable code coverage (for Debug builds)" OFF)
 option(ALARIS_INSTALL_DEVELOPMENT "Install development files (headers, etc.)" ON)
 
-# Compiler configuration
+# Compiler configuration - FIXED: Use string concatenation instead of list operations
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    # Common flags
-    set(ALARIS_COMMON_FLAGS
-        -Wall
-        -Wextra
-        -Wpedantic
-        -Werror=return-type
-        -Werror=non-virtual-dtor
-        -Werror=address
-        -Werror=sequence-point
-        -Werror=format-security
-        -Werror=missing-braces
-        -Werror=reorder
-        -Werror=switch
-        -Werror=uninitialized
-        -Wno-unused-parameter
-        -Wno-unused-variable
-        -Wno-unused-function
-    )
+    # Common flags as a single string
+    set(ALARIS_COMMON_FLAGS_STR 
+        "-Wall -Wextra -Wpedantic -Werror=return-type -Werror=non-virtual-dtor -Werror=address -Werror=sequence-point -Werror=format-security -Werror=missing-braces -Werror=reorder -Werror=switch -Werror=uninitialized -Wno-unused-parameter -Wno-unused-variable -Wno-unused-function")
 
     # Debug flags
-    set(ALARIS_DEBUG_FLAGS
-        -g
-        -O0
-        -fno-omit-frame-pointer
-        -fno-inline
-        -fno-inline-functions
-    )
+    set(ALARIS_DEBUG_FLAGS_STR "-g -O0 -fno-omit-frame-pointer -fno-inline -fno-inline-functions")
 
     # Release flags
-    set(ALARIS_RELEASE_FLAGS
-        -O3
-        -DNDEBUG
-        -flto
-        -fno-fat-lto-objects
-    )
+    set(ALARIS_RELEASE_FLAGS_STR "-O3 -DNDEBUG -flto -fno-fat-lto-objects")
 
-    # Apply flags based on build type
+    # Apply flags based on build type - FIXED: Use string concatenation
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-        list(APPEND CMAKE_CXX_FLAGS ${ALARIS_COMMON_FLAGS} ${ALARIS_DEBUG_FLAGS})
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ALARIS_COMMON_FLAGS_STR} ${ALARIS_DEBUG_FLAGS_STR}")
     else() # Release, RelWithDebInfo etc.
-        list(APPEND CMAKE_CXX_FLAGS ${ALARIS_COMMON_FLAGS} ${ALARIS_RELEASE_FLAGS})
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ALARIS_COMMON_FLAGS_STR} ${ALARIS_RELEASE_FLAGS_STR}")
     endif()
 endif()
 
 # Sanitizer configuration
 if(ENABLE_SANITIZERS AND CMAKE_BUILD_TYPE STREQUAL "Debug")
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-        set(ALARIS_SANITIZER_FLAGS
-            -fsanitize=address
-            -fsanitize=undefined
-            -fno-omit-frame-pointer
-        )
-        list(APPEND CMAKE_CXX_FLAGS ${ALARIS_SANITIZER_FLAGS})
-        list(APPEND CMAKE_EXE_LINKER_FLAGS ${ALARIS_SANITIZER_FLAGS})
-        list(APPEND CMAKE_SHARED_LINKER_FLAGS ${ALARIS_SANITIZER_FLAGS})
+        set(ALARIS_SANITIZER_FLAGS_STR "-fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ALARIS_SANITIZER_FLAGS_STR}")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${ALARIS_SANITIZER_FLAGS_STR}")
+        set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${ALARIS_SANITIZER_FLAGS_STR}")
     endif()
 endif()
 
@@ -133,9 +103,9 @@ endif()
 if(ENABLE_COVERAGE AND CMAKE_BUILD_TYPE STREQUAL "Debug")
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
         # For GCC/gcov:
-        list(APPEND CMAKE_CXX_FLAGS -fprofile-arcs -ftest-coverage)
-        list(APPEND CMAKE_EXE_LINKER_FLAGS -fprofile-arcs -ftest-coverage)
-        list(APPEND CMAKE_SHARED_LINKER_FLAGS -fprofile-arcs -ftest-coverage)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fprofile-arcs -ftest-coverage")
+        set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fprofile-arcs -ftest-coverage")
     endif()
 endif()
 

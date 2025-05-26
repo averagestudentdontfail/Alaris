@@ -5,6 +5,7 @@ using QuantConnect.Data;
 using QuantConnect.Orders;
 using QuantConnect.Securities;
 using QuantConnect.Securities.Option;
+using QuantConnect.Data.Market;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -126,10 +127,13 @@ namespace Alaris.Algorithm
                     }
                 }
 
-                // Process options data
-                foreach (var chain in data.OptionChains)
+                // Process options data - FIXED: Use data.OptionChains instead of direct reference
+                if (data.OptionChains != null)
                 {
-                    ProcessOptionChain(chain.Key, chain.Value);
+                    foreach (var chain in data.OptionChains)
+                    {
+                        ProcessOptionChain(chain.Key, chain.Value);
+                    }
                 }
 
                 // Update positions
