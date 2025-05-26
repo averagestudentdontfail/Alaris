@@ -48,8 +48,8 @@ private:
     std::vector<Task> tasks_;
     Duration major_frame_;              // The fundamental period of the executor
     std::atomic<bool> stop_requested_;  // For explicit stop calls
-    TimePoint executor_start_time_;     // Time when the run/run_continuous started
     uint64_t current_major_frame_count_ = 0;
+    TimePoint executor_start_time_;     // Time when the run/run_continuous started
 
     // Performance Monitoring
     struct CyclePerformanceMetrics {
