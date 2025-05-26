@@ -10,22 +10,14 @@ project(Alaris
     DESCRIPTION "High-Performance Derivatives Trading System"
 )
 
-# First, add external dependencies to ensure targets are available
-add_subdirectory(external)
-
-# Add custom CMake module path
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/.cmake")
 
-# Include helper functions first
-include(Helpers)
-
-# Include build system configurations
 include(Config)        # Handles dependency configuration
 include(BuildSystem)   # Handles global build settings
 include(Deployment)    # Handles installation rules
 include(GitInfo)       # Extracts Git information
+include(External)      # Handles external dependencies
 
-# Detect .NET SDK
 find_program(DOTNET_EXECUTABLE dotnet QUIET)
 if(DOTNET_EXECUTABLE)
     execute_process(
@@ -40,35 +32,15 @@ else()
     message(WARNING ".NET SDK not found - C# components will not be built")
 endif()
 
-# Standard CMake includes
 include(GNUInstallDirs)
 include(CTest)
-
-# Find Threads (required by many components)
 find_package(Threads REQUIRED)
 
-# Add source code
-add_subdirectory(src)
-
-# Add tests if enabled
 if(BUILD_TESTS)
     enable_testing()
-    add_subdirectory(test)
     message(STATUS "Test suite configured")
 else()
     message(STATUS "Test suite disabled (BUILD_TESTS is OFF)")
-endif()
-
-# Create uninstall target
-if(NOT TARGET uninstall)
-    configure_file(
-        "${CMAKE_SOURCE_DIR}/.cmake/templates/cmake_uninstall.cmake.in"
-        "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
-        IMMEDIATE @ONLY
-    )
-    add_custom_target(uninstall
-        COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
-    )
 endif()
 
 # Print configuration summary
@@ -94,27 +66,20 @@ message(STATUS "  .NET SDK: ${CMAKE_DOTNET_VERSION}")
 message(STATUS "=============================")
 message(STATUS "")
 
-# Export compilation database for tools
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Include build system components
 include(.cmake/BuildSystem.cmake)
 include(.cmake/Components.cmake)
 include(.cmake/External.cmake)
 
-# Create QuantLib component library
 create_component_library(quantlib)
-
-# Create main executable
 add_executable(alaris src/quantlib/main.cpp)
 target_link_libraries(alaris PRIVATE quantlib)
 
-# Create test executable if tests are enabled
 if(BUILD_TESTS)
     create_test_executable(alaris_tests)
 endif()
 
-# Install targets
 install(TARGETS alaris
     RUNTIME DESTINATION bin
 )
@@ -125,13 +90,11 @@ if(BUILD_TESTS)
     )
 endif()
 
-# Install configuration files
 install(FILES
     config/default_config.yaml
     DESTINATION etc/alaris
 )
 
-# Print build configuration summary
 message(STATUS "Build Configuration:")
 message(STATUS "  Build Type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "  C++ Standard: ${CMAKE_CXX_STANDARD}")

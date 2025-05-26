@@ -37,22 +37,16 @@ foreach(PACKAGE ${ALARIS_REQUIRED_PACKAGES})
     endif()
 endforeach()
 
-# Configure QuantLib (expected to be provided by add_subdirectory(external))
-# external/CMakeLists.txt sets QUANTLIB_TARGET and QuantLib_INCLUDE_DIRS in PARENT_SCOPE.
-# These variables should be defined because add_subdirectory(external) is called first in the root CMakeLists.txt.
-if(TARGET ${QUANTLIB_TARGET} AND DEFINED QuantLib_INCLUDE_DIRS)
+# Configure QuantLib (expected to be provided by External.cmake)
+if(DEFINED QUANTLIB_TARGET AND TARGET ${QUANTLIB_TARGET})
     set(ALARIS_QUANTLIB_INCLUDE_DIRS ${QuantLib_INCLUDE_DIRS})
     set(ALARIS_QUANTLIB_LIBRARIES ${QUANTLIB_TARGET}) # Use the target name for linking
-    # external/CMakeLists.txt applies compile definitions directly to the QuantLib target,
-    # so ALARIS_QUANTLIB_DEFINITIONS might not be needed here if linking against the target.
     message(STATUS "Configured QuantLib from external build target: ${QUANTLIB_TARGET}")
 else()
     message(FATAL_ERROR "QuantLib was NOT configured. "
-                        "Expected QUANTLIB_TARGET (cmake variable value: '${QUANTLIB_TARGET}') and "
-                        "QuantLib_INCLUDE_DIRS (cmake variable value: '${QuantLib_INCLUDE_DIRS}') "
-                        "to be set by 'external/CMakeLists.txt' processing. "
-                        "Ensure 'add_subdirectory(external)' is called in the root CMakeLists.txt "
-                        "BEFORE including this Config.cmake file, and that external/CMakeLists.txt is correct.")
+                        "Expected QUANTLIB_TARGET (cmake variable value: '${QUANTLIB_TARGET}') "
+                        "to be set by External.cmake processing. "
+                        "Ensure External.cmake is included and correctly configured.")
 endif()
 
 # Configure Boost (from find_package)
