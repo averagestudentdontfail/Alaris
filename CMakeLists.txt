@@ -96,3 +96,46 @@ message(STATUS "")
 
 # Export compilation database for tools
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# Include build system components
+include(.cmake/BuildSystem.cmake)
+include(.cmake/Components.cmake)
+include(.cmake/External.cmake)
+
+# Create QuantLib component library
+create_component_library(quantlib)
+
+# Create main executable
+add_executable(alaris src/quantlib/main.cpp)
+target_link_libraries(alaris PRIVATE quantlib)
+
+# Create test executable if tests are enabled
+if(BUILD_TESTS)
+    create_test_executable(alaris_tests)
+endif()
+
+# Install targets
+install(TARGETS alaris
+    RUNTIME DESTINATION bin
+)
+
+if(BUILD_TESTS)
+    install(TARGETS alaris_tests
+        RUNTIME DESTINATION bin
+    )
+endif()
+
+# Install configuration files
+install(FILES
+    config/default_config.yaml
+    DESTINATION etc/alaris
+)
+
+# Print build configuration summary
+message(STATUS "Build Configuration:")
+message(STATUS "  Build Type: ${CMAKE_BUILD_TYPE}")
+message(STATUS "  C++ Standard: ${CMAKE_CXX_STANDARD}")
+message(STATUS "  Build Tests: ${BUILD_TESTS}")
+message(STATUS "  Build Documentation: ${BUILD_DOCS}")
+message(STATUS "  Enable Sanitizers: ${ENABLE_SANITIZERS}")
+message(STATUS "  Enable Coverage: ${ENABLE_COVERAGE}")

@@ -1,5 +1,3 @@
-# Expert C++/C# Deterministic Trading System with Lean and QuantLib Integration
-
 ## System Overview
 I'm implementing a high-performance deterministic derivatives pricing system for American options with volatility arbitrage capabilities. This hybrid system combines QuantLib's C++ pricing engine (specifically the qdfpamericanengine implementation of the Anderson-Lake-Offengenden algorithm) with QuantConnect's Lean framework. The system leverages QuantLib for option pricing, while implementing custom GJR-GARCH volatility models for trading signal generation.
 
@@ -80,21 +78,15 @@ project/
 │   ├── quantlib/         # QuantLib Process Components
 │   │   ├── pricing/      # Option pricing components
 │   │   │   ├── alo_engine.cpp          # QuantLib ALO engine wrapper
-│   │   │   ├── alo_engine.h            # Header for ALO engine
-│   │   │   ├── pricing_service.cpp     # Deterministic pricing service
-│   │   │   └── pricing_service.h       # Header for pricing service
+│   │   │   └── alo_engine.h            # Header for ALO engine
 │   │   ├── volatility/   # QuantLib volatility models
 │   │   │   ├── gjrgarch_wrapper.cpp    # QuantLib GJR-GARCH wrapper
 │   │   │   ├── gjrgarch_wrapper.h      # Header for GJR-GARCH wrapper
-│   │   │   ├── garch_wrapper.cpp       # QuantLib GARCH wrapper
-│   │   │   ├── garch_wrapper.h         # Header for GARCH wrapper
 │   │   │   ├── vol_forecast.cpp        # Volatility forecasting
 │   │   │   └── vol_forecast.h          # Header for forecasting
 │   │   ├── strategy/     # Trading strategy
 │   │   │   ├── vol_arb.cpp             # Volatility arbitrage strategy
-│   │   │   ├── vol_arb.h               # Header for strategy
-│   │   │   ├── signal_gen.cpp          # Trading signal generation
-│   │   │   └── signal_gen.h            # Header for signal generator
+│   │   │   └── vol_arb.h               # Header for strategy
 │   │   ├── ipc/          # Inter-process communication
 │   │   │   ├── shared_ring_buffer.h    # Lock-free ring buffer
 │   │   │   ├── shared_memory.cpp       # Shared memory management
@@ -108,6 +100,7 @@ project/
 │   │   │   ├── time_trigger.h          # Header for time-triggered execution
 │   │   │   ├── event_log.cpp           # Event logging for replay
 │   │   │   └── event_log.h             # Header for event logging
+│   │   ├── tools/        # Utility tools and helpers
 │   │   └── main.cpp      # Main QuantLib process entry point
 │   └── csharp/           # C# Process Components
 │       ├── Algorithm/    # Lean algorithm implementation
@@ -139,6 +132,172 @@ project/
         ├── end_to_end_test.cpp         # Full system tests
         └── performance_test.cpp        # Performance benchmarks
 ```
+
+## Build System Structure
+```
+project/
+├── CMakeLists.txt              # Root CMake configuration
+├── .cmake/                     # CMake module directory
+│   ├── BuildSystem.cmake       # Core build system configuration
+│   ├── Config.cmake           # Project configuration and options
+│   ├── Deployment.cmake       # Deployment and packaging rules
+│   ├── GitInfo.cmake         # Git version and metadata handling
+│   └── Helpers.cmake         # Common CMake helper functions
+├── src/
+│   ├── CMakeLists.txt         # Source root configuration
+│   └── quantlib/
+│       └── CMakeLists.txt     # QuantLib process build configuration
+├── test/                      # Test directory │
+│   └── CMakeLists.txt         # Test root configuration
+├── external/                   # External dependencies
+│   └── CMakeLists.txt         # External dependencies configuration
+└── build/                     # Build output directory
+    ├── CMakeCache.txt         # CMake cache
+    ├── CMakeFiles/            # CMake generated files
+    ├── compile_commands.json  # Compilation database
+    └── Makefile              # Generated build system
+```
+
+## Proposed Build System Reorganization
+
+A more elegant approach would be to centralize all build configuration in the `.cmake` directory, eliminating the need for multiple `CMakeLists.txt` files. Here's the proposed structure:
+
+```
+project/
+├── CMakeLists.txt              # Single entry point for all builds
+├── .cmake/                     # Centralized build system
+│   ├── BuildSystem.cmake       # Core build system configuration
+│   ├── Config.cmake           # Project configuration and options
+│   ├── Deployment.cmake       # Deployment and packaging rules
+│   ├── GitInfo.cmake         # Git version and metadata handling
+│   ├── Helpers.cmake         # Common CMake helper functions
+│   ├── Components.cmake      # Component definitions and dependencies
+│   ├── Sources.cmake         # Source file organization
+│   ├── Tests.cmake          # Test configuration and organization
+│   └── External.cmake       # External dependency management
+└── build/                     # Build output directory
+```
+
+### Key Benefits of Centralized Build System
+
+1. **Single Source of Truth**
+   - All build configuration in one place
+   - Easier to maintain and update
+   - Clearer dependency management
+
+2. **Simplified Component Management**
+   ```cmake
+   # .cmake/Components.cmake
+   set(QUANTLIB_COMPONENTS
+       pricing
+       volatility
+       strategy
+       ipc
+       core
+       tools
+   )
+
+   set(QUANTLIB_SOURCES
+       pricing/alo_engine.cpp
+       volatility/gjrgarch_wrapper.cpp
+       volatility/vol_forecast.cpp
+       strategy/vol_arb.cpp
+       ipc/shared_memory.cpp
+       ipc/process_manager.cpp
+       core/memory_pool.cpp
+       core/time_trigger.cpp
+       core/event_log.cpp
+       main.cpp
+   )
+   ```
+
+3. **Unified Test Configuration**
+   ```cmake
+   # .cmake/Tests.cmake
+   set(TEST_COMPONENTS
+       core
+       integration
+       ipc
+       quantlib
+       csharp
+   )
+
+   set(TEST_SOURCES
+       test_helpers.cpp
+       core/core_tests.cpp
+       integration/integration_tests.cpp
+       ipc/ipc_tests.cpp
+       quantlib/quantlib_tests.cpp
+   )
+   ```
+
+4. **Centralized External Dependencies**
+   ```cmake
+   # .cmake/External.cmake
+   set(EXTERNAL_DEPS
+       QuantLib
+       yaml-cpp
+       gtest
+   )
+
+   # Dependency configuration
+   find_package(QuantLib REQUIRED)
+   find_package(yaml-cpp REQUIRED)
+   find_package(GTest REQUIRED)
+   ```
+
+5. **Simplified Root CMakeLists.txt**
+   ```cmake
+   # CMakeLists.txt
+   cmake_minimum_required(VERSION 3.20)
+   project(Alaris)
+
+   # Include all build system modules
+   include(.cmake/BuildSystem.cmake)
+   include(.cmake/Config.cmake)
+   include(.cmake/Components.cmake)
+   include(.cmake/Sources.cmake)
+   include(.cmake/Tests.cmake)
+   include(.cmake/External.cmake)
+   include(.cmake/Deployment.cmake)
+   include(.cmake/GitInfo.cmake)
+
+   # Configure and build
+   configure_components()
+   configure_tests()
+   configure_external_deps()
+   ```
+
+### Implementation Strategy
+
+1. **Phase 1: Consolidation**
+   - Move all build logic to `.cmake` directory
+   - Create component and source definitions
+   - Establish clear dependency hierarchy
+
+2. **Phase 2: Standardization**
+   - Define common build patterns
+   - Create reusable build functions
+   - Standardize component interfaces
+
+3. **Phase 3: Optimization**
+   - Implement parallel builds
+   - Add build caching
+   - Optimize dependency resolution
+
+4. **Phase 4: Tooling**
+   - Add build system documentation
+   - Create build helper scripts
+   - Implement build validation
+
+This centralized approach would make the build system:
+- More maintainable
+- Easier to understand
+- More consistent
+- Simpler to extend
+- More efficient to build
+
+Would you like me to provide more details about any aspect of this proposed reorganization?
 
 ## Key Component Descriptions
 
@@ -224,33 +383,6 @@ public:
     // Model diagnostics and validation
     QuantLib::Real logLikelihood() const;
     QuantLib::Array getParameters() const;
-};
-
-// src/quantlib/volatility/garch_wrapper.h
-class QuantLibGARCHModel {
-private:
-    // QuantLib standard GARCH model
-    ext::shared_ptr<QuantLib::GarchModel> garchModel_;
-    
-    // Model parameters
-    QuantLib::Array omega_, alpha_, beta_;
-    
-    // Memory management
-    MemoryPool& memPool_;
-    
-public:
-    QuantLibGARCHModel(MemoryPool& memPool);
-    
-    // Standard GARCH model interface
-    void setParameters(const QuantLib::Array& omega, const QuantLib::Array& alpha, 
-                      const QuantLib::Array& beta);
-    
-    void update(QuantLib::Real newReturn);
-    QuantLib::Real forecastVolatility(QuantLib::Size horizon);
-    void calibrate(const std::vector<QuantLib::Real>& returns);
-    
-    // Access to underlying QuantLib model
-    ext::shared_ptr<QuantLib::GarchModel> getModel() const { return garchModel_; }
 };
 ```
 
