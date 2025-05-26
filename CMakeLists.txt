@@ -76,6 +76,8 @@ if(QUANTLIB_SOURCES)
     # Create the QuantLib core library
     add_library(quantlib_core STATIC ${QUANTLIB_SOURCES} ${QUANTLIB_HEADERS})
     
+    target_compile_options(quantlib_core PRIVATE -Wall -Wextra -Wpedantic)
+    
     # Set target properties
     target_include_directories(quantlib_core PUBLIC
         ${CMAKE_SOURCE_DIR}/src
@@ -115,6 +117,8 @@ if(QUANTLIB_SOURCES)
     # Create the main executable
     add_executable(alaris_quantlib ${QUANTLIB_SOURCES})
     
+    target_compile_options(alaris_quantlib PRIVATE -Wall -Wextra -Wpedantic)
+    
     # Link the executable against the core library  
     target_link_libraries(alaris_quantlib PRIVATE quantlib_core)
     
@@ -138,6 +142,8 @@ if(BUILD_TESTS AND GTest_FOUND AND TEST_SOURCES)
     
     # Create test executable
     add_executable(alaris_tests ${TEST_SOURCES} ${TEST_HEADERS})
+    
+    target_compile_options(alaris_tests PRIVATE -Wall -Wextra -Wpedantic)
     
     # Link against required libraries
     target_link_libraries(alaris_tests PRIVATE

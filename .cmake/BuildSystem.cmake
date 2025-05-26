@@ -29,7 +29,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON) # Good practice for shared libraries, of
 # Compiler flags (applied globally; target-specific flags are preferred for finer control)
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     set(ALARIS_COMMON_COMPILE_FLAGS "-Wall -Wextra -Wpedantic") # Add more as needed
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ALARIS_COMMON_COMPILE_FLAGS}")
+    # Removed: set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ALARIS_COMMON_COMPILE_FLAGS}")
 
     set(CMAKE_CXX_FLAGS_DEBUG_INIT "-g -O0") # Initial debug flags
     set(CMAKE_CXX_FLAGS_RELEASE_INIT "-O3 -DNDEBUG") # Initial release flags
@@ -114,7 +114,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 # Set compiler flags
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic")
+# Removed: set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG")
 
