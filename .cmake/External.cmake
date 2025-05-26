@@ -90,10 +90,6 @@ if(NOT USE_SYSTEM_QUANTLIB)
         message(STATUS "Building QuantLib from external/quant")
         add_subdirectory(${CMAKE_SOURCE_DIR}/external/quant EXCLUDE_FROM_ALL)
         set(QUANTLIB_TARGET ql_library)
-        # Add QuantLib include directory
-        target_include_directories(ql_library PUBLIC
-            ${CMAKE_SOURCE_DIR}/external/quant
-        )
         
     else()
         # Provide helpful installation instructions
