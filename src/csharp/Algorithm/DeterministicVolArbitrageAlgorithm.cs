@@ -6,6 +6,7 @@ using QuantConnect.Orders;
 using QuantConnect.Securities;
 using QuantConnect.Securities.Option;
 using QuantConnect.Data.Market;
+using QuantConnect.Brokerages;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,9 +17,9 @@ namespace Alaris.Algorithm
 {
     public class DeterministicVolArbitrageAlgorithm : QCAlgorithm
     {
-        private SharedMemoryBridge _sharedMemory;
-        private PerformanceMonitor _performanceMonitor;
-        private GCOptimizer _gcOptimizer;
+        private SharedMemoryBridge? _sharedMemory;
+        private PerformanceMonitor? _performanceMonitor;
+        private GCOptimizer? _gcOptimizer;
 
         // Algorithm configuration
         private readonly Dictionary<string, uint> _symbolToId = new Dictionary<string, uint>();
@@ -105,7 +106,7 @@ namespace Alaris.Algorithm
         {
             try
             {
-                _performanceMonitor.StartMeasurement("OnData");
+                _performanceMonitor?.StartMeasurement("OnData");
 
                 // Process underlying securities
                 foreach (var kvp in data.Bars)
@@ -123,11 +124,11 @@ namespace Alaris.Algorithm
                             (double)bar.Close
                         );
 
-                        _sharedMemory.PublishMarketData(marketData);
+                        _sharedMemory?.PublishMarketData(marketData);
                     }
                 }
 
-                // Process options data - FIXED: Use data.OptionChains instead of direct reference
+                // Process options data
                 if (data.OptionChains != null)
                 {
                     foreach (var chain in data.OptionChains)
@@ -142,7 +143,7 @@ namespace Alaris.Algorithm
                 // Check risk limits
                 CheckRiskLimits();
 
-                _performanceMonitor.EndMeasurement("OnData");
+                _performanceMonitor?.EndMeasurement("OnData");
             }
             catch (Exception ex)
             {
@@ -172,7 +173,7 @@ namespace Alaris.Algorithm
                         AskIv = (double)contract.ImpliedVolatility
                     };
 
-                    _sharedMemory.PublishMarketData(optionData);
+                    _sharedMemory?.PublishMarketData(optionData);
                 }
             }
         }
@@ -182,9 +183,9 @@ namespace Alaris.Algorithm
             try
             {
                 _signalsReceived++;
-                _performanceMonitor.StartMeasurement("ProcessSignal");
+                _performanceMonitor?.StartMeasurement("ProcessSignal");
 
-                if (!_idToSymbol.TryGetValue(signal.SymbolId, out Symbol symbol))
+                if (!_idToSymbol.TryGetValue(signal.SymbolId, out Symbol? symbol) || symbol == null)
                 {
                     Log($"Unknown symbol ID: {signal.SymbolId}");
                     return;
@@ -210,7 +211,7 @@ namespace Alaris.Algorithm
                 // Place order
                 PlaceSignalOrder(signal, symbol);
 
-                _performanceMonitor.EndMeasurement("ProcessSignal");
+                _performanceMonitor?.EndMeasurement("ProcessSignal");
             }
             catch (Exception ex)
             {
@@ -226,7 +227,7 @@ namespace Alaris.Algorithm
                 quantity = -quantity;
             }
 
-            OrderTicket ticket;
+            OrderTicket? ticket;
             
             // Use market order for immediate execution
             // In production, might use limit orders based on signal urgency
@@ -275,7 +276,7 @@ namespace Alaris.Algorithm
                     
                 case ControlMessageType.Heartbeat:
                     // Respond to heartbeat
-                    _sharedMemory.SendControlMessage(ControlMessageType.Heartbeat);
+                    _sharedMemory?.SendControlMessage(ControlMessageType.Heartbeat);
                     break;
             }
         }
@@ -342,7 +343,7 @@ namespace Alaris.Algorithm
             {
                 Log($"Daily loss limit exceeded: {dailyPnL:C}");
                 CloseAllPositions();
-                _sharedMemory.SendControlMessage(ControlMessageType.StopTrading);
+                _sharedMemory?.SendControlMessage(ControlMessageType.StopTrading);
             }
         }
 
@@ -368,7 +369,7 @@ namespace Alaris.Algorithm
                     $"Return: {dailyReturn:P2}, Signals: {_signalsReceived}, Orders: {_ordersPlaced}");
                 
                 // Send daily metrics to QuantLib process
-                _sharedMemory.SendControlMessage(ControlMessageType.SystemStatus, 
+                _sharedMemory?.SendControlMessage(ControlMessageType.SystemStatus, 
                                                (uint)_signalsReceived, (uint)_ordersPlaced, 
                                                (double)dailyReturn, (double)Portfolio.TotalPortfolioValue);
             }
@@ -389,7 +390,7 @@ namespace Alaris.Algorithm
                 Log($"Successful Trades: {_successfulTrades}");
                 
                 // Send stop signal to QuantLib process
-                _sharedMemory.SendControlMessage(ControlMessageType.StopTrading);
+                _sharedMemory?.SendControlMessage(ControlMessageType.StopTrading);
                 
                 // Cleanup
                 _sharedMemory?.Dispose();

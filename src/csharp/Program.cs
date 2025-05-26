@@ -1,10 +1,13 @@
 // src/csharp/Program.cs
 using System;
 using System.Threading.Tasks;
-using QuantConnect.Lean.Engine;
 using QuantConnect.Configuration;
 using QuantConnect.Util;
 using QuantConnect.Interfaces;
+using QuantConnect.Lean.Engine;
+using QuantConnect.Lean.Engine.Results;
+using QuantConnect.Packets;
+using QuantConnect.AlgorithmFactory;
 using Alaris.Algorithm;
 
 namespace Alaris
@@ -20,11 +23,22 @@ namespace Alaris
                 // Configure Lean
                 ConfigureLean();
 
-                // Create and configure the algorithm
-                var algorithm = new DeterministicVolArbitrageAlgorithm();
+                // Create the algorithm job packet
+                var job = new LiveNodePacket
+                {
+                    Type = PacketType.LiveNode,
+                    Algorithm = typeof(DeterministicVolArbitrageAlgorithm).AssemblyQualifiedName,
+                    Channel = "",
+                    UserId = 1,
+                    ProjectId = 1,
+                    DeployId = "",
+                    CompileId = "",
+                    VersionId = "",
+                    Language = Language.CSharp
+                };
 
-                // Create Lean engine
-                using var engine = new Engine.Results.LiveTradingResultHandler();
+                // Create and run the algorithm
+                var algorithmHandler = new AlgorithmNodePacket(job);
                 
                 Console.WriteLine("Alaris Lean Process started successfully");
                 Console.WriteLine("Press Ctrl+C to stop...");

@@ -30,7 +30,7 @@ namespace Alaris.Monitoring
 
         public void EndMeasurement(string operationName)
         {
-            if (_activeStopwatches.TryRemove(operationName, out Stopwatch stopwatch))
+            if (_activeStopwatches.TryRemove(operationName, out Stopwatch? stopwatch))
             {
                 stopwatch.Stop();
                 var elapsedMs = stopwatch.Elapsed.TotalMilliseconds;
@@ -55,7 +55,7 @@ namespace Alaris.Monitoring
 
         public PerformanceStats GetStats(string operationName)
         {
-            if (!_measurements.TryGetValue(operationName, out List<double> measurements))
+            if (!_measurements.TryGetValue(operationName, out List<double>? measurements) || measurements == null)
             {
                 return new PerformanceStats();
             }
@@ -94,7 +94,7 @@ namespace Alaris.Monitoring
             return result;
         }
 
-        private void ReportMetrics(object state)
+        private void ReportMetrics(object? state)
         {
             if (_disposed) return;
 

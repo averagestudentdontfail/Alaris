@@ -34,7 +34,16 @@ namespace Alaris.IPC
                 }
                 else
                 {
-                    _mmf = MemoryMappedFile.OpenExisting(_name, MemoryMappedFileRights.ReadWrite);
+                    // Cross-platform compatible way to open existing memory mapped file
+                    if (OperatingSystem.IsWindows())
+                    {
+                        _mmf = MemoryMappedFile.OpenExisting(_name, MemoryMappedFileRights.ReadWrite);
+                    }
+                    else
+                    {
+                        // On Linux/Unix, try to open as if it were created (fallback)
+                        _mmf = MemoryMappedFile.CreateOrOpen(_name, totalSize, MemoryMappedFileAccess.ReadWrite);
+                    }
                 }
 
                 _accessor = _mmf.CreateViewAccessor(0, totalSize, MemoryMappedFileAccess.ReadWrite);
@@ -49,8 +58,9 @@ namespace Alaris.IPC
         {
             if (_disposed) return false;
 
-            long writeIndex = Interlocked.Read(ref _accessor.ReadInt64(0));
-            long readIndex = Interlocked.Read(ref _accessor.ReadInt64(8));
+            // Read current indices
+            long writeIndex = _accessor.ReadInt64(0);
+            long readIndex = _accessor.ReadInt64(8);
 
             // Check if buffer is full
             if (writeIndex - readIndex >= _bufferSize)
@@ -62,11 +72,16 @@ namespace Alaris.IPC
             int position = (int)(writeIndex % _bufferSize);
             int offset = HEADER_SIZE + (position * _elementSize);
 
-            // Write the item
-            _accessor.Write(offset, ref item);
+            // Write the item using byte array marshaling
+            byte[] itemBytes = StructToByteArray(item);
+            for (int i = 0; i < itemBytes.Length; i++)
+            {
+                _accessor.Write(offset + i, itemBytes[i]);
+            }
 
             // Update write index atomically
-            Interlocked.Increment(ref _accessor.ReadInt64(0));
+            long newWriteIndex = Interlocked.Increment(ref writeIndex);
+            _accessor.Write(0, newWriteIndex);
 
             return true;
         }
@@ -76,8 +91,9 @@ namespace Alaris.IPC
             item = default(T);
             if (_disposed) return false;
 
-            long readIndex = Interlocked.Read(ref _accessor.ReadInt64(8));
-            long writeIndex = Interlocked.Read(ref _accessor.ReadInt64(0));
+            // Read current indices
+            long readIndex = _accessor.ReadInt64(8);
+            long writeIndex = _accessor.ReadInt64(0);
 
             // Check if buffer is empty
             if (readIndex == writeIndex)
@@ -89,13 +105,56 @@ namespace Alaris.IPC
             int position = (int)(readIndex % _bufferSize);
             int offset = HEADER_SIZE + (position * _elementSize);
 
-            // Read the item
-            item = _accessor.ReadStruct<T>(offset);
+            // Read the item using byte array marshaling
+            byte[] itemBytes = new byte[_elementSize];
+            for (int i = 0; i < _elementSize; i++)
+            {
+                itemBytes[i] = _accessor.ReadByte(offset + i);
+            }
+            item = ByteArrayToStruct<T>(itemBytes);
 
             // Update read index atomically
-            Interlocked.Increment(ref _accessor.ReadInt64(8));
+            long newReadIndex = Interlocked.Increment(ref readIndex);
+            _accessor.Write(8, newReadIndex);
 
             return true;
+        }
+
+        private static byte[] StructToByteArray<U>(U obj) where U : struct
+        {
+            int size = Marshal.SizeOf<U>();
+            byte[] arr = new byte[size];
+            IntPtr ptr = Marshal.AllocHGlobal(size);
+            try
+            {
+                Marshal.StructureToPtr(obj, ptr, false);
+                Marshal.Copy(ptr, arr, 0, size);
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(ptr);
+            }
+            return arr;
+        }
+
+        private static U ByteArrayToStruct<U>(byte[] bytes) where U : struct
+        {
+            int size = Marshal.SizeOf<U>();
+            if (bytes.Length != size)
+            {
+                throw new ArgumentException($"Byte array length {bytes.Length} does not match struct size {size}");
+            }
+
+            IntPtr ptr = Marshal.AllocHGlobal(size);
+            try
+            {
+                Marshal.Copy(bytes, 0, ptr, size);
+                return Marshal.PtrToStructure<U>(ptr);
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(ptr);
+            }
         }
 
         public int Size
@@ -103,8 +162,8 @@ namespace Alaris.IPC
             get
             {
                 if (_disposed) return 0;
-                long writeIndex = Interlocked.Read(ref _accessor.ReadInt64(0));
-                long readIndex = Interlocked.Read(ref _accessor.ReadInt64(8));
+                long writeIndex = _accessor.ReadInt64(0);
+                long readIndex = _accessor.ReadInt64(8);
                 return (int)(writeIndex - readIndex);
             }
         }

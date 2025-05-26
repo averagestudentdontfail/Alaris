@@ -18,8 +18,8 @@ namespace Alaris.IPC
 
         private bool _disposed = false;
 
-        public event Action<TradingSignalMessage> SignalReceived;
-        public event Action<ControlMessage> ControlMessageReceived;
+        public event Action<TradingSignalMessage>? SignalReceived;
+        public event Action<ControlMessage>? ControlMessageReceived;
 
         public SharedMemoryBridge()
         {
