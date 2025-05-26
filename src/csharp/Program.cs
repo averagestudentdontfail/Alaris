@@ -33,7 +33,7 @@ namespace Alaris
                     ProjectId = 1,
                     DeployId = "",
                     CompileId = "",
-                    Version = "",
+                    Version = System.Text.Encoding.UTF8.GetBytes(""),
                     Language = QuantConnect.Language.CSharp
                 };
 
