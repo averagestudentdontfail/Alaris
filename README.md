@@ -70,9 +70,6 @@ cd src/csharp && dotnet run
 - Deterministic execution guarantees
 - Comprehensive monitoring and logging
 
-## ⚠️ Risk Warning
-This is sophisticated trading software. Always test thoroughly with paper trading before using real capital.
-
 ## 🐳 Production Deployment
 
 ### Quick Production Setup
