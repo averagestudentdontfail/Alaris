@@ -1,21 +1,9 @@
 # External dependency management
 
-# Define required external dependencies
-set(EXTERNAL_DEPS
-    QuantLib
-    yaml-cpp
-    gtest
-)
-
-# Configure QuantLib from submodule
-add_subdirectory(${CMAKE_SOURCE_DIR}/external/quant ${CMAKE_BINARY_DIR}/quantlib)
-set(QUANTLIB_TARGET "QuantLib" CACHE STRING "QuantLib target name")
-set(QuantLib_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/external/quant CACHE PATH "QuantLib include directories")
-
-# Configure yaml-cpp from submodule
-add_subdirectory(${CMAKE_SOURCE_DIR}/external/yaml-cpp ${CMAKE_BINARY_DIR}/yaml-cpp)
-set(YAML_CPP_TARGET "yaml-cpp" CACHE STRING "yaml-cpp target name")
-set(yaml-cpp_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/external/yaml-cpp/include CACHE PATH "yaml-cpp include directories")
+# Configure external dependencies from submodules
+add_subdirectory(${CMAKE_SOURCE_DIR}/external/quant)
+add_subdirectory(${CMAKE_SOURCE_DIR}/external/yaml-cpp)
+add_subdirectory(${CMAKE_SOURCE_DIR}/external/lean)
 
 # Find GTest
 find_package(GTest REQUIRED)
