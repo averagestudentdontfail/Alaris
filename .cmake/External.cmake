@@ -7,17 +7,15 @@ set(EXTERNAL_DEPS
     gtest
 )
 
-# Find QuantLib
-find_package(QuantLib REQUIRED)
-if(NOT QuantLib_FOUND)
-    message(FATAL_ERROR "QuantLib not found. Please install QuantLib development package.")
-endif()
+# Configure QuantLib from submodule
+add_subdirectory(${CMAKE_SOURCE_DIR}/external/quant ${CMAKE_BINARY_DIR}/quantlib)
+set(QUANTLIB_TARGET "QuantLib" CACHE STRING "QuantLib target name")
+set(QuantLib_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/external/quant CACHE PATH "QuantLib include directories")
 
-# Find yaml-cpp
-find_package(yaml-cpp REQUIRED)
-if(NOT yaml-cpp_FOUND)
-    message(FATAL_ERROR "yaml-cpp not found. Please install yaml-cpp development package.")
-endif()
+# Configure yaml-cpp from submodule
+add_subdirectory(${CMAKE_SOURCE_DIR}/external/yaml-cpp ${CMAKE_BINARY_DIR}/yaml-cpp)
+set(YAML_CPP_TARGET "yaml-cpp" CACHE STRING "yaml-cpp target name")
+set(yaml-cpp_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/external/yaml-cpp/include CACHE PATH "yaml-cpp include directories")
 
 # Find GTest
 find_package(GTest REQUIRED)
