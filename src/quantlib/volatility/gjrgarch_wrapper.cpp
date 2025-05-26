@@ -11,13 +11,16 @@ namespace Alaris::Volatility {
 
 QuantLibGJRGARCHModel::QuantLibGJRGARCHModel(Core::MemoryPool& mem_pool)
     : mem_pool_(mem_pool),
-      max_history_length_(2520), // ~10 years of daily data
-      tolerance_(1e-6),
-      max_iterations_(1000), // For calibration routines
-      current_variance_(0.04), // Default initial variance (20% annualized vol)
+      omega_(1e-6),
+      alpha_(0.08),
+      beta_(0.90),
+      gamma_(0.05),
+      current_variance_(0.04),
       current_volatility_(0.2),
+      max_history_length_(2520),
+      tolerance_(1e-6),
+      max_iterations_(1000),
       forecast_count_(0) {
-    initialize_parameters();
 }
 
 void QuantLibGJRGARCHModel::initialize_parameters() {

@@ -11,9 +11,11 @@
 namespace Alaris::Pricing {
 
 QuantLibALOEngine::QuantLibALOEngine(Core::MemoryPool& mem_pool)
-    : mem_pool_(mem_pool), 
+    : mem_pool_(mem_pool),
       fp_equation_(QuantLib::QdFpAmericanEngine::Auto),
-      time_steps_(800), asset_steps_(800), cache_index_(0) {
+      time_steps_(800),
+      asset_steps_(800),
+      cache_index_(0) {
     
     // Initialize QuantLib components with deterministic settings
     QuantLib::Settings::instance().evaluationDate() = 

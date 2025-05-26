@@ -49,7 +49,7 @@ private:
     std::atomic<bool> trading_enabled_{false};
     
     // Performance metrics
-    uint64_t cycles_executed_ = 0;
+    uint64_t cycles_executed_{0};
     // signals_generated_ is now part of strategy_, can be fetched from there if needed for heartbeat
     
 public:

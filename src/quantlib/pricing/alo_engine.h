@@ -35,6 +35,9 @@ struct OptionGreeks {
 
 class QuantLibALOEngine {
 private:
+    // Memory management
+    Core::MemoryPool& mem_pool_;
+
     // QuantLib components - using QdFpAmericanEngine correctly
     QuantLib::ext::shared_ptr<QuantLib::QdFpAmericanEngine> engine_;
     QuantLib::ext::shared_ptr<QuantLib::GeneralizedBlackScholesProcess> process_;
@@ -49,9 +52,6 @@ private:
     QuantLib::ext::shared_ptr<QuantLib::QdFpIterationScheme> iteration_scheme_;
     QuantLib::Size time_steps_;
     QuantLib::Size asset_steps_;
-    
-    // Memory management for deterministic execution
-    Core::MemoryPool& mem_pool_;
     
     // Cache for repeated calculations
     struct CachedOption {

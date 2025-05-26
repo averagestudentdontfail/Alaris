@@ -45,10 +45,10 @@ struct PositionInfo {
 class VolatilityArbitrageStrategy {
 private:
     // Core components (references to externally managed lifetime objects)
+    Core::MemoryPool& mem_pool_; // General memory pool reference
     Pricing::QuantLibALOEngine& pricer_;
     Core::PerCycleAllocator& allocator_; // For per-cycle allocations if needed by strategy logic
     Core::EventLogger& event_logger_;
-    Core::MemoryPool& mem_pool_; // General memory pool reference
 
     // Owned components
     Volatility::QuantLibGJRGARCHModel gjr_garch_model_; // Strategy's own GJR-GARCH model instance

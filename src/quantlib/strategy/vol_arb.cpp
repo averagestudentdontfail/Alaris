@@ -15,10 +15,10 @@ VolatilityArbitrageStrategy::VolatilityArbitrageStrategy(
     Core::PerCycleAllocator& allocator,
     Core::EventLogger& event_logger,
     Core::MemoryPool& mem_pool)
-    : pricer_(pricer),
+    : mem_pool_(mem_pool),
+      pricer_(pricer),
       allocator_(allocator),
       event_logger_(event_logger),
-      mem_pool_(mem_pool),
       gjr_garch_model_(mem_pool_), // Initialize owned GJR-GARCH model
       active_model_type_(VolatilityModelType::ENSEMBLE_GJR_HISTORICAL) // Default to ensemble
 {
