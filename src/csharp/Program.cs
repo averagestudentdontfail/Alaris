@@ -28,12 +28,12 @@ namespace Alaris
                 {
                     Type = PacketType.LiveNode,
                     Algorithm = typeof(DeterministicVolArbitrageAlgorithm).AssemblyQualifiedName ?? "",
-                    Channel = Array.Empty<byte>(),
+                    Channel = "",
                     UserId = 1,
                     ProjectId = 1,
                     DeployId = "",
                     CompileId = "",
-                    Version = "",
+                    Version = Array.Empty<byte>(),
                     Language = QuantConnect.Language.CSharp
                 };
 
