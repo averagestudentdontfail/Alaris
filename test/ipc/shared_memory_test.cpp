@@ -20,7 +20,6 @@ struct TestMessage {
 };
 static_assert(std::is_trivially_copyable_v<TestMessage>, "TestMessage must be trivially copyable");
 
-
 const char* test_shm_name = "/alaris_test_shm_ring_buffer";
 
 // Fixture for SharedRingBuffer tests
@@ -38,10 +37,7 @@ protected:
 };
 
 TEST_F(SharedRingBufferTest, CreateAndDestroy) {
-    // Corrected ASSERT_NO_THROW usage
-    ASSERT_NO_THROW(
-        Alaris::IPC::SharedRingBuffer<TestMessage, 256> buffer(test_shm_name, true)
-    ); // Semicolon is part of the statement passed to the macro
+    ASSERT_NO_THROW(Alaris::IPC::SharedRingBuffer<TestMessage, 256> buffer(test_shm_name, true));
     // Destructor will be called, which should unlink.
 }
 
@@ -54,12 +50,9 @@ TEST_F(SharedRingBufferTest, OpenExisting) {
     // Re-create the producer, which also handles ftruncate
     Alaris::IPC::SharedRingBuffer<TestMessage, 256> producer_again(test_shm_name, true);
 
-    // Corrected ASSERT_NO_THROW usage
-    ASSERT_NO_THROW(
-        Alaris::IPC::SharedRingBuffer<TestMessage, 256> consumer(test_shm_name, false)
-    ); // Consumer opens existing, does not own, should not unlink.
+    ASSERT_NO_THROW(Alaris::IPC::SharedRingBuffer<TestMessage, 256> consumer(test_shm_name, false));
+    // Consumer opens existing, does not own, should not unlink.
 }
-
 
 TEST_F(SharedRingBufferTest, SingleWriteRead) {
     Alaris::IPC::SharedRingBuffer<TestMessage, 256> buffer(test_shm_name, true);
@@ -149,7 +142,6 @@ TEST_F(SharedRingBufferTest, BatchWriteRead) {
       write_batch[i].value = i*1.1;
     }
 
-
     size_t written = buffer.try_write_batch(write_batch.data(), write_batch.size());
     ASSERT_EQ(written, write_batch.size());
     ASSERT_EQ(buffer.size(), write_batch.size());
@@ -171,7 +163,7 @@ TEST_F(SharedRingBufferTest, MoveConstructor) {
 
     Alaris::IPC::SharedRingBuffer<TestMessage, 16> buffer2(std::move(buffer1));
     
-    ASSERT_FALSE(buffer1.try_write({2,2.0,""}) ); 
+    ASSERT_FALSE(buffer1.try_write({2,2.0,""})); 
     ASSERT_EQ(buffer2.size(), 1);
 
     TestMessage read_msg;
