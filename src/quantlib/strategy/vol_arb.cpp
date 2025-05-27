@@ -617,6 +617,48 @@ void VolatilityArbitrageStrategy::update_portfolio_metrics() {
     }
 }
 
+void VolatilityArbitrageStrategy::emergency_liquidation(std::vector<IPC::TradingSignalMessage>& out_signals) {
+    uint64_t current_time = std::chrono::duration_cast<std::chrono::nanoseconds>(
+        std::chrono::high_resolution_clock::now().time_since_epoch()).count();
+    
+    out_signals.clear();
+    
+    // Create exit signals for all active positions
+    for (auto& pos_pair : positions_) {
+        EnhancedPosition& position = pos_pair.second;
+        
+        if (position.state == EnhancedPosition::State::ACTIVE) {
+            IPC::TradingSignalMessage exit_signal;
+            exit_signal.timestamp = current_time;
+            exit_signal.symbol_id = position.symbol_id;
+            exit_signal.quantity = static_cast<int32_t>(-position.quantity);  // Opposite of current position
+            exit_signal.side = (position.quantity > 0) ? 1 : 0;  // Sell if long, buy if short
+            exit_signal.signal_type = 1;  // Exit signal
+            exit_signal.urgency = 255;    // Maximum urgency
+            exit_signal.market_price = position.current_price;
+            exit_signal.implied_volatility = position.current_implied_vol;
+            exit_signal.forecast_volatility = 0.0;  // Not relevant for emergency exit
+            exit_signal.confidence = 1.0;  // Maximum confidence for emergency liquidation
+            
+            out_signals.push_back(exit_signal);
+            
+            // Mark position as being liquidated
+            position.state = EnhancedPosition::State::STOP_LOSS_HIT;  // Use existing state
+            
+            event_logger_.log_system_status("Emergency liquidation signal created for position " + 
+                                           std::to_string(position.symbol_id) + 
+                                           ", quantity: " + std::to_string(exit_signal.quantity));
+        }
+    }
+    
+    // Log the emergency liquidation event
+    event_logger_.log_system_status("Emergency liquidation initiated - " + 
+                                   std::to_string(out_signals.size()) + " positions to be liquidated");
+    
+    // Reset portfolio metrics since we're liquidating everything
+    portfolio_metrics_ = PortfolioRiskMetrics{};
+}
+
 double VolatilityArbitrageStrategy::calculate_portfolio_var(double confidence_level, size_t horizon_days) {
     if (positions_.empty()) return 0.0;
     

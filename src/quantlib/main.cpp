@@ -216,11 +216,16 @@ private:
         strategy_ = std::make_unique<Strategy::VolatilityArbitrageStrategy>(*pricer_, *allocator_, *event_logger_, *mem_pool_);
         if (config_["strategy"] && config_["strategy"]["vol_arbitrage"]) {
             Strategy::StrategyParameters params;
-            params.entry_threshold = config_["strategy"]["vol_arbitrage"]["entry_threshold"].as<double>(0.05);
-            params.exit_threshold = config_["strategy"]["vol_arbitrage"]["exit_threshold"].as<double>(0.02);
-            params.risk_limit = config_["strategy"]["vol_arbitrage"]["risk_limit"].as<double>(0.10);
+            // Fixed parameter names to match StrategyParameters struct
+            params.vol_difference_threshold = config_["strategy"]["vol_arbitrage"]["entry_threshold"].as<double>(0.05);
+            params.vol_exit_threshold = config_["strategy"]["vol_arbitrage"]["exit_threshold"].as<double>(0.02);
             params.confidence_threshold = config_["strategy"]["vol_arbitrage"]["confidence_threshold"].as<double>(0.7);
             params.max_position_size = config_["strategy"]["vol_arbitrage"]["max_position_size"].as<double>(0.05);
+            
+            // Additional risk parameters
+            if (config_["strategy"]["vol_arbitrage"]["risk_limit"]) {
+                params.max_portfolio_delta = config_["strategy"]["vol_arbitrage"]["risk_limit"].as<double>(0.10);
+            }
             strategy_->set_parameters(params);
 
             std::string model_selection_str = config_["strategy"]["vol_arbitrage"]["model_selection"].as<std::string>("ensemble");

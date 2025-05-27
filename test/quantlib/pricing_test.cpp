@@ -212,7 +212,7 @@ TEST_F(EnhancedALOEngineTest, CacheEffectiveness) {
     
     // Clear cache and get baseline stats
     engine_->clear_cache();
-    auto initial_stats = engine_->get_performance_stats();
+    engine_->reset_performance_stats();
     
     // Calculate same option multiple times
     for (int i = 0; i < 10; ++i) {
