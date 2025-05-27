@@ -41,6 +41,7 @@ set(QUANTLIB_HEADERS_LIST
 )
 
 # Define ALL test source files for a single test executable with correct paths
+# (Reflecting the file structure you provided where memory_pool_test.cpp is in test/quantlib)
 set(ALARIS_TEST_SOURCES
     # Main runner for Google Test
     ${CMAKE_SOURCE_DIR}/test/main_runner.cpp
@@ -53,7 +54,7 @@ set(ALARIS_TEST_SOURCES
     ${CMAKE_SOURCE_DIR}/test/quantlib/alo_engine_test.cpp
     ${CMAKE_SOURCE_DIR}/test/quantlib/pricing_test.cpp
     ${CMAKE_SOURCE_DIR}/test/quantlib/volatility_test.cpp
-    ${CMAKE_SOURCE_DIR}/test/quantlib/memory_pool_test.cpp # Correct path for this file
+    ${CMAKE_SOURCE_DIR}/test/quantlib/memory_pool_test.cpp # Correct path
     # Integration tests
     ${CMAKE_SOURCE_DIR}/test/integration/end_to_end_test.cpp
     ${CMAKE_SOURCE_DIR}/test/integration/strategy_integration_test.cpp
@@ -74,7 +75,7 @@ function(create_component_library NAME)
     )
 
     target_link_libraries(${NAME} PUBLIC
-        QuantLib::QuantLib # From external/quant
+        ${QUANTLIB_TARGET} # Use the variable holding the correct QuantLib target name
         yaml-cpp           # From external/yaml-cpp
         Threads::Threads
     )
