@@ -4,8 +4,8 @@
 #include <vector>
 #include <chrono>
 #include <atomic>
-#include <thread> // For std::this_thread::sleep_for, not for creating threads here
-#include <string> // For task names in metrics
+#include <thread> 
+#include <string> 
 
 namespace Alaris::Core {
 
