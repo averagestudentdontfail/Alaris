@@ -4,9 +4,9 @@ project(Alaris VERSION 1.0.0 LANGUAGES CXX)
 
 # Include all build system modules
 include(.cmake/BuildSystem.cmake)
-include(.cmake/External.cmake)
+include(.cmake/External.cmake) # Ensures GTest is found
 include(.cmake/Config.cmake)
-include(.cmake/Components.cmake)
+include(.cmake/Components.cmake) # This will now use the updated test configuration
 include(.cmake/GitInfo.cmake)
 include(.cmake/Deployment.cmake)
 
@@ -38,6 +38,7 @@ message(STATUS "===================================")
 message(STATUS "")
 
 # Configure all components using the new multi-target approach
+# This will call create_component_library(quantlib_core) and create_alaris_tests_executable()
 configure_all_components()
 
 # Add C# project if .NET SDK is available
@@ -53,7 +54,7 @@ message(STATUS "  alaris-config-validator - Configuration validation tool")
 message(STATUS "  alaris-system-info      - System information tool")
 message(STATUS "  quantlib_core           - Core QuantLib library")
 if(BUILD_TESTS AND GTest_FOUND)
-    message(STATUS "  alaris_tests            - Unit and integration tests")
+    message(STATUS "  alaris_tests            - Unit and integration tests (C++)") # Updated message
 endif()
 if(DOTNET_EXECUTABLE)
     message(STATUS "  alaris_csharp           - C# Lean components")
@@ -67,8 +68,8 @@ message(STATUS "  Build all:              cmake --build build")
 message(STATUS "  Build main only:        cmake --build build --target alaris")
 message(STATUS "  Build tools:            cmake --build build --target alaris-config-validator alaris-system-info")
 if(BUILD_TESTS AND GTest_FOUND)
-    message(STATUS "  Run tests:              cmake --build build --target alaris_tests && ./build/bin/alaris_tests")
-    message(STATUS "  Run CTest:              cd build && ctest")
+    message(STATUS "  Run C++ tests:          cmake --build build --target alaris_tests && ./build/bin/alaris_tests") # Updated command
+    message(STATUS "  Run CTest (summary):    cd build && ctest")
 endif()
 message(STATUS "  Install:                cmake --install build")
 message(STATUS "  Clean:                  cmake --build build --target clean")

@@ -1,5 +1,4 @@
-# .cmake/Components.cmake
-# Component definitions and organization - Multi-target approach
+# .cmake/Text/Components.txt
 
 # Define QuantLib components
 set(QUANTLIB_COMPONENTS
@@ -8,19 +7,21 @@ set(QUANTLIB_COMPONENTS
     strategy
     ipc
     core
+    tools
 )
 
-# Define QuantLib LIBRARY source files (excluding main.cpp and tools)
-set(QUANTLIB_LIB_SOURCES
+# Define QuantLib source files
+set(QUANTLIB_SOURCES
     pricing/alo_engine.cpp
     volatility/gjrgarch_wrapper.cpp
     volatility/vol_forecast.cpp
     strategy/vol_arb.cpp
     ipc/shared_memory.cpp
-    ipc/shared_memory_manager.cpp
+    ipc/process_manager.cpp 
     core/memory_pool.cpp
     core/time_trigger.cpp
     core/event_log.cpp
+    main.cpp
 )
 
 # Define QuantLib header files
@@ -37,176 +38,98 @@ set(QUANTLIB_HEADERS
     core/event_log.h
 )
 
-# Define executable sources (each has main() function)
-set(QUANTLIB_MAIN_SOURCE src/quantlib/main.cpp)
-set(CONFIG_VALIDATOR_SOURCE src/quantlib/tools/config_validator.cpp)
-set(SYSTEM_INFO_SOURCE src/quantlib/tools/system_info.cpp)
+# Define ALL test source files for a single test executable
+set(ALARIS_TEST_SOURCES
+    # Main runner for Google Test
+    test/main_runner.cpp
 
-# Define test source files
-set(TEST_SOURCES
-    test_helpers.cpp
-    core/time_trigger_test.cpp
-    core/event_log_test.cpp
-    ipc/shared_memory_test.cpp
-    quantlib/alo_engine_test.cpp
-    quantlib/memory_pool_test.cpp
-    quantlib/pricing_test.cpp
-    quantlib/volatility_test.cpp
-    integration/end_to_end_test.cpp
-    integration/ipc_integration_test.cpp
-    integration/strategy_integration_test.cpp
+    # Core tests
+    test/core/event_log_test.cpp
+    test/core/memory_pool_test.cpp
+    test/core/time_trigger_test.cpp
+
+    # IPC tests
+    test/ipc/shared_memory_test.cpp
+    # test/ipc/ipc_integration_test.cpp # Combined or covered elsewhere
+
+    # QuantLib specific tests
+    test/quantlib/alo_engine_test.cpp
+    test/quantlib/pricing_test.cpp
+    test/quantlib/volatility_test.cpp
+    # test/quantlib/memory_pool_test.cpp # This was duplicated, assuming it's core
+
+    # Integration tests
+    test/integration/end_to_end_test.cpp
+    test/integration/strategy_integration_test.cpp
+    test/integration/ipc_integration_test.cpp # Keeping this distinct if it has more complex setup
 )
 
-# Function to create the QuantLib core library
-function(create_quantlib_library)
-    # Create shared library with all the core functionality
-    add_library(quantlib_core STATIC)
-    
-    # Add source files with proper path prefixes
-    foreach(SOURCE ${QUANTLIB_LIB_SOURCES})
-        target_sources(quantlib_core PRIVATE ${CMAKE_SOURCE_DIR}/src/quantlib/${SOURCE})
-    endforeach()
-    
-    # Add header files
-    foreach(HEADER ${QUANTLIB_HEADERS})
-        target_sources(quantlib_core PRIVATE ${CMAKE_SOURCE_DIR}/src/quantlib/${HEADER})
-    endforeach()
-    
-    # Set include directories
-    target_include_directories(quantlib_core 
-        PUBLIC 
-            ${CMAKE_SOURCE_DIR}/src
-            ${CMAKE_SOURCE_DIR}/src/quantlib
-        PRIVATE
-            ${CMAKE_BINARY_DIR}
+set(ALARIS_TEST_HEADERS
+    test/test_helpers.h 
+)
+
+# Function to create a component library (remains unchanged)
+function(create_component_library NAME)
+    add_library(${NAME} STATIC
+        ${QUANTLIB_SOURCES}
+        ${QUANTLIB_HEADERS}
     )
-    
-    # Link against external dependencies
-    target_link_libraries(quantlib_core 
-        PUBLIC
-            ${ALARIS_QUANTLIB_LIBRARIES}
-            ${ALARIS_YAMLCPP_LIBRARIES}
-            Threads::Threads
+
+    target_include_directories(${NAME} PUBLIC
+        ${CMAKE_SOURCE_DIR}/src
     )
-    
-    # Set compiler features
-    target_compile_features(quantlib_core PUBLIC cxx_std_20)
-    
-    message(STATUS "Created quantlib_core library")
+
+    target_link_libraries(${NAME} PUBLIC
+        QuantLib::QuantLib
+        yaml-cpp
+        Threads::Threads
+    )
 endfunction()
 
-# Function to create main process executable
-function(create_main_executable)
-    add_executable(alaris ${QUANTLIB_MAIN_SOURCE})
-    
-    target_link_libraries(alaris 
-        PRIVATE 
-            quantlib_core
-    )
-    
-    # Install the main executable
-    install(TARGETS alaris
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-        COMPONENT Runtime
-    )
-    
-    message(STATUS "Created alaris main executable")
-endfunction()
+# Updated function to create a single test executable for all C++ tests
+function(create_alaris_tests_executable)
+    if(BUILD_TESTS AND GTest_FOUND)
+        message(STATUS "Configuring Alaris C++ tests (alaris_tests)")
+        add_executable(alaris_tests ${ALARIS_TEST_SOURCES})
 
-# Function to create config validator tool
-function(create_config_validator)
-    add_executable(alaris-config-validator ${CONFIG_VALIDATOR_SOURCE})
-    
-    target_link_libraries(alaris-config-validator 
-        PRIVATE 
-            ${ALARIS_YAMLCPP_LIBRARIES}
-            Threads::Threads
-    )
-    
-    target_include_directories(alaris-config-validator 
-        PRIVATE 
-            ${CMAKE_SOURCE_DIR}/src
-            ${CMAKE_BINARY_DIR}
-    )
-    
-    # Install the config validator tool
-    install(TARGETS alaris-config-validator
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-        COMPONENT Tools
-    )
-    
-    message(STATUS "Created alaris-config-validator tool")
-endfunction()
+        target_include_directories(alaris_tests PRIVATE
+            ${CMAKE_SOURCE_DIR}/src # For QuantLib headers
+            ${CMAKE_SOURCE_DIR}/test # For test_helpers.h etc.
+            ${PROJECT_SOURCE_DIR} # Access to root CMakeLists.txt defined variables if any.
+            ${GTEST_INCLUDE_DIRS} # For GTest headers
+        )
 
-# Function to create system info tool
-function(create_system_info_tool)
-    add_executable(alaris-system-info ${SYSTEM_INFO_SOURCE})
-    
-    target_link_libraries(alaris-system-info 
-        PRIVATE 
-            Threads::Threads
-    )
-    
-    target_include_directories(alaris-system-info 
-        PRIVATE 
-            ${CMAKE_SOURCE_DIR}/src
-            ${CMAKE_BINARY_DIR}
-    )
-    
-    # Install the system info tool
-    install(TARGETS alaris-system-info
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-        COMPONENT Tools
-    )
-    
-    message(STATUS "Created alaris-system-info tool")
-endfunction()
+        target_link_libraries(alaris_tests PRIVATE
+            quantlib_core       # Link against our main library
+            GTest::GTest        # Google Test library
+            GTest::Main         # Google Test main (provides main() function)
+            Threads::Threads    # If tests use threads
+            yaml-cpp            # If tests use yaml-cpp
+            # Add other dependencies if tests need them (e.g. Boost)
+        )
+        
+        # Add test to CTest
+        # The COMMAND can be improved to run with arguments or specific configurations if needed
+        add_test(NAME AlarisCppTests COMMAND alaris_tests)
+        
+        # Optionally, set properties for the test, like working directory
+        set_tests_properties(AlarisCppTests PROPERTIES WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-# Function to create test executable
-function(create_test_executable)
-    if(NOT BUILD_TESTS OR NOT GTest_FOUND)
-        message(STATUS "Skipping test creation - BUILD_TESTS=${BUILD_TESTS}, GTest_FOUND=${GTest_FOUND}")
-        return()
+        message(STATUS "alaris_tests executable configured.")
+    else()
+        message(STATUS "Skipping Alaris C++ tests (BUILD_TESTS is OFF or GTest not found).")
     endif()
-    
-    add_executable(alaris_tests)
-    
-    # Add test source files with proper path prefixes
-    foreach(SOURCE ${TEST_SOURCES})
-        target_sources(alaris_tests PRIVATE ${CMAKE_SOURCE_DIR}/test/${SOURCE})
-    endforeach()
-    
-    target_include_directories(alaris_tests 
-        PRIVATE
-            ${CMAKE_SOURCE_DIR}/test
-            ${CMAKE_SOURCE_DIR}/src
-    )
-    
-    target_link_libraries(alaris_tests 
-        PRIVATE
-            quantlib_core
-            GTest::GTest
-            GTest::Main
-    )
-    
-    # Register tests with CTest
-    add_test(NAME alaris_unit_tests COMMAND alaris_tests)
-    
-    message(STATUS "Created alaris_tests executable")
 endfunction()
 
-# Master function to configure all components
+# This function is part of the overall project setup.
 function(configure_all_components)
-    # Create the core library first
-    create_quantlib_library()
-    
-    # Create executables that depend on the library
-    create_main_executable()
-    create_config_validator()
-    create_system_info_tool()
-    
-    # Create tests if enabled
-    create_test_executable()
-    
-    message(STATUS "All components configured successfully")
+    create_component_library(quantlib_core)
+    message(STATUS "quantlib_core library configured.")
+    if (TARGET quantlib_core) # Ensure core library is configured first
+        add_executable(alaris src/quantlib/main.cpp)
+        target_link_libraries(alaris PRIVATE quantlib_core GTest::Main) # GTest::Main added for main.cpp's include of event_log.h -> time_trigger.h -> gtest.h
+        message(STATUS "alaris executable configured.")
+    endif()
+    # Configure the unified test executable
+    create_alaris_tests_executable()
 endfunction()

@@ -1,14 +1,10 @@
-// Integration test for ipc_integration_test
-#include <iostream>
-#include <cassert>
-#include "../test_helpers.h"
+// test/integration/ipc_integration_test.cpp
+#include "gtest/gtest.h"
+// Include relevant IPC headers if specific integration tests are added
+// #include "src/quantlib/ipc/shared_memory.h"
 
-int main() {
-    std::cout << "Running ipc_integration_test integration test..." << std::endl;
-    
-    // TODO: Add integration tests
-    assert(true && "Basic integration test");
-    
-    std::cout << "ipc_integration_test integration test passed!" << std::endl;
-    return 0;
+TEST(IPCIntegrationTest, Placeholder) {
+    std::cout << "IPC integration test placeholder" << std::endl;
+    // TODO: Add actual IPC integration tests (e.g., two processes communicating)
+    SUCCEED();
 }
