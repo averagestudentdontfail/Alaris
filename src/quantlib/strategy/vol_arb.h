@@ -1,5 +1,4 @@
 // src/quantlib/strategy/vol_arb.h
-// Volatility Arbitrage Strategy - Production-Grade Architecture
 
 #pragma once
 
@@ -113,10 +112,6 @@ private:
                                          double prediction_error, bool trade_successful);
     VolatilityModelType select_active_model_type();
     void on_position_closed(uint32_t symbol_id, double pnl);
-    void close_all_positions(std::vector<IPC::TradingSignalMessage>& out_exit_signals);
-    void calibrate_gjr_model(const std::vector<QuantLib::Real>& returns_data);
-    StrategyPerformanceMetrics get_performance_metrics() const;
-    void reset_performance_metrics();
 
 public:
     VolatilityArbitrageStrategy(
@@ -151,6 +146,7 @@ public:
     
     // Position management
     void on_fill(const IPC::TradingSignalMessage& signal, double fill_price, int fill_quantity_signed);
+    void close_all_positions(std::vector<IPC::TradingSignalMessage>& out_exit_signals);
     
     // Model calibration
     bool calibrate_gjr_model(const std::vector<QuantLib::Real>& historical_returns);
@@ -159,7 +155,8 @@ public:
     size_t active_positions_count() const { return current_positions_.size(); }
     double total_unrealized_pnl() const;
     VolatilityModelType get_active_model_type() const { return active_model_type_; }
-    StrategyPerformanceMetrics get_performance_metrics() const { return get_performance_metrics(); }
+    StrategyPerformanceMetrics get_performance_metrics() const;
+    void reset_performance_metrics();
     
     // **PUBLIC TESTING INTERFACE** - For unit/integration tests
     #ifdef ALARIS_ENABLE_TESTING

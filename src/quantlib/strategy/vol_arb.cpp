@@ -360,10 +360,6 @@ bool VolatilityArbitrageStrategy::calibrate_gjr_model(const std::vector<QuantLib
     }
 }
 
-void VolatilityArbitrageStrategy::calibrate_gjr_model(const std::vector<QuantLib::Real>& returns_data) {
-    calibrate_gjr_model(returns_data);
-}
-
 VolatilityArbitrageStrategy::StrategyPerformanceMetrics VolatilityArbitrageStrategy::get_performance_metrics() const {
     StrategyPerformanceMetrics metrics{};
     metrics.total_pnl = total_realized_pnl_ + total_unrealized_pnl();
