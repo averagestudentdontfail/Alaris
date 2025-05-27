@@ -10,6 +10,9 @@ namespace Alaris::Volatility {
 
 class QuantLibGJRGARCHModel {
 private:
+    // Memory management - initialized first
+    Core::MemoryPool& mem_pool_;
+
     // Model parameters (specific to GJR-GARCH(1,1) for simplicity)
     QuantLib::Real omega_;    // Constant term
     QuantLib::Real alpha_;    // ARCH parameter
@@ -29,9 +32,6 @@ private:
     QuantLib::Size max_history_length_;
     QuantLib::Real tolerance_;
     QuantLib::Size max_iterations_;
-
-    // Memory management
-    Core::MemoryPool& mem_pool_;
 
     // Performance tracking
     mutable size_t forecast_count_;

@@ -10,6 +10,7 @@
 
 namespace Alaris::Core {
 
+// Task constructor definition (was causing redefinition error)
 TimeTriggeredExecutor::Task::Task(std::string task_name, TaskFunction func, Duration per, Duration offset, Duration dead)
     : name(std::move(task_name)),
       function(std::move(func)),
@@ -39,7 +40,7 @@ TimeTriggeredExecutor::~TimeTriggeredExecutor() {
 }
 
 void TimeTriggeredExecutor::register_task(
-    const std::string& task_name,
+    std::string task_name,
     TaskFunction func,
     Duration period,
     Duration phase_offset,
@@ -62,6 +63,13 @@ void TimeTriggeredExecutor::register_task(
     }
 
     tasks_.emplace_back(task_name, std::move(func), period, phase_offset, deadline);
+}
+
+// Simplified overload for common usage patterns
+void TimeTriggeredExecutor::register_task(TaskFunction task, Duration period) {
+    static int task_counter = 0;
+    std::string task_name = "Task_" + std::to_string(++task_counter);
+    register_task(task_name, std::move(task), period, Duration::zero(), period);
 }
 
 bool TimeTriggeredExecutor::should_execute_task(const Task& task, TimePoint cycle_start) const {
@@ -211,7 +219,7 @@ TimeTriggeredExecutor::PerformanceReport TimeTriggeredExecutor::get_performance_
     report.total_major_frames_executed = current_major_frame_count_;
     report.total_task_deadlines_missed_overall = 0;
     
-    // Set the additional fields for backward compatibility
+    // Set the backward compatibility fields
     report.total_cycles = current_major_frame_count_;
     report.total_deadlines_missed = 0;
     
@@ -245,7 +253,7 @@ TimeTriggeredExecutor::PerformanceReport TimeTriggeredExecutor::get_performance_
         report.max_jitter_us = static_cast<double>(
             std::chrono::duration_cast<std::chrono::microseconds>(max_jitter).count());
         
-        // Set the additional fields
+        // Set the backward compatibility fields
         report.average_cycle_time_us = report.average_major_frame_time_us;
         report.max_cycle_time_us = report.max_major_frame_time_us;
         report.total_deadlines_missed = report.total_task_deadlines_missed_overall;

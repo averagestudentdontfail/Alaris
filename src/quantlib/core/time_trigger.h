@@ -18,51 +18,41 @@ public:
 
 private:
     struct Task {
-        std::string name; // Optional: for identifiable metrics
+        std::string name;
         TaskFunction function;
         Duration period;
-        Duration phase_offset; // Relative to the start of the executor's run
-        Duration deadline;     // Relative to the task's scheduled start time
-        TimePoint last_execution_scheduled_time; // When it was last scheduled to run
-        TimePoint last_execution_actual_start_time; // When it actually started
+        Duration phase_offset;
+        Duration deadline;
+        TimePoint last_execution_scheduled_time;
+        TimePoint last_execution_actual_start_time;
         
         uint64_t execution_count;
         uint64_t missed_deadlines_count;
-        Duration total_execution_time_ns; // Sum of actual execution durations
-        Duration max_execution_time_ns;   // Longest actual execution duration
+        Duration total_execution_time_ns;
+        Duration max_execution_time_ns;
 
-        Task(std::string task_name, TaskFunction func, Duration per, Duration offset, Duration dead)
-            : name(std::move(task_name)),
-              function(std::move(func)),
-              period(per),
-              phase_offset(offset),
-              deadline(dead),
-              last_execution_scheduled_time(TimePoint::min()),
-              last_execution_actual_start_time(TimePoint::min()),
-              execution_count(0),
-              missed_deadlines_count(0),
-              total_execution_time_ns(Duration::zero()),
-              max_execution_time_ns(Duration::zero()) {}
+        // Constructor declaration only - definition in .cpp
+        Task(std::string task_name, TaskFunction func, Duration per, Duration offset, Duration dead);
     };
 
     std::vector<Task> tasks_;
-    Duration major_frame_;              // The fundamental period of the executor
-    std::atomic<bool> stop_requested_;  // For explicit stop calls
+    Duration major_frame_;
+    std::atomic<bool> stop_requested_;
     uint64_t current_major_frame_count_ = 0;
-    TimePoint executor_start_time_;     // Time when the run/run_continuous started
+    TimePoint executor_start_time_;
 
     // Performance Monitoring
     struct CyclePerformanceMetrics {
         TimePoint actual_start_time;
-        Duration actual_duration_ns;    // How long this major frame actually took
-        Duration intended_duration_ns;  // Should be major_frame_
-        Duration jitter_ns;             // Difference between actual and intended start relative to previous frame end
+        Duration actual_duration_ns;
+        Duration intended_duration_ns;
+        Duration jitter_ns;
         size_t tasks_executed_in_cycle;
         size_t deadlines_missed_in_cycle;
     };
 
-    std::vector<CyclePerformanceMetrics> cycle_history_; // Stores metrics for recent cycles
-    static constexpr size_t MAX_CYCLE_HISTORY = 1000;   // Max history to keep for metrics
+    std::vector<CyclePerformanceMetrics> cycle_history_;
+    static constexpr size_t MAX_CYCLE_HISTORY = 1000;
 
     // Private helper methods
     void execute_tasks_for_current_frame(TimePoint current_frame_ideal_start_time);
@@ -71,10 +61,6 @@ private:
     void execute_task(Task& task, TimePoint cycle_start);
 
 public:
-    /**
-     * @brief Constructs a TimeTriggeredExecutor.
-     * @param major_frame The fundamental execution cycle period.
-     */
     explicit TimeTriggeredExecutor(Duration major_frame);
     ~TimeTriggeredExecutor();
 
@@ -95,6 +81,13 @@ public:
                        Duration period,
                        Duration phase_offset = Duration::zero(),
                        Duration deadline = Duration::zero());
+
+    /**
+     * @brief Simplified task registration for common use cases
+     * @param task The function to execute
+     * @param period The period at which the task should run
+     */
+    void register_task(TaskFunction task, Duration period);
 
     /**
      * @brief Runs the executor for a specified duration.
@@ -120,15 +113,22 @@ public:
      */
     bool is_running() const;
 
-    // Performance Metrics Structure
+    // Performance Metrics Structure - Fixed to include all expected fields
     struct PerformanceReport {
+        // Core metrics
         double average_major_frame_time_us = 0.0;
         double max_major_frame_time_us = 0.0;
         double min_major_frame_time_us = 0.0;
-        double average_jitter_us = 0.0; // Jitter in major frame start times
+        double average_jitter_us = 0.0;
         double max_jitter_us = 0.0;
         uint64_t total_major_frames_executed = 0;
         uint64_t total_task_deadlines_missed_overall = 0;
+
+        // Backward compatibility fields
+        uint64_t total_cycles = 0;
+        uint64_t total_deadlines_missed = 0;
+        double average_cycle_time_us = 0.0;
+        double max_cycle_time_us = 0.0;
 
         struct TaskReport {
             std::string name;
@@ -136,7 +136,7 @@ public:
             uint64_t missed_deadlines_count = 0;
             double average_execution_time_us = 0.0;
             double max_execution_time_us = 0.0;
-            double miss_rate_percent = 0.0; // (missed_deadlines_count / execution_count) * 100
+            double miss_rate_percent = 0.0;
         };
         std::vector<TaskReport> task_reports;
     };
