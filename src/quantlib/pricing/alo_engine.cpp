@@ -159,7 +159,7 @@ void QuantLibALOEngine::cleanup_cache() const {
     if (option_cache_.size() < MAX_CACHE_SIZE / 2) return;
     
     // Remove least recently used entries
-    std::vector<std::pair<uint64_t, uint64_t>> entries; // hash, timestamp
+    std::vector<std::pair<uint64_t, uint64_t>> entries; 
     for (const auto& pair : option_cache_) {
         entries.emplace_back(pair.first, pair.second.timestamp);
     }
@@ -176,7 +176,7 @@ void QuantLibALOEngine::cleanup_cache() const {
 
 double QuantLibALOEngine::calculate_price_bump(const OptionData& option, 
                                               const std::string& param, 
-                                              double bump_size) const {
+                                              double bump_size) {  
     OptionData bumped_option = option;
     
     if (param == "spot") {
@@ -190,24 +190,23 @@ double QuantLibALOEngine::calculate_price_bump(const OptionData& option,
     }
     
     // Create temporary engine for bumped calculation
-    QuantLibALOEngine* non_const_this = const_cast<QuantLibALOEngine*>(this);
-    non_const_this->update_process(bumped_option);
-    auto option_obj = non_const_this->create_option(bumped_option);
+    update_process(bumped_option); 
+    auto option_obj = create_option(bumped_option); 
     
     double price = option_obj->NPV();
     
     // Restore original state
-    non_const_this->update_process(option);
+    update_process(option);
     
     return price;
 }
 
-OptionGreeks QuantLibALOEngine::calculate_numerical_greeks(const OptionData& option) const {
+OptionGreeks QuantLibALOEngine::calculate_numerical_greeks(const OptionData& option) {  // Removed const
     OptionGreeks greeks;
     
     // Calculate base price
-    update_process(option);
-    auto option_obj = create_option(option);
+    update_process(option);  // Now allowed since method is not const
+    auto option_obj = create_option(option);  // Now allowed since method is not const
     greeks.price = option_obj->NPV();
     
     if (!std::isfinite(greeks.price) || greeks.price < 0) {

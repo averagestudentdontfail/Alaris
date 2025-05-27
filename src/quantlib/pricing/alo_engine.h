@@ -87,7 +87,7 @@ private:
     mutable std::atomic<size_t> cache_hits_{0};
     mutable std::atomic<size_t> cache_misses_{0};
     
-    // Helper methods
+    // Helper methods - Fixed const correctness
     void update_process(const OptionData& option);
     QuantLib::ext::shared_ptr<QuantLib::VanillaOption> create_option(const OptionData& data);
     uint64_t calculate_option_hash(const OptionData& data) const;
@@ -95,10 +95,10 @@ private:
     void cache_option_result(const OptionData& data, const OptionGreeks& greeks) const;
     void cleanup_cache() const;
     
-    // Numerical Greeks calculation methods
+    // Numerical Greeks calculation methods - Fixed const correctness
     double calculate_price_bump(const OptionData& option, 
-                               const std::string& param, double bump_size) const;
-    OptionGreeks calculate_numerical_greeks(const OptionData& option) const;
+                               const std::string& param, double bump_size);
+    OptionGreeks calculate_numerical_greeks(const OptionData& option);
     
     // Black-Scholes fallback for validation
     OptionGreeks calculate_black_scholes_greeks(const OptionData& option_data) const;

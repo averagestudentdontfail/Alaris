@@ -469,7 +469,6 @@ QuantLibGARCHModel::ModelFitStatistics QuantLibGARCHModel::get_fit_statistics() 
     return stats;
 }
 
-// VolatilityForecaster Implementation
 VolatilityForecaster::VolatilityForecaster(QuantLibGARCHModel& garch_model, 
                                          Core::MemoryPool& mem_pool)
     : garch_model_(garch_model), 
@@ -532,6 +531,10 @@ double VolatilityForecaster::calculate_ewma_volatility(
     return std::sqrt(variance * 252.0);
 }
 
+double VolatilityForecaster::generate_forecast(size_t horizon, const std::vector<double>& returns) {
+    return generate_ensemble_forecast(horizon, returns);
+}
+
 double VolatilityForecaster::generate_ensemble_forecast(
     size_t horizon, const std::vector<double>& returns) {
     
@@ -554,6 +557,20 @@ double VolatilityForecaster::generate_ensemble_forecast(
     }
 }
 
+std::vector<double> VolatilityForecaster::generate_forecast_path(
+    size_t horizon, const std::vector<double>& returns) {
+    
+    std::vector<double> path;
+    if (horizon == 0) return path;
+    
+    path.reserve(horizon);
+    for (size_t h = 1; h <= horizon; ++h) {
+        path.push_back(generate_ensemble_forecast(h, returns));
+    }
+    
+    return path;
+}
+
 double VolatilityForecaster::generate_garch_forecast(size_t horizon) {
     return garch_model_.forecast_volatility(horizon);
 }
@@ -568,6 +585,18 @@ double VolatilityForecaster::generate_ewma_forecast(
     return calculate_ewma_volatility(returns, lambda);
 }
 
+void VolatilityForecaster::set_model_weights(const std::vector<double>& weights) {
+    std::lock_guard<std::mutex> lock(forecaster_mutex_);
+    if (weights.size() >= model_weights_.size()) {
+        model_weights_ = weights;
+    }
+}
+
+std::vector<double> VolatilityForecaster::get_model_weights() const {
+    std::lock_guard<std::mutex> lock(forecaster_mutex_);
+    return model_weights_;
+}
+
 void VolatilityForecaster::update_model_weights() {
     double total_accuracy = std::accumulate(model_accuracies_.begin(), 
                                           model_accuracies_.end(), 0.0);
@@ -576,6 +605,15 @@ void VolatilityForecaster::update_model_weights() {
         for (size_t i = 0; i < model_weights_.size() && i < model_accuracies_.size(); ++i) {
             model_weights_[i] = model_accuracies_[i] / total_accuracy;
         }
+    }
+}
+
+void VolatilityForecaster::update_model_weights(const std::vector<double>& accuracies) {
+    std::lock_guard<std::mutex> lock(forecaster_mutex_);
+    
+    if (accuracies.size() >= model_accuracies_.size()) {
+        model_accuracies_ = accuracies;
+        update_model_weights();
     }
 }
 
@@ -589,6 +627,17 @@ void VolatilityForecaster::update_forecast_accuracy(double forecast_error) {
     }
     
     update_model_weights();
+}
+
+double VolatilityForecaster::get_average_forecast_error() const {
+    std::lock_guard<std::mutex> lock(forecaster_mutex_);
+    return (total_forecasts_ > 0) ? forecast_error_sum_ / total_forecasts_ : 0.0;
+}
+
+void VolatilityForecaster::reset_performance_stats() {
+    std::lock_guard<std::mutex> lock(forecaster_mutex_);
+    total_forecasts_ = 0;
+    forecast_error_sum_ = 0.0;
 }
 
 bool VolatilityForecaster::is_healthy() const {

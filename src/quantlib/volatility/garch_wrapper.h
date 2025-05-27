@@ -9,8 +9,6 @@
 #include <mutex>
 
 namespace Alaris::Volatility {
-
-// Enhanced GARCH model using QuantLib's production-ready Garch11 implementation
 class QuantLibGARCHModel {
 private:
     // Memory management
@@ -132,7 +130,6 @@ public:
     ModelFitStatistics get_fit_statistics() const;
 };
 
-// Enhanced volatility forecasting system
 class VolatilityForecaster {
 private:
     QuantLibGARCHModel& garch_model_;
@@ -164,7 +161,8 @@ public:
     explicit VolatilityForecaster(QuantLibGARCHModel& garch_model, 
                                  Core::MemoryPool& mem_pool);
     
-    // Forecasting methods
+    // Forecasting methods - updated to match usage
+    double generate_forecast(size_t horizon, const std::vector<double>& returns);
     double generate_ensemble_forecast(size_t horizon, const std::vector<double>& returns);
     std::vector<double> generate_forecast_path(size_t horizon, const std::vector<double>& returns);
     
@@ -173,9 +171,10 @@ public:
     double generate_historical_forecast(const std::vector<double>& returns, size_t window = DEFAULT_HISTORICAL_WINDOW);
     double generate_ewma_forecast(const std::vector<double>& returns, double lambda = 0.94);
     
-    // Model weight management
+    // Model weight management - updated to match usage
     void set_model_weights(const std::vector<double>& weights);
     std::vector<double> get_model_weights() const;
+    void update_model_weights(const std::vector<double>& accuracies);  // Added overload with parameters
     void update_forecast_accuracy(double forecast_error);
     
     // Performance and diagnostics
