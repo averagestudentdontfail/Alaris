@@ -1,15 +1,15 @@
 #pragma once
 
-#include "../ipc/message_types.h" // For Alaris::IPC message structures
-#include "time_trigger.h"         // For Alaris::Core::TimeTriggeredExecutor::Clock and ::TimePoint definition
+#include "../ipc/message_types.h"
+#include "time_trigger.h"
 #include <fstream>
 #include <string>
 #include <vector>
-#include <chrono>                 // For std::chrono literals if used, and duration types
-#include <functional>             // For EventReplayCallback (std::function)
-#include <atomic>                 // For atomic members
-#include <mutex>                  // For std::mutex
-#include <thread>                 // For std::thread in EventReplayEngine
+#include <chrono>
+#include <functional>
+#include <atomic>
+#include <mutex>
+#include <thread>
 
 namespace Alaris::Core {
 
@@ -27,7 +27,8 @@ enum class EventType : uint32_t {
     PERFORMANCE_METRIC_LOG = 10,
     ERROR_LOG = 11,
     WARNING_LOG = 12,
-    DEBUG_LOG = 13,
+    INFO_LOG = 13,
+    DEBUG_LOG = 14,
     CUSTOM_STRATEGY_EVENT = 100
 };
 
@@ -45,7 +46,7 @@ private:
     mutable std::mutex log_mutex_;
     std::atomic<uint64_t> current_sequence_number_;
     std::string log_filename_;
-    bool use_binary_format_; 
+    bool use_binary_format_;
 
     std::atomic<uint64_t> total_events_logged_count_;
     std::atomic<uint64_t> total_bytes_written_count_;
@@ -60,29 +61,38 @@ public:
     EventLogger(const EventLogger&) = delete;
     EventLogger& operator=(const EventLogger&) = delete;
 
+    // Market data and trading
     void log_market_data(const IPC::MarketDataMessage& data_msg);
     void log_trading_signal(const IPC::TradingSignalMessage& signal_msg);
     void log_control_message(const IPC::ControlMessage& control_msg);
     
+    // System and status logging
     void log_system_status(const std::string& status_message);
-    void log_error_message(const std::string& error_msg);
-    void log_warning_message(const std::string& warning_msg);
-    void log_debug_message(const std::string& debug_msg);
     void log_performance_metric(const std::string& metric_name, double metric_value);
+    
+    // Error and debug logging - FIXED: Added these methods
+    void log_error(const std::string& error_msg);
+    void log_warning(const std::string& warning_msg);
+    void log_info(const std::string& info_msg);
+    void log_debug(const std::string& debug_msg);
+    
+    // Custom events
     void log_custom_event(EventType custom_type, const std::string& event_details);
     void log_custom_binary_event(EventType custom_type, const void* data_payload, size_t payload_size);
 
+    // File management
     void flush_log();
     void rotate_log_file(const std::string& new_filename);
 
+    // Metrics and health
     uint64_t get_total_events_logged() const { return total_events_logged_count_.load(); }
     uint64_t get_total_bytes_written() const { return total_bytes_written_count_.load(); }
     bool is_healthy() const;
 };
 
-// Use the TimePoint definition from TimeTriggeredExecutor for consistency
+// TimePoint and Duration definitions for consistency
 using TimePoint = Alaris::Core::TimeTriggeredExecutor::Clock::time_point;
-using Duration = Alaris::Core::TimeTriggeredExecutor::Clock::duration; // Also useful
+using Duration = Alaris::Core::TimeTriggeredExecutor::Clock::duration;
 
 using EventReplayCallback = std::function<void(const EventHeader& header, const std::vector<std::byte>& data_buffer)>;
 
@@ -92,18 +102,18 @@ private:
     EventReplayCallback event_callback_;
     std::atomic<bool> is_replaying_;
     std::atomic<bool> is_paused_;
-    double replay_speed_factor_; 
+    double replay_speed_factor_;
     
     uint64_t current_replay_sequence_number_;
-    TimePoint last_event_original_timestamp_; // Uses the correctly defined TimePoint
-    TimePoint replay_session_start_host_time_; // Host time when current replay segment started
-    Duration   replay_session_first_event_original_offset_ns_; // Original timestamp of the first event processed in this session segment
+    TimePoint last_event_original_timestamp_;
+    TimePoint replay_session_start_host_time_;
+    Duration replay_session_first_event_original_offset_ns_;
 
     bool read_next_event(EventHeader& out_header, std::vector<std::byte>& out_data_buffer);
     bool validate_event_checksum(const EventHeader& header, const std::vector<std::byte>& data_buffer) const;
     uint32_t calculate_data_checksum(const void* data, size_t size) const;
 
-    std::thread replay_thread_; // std::thread is available via <thread>
+    std::thread replay_thread_;
     void replay_loop(uint64_t start_sequence_num);
 
 public:
@@ -117,12 +127,11 @@ public:
     void pause_replay();
     void resume_replay();
     void stop_replay();
-
     void set_replay_speed(double speed_factor);
     
     bool is_replaying() const { return is_replaying_.load(std::memory_order_relaxed); }
     bool is_paused() const { return is_paused_.load(std::memory_order_relaxed); }
-    uint64_t get_current_replay_sequence() const { return current_replay_sequence_number_; } // Not atomic, call when not replaying or from callback
+    uint64_t get_current_replay_sequence() const { return current_replay_sequence_number_; }
     bool is_eof() const;
 };
 

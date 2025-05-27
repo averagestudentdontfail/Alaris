@@ -3,11 +3,10 @@
 #include <iomanip>
 #include <cstring>
 #include <vector>
-#include <iostream> // For std::cerr, std::cout
-#include <sstream>  // For std::ostringstream
-#include <algorithm>// For std::min, std::max
+#include <iostream>
+#include <sstream>
+#include <algorithm>
 
-// Anonymous namespace for file-local utility (checksum)
 namespace {
     uint32_t internal_calculate_checksum_eventlog(const void* data, size_t size, uint32_t initial_crc = 0xFFFFFFFF) {
         uint32_t crc = initial_crc;
@@ -24,8 +23,7 @@ namespace {
 
 namespace Alaris::Core {
 
-// --- EventLogger Implementation ---
-
+// EventLogger Implementation
 EventLogger::EventLogger(const std::string& filename, bool binary_mode)
     : current_sequence_number_(0),
       log_filename_(filename),
@@ -81,7 +79,7 @@ void EventLogger::write_log_entry(EventType type, const void* data_payload, size
     header.data_checksum = (payload_size > 0 && data_payload) ? calculate_data_checksum(data_payload, payload_size) : 0;
 
     size_t bytes_written_this_event = 0;
-    std::string text_line_buffer; // For text mode to avoid repeated small writes
+    std::string text_line_buffer;
 
     std::lock_guard<std::mutex> lock(log_mutex_);
     if (!log_file_stream_.is_open() || !log_file_stream_.good()) {
@@ -112,46 +110,59 @@ void EventLogger::write_log_entry(EventType type, const void* data_payload, size
             }
         }
         oss << "\n";
-        text_line_buffer = oss.str(); // Store in buffer
+        text_line_buffer = oss.str();
         log_file_stream_ << text_line_buffer;
         bytes_written_this_event = text_line_buffer.length();
     }
     
-    log_file_stream_.flush(); 
+    log_file_stream_.flush();
 
     total_events_logged_count_++;
     total_bytes_written_count_ += bytes_written_this_event;
 }
 
-// Specific log methods (delegating to write_log_entry)
+// Specific log methods
 void EventLogger::log_market_data(const IPC::MarketDataMessage& data_msg) {
     write_log_entry(EventType::MARKET_DATA_UPDATE, &data_msg, sizeof(data_msg));
 }
+
 void EventLogger::log_trading_signal(const IPC::TradingSignalMessage& signal_msg) {
     write_log_entry(EventType::TRADING_SIGNAL_GENERATED, &signal_msg, sizeof(signal_msg));
 }
+
 void EventLogger::log_control_message(const IPC::ControlMessage& control_msg) {
     write_log_entry(EventType::CONTROL_MESSAGE_RECEIVED, &control_msg, sizeof(control_msg));
 }
+
 void EventLogger::log_system_status(const std::string& status_message) {
     write_log_entry(EventType::SYSTEM_STATUS_CHANGE, status_message.c_str(), status_message.length());
 }
-void EventLogger::log_error_message(const std::string& error_msg) {
+
+void EventLogger::log_error(const std::string& error_msg) {
     write_log_entry(EventType::ERROR_LOG, error_msg.c_str(), error_msg.length());
 }
-void EventLogger::log_warning_message(const std::string& warning_msg) {
+
+void EventLogger::log_warning(const std::string& warning_msg) {
     write_log_entry(EventType::WARNING_LOG, warning_msg.c_str(), warning_msg.length());
 }
-void EventLogger::log_debug_message(const std::string& debug_msg) {
+
+void EventLogger::log_info(const std::string& info_msg) {
+    write_log_entry(EventType::INFO_LOG, info_msg.c_str(), info_msg.length());
+}
+
+void EventLogger::log_debug(const std::string& debug_msg) {
     write_log_entry(EventType::DEBUG_LOG, debug_msg.c_str(), debug_msg.length());
 }
+
 void EventLogger::log_performance_metric(const std::string& metric_name, double metric_value) {
     std::string payload = metric_name + "=" + std::to_string(metric_value);
     write_log_entry(EventType::PERFORMANCE_METRIC_LOG, payload.c_str(), payload.length());
 }
+
 void EventLogger::log_custom_event(EventType custom_type, const std::string& event_details) {
     write_log_entry(custom_type, event_details.c_str(), event_details.length());
 }
+
 void EventLogger::log_custom_binary_event(EventType custom_type, const void* data_payload, size_t payload_size) {
     write_log_entry(custom_type, data_payload, payload_size);
 }
@@ -194,24 +205,22 @@ void EventLogger::rotate_log_file(const std::string& new_filename) {
 }
 
 bool EventLogger::is_healthy() const {
-    std::lock_guard<std::mutex> lock(log_mutex_); 
+    std::lock_guard<std::mutex> lock(log_mutex_);
     return log_file_stream_.is_open() && log_file_stream_.good();
 }
 
-
-// --- EventReplayEngine Implementation ---
-
+// EventReplayEngine Implementation
 EventReplayEngine::EventReplayEngine(const std::string& log_filename, EventReplayCallback callback)
     : event_callback_(std::move(callback)),
       is_replaying_(false),
       is_paused_(false),
       replay_speed_factor_(1.0),
       current_replay_sequence_number_(0),
-      last_event_original_timestamp_(TimePoint::min()), // Initialize using TimePoint's default
+      last_event_original_timestamp_(TimePoint::min()),
       replay_session_start_host_time_(TimePoint::min()),
       replay_session_first_event_original_offset_ns_(Duration::zero()) {
 
-    std::ios_base::openmode open_flags = std::ios::in | std::ios::binary; 
+    std::ios_base::openmode open_flags = std::ios::in | std::ios::binary;
     
     log_file_stream_.open(log_filename, open_flags);
     if (!log_file_stream_.is_open()) {
@@ -219,7 +228,7 @@ EventReplayEngine::EventReplayEngine(const std::string& log_filename, EventRepla
         throw std::runtime_error("EventReplayEngine: Failed to open log file: " + log_filename);
     }
 
-    char binary_header_check[13]; 
+    char binary_header_check[13];
     std::streamsize header_len_to_check = static_cast<std::streamsize>(sizeof(binary_header_check));
     log_file_stream_.read(binary_header_check, header_len_to_check);
 
@@ -227,13 +236,13 @@ EventReplayEngine::EventReplayEngine(const std::string& log_filename, EventRepla
         std::string(binary_header_check, static_cast<size_t>(header_len_to_check)) != "ALARISLOG_V1B") {
         std::cout << "EventReplayEngine: Warning - Binary log header 'ALARISLOG_V1B' not found or mismatched in '" << log_filename 
                   << "'. Assuming headerless or text log (text replay not fully supported)." << std::endl;
-        log_file_stream_.clear(); 
-        log_file_stream_.seekg(0, std::ios::beg); 
+        log_file_stream_.clear();
+        log_file_stream_.seekg(0, std::ios::beg);
     }
 }
 
 EventReplayEngine::~EventReplayEngine() {
-    stop_replay(); 
+    stop_replay();
     if (log_file_stream_.is_open()) {
         log_file_stream_.close();
     }
@@ -250,13 +259,13 @@ bool EventReplayEngine::validate_event_checksum(const EventHeader& header, const
     if (header.data_size_bytes != data_buffer.size()) {
          std::cerr << "EventReplayEngine: Checksum validation size mismatch. Header: " << header.data_size_bytes 
                    << ", buffer: " << data_buffer.size() << std::endl;
-        return false; 
+        return false;
     }
     return header.data_checksum == calculate_data_checksum(data_buffer.data(), data_buffer.size());
 }
 
 bool EventReplayEngine::read_next_event(EventHeader& out_header, std::vector<std::byte>& out_data_buffer) {
-    out_data_buffer.clear(); 
+    out_data_buffer.clear();
 
     if (!log_file_stream_.is_open() || !log_file_stream_.good() || log_file_stream_.eof()) {
         return false;
@@ -264,15 +273,15 @@ bool EventReplayEngine::read_next_event(EventHeader& out_header, std::vector<std
 
     log_file_stream_.read(reinterpret_cast<char*>(&out_header), sizeof(EventHeader));
     if (log_file_stream_.gcount() != sizeof(EventHeader)) {
-        return false; 
+        return false;
     }
 
     if (out_header.data_size_bytes > 0) {
-        const size_t MAX_EVENT_DATA_SIZE = 16 * 1024 * 1024; 
+        const size_t MAX_EVENT_DATA_SIZE = 16 * 1024 * 1024;
         if (out_header.data_size_bytes > MAX_EVENT_DATA_SIZE) {
             std::cerr << "EventReplayEngine: Error - Event data size " << out_header.data_size_bytes 
                       << " exceeds sanity limit for seq=" << out_header.sequence_number << ". Log may be corrupt." << std::endl;
-            return false; 
+            return false;
         }
         try {
             out_data_buffer.resize(out_header.data_size_bytes);
@@ -285,7 +294,7 @@ bool EventReplayEngine::read_next_event(EventHeader& out_header, std::vector<std
         if (log_file_stream_.gcount() != static_cast<std::streamsize>(out_header.data_size_bytes)) {
             std::cerr << "EventReplayEngine: Error - Failed to read full payload for seq=" << out_header.sequence_number 
                       << ". Expected " << out_header.data_size_bytes << ", got " << log_file_stream_.gcount() << std::endl;
-            return false; 
+            return false;
         }
     }
 
@@ -303,7 +312,7 @@ void EventReplayEngine::replay_loop(uint64_t start_sequence_num) {
     bool found_start_seq = (start_sequence_num == 0);
     bool first_event_after_skip = true;
     
-    replay_session_start_host_time_ = TimeTriggeredExecutor::Clock::now(); // Host time when this replay (segment) started
+    replay_session_start_host_time_ = TimeTriggeredExecutor::Clock::now();
 
     while (is_replaying_.load(std::memory_order_acquire)) {
         while (is_paused_.load(std::memory_order_acquire) && is_replaying_.load(std::memory_order_acquire)) {
@@ -312,7 +321,7 @@ void EventReplayEngine::replay_loop(uint64_t start_sequence_num) {
         if (!is_replaying_.load(std::memory_order_acquire)) break;
 
         if (!read_next_event(header, data_buffer)) {
-            break; 
+            break;
         }
         
         current_replay_sequence_number_ = header.sequence_number;
@@ -320,10 +329,10 @@ void EventReplayEngine::replay_loop(uint64_t start_sequence_num) {
         if (!found_start_seq) {
             if (header.sequence_number >= start_sequence_num) {
                 found_start_seq = true;
-                first_event_after_skip = true; // Reset for timing the first event after seeking/skipping
-                replay_session_start_host_time_ = TimeTriggeredExecutor::Clock::now(); // Reset host time reference
+                first_event_after_skip = true;
+                replay_session_start_host_time_ = TimeTriggeredExecutor::Clock::now();
             } else {
-                continue; 
+                continue;
             }
         }
         
@@ -331,15 +340,12 @@ void EventReplayEngine::replay_loop(uint64_t start_sequence_num) {
 
         if (first_event_after_skip) {
             replay_session_first_event_original_offset_ns_ = std::chrono::nanoseconds(header.timestamp_ns);
-            last_event_original_timestamp_ = current_event_original_ts; // Initialize for delta calculation
+            last_event_original_timestamp_ = current_event_original_ts;
             first_event_after_skip = false;
         }
         
         if (replay_speed_factor_ > 0.0) {
-            // Time elapsed in original log relative to the first event *of this replay session*
             Duration original_elapsed_current_segment_ns = current_event_original_ts - TimePoint(replay_session_first_event_original_offset_ns_);
-            
-            // Desired host time for this event relative to host start of this replay session
             Duration desired_host_time_for_event_ns(
                 static_cast<long long>(static_cast<double>(original_elapsed_current_segment_ns.count()) / replay_speed_factor_)
             );
@@ -351,20 +357,19 @@ void EventReplayEngine::replay_loop(uint64_t start_sequence_num) {
                 std::this_thread::sleep_until(target_dispatch_host_time);
             }
         }
-        last_event_original_timestamp_ = current_event_original_ts; // Update for next iteration's delta (less critical if using absolute timing)
+        last_event_original_timestamp_ = current_event_original_ts;
 
         if (event_callback_) {
             event_callback_(header, data_buffer);
         }
 
-        if (replay_speed_factor_ == 0.0) { 
-            is_paused_ = true; 
+        if (replay_speed_factor_ == 0.0) {
+            is_paused_ = true;
         }
     }
-    is_replaying_ = false; 
+    is_replaying_ = false;
     is_paused_ = false;
 }
-
 
 void EventReplayEngine::start_replay(uint64_t start_sequence_number) {
     if (is_replaying_.load()) {
@@ -376,26 +381,25 @@ void EventReplayEngine::start_replay(uint64_t start_sequence_number) {
         throw std::runtime_error("EventReplayEngine: Log file not open or in bad state for replay.");
     }
     
-    stop_replay(); 
+    stop_replay();
 
-    log_file_stream_.clear(); 
-    log_file_stream_.seekg(0, std::ios::beg); 
+    log_file_stream_.clear();
+    log_file_stream_.seekg(0, std::ios::beg);
     
-    char binary_header_check[13]; 
+    char binary_header_check[13];
     std::streamsize header_len_to_check = static_cast<std::streamsize>(sizeof(binary_header_check));
     log_file_stream_.read(binary_header_check, header_len_to_check);
     if (!log_file_stream_ || log_file_stream_.gcount() != header_len_to_check || 
         std::string(binary_header_check, static_cast<size_t>(header_len_to_check)) != "ALARISLOG_V1B") {
-        log_file_stream_.clear(); 
-        log_file_stream_.seekg(0, std::ios::beg); 
+        log_file_stream_.clear();
+        log_file_stream_.seekg(0, std::ios::beg);
     }
 
-    is_replaying_ = true; 
+    is_replaying_ = true;
     is_paused_ = false;
-    last_event_original_timestamp_ = TimePoint(Duration::min()); // Reset for speed control logic
-    replay_session_start_host_time_ = TimePoint(Duration::min()); // Will be set on first event
+    last_event_original_timestamp_ = TimePoint(Duration::min());
+    replay_session_start_host_time_ = TimePoint(Duration::min());
     replay_session_first_event_original_offset_ns_ = Duration::zero();
-
 
     replay_thread_ = std::thread(&EventReplayEngine::replay_loop, this, start_sequence_number);
 }
@@ -409,18 +413,18 @@ void EventReplayEngine::resume_replay() {
 }
 
 void EventReplayEngine::stop_replay() {
-    if (is_replaying_.exchange(false, std::memory_order_acq_rel)) { 
-        is_paused_ = false; 
+    if (is_replaying_.exchange(false, std::memory_order_acq_rel)) {
+        is_paused_ = false;
         if (replay_thread_.joinable()) {
             replay_thread_.join();
         }
-    } else if (replay_thread_.joinable()){ 
+    } else if (replay_thread_.joinable()){
          replay_thread_.join();
     }
 }
 
 void EventReplayEngine::set_replay_speed(double speed_factor) {
-    replay_speed_factor_ = std::max(0.0, speed_factor); 
+    replay_speed_factor_ = std::max(0.0, speed_factor);
 }
 
 bool EventReplayEngine::is_eof() const {
