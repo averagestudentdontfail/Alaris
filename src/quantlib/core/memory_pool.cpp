@@ -184,8 +184,13 @@ void MemoryPool::add_chunk(size_t min_data_size) {
     chunks_.emplace_back(std::move(new_os_chunk));
 }
 
-void MemoryPool::add_block_to_free_list(MemoryPool::Block* block) { // Fully qualify Block
-    assert(block && block->is_valid() && block->is_free); // is_free should be true before adding
+void MemoryPool::add_block_to_free_list(MemoryPool::Block* block) {
+    assert(block && block->is_valid());
+    
+    // Ensure block is marked as free before adding to list
+    if (!block->is_free) {
+        block->is_free = true;
+    }
     
     size_t sc = std::min(block->size_class, NUM_SIZE_CLASSES - 1);
     
@@ -319,109 +324,48 @@ void* MemoryPool::allocate(size_t size_bytes, size_t alignment_bytes) {
 void MemoryPool::release(void* user_ptr) {
     if (!user_ptr) return;
     
-    // To find the Block header: user_ptr is (Block*)(some_chunk_memory_base + offset) + 1 (i.e., its data() part).
-    // So, the header is at (Block*)user_ptr - sizeof(Block) if we know user_ptr points to Block::data().
-    // More robustly: (Block*)( (std::byte*)user_ptr - (offset_of_data_within_Block_if_data_is_not_flexible_array_member) )
-    // Since Block::data() is `reinterpret_cast<std::byte*>(this + 1)`,
-    // the Block header is at `reinterpret_cast<Block*>(static_cast<std::byte*>(user_ptr) - sizeof(Block))`
-    // THIS ASSUMES user_ptr IS THE EXACT POINTER RETURNED BY Block::data() AND NO ALIGNMENT HAPPENED *AFTER* THAT.
-    // The `allocate` returns `aligned_user_ptr`. This `aligned_user_ptr` might not be `block_header->data()`.
-    // It could be `block_header->data() + padding`.
-
-    // This makes `release` very tricky with the current `allocate` and `Block` structure.
-    // The user's uploaded memory_pool.cpp had a scan for release:
-    // for (const auto& chunk : chunks_) { if (chunk->contains(ptr)) { ... scan chunk ... } }
-    // This is slow. A common approach is to store the header pointer just before the aligned_user_ptr.
-    // E.g., ptr_to_header = aligned_user_ptr - sizeof(HeaderPointer); *(HeaderPointer*)ptr_to_header = block_header;
-    // Or, if alignment allows, `block_header = (Block*)((uintptr_t)aligned_user_ptr & ~(alignment_of_block_header_itself - 1)) - 1` (if headers are on fixed boundaries)
-
-    // For now, using the scan approach from user's original memory_pool.cpp for Block finding.
-    // This assumes block headers are identifiable within chunks.
     std::lock_guard<std::mutex> lock(mutex_);
     Block* found_block_header = nullptr;
 
     for (const auto& chunk : chunks_) {
-        if (chunk->contains(user_ptr)) { // Check if ptr is within this OS chunk
-            // Now iterate through blocks *managed* within this chunk.
-            // This requires knowledge of how Blocks are laid out, which the current design implies
-            // they are carved from the chunk->memory.
+        if (chunk->contains(user_ptr)) {
+            // Search through blocks in this chunk
             std::byte* current_scan_ptr = chunk->memory;
-            while (current_scan_ptr < chunk->memory + chunk->used) { // chunk->used is high watermark of block headers
+            while (current_scan_ptr < chunk->memory + chunk->used) {
                 Block* candidate_header = reinterpret_cast<Block*>(current_scan_ptr);
-                if (!candidate_header->is_valid()) { // Invalid magic, perhaps corrupted memory or end of formatted blocks
-                    // This might indicate an issue or that we've gone past known blocks.
-                    break; 
+                
+                // Validate block header
+                if (!candidate_header->is_valid()) {
+                    break; // Corrupted or end of valid blocks
                 }
 
-                std::byte* data_area_start = candidate_header->data();
-                std::byte* data_area_end = data_area_start + candidate_header->size;
-
-                // Check if user_ptr is within the data area managed by this candidate_header
-                // More precisely, user_ptr should be data_area_start + some_padding_from_alignment.
-                // If allocate stores the true block_header pointer before the user_ptr, that's easiest.
-                // Here, we assume user_ptr is SOMEWHERE within data_area_start to data_area_start + size_bytes_requested
-                // And the header for it is `candidate_header`. This is still fuzzy.
-                // The `std::align` in allocate means the returned `aligned_user_ptr` is not necessarily `candidate_header->data()`.
-                // The `block_header` from `allocate` is the one whose `data()` region *contains* `aligned_user_ptr`.
-
-                // Simplification: To release `user_ptr`, we need the *original* `Block*` header.
-                // This information is lost if `allocate` only returns the aligned data pointer.
-                // The user's `Block` struct in `memory_pool.cpp` had `data() { return reinterpret_cast<std::byte*>(this + 1); }`
-                // So, `Block* header = reinterpret_cast<Block*>(static_cast<std::byte*>(user_ptr_from_data_area) - sizeof(Block))` is not quite right
-                // because `user_ptr` could be `header->data() + padding`.
-                // We need to find the header whose `data()` region (after alignment) starts at `user_ptr`.
-
-                // Let's assume (as in typical allocators) that the `user_ptr` can be used to find its header.
-                // If `user_ptr` is the result of `align_up(candidate_header->data(), alignment_bytes)`,
-                // then `candidate_header` is what we need.
-                // We need to iterate through all blocks, not just free ones.
-                // The current structure doesn't easily allow iterating *all* blocks (free or used).
-                // This `release` is very hard to implement correctly with the current structure without more info.
-                // The user's `release` had a similar loop.
-
-                // A common way: `Block* header = (Block*)((char*)user_ptr - offset_of_data_field_in_block_struct)`
-                // If user_ptr points to the start of the data segment that immediately follows the header.
-                // For `std::byte* data() { return reinterpret_cast<std::byte*>(this + 1); }`,
-                // if `user_ptr == some_block->data()`, then `some_block == reinterpret_cast<Block*>(static_cast<std::byte*>(user_ptr) - sizeof(Block))`.
-                // BUT `allocate` returns an *aligned* pointer from within that data() region.
-
-                // Fallback: The user's `Block` struct seems to imply the block header is directly before the data area.
-                // If `user_ptr` is the start of the *aligned data*, the header is NOT necessarily `user_ptr - sizeof(Block)`.
-                // This `release` function is the hardest part of a custom allocator.
-                // The user's `memory_pool.cpp` snippet for release had a similar scan.
-                // Let's assume `user_ptr` is actually `block_header->data()` for this simplified release.
-                // This is often NOT true due to alignment.
-                if (static_cast<void*>(candidate_header->data()) == user_ptr) { // Highly unlikely if alignment happened
+                // Check if user_ptr falls within this block's data area
+                std::byte* data_start = candidate_header->data();
+                std::byte* data_end = data_start + candidate_header->size;
+                
+                if (static_cast<std::byte*>(user_ptr) >= data_start && 
+                    static_cast<std::byte*>(user_ptr) < data_end) {
                     found_block_header = candidate_header;
                     break;
                 }
                 
-                // Advance scan_ptr by size of current block header + its data size
-                if (candidate_header->size == 0 && candidate_header->is_free == false && candidate_header->magic != Block::MAGIC) {
-                    // Likely uninitialized memory or end of chunk's managed blocks.
-                    break;
-                }
-                current_scan_ptr += sizeof(Block) + candidate_header->size; // This assumes blocks are contiguous
-                                                                      // which they are if carved from a chunk.
+                // Move to next block
+                current_scan_ptr += sizeof(Block) + candidate_header->size;
             }
             if (found_block_header) break;
         }
     }
 
-
     if (found_block_header && found_block_header->is_valid() && !found_block_header->is_free) {
-        total_allocated_ = (total_allocated_ >= found_block_header->size) ? total_allocated_ - found_block_header->size : 0;
+        // Update statistics BEFORE marking block as free
+        total_allocated_ = (total_allocated_ >= found_block_header->size) ? 
+                          total_allocated_ - found_block_header->size : 0;
         total_free_ += found_block_header->size;
         deallocation_count_.fetch_add(1, std::memory_order_relaxed);
         
-        add_block_to_free_list(found_block_header); // Marks block as free and adds to list
-        
-        // Coalescing is complex and ideally done here or periodically.
-        // if (deallocation_count_.load() % 100 == 0) { coalesce_free_blocks(); }
-    } else {
-        // std::cerr << "MemoryPool::release - Warning: Attempt to free invalid or already free pointer: " << user_ptr << std::endl;
-        // If found_block_header is null, means we couldn't map ptr back to a known block header.
-        // This is a serious issue, either double free or freeing external pointer.
+        // Mark block as free and add to free list
+        found_block_header->is_free = true;
+        add_block_to_free_list(found_block_header);
     }
 }
 
