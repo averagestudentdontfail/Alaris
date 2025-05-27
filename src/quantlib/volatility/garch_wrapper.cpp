@@ -1,6 +1,6 @@
 // src/quantlib/volatility/garch_wrapper.cpp
 #include "garch_wrapper.h"
-#include <ql/models/equity/garch.hpp>
+#include <ql/models/volatility/garch.hpp>
 #include <ql/math/optimization/levenbergmarquardt.hpp>
 #include <ql/math/optimization/constraint.hpp>
 #include <algorithm>

@@ -14,7 +14,7 @@ set(QUANTLIB_COMPONENTS
 # Define QuantLib source files with correct paths
 set(QUANTLIB_CORE_SOURCES # Renamed for clarity, as this will build 'quantlib_core'
     ${CMAKE_SOURCE_DIR}/src/quantlib/pricing/alo_engine.cpp
-    ${CMAKE_SOURCE_DIR}/src/quantlib/volatility/gjrgarch_wrapper.cpp
+    ${CMAKE_SOURCE_DIR}/src/quantlib/volatility/garch_wrapper.cpp
     ${CMAKE_SOURCE_DIR}/src/quantlib/volatility/vol_forecast.cpp
     ${CMAKE_SOURCE_DIR}/src/quantlib/strategy/vol_arb.cpp
     ${CMAKE_SOURCE_DIR}/src/quantlib/ipc/shared_memory.cpp
@@ -29,7 +29,7 @@ set(QUANTLIB_CORE_SOURCES # Renamed for clarity, as this will build 'quantlib_co
 # These are made available via target_include_directories
 set(QUANTLIB_HEADERS_LIST
     ${CMAKE_SOURCE_DIR}/src/quantlib/pricing/alo_engine.h
-    ${CMAKE_SOURCE_DIR}/src/quantlib/volatility/gjrgarch_wrapper.h
+    ${CMAKE_SOURCE_DIR}/src/quantlib/volatility/garch_wrapper.h
     ${CMAKE_SOURCE_DIR}/src/quantlib/volatility/vol_forecast.h
     ${CMAKE_SOURCE_DIR}/src/quantlib/strategy/vol_arb.h
     ${CMAKE_SOURCE_DIR}/src/quantlib/ipc/shared_ring_buffer.h
