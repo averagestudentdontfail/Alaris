@@ -3,6 +3,7 @@
 #include <ql/models/volatility/garch.hpp>
 #include <ql/math/optimization/levenbergmarquardt.hpp>
 #include <ql/math/optimization/constraint.hpp>
+#include <ql/math/optimization/endcriteria.hpp>
 #include <algorithm>
 #include <cmath>
 #include <numeric>
@@ -17,7 +18,7 @@ QuantLibGARCHModel::QuantLibGARCHModel(Core::MemoryPool& mem_pool)
       beta_(0.85),
       current_variance_(0.04),
       current_volatility_(0.2),
-      max_history_length_(2520), // ~10 years of daily data
+      max_history_length_(2520),
       tolerance_(1e-8),
       max_iterations_(1000),
       forecast_count_(0),
@@ -28,18 +29,16 @@ QuantLibGARCHModel::QuantLibGARCHModel(Core::MemoryPool& mem_pool)
 }
 
 void QuantLibGARCHModel::initialize_default_parameters() {
-    // Conservative default parameters that ensure stationarity
     omega_ = 1e-6;
-    alpha_ = 0.1;   // ARCH effect
-    beta_  = 0.85;  // GARCH effect (persistence)
+    alpha_ = 0.1;
+    beta_  = 0.85;
     
-    // Verify stationarity: alpha + beta < 1
     if (alpha_ + beta_ >= 0.99) {
         alpha_ = 0.08;
         beta_ = 0.85;
     }
     
-    current_variance_ = omega_ / (1.0 - alpha_ - beta_);  // Unconditional variance
+    current_variance_ = omega_ / (1.0 - alpha_ - beta_);
     current_volatility_ = std::sqrt(current_variance_);
 }
 
@@ -55,9 +54,8 @@ void QuantLibGARCHModel::set_parameters(QuantLib::Real omega, QuantLib::Real alp
         if (!returns_.empty()) {
             update_variance_series();
         }
-        is_calibrated_ = true;  // Mark as calibrated if parameters are valid
+        is_calibrated_ = true;
     } else {
-        // Revert to safe defaults if invalid parameters
         initialize_default_parameters();
         is_calibrated_ = false;
     }
@@ -69,17 +67,14 @@ std::vector<QuantLib::Real> QuantLibGARCHModel::get_parameters() const {
 }
 
 bool QuantLibGARCHModel::validate_parameters() const {
-    // Parameters must be non-negative
     if (omega_ <= 0.0 || alpha_ < 0.0 || beta_ < 0.0) {
         return false;
     }
     
-    // Stationarity condition: alpha + beta < 1
     if (alpha_ + beta_ >= 1.0) {
         return false;
     }
     
-    // Reasonable bounds to prevent numerical issues
     if (alpha_ > 0.5 || beta_ > 0.99) {
         return false;
     }
@@ -91,7 +86,7 @@ void QuantLibGARCHModel::calculate_unconditional_variance() {
     if (alpha_ + beta_ < 0.999) {
         current_variance_ = omega_ / (1.0 - alpha_ - beta_);
     } else {
-        current_variance_ = 0.04;  // Default 20% volatility
+        current_variance_ = 0.04;
     }
     current_variance_ = std::max(current_variance_, 1e-8);
     current_volatility_ = std::sqrt(current_variance_);
@@ -100,10 +95,8 @@ void QuantLibGARCHModel::calculate_unconditional_variance() {
 void QuantLibGARCHModel::update(QuantLib::Real new_return) {
     std::lock_guard<std::mutex> lock(model_mutex_);
     
-    // Add new return to history
     returns_.push_back(new_return);
     
-    // Trim history if it gets too long
     if (returns_.size() > max_history_length_) {
         returns_.pop_front();
         if (!conditional_variances_.empty()) {
@@ -111,25 +104,21 @@ void QuantLibGARCHModel::update(QuantLib::Real new_return) {
         }
     }
     
-    // Update current variance using GARCH equation
     if (conditional_variances_.empty()) {
-        // Initialize with unconditional variance
         conditional_variances_.push_back(current_variance_);
     }
     
-    // GARCH(1,1) equation: σ²ₜ = ω + α·r²ₜ₋₁ + β·σ²ₜ₋₁
     QuantLib::Real last_return_squared = returns_.empty() ? 0.0 : 
                                         std::pow(returns_.back(), 2);
     QuantLib::Real last_variance = conditional_variances_.empty() ? current_variance_ :
                                   conditional_variances_.back();
     
     current_variance_ = omega_ + alpha_ * last_return_squared + beta_ * last_variance;
-    current_variance_ = std::max(current_variance_, 1e-8);  // Ensure positive
+    current_variance_ = std::max(current_variance_, 1e-8);
     current_volatility_ = std::sqrt(current_variance_);
     
     conditional_variances_.push_back(current_variance_);
     
-    // Trim variance history to match returns
     if (conditional_variances_.size() > max_history_length_) {
         conditional_variances_.pop_front();
     }
@@ -151,7 +140,6 @@ void QuantLibGARCHModel::clear_history() {
 
 bool QuantLibGARCHModel::calibrate(const std::vector<QuantLib::Real>& historical_returns) {
     if (historical_returns.size() < 30) {
-        // Use reasonable defaults for insufficient data
         initialize_default_parameters();
         return true;
     }
@@ -159,7 +147,6 @@ bool QuantLibGARCHModel::calibrate(const std::vector<QuantLib::Real>& historical
     try {
         std::lock_guard<std::mutex> lock(model_mutex_);
         
-        // Clear existing data and use provided returns
         returns_.clear();
         conditional_variances_.clear();
         
@@ -167,71 +154,27 @@ bool QuantLibGARCHModel::calibrate(const std::vector<QuantLib::Real>& historical
             returns_.push_back(ret);
         }
         
-        // Create QuantLib GARCH model for calibration
-        garch_model_ = std::make_unique<QuantLib::Garch11>(tolerance_, max_iterations_);
+        // Create a TimeSeries from the historical returns
+        QuantLib::TimeSeries<QuantLib::Real> ts;
+        QuantLib::Date start_date(1, QuantLib::January, 2020);
         
-        // Calculate sample variance for initial guess
-        QuantLib::Real sum_returns = std::accumulate(historical_returns.begin(), 
-                                                    historical_returns.end(), 0.0);
-        QuantLib::Real mean_return = sum_returns / historical_returns.size();
-        
-        QuantLib::Real sample_variance = 0.0;
-        for (QuantLib::Real ret : historical_returns) {
-            sample_variance += std::pow(ret - mean_return, 2);
-        }
-        sample_variance /= (historical_returns.size() - 1);
-        sample_variance = std::max(sample_variance, 1e-8);
-        
-        // Set reasonable initial guesses
-        QuantLib::Real omega_guess = sample_variance * 0.05;  // 5% of sample variance
-        QuantLib::Real alpha_guess = 0.1;
-        QuantLib::Real beta_guess = 0.85;
-        
-        // Ensure stationarity in initial guess
-        if (alpha_guess + beta_guess >= 0.99) {
-            alpha_guess = 0.08;
-            beta_guess = 0.85;
+        for (size_t i = 0; i < historical_returns.size(); ++i) {
+            QuantLib::Date current_date = start_date + static_cast<QuantLib::Integer>(i);
+            ts[current_date] = historical_returns[i];
         }
         
-        // Calibrate using QuantLib's optimization
-        QuantLib::Array initial_guess(3);
-        initial_guess[0] = omega_guess;
-        initial_guess[1] = alpha_guess;
-        initial_guess[2] = beta_guess;
+        // Create GARCH model using TimeSeries constructor
+        garch_model_ = std::make_unique<QuantLib::Garch11>(ts, QuantLib::Garch11::BestOfTwo);
         
-        // Set up constraints for parameter bounds
-        std::vector<QuantLib::ext::shared_ptr<QuantLib::Constraint>> constraints;
-        
-        // Omega > 0
-        constraints.push_back(QuantLib::ext::make_shared<QuantLib::BoundaryConstraint>(
-            0.0, std::numeric_limits<QuantLib::Real>::max(), 
-            QuantLib::BoundaryConstraint::Lower));
-        
-        // Alpha >= 0 and < 0.5
-        constraints.push_back(QuantLib::ext::make_shared<QuantLib::BoundaryConstraint>(
-            0.0, 0.5, QuantLib::BoundaryConstraint::Both));
-        
-        // Beta >= 0 and < 0.99
-        constraints.push_back(QuantLib::ext::make_shared<QuantLib::BoundaryConstraint>(
-            0.0, 0.99, QuantLib::BoundaryConstraint::Both));
-        
-        // Use Levenberg-Marquardt optimizer
-        QuantLib::LevenbergMarquardt optimizer;
-        
-        // Set parameters from calibration result
-        QuantLib::Array calibrated_params = garch_model_->calibrate(
-            historical_returns, optimizer, initial_guess);
-        
-        omega_ = calibrated_params[0];
-        alpha_ = calibrated_params[1];
-        beta_  = calibrated_params[2];
+        // Extract calibrated parameters
+        omega_ = garch_model_->omega();
+        alpha_ = garch_model_->alpha();
+        beta_ = garch_model_->beta();
         
         // Validate calibrated parameters
         if (!validate_parameters()) {
             // Fall back to reasonable defaults
-            omega_ = omega_guess;
-            alpha_ = alpha_guess;
-            beta_  = beta_guess;
+            initialize_default_parameters();
         }
         
         // Update variance series with calibrated parameters
@@ -244,22 +187,17 @@ bool QuantLibGARCHModel::calibrate(const std::vector<QuantLib::Real>& historical
             calculate_unconditional_variance();
         }
         
-        // Calculate log-likelihood for model validation
         last_log_likelihood_ = log_likelihood();
         is_calibrated_ = true;
         
         return true;
         
     } catch (const std::exception& e) {
-        // Calibration failed, use reasonable defaults
         initialize_default_parameters();
-        
-        // Still update with provided data
         clear_history();
         for (QuantLib::Real ret : historical_returns) {
             update(ret);
         }
-        
         is_calibrated_ = false;
         return false;
     }
@@ -271,10 +209,9 @@ bool QuantLibGARCHModel::calibrate_with_initial_guess(
     QuantLib::Real alpha_guess,
     QuantLib::Real beta_guess) {
     
-    // Validate initial guess
     if (omega_guess <= 0 || alpha_guess < 0 || beta_guess < 0 || 
         alpha_guess + beta_guess >= 1.0) {
-        return calibrate(historical_returns);  // Fall back to automatic calibration
+        return calibrate(historical_returns);
     }
     
     try {
@@ -285,28 +222,26 @@ bool QuantLibGARCHModel::calibrate_with_initial_guess(
         alpha_ = alpha_guess;
         beta_  = beta_guess;
         
-        // Use provided data
         returns_.clear();
         conditional_variances_.clear();
         for (QuantLib::Real ret : historical_returns) {
             returns_.push_back(ret);
         }
         
-        // Create GARCH model with better initial guess
-        garch_model_ = std::make_unique<QuantLib::Garch11>(tolerance_, max_iterations_);
+        // Create TimeSeries and calibrate
+        QuantLib::TimeSeries<QuantLib::Real> ts;
+        QuantLib::Date start_date(1, QuantLib::January, 2020);
         
-        QuantLib::Array initial_guess(3);
-        initial_guess[0] = omega_guess;
-        initial_guess[1] = alpha_guess;
-        initial_guess[2] = beta_guess;
+        for (size_t i = 0; i < historical_returns.size(); ++i) {
+            QuantLib::Date current_date = start_date + static_cast<QuantLib::Integer>(i);
+            ts[current_date] = historical_returns[i];
+        }
         
-        QuantLib::LevenbergMarquardt optimizer;
-        QuantLib::Array calibrated_params = garch_model_->calibrate(
-            historical_returns, optimizer, initial_guess);
+        garch_model_ = std::make_unique<QuantLib::Garch11>(ts, QuantLib::Garch11::BestOfTwo);
         
-        omega_ = calibrated_params[0];
-        alpha_ = calibrated_params[1];
-        beta_  = calibrated_params[2];
+        omega_ = garch_model_->omega();
+        alpha_ = garch_model_->alpha();
+        beta_ = garch_model_->beta();
         
         if (validate_parameters()) {
             update_variance_series();
@@ -331,11 +266,9 @@ void QuantLibGARCHModel::update_variance_series() {
     
     conditional_variances_.clear();
     
-    // Initialize with unconditional variance
     calculate_unconditional_variance();
     conditional_variances_.push_back(current_variance_);
     
-    // Calculate variance series using GARCH equation
     for (size_t t = 1; t < returns_.size(); ++t) {
         QuantLib::Real last_return_squared = std::pow(returns_[t-1], 2);
         QuantLib::Real last_variance = conditional_variances_[t-1];
@@ -355,7 +288,7 @@ QuantLib::Real QuantLibGARCHModel::forecast_volatility(QuantLib::Size horizon) {
     std::lock_guard<std::mutex> lock(model_mutex_);
     
     if (!is_calibrated_ || returns_.empty()) {
-        return 0.20;  // Default volatility
+        return 0.20;
     }
     
     QuantLib::Real forecast_variance = current_variance_;
@@ -363,12 +296,9 @@ QuantLib::Real QuantLibGARCHModel::forecast_volatility(QuantLib::Size horizon) {
     QuantLib::Real persistence = alpha_ + beta_;
     
     if (horizon == 1) {
-        // One-step ahead forecast
         forecast_count_++;
         return current_volatility_;
     } else {
-        // Multi-step forecast
-        // E[σ²ₜ₊ₕ] = ω/(1-α-β) + (α+β)ʰ⁻¹ * (σ²ₜ₊₁ - ω/(1-α-β))
         QuantLib::Real decay_factor = std::pow(persistence, static_cast<QuantLib::Real>(horizon - 1));
         forecast_variance = unconditional_variance + 
                            decay_factor * (current_variance_ - unconditional_variance);
@@ -394,7 +324,7 @@ QuantLib::Real QuantLibGARCHModel::forecast_conditional_variance(QuantLib::Size 
     std::lock_guard<std::mutex> lock(model_mutex_);
     
     if (!is_calibrated_ || returns_.empty()) {
-        return 0.04;  // Default variance (20% vol)
+        return 0.04;
     }
     
     if (horizon == 1) {
@@ -446,7 +376,7 @@ QuantLib::Real QuantLibGARCHModel::log_likelihood() const {
 QuantLib::Real QuantLibGARCHModel::aic() const {
     QuantLib::Real ll = log_likelihood();
     if (!std::isfinite(ll)) return std::numeric_limits<QuantLib::Real>::infinity();
-    return -2.0 * ll + 2.0 * 3.0;  // 3 parameters (omega, alpha, beta)
+    return -2.0 * ll + 2.0 * 3.0;
 }
 
 QuantLib::Real QuantLibGARCHModel::bic() const {
@@ -486,12 +416,10 @@ QuantLib::Real QuantLibGARCHModel::ljung_box_test(QuantLib::Size lags) const {
     auto residuals = calculate_standardized_residuals();
     if (residuals.size() <= lags) return 0.0;
     
-    // Simple Ljung-Box test implementation
     QuantLib::Real n = static_cast<QuantLib::Real>(residuals.size());
     QuantLib::Real lb_stat = 0.0;
     
     for (QuantLib::Size k = 1; k <= lags; ++k) {
-        // Calculate autocorrelation at lag k
         QuantLib::Real mean = std::accumulate(residuals.begin(), residuals.end(), 0.0) / n;
         
         QuantLib::Real numerator = 0.0;
@@ -509,14 +437,13 @@ QuantLib::Real QuantLibGARCHModel::ljung_box_test(QuantLib::Size lags) const {
         lb_stat += autocorr * autocorr / (n - k);
     }
     
-    return n * (n + 2.0) * lb_stat;  // Chi-squared distributed under null hypothesis
+    return n * (n + 2.0) * lb_stat;
 }
 
 void QuantLibGARCHModel::set_max_history_length(QuantLib::Size length) {
     std::lock_guard<std::mutex> lock(model_mutex_);
     max_history_length_ = length;
     
-    // Trim current history if necessary
     while (returns_.size() > max_history_length_) {
         returns_.pop_front();
     }
@@ -543,12 +470,11 @@ QuantLibGARCHModel::ModelFitStatistics QuantLibGARCHModel::get_fit_statistics() 
 }
 
 // VolatilityForecaster Implementation
-
 VolatilityForecaster::VolatilityForecaster(QuantLibGARCHModel& garch_model, 
                                          Core::MemoryPool& mem_pool)
     : garch_model_(garch_model), 
       mem_pool_(mem_pool),
-      model_weights_{0.7, 0.2, 0.1},  // GARCH, Historical, EWMA
+      model_weights_{0.7, 0.2, 0.1},
       model_accuracies_{0.5, 0.5, 0.5},
       total_forecasts_(0),
       forecast_error_sum_(0.0) {
@@ -566,7 +492,6 @@ double VolatilityForecaster::calculate_historical_volatility(
     
     size_t start_idx = returns.size() - actual_window;
     
-    // Calculate sample variance
     double sum = 0.0;
     for (size_t i = start_idx; i < returns.size(); ++i) {
         sum += returns[i];
@@ -578,9 +503,8 @@ double VolatilityForecaster::calculate_historical_volatility(
         double diff = returns[i] - mean;
         variance += diff * diff;
     }
-    variance /= (actual_window - 1);  // Sample variance
+    variance /= (actual_window - 1);
     
-    // Annualized volatility (assuming daily returns)
     return std::sqrt(variance * 252.0);
 }
 
@@ -593,13 +517,11 @@ double VolatilityForecaster::calculate_ewma_volatility(
     double weight_sum = 0.0;
     double weight = 1.0;
     
-    // Calculate EWMA variance (starting from most recent)
     for (auto it = returns.rbegin(); it != returns.rend(); ++it) {
         variance += weight * (*it) * (*it);
         weight_sum += weight;
         weight *= lambda;
         
-        // Stop when weights become negligible
         if (weight < 1e-6) break;
     }
     
@@ -607,7 +529,6 @@ double VolatilityForecaster::calculate_ewma_volatility(
         variance /= weight_sum;
     }
     
-    // Annualized volatility
     return std::sqrt(variance * 252.0);
 }
 
@@ -621,7 +542,6 @@ double VolatilityForecaster::generate_ensemble_forecast(
         double hist_forecast = generate_historical_forecast(returns);
         double ewma_forecast = generate_ewma_forecast(returns);
         
-        // Weighted ensemble
         double ensemble_forecast = model_weights_[0] * garch_forecast +
                                  model_weights_[1] * hist_forecast +
                                  model_weights_[2] * ewma_forecast;
@@ -649,7 +569,6 @@ double VolatilityForecaster::generate_ewma_forecast(
 }
 
 void VolatilityForecaster::update_model_weights() {
-    // Update weights based on model accuracies
     double total_accuracy = std::accumulate(model_accuracies_.begin(), 
                                           model_accuracies_.end(), 0.0);
     
@@ -664,11 +583,9 @@ void VolatilityForecaster::update_forecast_accuracy(double forecast_error) {
     std::lock_guard<std::mutex> lock(forecaster_mutex_);
     forecast_error_sum_ += std::abs(forecast_error);
     
-    // Update model accuracies (simplified approach)
-    // In practice, you'd track individual model performance
     double accuracy = 1.0 / (1.0 + std::abs(forecast_error));
     for (auto& acc : model_accuracies_) {
-        acc = 0.9 * acc + 0.1 * accuracy;  // Exponential smoothing
+        acc = 0.9 * acc + 0.1 * accuracy;
     }
     
     update_model_weights();
@@ -677,10 +594,8 @@ void VolatilityForecaster::update_forecast_accuracy(double forecast_error) {
 bool VolatilityForecaster::is_healthy() const {
     std::lock_guard<std::mutex> lock(forecaster_mutex_);
     
-    // Check if GARCH model is healthy
     if (!garch_model_.is_model_valid()) return false;
     
-    // Check if weights are reasonable
     double total_weight = std::accumulate(model_weights_.begin(), model_weights_.end(), 0.0);
     if (std::abs(total_weight - 1.0) > 0.1) return false;
     

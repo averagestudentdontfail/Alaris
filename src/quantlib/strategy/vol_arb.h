@@ -2,7 +2,7 @@
 #pragma once
 
 #include "../pricing/alo_engine.h"
-#include "../volatility/garch_wrapper.h"
+#include "../volatility/garch_wrapper.h"  // Changed from gjrgarch_wrapper.h
 #include "../core/memory_pool.h"
 #include "../core/event_log.h"
 #include "../ipc/message_types.h"
@@ -18,51 +18,51 @@ namespace Alaris::Strategy {
 // Enhanced strategy parameters for production volatility arbitrage
 struct StrategyParameters {
     // Core volatility thresholds
-    double vol_difference_threshold = 0.03;     // 3% volatility difference to enter
-    double vol_exit_threshold = 0.01;           // 1% to exit
-    double confidence_threshold = 0.75;         // Minimum confidence for signals
+    double vol_difference_threshold = 0.03;
+    double vol_exit_threshold = 0.01;
+    double confidence_threshold = 0.75;
     
     // Risk management
-    double max_portfolio_delta = 0.1;           // Maximum net delta exposure
-    double max_portfolio_gamma = 0.05;          // Maximum gamma exposure
-    double max_portfolio_vega = 1.0;            // Maximum vega exposure
-    double max_position_size = 0.02;            // 2% of portfolio per position
-    double max_correlation_exposure = 0.3;      // Max exposure to correlated positions
+    double max_portfolio_delta = 0.1;
+    double max_portfolio_gamma = 0.05;
+    double max_portfolio_vega = 1.0;
+    double max_position_size = 0.02;
+    double max_correlation_exposure = 0.3;
     
     // Position sizing (Kelly criterion parameters)
-    double kelly_fraction = 0.02;               // Conservative Kelly fraction (2%)
-    double max_kelly_position = 0.05;           // Cap Kelly sizing at 5%
-    double min_edge_ratio = 1.5;                // Minimum reward/risk ratio
+    double kelly_fraction = 0.02;
+    double max_kelly_position = 0.05;
+    double min_edge_ratio = 1.5;
     
     // Stop loss and profit taking
-    double stop_loss_percent = 0.15;            // 15% stop loss
-    double profit_target_percent = 0.30;        // 30% profit target
-    double trailing_stop_percent = 0.08;        // 8% trailing stop
+    double stop_loss_percent = 0.15;
+    double profit_target_percent = 0.30;
+    double trailing_stop_percent = 0.08;
     
     // Strategy modes
     enum class Mode {
-        DELTA_NEUTRAL,      // Maintain delta neutrality
-        GAMMA_SCALPING,     // Focus on gamma trading
-        VOLATILITY_TIMING,  // Time volatility regime changes
-        RELATIVE_VALUE      // Trade volatility spreads
+        DELTA_NEUTRAL,
+        GAMMA_SCALPING,
+        VOLATILITY_TIMING,
+        RELATIVE_VALUE
     } strategy_mode = Mode::DELTA_NEUTRAL;
     
     // Hedging parameters
-    double hedge_threshold_delta = 0.05;        // Hedge when delta exceeds this
-    double hedge_threshold_gamma = 0.03;        // Hedge when gamma exceeds this
-    bool auto_hedge_enabled = true;             // Enable automatic hedging
-    double hedge_frequency_minutes = 15.0;      // Hedge frequency
+    double hedge_threshold_delta = 0.05;
+    double hedge_threshold_gamma = 0.03;
+    bool auto_hedge_enabled = true;
+    double hedge_frequency_minutes = 15.0;
     
     // Market regime detection
-    double low_vol_threshold = 0.12;            // 12% annualized
-    double high_vol_threshold = 0.30;           // 30% annualized
-    size_t regime_lookback_days = 30;           // Days for regime detection
+    double low_vol_threshold = 0.12;
+    double high_vol_threshold = 0.30;
+    size_t regime_lookback_days = 30;
 };
 
 // Enhanced position tracking with Greeks and risk metrics
 struct EnhancedPosition {
     uint32_t symbol_id = 0;
-    double quantity = 0.0;                      // Signed quantity
+    double quantity = 0.0;
     double entry_price = 0.0;
     double current_price = 0.0;
     double entry_implied_vol = 0.0;
@@ -77,7 +77,7 @@ struct EnhancedPosition {
     // Risk metrics
     double unrealized_pnl = 0.0;
     double realized_pnl = 0.0;
-    double max_unrealized_pnl = 0.0;            // For trailing stops
+    double max_unrealized_pnl = 0.0;
     double max_drawdown = 0.0;
     double initial_margin_requirement = 0.0;
     
@@ -86,7 +86,7 @@ struct EnhancedPosition {
     double confidence_at_entry = 0.0;
     double kelly_size_at_entry = 0.0;
     bool is_hedge_position = false;
-    uint32_t hedge_target_symbol = 0;           // What this position hedges
+    uint32_t hedge_target_symbol = 0;
     
     // Position state
     enum class State {
@@ -107,15 +107,15 @@ struct PortfolioRiskMetrics {
     double total_theta = 0.0;
     double total_rho = 0.0;
     
-    double portfolio_var_1day = 0.0;            // 1-day Value at Risk
-    double portfolio_var_10day = 0.0;           // 10-day Value at Risk
-    double max_correlation_exposure = 0.0;      // Largest correlation bucket
-    double liquidity_score = 1.0;               // Portfolio liquidity (0-1)
+    double portfolio_var_1day = 0.0;
+    double portfolio_var_10day = 0.0;
+    double max_correlation_exposure = 0.0;
+    double liquidity_score = 1.0;
     
     double total_notional = 0.0;
     double margin_utilization = 0.0;
     size_t active_positions = 0;
-    double sharpe_ratio_mtd = 0.0;              // Month-to-date Sharpe
+    double sharpe_ratio_mtd = 0.0;
 };
 
 // Market regime detection and analysis
@@ -130,7 +130,7 @@ struct MarketRegime {
     
     double current_realized_vol = 0.0;
     double current_implied_vol = 0.0;
-    double vol_risk_premium = 0.0;              // Implied - Realized
+    double vol_risk_premium = 0.0;
     double regime_confidence = 0.5;
     uint64_t regime_start_time = 0;
     
@@ -138,6 +138,12 @@ struct MarketRegime {
     double expected_vol_next_week = 0.0;
     double vol_clustering_strength = 0.0;
     double mean_reversion_speed = 0.0;
+};
+
+// Volatility model type enum - updated to remove GJR-GARCH
+enum class VolatilityModelType {
+    GARCH_DIRECT,           // Changed from GJR_GARCH_DIRECT
+    ENSEMBLE_GARCH_HISTORICAL  // Changed from ENSEMBLE_GJR_HISTORICAL
 };
 
 // Sophisticated volatility arbitrage strategy class
@@ -149,12 +155,13 @@ private:
     Core::EventLogger& event_logger_;
     Core::MemoryPool& mem_pool_;
     
-    // Volatility models and forecasting
+    // Volatility models and forecasting - changed to standard GARCH
     std::unique_ptr<Volatility::QuantLibGARCHModel> garch_model_;
     std::unique_ptr<Volatility::VolatilityForecaster> vol_forecaster_;
     
     // Strategy configuration
     StrategyParameters params_;
+    VolatilityModelType active_model_type_ = VolatilityModelType::ENSEMBLE_GARCH_HISTORICAL;
     
     // Market data and state
     std::unordered_map<uint32_t, IPC::MarketDataMessage> latest_market_data_;
@@ -181,7 +188,7 @@ private:
     
     // Strategy-specific analytics
     struct VolSurfacePoint {
-        double strike_ratio;     // K/S
+        double strike_ratio;
         double time_to_expiry;
         double implied_vol;
         double model_vol;
@@ -265,6 +272,9 @@ public:
     // Configuration
     void set_parameters(const StrategyParameters& params);
     void set_strategy_mode(StrategyParameters::Mode mode);
+    void set_active_volatility_model_type(VolatilityModelType model_type) { 
+        active_model_type_ = model_type; 
+    }
     StrategyParameters get_parameters() const { return params_; }
     
     // Market data processing
@@ -329,8 +339,8 @@ public:
     bool is_healthy() const;
     
     // Advanced features
-    void enable_machine_learning_enhancements();  // For future ML integration
-    void set_regime_override(MarketRegime::VolRegime regime);  // Manual regime override
+    void enable_machine_learning_enhancements();
+    void set_regime_override(MarketRegime::VolRegime regime);
     
     // Testing and simulation support
 #ifdef ALARIS_ENABLE_TESTING

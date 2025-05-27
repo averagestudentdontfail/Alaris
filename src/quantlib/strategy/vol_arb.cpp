@@ -1,6 +1,6 @@
 // src/quantlib/strategy/vol_arb.cpp
 #include "vol_arb.h"
-#include "../volatility/garch_wrapper.h"
+#include "../volatility/garch_wrapper.h"  // Changed from gjrgarch_wrapper.h
 #include <algorithm>
 #include <cmath>
 #include <numeric>
@@ -19,7 +19,7 @@ VolatilityArbitrageStrategy::VolatilityArbitrageStrategy(
       event_logger_(event_logger),
       mem_pool_(mem_pool) {
     
-    // Initialize volatility models
+    // Initialize volatility models - changed to standard GARCH
     garch_model_ = std::make_unique<Volatility::QuantLibGARCHModel>(mem_pool_);
     vol_forecaster_ = std::make_unique<Volatility::VolatilityForecaster>(*garch_model_, mem_pool_);
     
@@ -35,7 +35,7 @@ VolatilityArbitrageStrategy::VolatilityArbitrageStrategy(
     current_regime_.liquidity_regime = MarketRegime::LiquidityRegime::NORMAL;
     current_regime_.regime_confidence = 0.5;
     
-    event_logger_.log_system_status("Advanced VolatilityArbitrageStrategy initialized with production features");
+    event_logger_.log_system_status("Advanced VolatilityArbitrageStrategy initialized with standard GARCH");
 }
 
 void VolatilityArbitrageStrategy::set_parameters(const StrategyParameters& params) {
@@ -58,7 +58,7 @@ void VolatilityArbitrageStrategy::on_market_data(const IPC::MarketDataMessage& m
         price_hist.push_back(market_data.underlying_price);
         
         // Maintain history length
-        if (price_hist.size() > 252) {  // 1 year of daily data
+        if (price_hist.size() > 252) {
             price_hist.pop_front();
         }
         
@@ -141,7 +141,7 @@ void VolatilityArbitrageStrategy::update_market_regime(uint32_t underlying_symbo
             variance += std::pow(ret - mean_return, 2);
         }
         variance /= (returns.size() - 1);
-        realized_vol = std::sqrt(variance * 252.0);  // Annualized
+        realized_vol = std::sqrt(variance * 252.0);
     }
     
     // Calculate average implied volatility
@@ -175,7 +175,7 @@ void VolatilityArbitrageStrategy::update_market_regime(uint32_t underlying_symbo
     
     // Update forward-looking indicators
     if (garch_model_->is_calibrated()) {
-        current_regime_.expected_vol_next_week = garch_model_->forecast_volatility(5);  // 5-day forecast
+        current_regime_.expected_vol_next_week = garch_model_->forecast_volatility(5);
     }
 }
 
@@ -259,7 +259,7 @@ std::vector<IPC::TradingSignalMessage> VolatilityArbitrageStrategy::generate_del
         double market_mid = (market_data.bid + market_data.ask) / 2.0;
         double market_iv = (market_data.bid_iv + market_data.ask_iv) / 2.0;
         
-        // Get volatility forecast
+        // Get volatility forecast using standard GARCH
         std::vector<double> returns;
         auto price_it = price_history_.find(underlying_symbol);
         if (price_it != price_history_.end() && price_it->second.size() > 1) {
@@ -274,7 +274,7 @@ std::vector<IPC::TradingSignalMessage> VolatilityArbitrageStrategy::generate_del
         
         // Calculate confidence based on model accuracy and market regime
         double base_confidence = std::min(1.0, vol_diff / params_.vol_difference_threshold);
-        double regime_adjustment = (current_regime_.regime_confidence - 0.5) * 0.4;  // ±20%
+        double regime_adjustment = (current_regime_.regime_confidence - 0.5) * 0.4;
         double confidence = std::max(0.0, std::min(1.0, base_confidence + regime_adjustment));
         
         if (vol_diff >= params_.vol_difference_threshold && confidence >= params_.confidence_threshold) {
@@ -282,9 +282,9 @@ std::vector<IPC::TradingSignalMessage> VolatilityArbitrageStrategy::generate_del
             Pricing::OptionGreeks greeks = pricer_.calculate_greeks(option);
             
             // Calculate Kelly position size
-            double edge = vol_diff / market_iv;  // Relative edge
+            double edge = vol_diff / market_iv;
             double win_prob = confidence;
-            double avg_win_loss = 2.0;  // Assume 2:1 reward/risk from volatility trading
+            double avg_win_loss = 2.0;
             double kelly_size = calculate_kelly_position_size(edge, forecast_vol, win_prob, avg_win_loss);
             
             // Apply VAR adjustment
@@ -344,7 +344,7 @@ std::vector<IPC::TradingSignalMessage> VolatilityArbitrageStrategy::generate_gam
         // Focus on ATM options with 2-8 weeks to expiry
         double moneyness = option.underlying_price / option.strike_price;
         bool is_atm = (moneyness > 0.95 && moneyness < 1.05);
-        bool good_expiry = (option.time_to_expiry > 0.04 && option.time_to_expiry < 0.15);  // 2-8 weeks
+        bool good_expiry = (option.time_to_expiry > 0.04 && option.time_to_expiry < 0.15);
         
         if (is_atm && good_expiry && gamma_theta_ratio > 10.0 && greeks.gamma > 0.01) {
             // Check if underlying has been moving enough to justify gamma scalping
@@ -369,9 +369,9 @@ std::vector<IPC::TradingSignalMessage> VolatilityArbitrageStrategy::generate_gam
                     recent_vol = std::sqrt(recent_vol / (recent_returns.size() - 1) * 252.0);
                     
                     // Enter gamma scalping if recent vol is high enough
-                    if (recent_vol > 0.15) {  // 15% annualized minimum
+                    if (recent_vol > 0.15) {
                         double market_mid = (market_data.bid + market_data.ask) / 2.0;
-                        double position_size = std::min(100.0, 10000.0 / market_mid);  // Risk-based sizing
+                        double position_size = std::min(100.0, 10000.0 / market_mid);
                         
                         IPC::TradingSignalMessage signal;
                         signal.timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(
@@ -409,10 +409,10 @@ std::vector<IPC::TradingSignalMessage> VolatilityArbitrageStrategy::generate_vol
     
     // Look for regime transitions or extreme vol risk premium
     bool regime_transition = (current_regime_.regime_confidence < 0.7);
-    bool extreme_premium = (std::abs(vol_risk_premium) > 0.05);  // 5% threshold
+    bool extreme_premium = (std::abs(vol_risk_premium) > 0.05);
     
     if (!regime_transition && !extreme_premium) {
-        return signals;  // No timing opportunity
+        return signals;
     }
     
     for (size_t i = 0; i < option_chain.size(); ++i) {
@@ -433,7 +433,7 @@ std::vector<IPC::TradingSignalMessage> VolatilityArbitrageStrategy::generate_vol
             
             if (vol_risk_premium > 0.05) {
                 // Implied vol too high, sell volatility
-                double position_size = signal_strength * 50.0;  // Base size
+                double position_size = signal_strength * 50.0;
                 
                 IPC::TradingSignalMessage signal;
                 signal.symbol_id = option.symbol_id;
@@ -441,7 +441,7 @@ std::vector<IPC::TradingSignalMessage> VolatilityArbitrageStrategy::generate_vol
                 signal.implied_volatility = market_iv;
                 signal.forecast_volatility = forecast_vol;
                 signal.confidence = signal_strength;
-                signal.quantity = -static_cast<int32_t>(position_size);  // Short
+                signal.quantity = -static_cast<int32_t>(position_size);
                 signal.side = 1;
                 signal.signal_type = 0;
                 signal.urgency = static_cast<uint8_t>(signal_strength * 200);
@@ -458,7 +458,7 @@ std::vector<IPC::TradingSignalMessage> VolatilityArbitrageStrategy::generate_vol
                 signal.implied_volatility = market_iv;
                 signal.forecast_volatility = forecast_vol;
                 signal.confidence = signal_strength;
-                signal.quantity = static_cast<int32_t>(position_size);  // Long
+                signal.quantity = static_cast<int32_t>(position_size);
                 signal.side = 0;
                 signal.signal_type = 0;
                 signal.urgency = static_cast<uint8_t>(signal_strength * 200);
@@ -474,20 +474,17 @@ std::vector<IPC::TradingSignalMessage> VolatilityArbitrageStrategy::generate_vol
 double VolatilityArbitrageStrategy::calculate_kelly_position_size(
     double edge, double volatility, double win_probability, double avg_win_loss_ratio) {
     
-    // Kelly criterion: f = (p*b - q) / b
-    // where p = win probability, q = loss probability, b = odds received
     double q = 1.0 - win_probability;
     double b = avg_win_loss_ratio;
     
     double kelly_fraction = (win_probability * b - q) / b;
-    kelly_fraction = std::max(0.0, kelly_fraction);  // No negative Kelly
+    kelly_fraction = std::max(0.0, kelly_fraction);
     
     // Apply conservative scaling
     kelly_fraction *= params_.kelly_fraction;
     kelly_fraction = std::min(kelly_fraction, params_.max_kelly_position);
     
-    // Convert to position size (base units)
-    double base_position_size = 100.0;  // Base contract size
+    double base_position_size = 100.0;
     return kelly_fraction * base_position_size;
 }
 
@@ -507,39 +504,36 @@ double VolatilityArbitrageStrategy::calculate_var_adjusted_size(
     double total_var = delta_var + gamma_var;
     
     // Limit position size based on VaR
-    double max_var_per_position = 1000.0;  // $1000 max VaR per position
+    double max_var_per_position = 1000.0;
     if (total_var > max_var_per_position) {
         base_size *= (max_var_per_position / total_var);
     }
     
-    return std::max(1.0, base_size);  // Minimum 1 contract
+    return std::max(1.0, base_size);
 }
 
 bool VolatilityArbitrageStrategy::check_position_limits(const IPC::TradingSignalMessage& signal) {
     // Check individual position size limits
-    if (std::abs(signal.quantity) * signal.market_price > 10000.0) {  // $10K max per position
+    if (std::abs(signal.quantity) * signal.market_price > 10000.0) {
         return false;
     }
     
     // Check total number of positions
-    if (positions_.size() >= 20) {  // Max 20 positions
+    if (positions_.size() >= 20) {
         return false;
     }
     
     // Check if we already have a position in this symbol
     if (positions_.find(signal.symbol_id) != positions_.end()) {
-        return false;  // One position per symbol for now
+        return false;
     }
     
     return true;
 }
 
 bool VolatilityArbitrageStrategy::check_correlation_limits(uint32_t symbol_id, double position_size) {
-    // Simplified correlation check - in practice, use actual correlation matrix
-    // For now, limit exposure to any single underlying
-    
-    // Count positions in same underlying (assuming symbol_id patterns)
-    uint32_t underlying_base = symbol_id / 1000;  // Assume option symbol = underlying*1000 + strike
+    // Simplified correlation check
+    uint32_t underlying_base = symbol_id / 1000;
     size_t same_underlying_positions = 0;
     
     for (const auto& pos_pair : positions_) {
@@ -549,7 +543,7 @@ bool VolatilityArbitrageStrategy::check_correlation_limits(uint32_t symbol_id, d
         }
     }
     
-    return same_underlying_positions < 5;  // Max 5 positions per underlying
+    return same_underlying_positions < 5;
 }
 
 std::vector<IPC::TradingSignalMessage> VolatilityArbitrageStrategy::generate_hedge_signals() {
@@ -568,25 +562,22 @@ std::vector<IPC::TradingSignalMessage> VolatilityArbitrageStrategy::generate_hed
     
     // For simplicity, hedge with underlying (delta hedge) or ATM options (gamma hedge)
     if (need_delta_hedge) {
-        // Generate underlying hedge signal
-        // This would typically be futures or stock
-        
         for (const auto& md_pair : latest_market_data_) {
             if (md_pair.second.underlying_price > 0) {
-                double hedge_quantity = -portfolio_metrics_.total_delta / 100.0;  // Convert to contracts
+                double hedge_quantity = -portfolio_metrics_.total_delta / 100.0;
                 
-                if (std::abs(hedge_quantity) > 0.1) {  // Minimum hedge size
+                if (std::abs(hedge_quantity) > 0.1) {
                     IPC::TradingSignalMessage hedge_signal;
-                    hedge_signal.symbol_id = md_pair.first;  // Use underlying symbol
+                    hedge_signal.symbol_id = md_pair.first;
                     hedge_signal.quantity = static_cast<int32_t>(hedge_quantity);
                     hedge_signal.side = (hedge_quantity > 0) ? 0 : 1;
                     hedge_signal.signal_type = 2;  // Hedge signal
-                    hedge_signal.urgency = 255;    // High urgency
+                    hedge_signal.urgency = 255;
                     hedge_signal.market_price = md_pair.second.underlying_price;
                     
                     hedge_signals.push_back(hedge_signal);
                     hedge_trades_.fetch_add(1, std::memory_order_relaxed);
-                    break;  // One hedge per cycle
+                    break;
                 }
             }
         }
@@ -603,7 +594,6 @@ void VolatilityArbitrageStrategy::update_portfolio_metrics() {
     for (const auto& pos_pair : positions_) {
         const auto& position = pos_pair.second;
         
-        // Update Greeks (would need current option data in practice)
         portfolio_metrics_.total_delta += position.current_greeks.delta * position.quantity;
         portfolio_metrics_.total_gamma += position.current_greeks.gamma * position.quantity;
         portfolio_metrics_.total_vega += position.current_greeks.vega * position.quantity;
@@ -639,7 +629,6 @@ double VolatilityArbitrageStrategy::calculate_portfolio_var(double confidence_le
         double position_value = position.quantity * position.current_price;
         portfolio_value += position_value;
         
-        // Approximate position volatility (would use proper risk factor mapping in practice)
         double position_vol = 0.20;  // Default 20% volatility
         portfolio_volatility += std::pow(position_value * position_vol, 2);
     }
@@ -647,7 +636,7 @@ double VolatilityArbitrageStrategy::calculate_portfolio_var(double confidence_le
     portfolio_volatility = std::sqrt(portfolio_volatility);
     
     // Scale for horizon and confidence level
-    double z_score = (confidence_level == 0.05) ? 1.645 : 2.326;  // 95% or 99%
+    double z_score = (confidence_level == 0.05) ? 1.645 : 2.326;
     double horizon_scaling = std::sqrt(static_cast<double>(horizon_days));
     
     return portfolio_volatility * z_score * horizon_scaling;
@@ -677,7 +666,7 @@ void VolatilityArbitrageStrategy::analyze_volatility_surface(
         point.time_to_expiry = option.time_to_expiry;
         point.implied_vol = (md.bid_iv + md.ask_iv) / 2.0;
         
-        // Get model volatility forecast
+        // Get model volatility forecast using standard GARCH
         std::vector<double> returns;
         auto price_it = price_history_.find(underlying_symbol);
         if (price_it != price_history_.end()) {
@@ -721,9 +710,9 @@ void VolatilityArbitrageStrategy::on_fill(const IPC::TradingSignalMessage& signa
         position.kelly_size_at_entry = std::abs(static_cast<double>(fill_quantity));
         position.state = EnhancedPosition::State::ACTIVE;
         
-        // Calculate initial Greeks (approximation - would need exact option data)
+        // Calculate initial Greeks (approximation)
         position.entry_greeks.price = fill_price;
-        position.entry_greeks.delta = (signal.side == 0) ? 0.5 : -0.5;  // Rough estimate
+        position.entry_greeks.delta = (signal.side == 0) ? 0.5 : -0.5;
         position.current_greeks = position.entry_greeks;
         
         positions_[signal.symbol_id] = position;
@@ -771,7 +760,7 @@ void VolatilityArbitrageStrategy::apply_stop_losses(std::vector<IPC::TradingSign
             exit_signal.quantity = static_cast<int32_t>(-position.quantity);
             exit_signal.side = (position.quantity > 0) ? 1 : 0;
             exit_signal.signal_type = 1;  // Exit signal
-            exit_signal.urgency = 255;    // Maximum urgency
+            exit_signal.urgency = 255;
             exit_signal.market_price = position.current_price;
             
             out_signals.push_back(exit_signal);
@@ -838,7 +827,7 @@ bool VolatilityArbitrageStrategy::calibrate_volatility_models(
     bool overall_success = true;
     
     for (const auto& asset_returns : returns_by_asset) {
-        if (asset_returns.second.size() < 50) continue;  // Need sufficient data
+        if (asset_returns.second.size() < 50) continue;
         
         try {
             if (!garch_model_->calibrate(asset_returns.second)) {
@@ -928,10 +917,10 @@ bool VolatilityArbitrageStrategy::is_healthy() const {
     
     // Check portfolio risk limits
     if (std::abs(portfolio_metrics_.total_delta) > params_.max_portfolio_delta * 2) return false;
-    if (portfolio_metrics_.portfolio_var_1day > 5000.0) return false;  // $5K daily VaR limit
+    if (portfolio_metrics_.portfolio_var_1day > 5000.0) return false;
     
     // Check for excessive losses
-    if (total_realized_pnl_ + total_unrealized_pnl_ < -20000.0) return false;  // $20K loss limit
+    if (total_realized_pnl_ + total_unrealized_pnl_ < -20000.0) return false;
     
     return true;
 }
