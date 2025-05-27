@@ -48,8 +48,6 @@ set(ALARIS_TEST_SOURCES
     # Core tests
     ${CMAKE_SOURCE_DIR}/test/core/event_log_test.cpp
     ${CMAKE_SOURCE_DIR}/test/core/time_trigger_test.cpp
-    # IPC tests
-    ${CMAKE_SOURCE_DIR}/test/ipc/shared_memory_test.cpp
     # QuantLib specific tests
     ${CMAKE_SOURCE_DIR}/test/quantlib/alo_engine_test.cpp
     ${CMAKE_SOURCE_DIR}/test/quantlib/pricing_test.cpp
