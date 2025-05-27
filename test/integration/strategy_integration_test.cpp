@@ -184,7 +184,7 @@ int main() {
         strategy.on_fill(exit_signal, 5.5 /*exit_fill_price*/, -10 /*fill_quantity_signed*/);
         ALARIS_ASSERT(strategy.active_positions_count() == 0);
         
-        Alaris::Strategy::VolatilityArbitrageStrategy::StrategyPerformanceMetrics perf = strategy.get_performance_metrics();
+        Alaris::Strategy::StrategyPerformanceMetrics perf = strategy.get_performance_metrics();
         // PNL = 10 * (5.5 - 5.0) = 5.0
         ALARIS_ASSERT(alaris::test::TestValidator::compare_doubles(perf.total_pnl, 5.0, 1e-9));
     }

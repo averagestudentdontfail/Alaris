@@ -1,6 +1,3 @@
-# External dependency management - Centralized approach
-# This file handles all external dependencies without requiring external/CMakeLists.txt
-
 # Initialize variables
 set(QUANTLIB_TARGET "")
 set(YAML_CPP_TARGET "")
@@ -8,6 +5,32 @@ set(YAML_CPP_TARGET "")
 # First, try to find dependencies as system packages
 option(USE_SYSTEM_QUANTLIB "Use system-installed QuantLib" ON)
 option(USE_SYSTEM_YAMLCPP "Use system-installed yaml-cpp" ON)
+
+# Function to suppress warnings from external targets
+function(suppress_external_warnings TARGET_NAME)
+    if(TARGET ${TARGET_NAME})
+        # Get the current interface include directories
+        get_target_property(INCLUDE_DIRS ${TARGET_NAME} INTERFACE_INCLUDE_DIRECTORIES)
+        if(INCLUDE_DIRS)
+            # Clear the current directories and re-add them as SYSTEM
+            set_target_properties(${TARGET_NAME} PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "")
+            target_include_directories(${TARGET_NAME} SYSTEM INTERFACE ${INCLUDE_DIRS})
+        endif()
+        
+        # Suppress warnings for this target
+        if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+            target_compile_options(${TARGET_NAME} INTERFACE 
+                -Wno-unknown-pragmas 
+                -Wno-extra 
+                -Wno-pedantic
+                -Wno-unused-parameter
+                -Wno-unused-variable
+                -Wno-unused-function
+                -Wno-deprecated-declarations
+            )
+        endif()
+    endif()
+endfunction()
 
 # ========================================
 # QuantLib Configuration
@@ -24,11 +47,12 @@ if(USE_SYSTEM_QUANTLIB)
             if(QUANTLIB_FOUND)
                 # Create imported target from pkg-config
                 add_library(QuantLib::QuantLib INTERFACE IMPORTED)
-                target_include_directories(QuantLib::QuantLib INTERFACE ${QUANTLIB_INCLUDE_DIRS})
+                target_include_directories(QuantLib::QuantLib SYSTEM INTERFACE ${QUANTLIB_INCLUDE_DIRS})
                 target_link_libraries(QuantLib::QuantLib INTERFACE ${QUANTLIB_LIBRARIES})
                 target_compile_options(QuantLib::QuantLib INTERFACE ${QUANTLIB_CFLAGS_OTHER})
                 set(QuantLib_FOUND TRUE)
                 set(QUANTLIB_TARGET QuantLib::QuantLib)
+                suppress_external_warnings(QuantLib::QuantLib)
                 message(STATUS "Using system QuantLib via pkg-config: ${QUANTLIB_VERSION}")
             endif()
         endif()
@@ -50,16 +74,18 @@ if(USE_SYSTEM_QUANTLIB)
         
         if(QUANTLIB_INCLUDE_DIR AND QUANTLIB_LIBRARY)
             add_library(QuantLib::QuantLib INTERFACE IMPORTED)
-            target_include_directories(QuantLib::QuantLib INTERFACE ${QUANTLIB_INCLUDE_DIR})
+            target_include_directories(QuantLib::QuantLib SYSTEM INTERFACE ${QUANTLIB_INCLUDE_DIR})
             target_link_libraries(QuantLib::QuantLib INTERFACE ${QUANTLIB_LIBRARY})
             set(QuantLib_FOUND TRUE)
             set(QUANTLIB_TARGET QuantLib::QuantLib)
+            suppress_external_warnings(QuantLib::QuantLib)
             message(STATUS "Using system QuantLib via direct search: ${QUANTLIB_INCLUDE_DIR}")
         endif()
     endif()
     
     if(QuantLib_FOUND)
         set(QUANTLIB_TARGET QuantLib::QuantLib)
+        suppress_external_warnings(QuantLib::QuantLib)
         message(STATUS "Using system QuantLib")
     else()
         message(STATUS "System QuantLib not found, will attempt to build from source")
@@ -81,15 +107,21 @@ if(NOT USE_SYSTEM_QUANTLIB)
         add_subdirectory(${CMAKE_SOURCE_DIR}/external/QuantLib EXCLUDE_FROM_ALL)
         set(QUANTLIB_TARGET QuantLib)
         
-        # Add QuantLib include directory
-        target_include_directories(QuantLib PUBLIC
+        # Add QuantLib include directory as SYSTEM to suppress warnings
+        target_include_directories(QuantLib SYSTEM PUBLIC
             ${CMAKE_SOURCE_DIR}/external/QuantLib
         )
+        
+        # Apply warning suppression
+        suppress_external_warnings(QuantLib)
         
     elseif(EXISTS "${CMAKE_SOURCE_DIR}/external/quant/CMakeLists.txt")
         message(STATUS "Building QuantLib from external/quant")
         add_subdirectory(${CMAKE_SOURCE_DIR}/external/quant EXCLUDE_FROM_ALL)
         set(QUANTLIB_TARGET ql_library)
+        
+        # Apply warning suppression to the ql_library target
+        suppress_external_warnings(ql_library)
         
     else()
         # Provide helpful installation instructions
@@ -132,6 +164,7 @@ if(USE_SYSTEM_YAMLCPP)
     if(yaml-cpp_FOUND)
         set(YAML_CPP_TARGET yaml-cpp::yaml-cpp)
         get_target_property(yaml-cpp_INCLUDE_DIRS yaml-cpp::yaml-cpp INTERFACE_INCLUDE_DIRECTORIES)
+        suppress_external_warnings(yaml-cpp::yaml-cpp)
         message(STATUS "Using system yaml-cpp: ${yaml-cpp_VERSION}")
     else()
         # Try using PkgConfig as fallback (common on older Ubuntu versions)
@@ -140,10 +173,11 @@ if(USE_SYSTEM_YAMLCPP)
             pkg_check_modules(YAML_CPP QUIET yaml-cpp)
             if(YAML_CPP_FOUND)
                 add_library(yaml-cpp::yaml-cpp INTERFACE IMPORTED)
-                target_include_directories(yaml-cpp::yaml-cpp INTERFACE ${YAML_CPP_INCLUDE_DIRS})
+                target_include_directories(yaml-cpp::yaml-cpp SYSTEM INTERFACE ${YAML_CPP_INCLUDE_DIRS})
                 target_link_libraries(yaml-cpp::yaml-cpp INTERFACE ${YAML_CPP_LIBRARIES})
                 set(YAML_CPP_TARGET yaml-cpp::yaml-cpp)
                 set(yaml-cpp_INCLUDE_DIRS ${YAML_CPP_INCLUDE_DIRS})
+                suppress_external_warnings(yaml-cpp::yaml-cpp)
                 message(STATUS "Using system yaml-cpp via PkgConfig: ${YAML_CPP_VERSION}")
             else()
                 message(STATUS "System yaml-cpp not found, will attempt to build from source")
@@ -169,6 +203,9 @@ if(NOT USE_SYSTEM_YAMLCPP)
         add_subdirectory(${CMAKE_SOURCE_DIR}/external/yaml-cpp EXCLUDE_FROM_ALL)
         set(YAML_CPP_TARGET yaml-cpp)
         set(yaml-cpp_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/external/yaml-cpp/include)
+        
+        # Apply warning suppression to yaml-cpp
+        suppress_external_warnings(yaml-cpp)
     else()
         message(STATUS "")
         message(STATUS "=== yaml-cpp NOT FOUND ===")
@@ -223,12 +260,12 @@ if(BUILD_TESTS)
                     if(NOT TARGET GTest::GTest)
                         add_library(GTest::GTest INTERFACE IMPORTED)
                         target_link_libraries(GTest::GTest INTERFACE ${GTEST_LIBRARIES})
-                        target_include_directories(GTest::GTest INTERFACE ${GTEST_INCLUDE_DIRS})
+                        target_include_directories(GTest::GTest SYSTEM INTERFACE ${GTEST_INCLUDE_DIRS})
                     endif()
                     if(NOT TARGET GTest::Main)
                         add_library(GTest::Main INTERFACE IMPORTED)
                         target_link_libraries(GTest::Main INTERFACE ${GTEST_MAIN_LIBRARIES})
-                        target_include_directories(GTest::Main INTERFACE ${GTEST_MAIN_INCLUDE_DIRS})
+                        target_include_directories(GTest::Main SYSTEM INTERFACE ${GTEST_MAIN_INCLUDE_DIRS})
                     endif()
                 endif()
             endif()
@@ -238,6 +275,14 @@ if(BUILD_TESTS)
     if(NOT GTest_FOUND)
         message(WARNING "GTest not found. Tests will be disabled. Install libgtest-dev to enable tests.")
         set(BUILD_TESTS OFF CACHE BOOL "Disable tests since GTest not found" FORCE)
+    else()
+        # Apply warning suppression to GTest if found
+        if(TARGET GTest::GTest)
+            suppress_external_warnings(GTest::GTest)
+        endif()
+        if(TARGET GTest::Main)
+            suppress_external_warnings(GTest::Main)
+        endif()
     endif()
 endif()
 
