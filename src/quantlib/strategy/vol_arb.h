@@ -1,5 +1,5 @@
 // src/quantlib/strategy/vol_arb.h
-// Volatility Arbitrage Strategy - Fixed for testing
+// Volatility Arbitrage Strategy - Production-Grade Architecture
 
 #pragma once
 
@@ -13,6 +13,7 @@
 #include <unordered_map>
 #include <memory>
 #include <atomic>
+#include <array>
 
 namespace Alaris {
 namespace Strategy {
@@ -28,38 +29,43 @@ struct StrategyParameters {
 
 // Volatility model selection
 enum class VolatilityModelType {
-    GJR_GARCH_DIRECT,           // Use GJR-GARCH model directly
-    ENSEMBLE_GJR_HISTORICAL     // Use ensemble of GJR-GARCH and historical models
+    GJR_GARCH_DIRECT = 0,           // Use GJR-GARCH model directly
+    ENSEMBLE_GJR_HISTORICAL = 1     // Use ensemble of GJR-GARCH and historical models
 };
 
-// Position tracking
-struct Position {
-    uint32_t symbol_id;
-    int32_t quantity;           // Signed quantity (positive = long, negative = short)
-    double entry_price;
-    double current_price;
-    double unrealized_pnl;
-    uint64_t entry_timestamp;
-    uint64_t last_update_timestamp;
+// Position tracking - renamed for consistency with implementation
+struct PositionInfo {
+    uint32_t symbol_id = 0;
+    double quantity = 0.0;              // Signed quantity (positive = long, negative = short)
+    double entry_price = 0.0;
+    double current_price = 0.0;
+    double entry_implied_vol = 0.0;
+    double current_implied_vol = 0.0;
+    double unrealized_pnl = 0.0;
+    uint64_t entry_timestamp = 0;
+    uint64_t last_update_timestamp = 0;
 };
 
-// Performance metrics
+// Model performance tracking
+struct ModelPerformance {
+    double accuracy = 0.5;              // Model accuracy (0.0 to 1.0)
+    double avg_error = 0.0;             // Average prediction error
+    size_t prediction_count = 0;        // Number of predictions made
+    
+    ModelPerformance() = default;
+};
+
+// Strategy performance metrics
 struct StrategyPerformanceMetrics {
     double total_pnl = 0.0;
-    double unrealized_pnl = 0.0;
-    double realized_pnl = 0.0;
-    size_t total_trades = 0;
-    size_t winning_trades = 0;
-    size_t losing_trades = 0;
-    double max_drawdown = 0.0;
-    double sharpe_ratio = 0.0;
-    size_t signals_generated = 0;
-    size_t signals_executed = 0;
+    size_t total_signals_generated = 0;
+    size_t total_trades_entered = 0;
+    std::array<ModelPerformance, 2> model_performance_stats;
 };
 
 class VolatilityArbitrageStrategy {
 private:
-    // Core components
+    // Core components - initialization order matters
     Pricing::QuantLibALOEngine& pricer_;
     Core::PerCycleAllocator& allocator_;
     Core::EventLogger& event_logger_;
@@ -69,21 +75,48 @@ private:
     Volatility::QuantLibGJRGARCHModel gjr_garch_model_;
     std::unique_ptr<Volatility::GlobalVolatilityForecaster> global_forecaster_;
     
-    // Strategy configuration
-    StrategyParameters parameters_;
+    // Strategy configuration - aligned with implementation
+    StrategyParameters params_;
     VolatilityModelType active_model_type_;
     
-    // Market data tracking
+    // Market data tracking - aligned with implementation
     std::unordered_map<uint32_t, IPC::MarketDataMessage> latest_market_data_;
     
-    // Position tracking
-    std::unordered_map<uint32_t, Position> active_positions_;
+    // Position tracking - aligned with implementation
+    std::unordered_map<uint32_t, PositionInfo> current_positions_;
     
-    // Performance tracking
-    StrategyPerformanceMetrics performance_metrics_;
+    // Performance tracking - aligned with implementation
+    std::array<ModelPerformance, 2> model_performance_tracking_;
+    double total_realized_pnl_ = 0.0;
+    size_t signals_generated_total_ = 0;
+    size_t trades_entered_ = 0;
     
     // Internal state
     std::atomic<bool> is_initialized_{false};
+
+    // Private methods - aligned with implementation
+    double get_volatility_forecast(uint32_t underlying_symbol_id, size_t horizon = 1);
+    double calculate_theoretical_price(const IPC::MarketDataMessage& underlying_market_data,
+                                     const Pricing::OptionData& option_to_price,
+                                     double forecast_volatility);
+    bool should_enter_position(const IPC::MarketDataMessage& underlying_md,
+                              const Pricing::OptionData& option_details,
+                              double current_option_market_price,
+                              double current_option_implied_vol);
+    bool should_exit_position(const PositionInfo& position,
+                             const IPC::MarketDataMessage& underlying_md,
+                             double current_option_market_price,
+                             double current_option_implied_vol);
+    double calculate_position_size(double underlying_price, double option_price, double confidence);
+    double calculate_signal_confidence(double vol_difference, VolatilityModelType model_used);
+    void update_model_performance_tracking(VolatilityModelType model_type_used, 
+                                         double prediction_error, bool trade_successful);
+    VolatilityModelType select_active_model_type();
+    void on_position_closed(uint32_t symbol_id, double pnl);
+    void close_all_positions(std::vector<IPC::TradingSignalMessage>& out_exit_signals);
+    void calibrate_gjr_model(const std::vector<QuantLib::Real>& returns_data);
+    StrategyPerformanceMetrics get_performance_metrics() const;
+    void reset_performance_metrics();
 
 public:
     VolatilityArbitrageStrategy(
@@ -94,6 +127,12 @@ public:
     );
     
     ~VolatilityArbitrageStrategy() = default;
+    
+    // Non-copyable, non-movable for safety
+    VolatilityArbitrageStrategy(const VolatilityArbitrageStrategy&) = delete;
+    VolatilityArbitrageStrategy& operator=(const VolatilityArbitrageStrategy&) = delete;
+    VolatilityArbitrageStrategy(VolatilityArbitrageStrategy&&) = delete;
+    VolatilityArbitrageStrategy& operator=(VolatilityArbitrageStrategy&&) = delete;
     
     // Configuration methods
     void set_parameters(const StrategyParameters& params);
@@ -111,16 +150,16 @@ public:
     );
     
     // Position management
-    void on_fill(const IPC::TradingSignalMessage& signal, double fill_price, int32_t fill_quantity_signed);
+    void on_fill(const IPC::TradingSignalMessage& signal, double fill_price, int fill_quantity_signed);
     
     // Model calibration
     bool calibrate_gjr_model(const std::vector<QuantLib::Real>& historical_returns);
     
     // Performance and status queries
-    size_t active_positions_count() const { return active_positions_.size(); }
+    size_t active_positions_count() const { return current_positions_.size(); }
     double total_unrealized_pnl() const;
     VolatilityModelType get_active_model_type() const { return active_model_type_; }
-    StrategyPerformanceMetrics get_performance_metrics() const { return performance_metrics_; }
+    StrategyPerformanceMetrics get_performance_metrics() const { return get_performance_metrics(); }
     
     // **PUBLIC TESTING INTERFACE** - For unit/integration tests
     #ifdef ALARIS_ENABLE_TESTING
@@ -131,13 +170,13 @@ public:
     
     // Access to volatility forecast for testing
     double get_volatility_forecast_for_testing(uint32_t underlying_symbol_id, size_t horizon = 1) const {
-        return get_volatility_forecast(underlying_symbol_id, horizon);
+        return const_cast<VolatilityArbitrageStrategy*>(this)->get_volatility_forecast(underlying_symbol_id, horizon);
     }
     
     // Access to position for testing
-    const Position* get_position_for_testing(uint32_t symbol_id) const {
-        auto it = active_positions_.find(symbol_id);
-        return (it != active_positions_.end()) ? &it->second : nullptr;
+    const PositionInfo* get_position_for_testing(uint32_t symbol_id) const {
+        auto it = current_positions_.find(symbol_id);
+        return (it != current_positions_.end()) ? &it->second : nullptr;
     }
     
     // Access to latest market data for testing
@@ -145,36 +184,6 @@ public:
         return latest_market_data_;
     }
     #endif
-
-private:
-    // Internal volatility forecasting
-    double get_volatility_forecast(uint32_t underlying_symbol_id, size_t horizon = 1) const;
-    
-    // Signal generation helpers
-    IPC::TradingSignalMessage create_entry_signal(
-        const Pricing::OptionData& option,
-        const IPC::MarketDataMessage& option_md,
-        double theoretical_price,
-        double forecast_volatility,
-        double confidence
-    );
-    
-    IPC::TradingSignalMessage create_exit_signal(
-        const Position& position,
-        double current_market_price,
-        const std::string& exit_reason
-    );
-    
-    // Position management helpers
-    void update_position_pnl(Position& position, double current_price);
-    void update_performance_metrics();
-    
-    // Risk management
-    bool check_risk_limits(const IPC::TradingSignalMessage& signal) const;
-    double calculate_position_size(const Pricing::OptionData& option, double confidence) const;
-    
-    // Internal initialization
-    void initialize_volatility_models();
 };
 
 } // namespace Strategy

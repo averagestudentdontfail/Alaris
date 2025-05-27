@@ -24,6 +24,9 @@ VolatilityArbitrageStrategy::VolatilityArbitrageStrategy(
     
     // Initialize the global volatility forecaster
     Alaris::Volatility::initialize_volatility_forecaster(gjr_garch_model_, mem_pool_);
+    
+    // Create the global forecaster wrapper
+    global_forecaster_ = std::make_unique<Volatility::GlobalVolatilityForecaster>(gjr_garch_model_, mem_pool_);
 
     event_logger_.log_system_status("VolatilityArbitrageStrategy initialized. Default model: ENSEMBLE_GJR_HISTORICAL.");
     
@@ -72,7 +75,7 @@ double VolatilityArbitrageStrategy::get_volatility_forecast(uint32_t underlying_
             
         case VolatilityModelType::ENSEMBLE_GJR_HISTORICAL: {
             // Get returns from the GJR model for ensemble
-            const auto& internal_returns_deque = gjr_garch_model_.get_returns(); // FIXED - using public getter
+            const auto& internal_returns_deque = gjr_garch_model_.get_returns();
             std::vector<double> model_internal_returns(internal_returns_deque.begin(), internal_returns_deque.end());
             return Alaris::Volatility::forecast_volatility_ensemble(horizon, model_internal_returns);
         }
@@ -346,13 +349,19 @@ void VolatilityArbitrageStrategy::close_all_positions(std::vector<IPC::TradingSi
     event_logger_.log_system_status("Generated exit signals for all open positions.");
 }
 
-void VolatilityArbitrageStrategy::calibrate_gjr_model(const std::vector<QuantLib::Real>& returns_data) {
-    if (gjr_garch_model_.calibrate(returns_data)) {
+bool VolatilityArbitrageStrategy::calibrate_gjr_model(const std::vector<QuantLib::Real>& historical_returns) {
+    if (gjr_garch_model_.calibrate(historical_returns)) {
         event_logger_.log_system_status("GJR-GARCH model calibrated successfully.");
+        Alaris::Volatility::initialize_volatility_forecaster(gjr_garch_model_, mem_pool_);
+        return true;
     } else {
         event_logger_.log_error("GJR-GARCH model calibration failed or insufficient data.");
+        return false;
     }
-    Alaris::Volatility::initialize_volatility_forecaster(gjr_garch_model_, mem_pool_);
+}
+
+void VolatilityArbitrageStrategy::calibrate_gjr_model(const std::vector<QuantLib::Real>& returns_data) {
+    calibrate_gjr_model(returns_data);
 }
 
 VolatilityArbitrageStrategy::StrategyPerformanceMetrics VolatilityArbitrageStrategy::get_performance_metrics() const {
