@@ -103,10 +103,22 @@ void EventLogger::write_log_entry(EventType type, const void* data_payload, size
             << header.data_checksum << ",";
         
         if (payload_size > 0 && data_payload) {
-            const unsigned char* char_data = static_cast<const unsigned char*>(data_payload);
-            oss << std::hex << std::setfill('0');
-            for (size_t i = 0; i < payload_size; ++i) {
-                oss << std::setw(2) << static_cast<int>(char_data[i]);
+            // For text data (like system status), write as plain text
+            if (type == EventType::SYSTEM_STATUS_CHANGE || 
+                type == EventType::ERROR_LOG || 
+                type == EventType::WARNING_LOG || 
+                type == EventType::INFO_LOG || 
+                type == EventType::DEBUG_LOG) {
+                // Write as quoted string for readability
+                std::string text_payload(static_cast<const char*>(data_payload), payload_size);
+                oss << "\"" << text_payload << "\"";
+            } else {
+                // For binary data, write as hex
+                const unsigned char* char_data = static_cast<const unsigned char*>(data_payload);
+                oss << std::hex << std::setfill('0');
+                for (size_t i = 0; i < payload_size; ++i) {
+                    oss << std::setw(2) << static_cast<int>(char_data[i]);
+                }
             }
         }
         oss << "\n";
@@ -115,6 +127,7 @@ void EventLogger::write_log_entry(EventType type, const void* data_payload, size
         bytes_written_this_event = text_line_buffer.length();
     }
     
+    // CRITICAL: Always flush after writing to ensure data is written to disk
     log_file_stream_.flush();
 
     total_events_logged_count_++;

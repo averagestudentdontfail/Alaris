@@ -71,6 +71,10 @@ private:
     CachedOption* find_cached_option(const OptionData& data) const;
     void cache_option_result(const OptionData& data, const OptionGreeks& greeks) const;
     
+    // Helper methods for robust Greeks calculation
+    double calculate_finite_difference_delta(const OptionData& option_data);
+    OptionGreeks calculate_black_scholes_greeks(const OptionData& option_data);
+    
 public:
     explicit QuantLibALOEngine(Core::MemoryPool& mem_pool);
     ~QuantLibALOEngine() = default;

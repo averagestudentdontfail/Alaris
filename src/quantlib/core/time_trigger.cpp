@@ -77,18 +77,32 @@ bool TimeTriggeredExecutor::should_execute_task(const Task& task, TimePoint cycl
         return false;
     }
     
+    // Check if we've passed the phase offset
     Duration time_elapsed = cycle_start - executor_start_time_;
-    
-    if (time_elapsed >= task.phase_offset) {
-        Duration time_since_phase = time_elapsed - task.phase_offset;
-        return time_since_phase.count() % task.period.count() == 0;
+    if (time_elapsed < task.phase_offset) {
+        return false;
     }
     
-    return false;
+    // For first execution, check if we've reached the phase offset
+    if (task.last_execution_scheduled_time == TimePoint::min()) {
+        return time_elapsed >= task.phase_offset;
+    }
+    
+    // For subsequent executions, check if a full period has elapsed
+    return cycle_start >= (task.last_execution_scheduled_time + task.period);
 }
 
 void TimeTriggeredExecutor::execute_task(Task& task, TimePoint cycle_start) {
-    task.last_execution_scheduled_time = cycle_start + task.phase_offset;
+    // Calculate the scheduled execution time
+    Duration time_elapsed = cycle_start - executor_start_time_;
+    if (task.last_execution_scheduled_time == TimePoint::min()) {
+        // First execution: scheduled at phase offset
+        task.last_execution_scheduled_time = executor_start_time_ + task.phase_offset;
+    } else {
+        // Subsequent executions: add period to last scheduled time
+        task.last_execution_scheduled_time += task.period;
+    }
+    
     task.last_execution_actual_start_time = Clock::now();
     
     task.function();
