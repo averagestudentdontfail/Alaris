@@ -428,7 +428,7 @@ performance_*.json
 benchmark_*.json
 
 # System information output
-system_info.txt
+system.txt
 
 # Development symlinks
 quantlib_process

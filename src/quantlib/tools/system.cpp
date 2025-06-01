@@ -1,6 +1,3 @@
-// src/quantlib/tools/config_validator.cpp
-// Configuration validation utility for Alaris
-
 #include <iostream>
 #include <string>
 #include <vector>
@@ -590,4 +587,14 @@ int main(int argc, char* argv[]) {
     if (config_type == "quantlib") {
         success = validator.validateQuantLibConfig(config_file);
     } else if (config_type == "lean") {
-        success = validator.validateLeanCon
+        success = validator.validateLeanConfig(config_file);
+    } else {
+        std::cerr << "Error: Unknown config type: " << config_type << std::endl;
+        std::cerr << "Supported types: quantlib, lean" << std::endl;
+        return 1;
+    }
+    
+    validator.printResults();
+    
+    return success ? 0 : 1;
+}

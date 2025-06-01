@@ -1,6 +1,3 @@
-// src/quantlib/tools/config_validator.cpp
-// Configuration validation utility for Alaris
-
 #include <iostream>
 #include <string>
 #include <vector>

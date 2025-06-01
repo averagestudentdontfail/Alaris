@@ -84,7 +84,7 @@ function(configure_all_components)
     message(STATUS "quantlib-process executable configured.")
 
     # Configure tool executables
-    add_executable(alaris-config ${CMAKE_SOURCE_DIR}/src/quantlib/tools/config_validator.cpp)
+    add_executable(alaris-config ${CMAKE_SOURCE_DIR}/src/quantlib/tools/config.cpp)
     target_include_directories(alaris-config PRIVATE
         ${CMAKE_SOURCE_DIR}/src
         ${CMAKE_SOURCE_DIR}/external/yaml-cpp/include # If yaml-cpp headers are needed directly
@@ -92,7 +92,7 @@ function(configure_all_components)
     target_link_libraries(alaris-config PRIVATE quantlib yaml-cpp)
     message(STATUS "alaris-config executable configured.")
 
-    add_executable(alaris-system ${CMAKE_SOURCE_DIR}/src/quantlib/tools/system_info.cpp)
+    add_executable(alaris-system ${CMAKE_SOURCE_DIR}/src/quantlib/tools/system.cpp)
     target_include_directories(alaris-system PRIVATE
         ${CMAKE_SOURCE_DIR}/src
     )
