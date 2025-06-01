@@ -1,6 +1,6 @@
 # Lean Process Configuration
 algorithm:
-  name: "AlarisVolatilityArbitrage"
+  name: "Alaris"
   start_date: "2024-01-01"
   end_date: "2024-12-31"
   cash: 1000000
@@ -8,8 +8,8 @@ algorithm:
 brokerage:
   type: "InteractiveBrokers"
   gateway_host: "127.0.0.1"
-  gateway_port: 4001
-  account: "DU123456"  # UPDATE WITH YOUR ACCOUNT
+  gateway_port: 4002  # Paper trading port
+  account: "DUE407919"
 
 data:
   provider: "InteractiveBrokers"
@@ -30,3 +30,24 @@ universe:
 logging:
   level: "INFO"
   file: "/var/log/alaris/lean.log"
+
+# Interactive Brokers specific settings
+ib_settings:
+  # Connection timeout in seconds
+  connection_timeout: 30
+  
+  # Enable/disable market data subscriptions
+  enable_market_data: true
+  
+  # Order management settings
+  order_timeout_seconds: 60
+  
+  # Paper trading specific settings
+  paper_trading:
+    enabled: true
+    starting_cash: 1000000
+    
+  # Live trading settings (only used when gateway_port is 4001)
+  live_trading:
+    enabled: false
+    # Additional live trading safeguards can be configured here

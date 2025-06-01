@@ -1,525 +1,529 @@
-// src/quantlib/tools/system_info.cpp
-// System information utility for Alaris
+// src/quantlib/tools/config_validator.cpp
+// Configuration validation utility for Alaris
 
 #include <iostream>
 #include <string>
 #include <vector>
-#include <fstream>
-#include <sstream>
-#include <thread>
-#include <chrono>
-#include <iomanip>
+#include <filesystem>
+#include <yaml-cpp/yaml.h>
 
 #ifdef ALARIS_BUILD_INFO_AVAILABLE
 #include "alaris_build_info.h"
 #endif
 
-// Platform-specific includes
-#ifdef __linux__
-#include <sys/utsname.h>
-#include <sys/sysinfo.h>
-#include <unistd.h>
-#include <sys/resource.h>
-#include <sched.h>
-#endif
+namespace fs = std::filesystem;
 
-#ifdef __APPLE__
-#include <sys/utsname.h>
-#include <sys/sysctl.h>
-#include <unistd.h>
-#include <mach/mach.h>
-#endif
-
-#ifdef _WIN32
-#include <windows.h>
-#include <sysinfoapi.h>
-#endif
-
-class SystemInfo {
+class ConfigValidator {
+private:
+    std::vector<std::string> errors_;
+    std::vector<std::string> warnings_;
+    
 public:
-    struct CPUInfo {
-        std::string model;
-        int cores;
-        int logical_processors;
-        std::vector<std::string> features;
-        double frequency_mhz;
-    };
-    
-    struct MemoryInfo {
-        size_t total_bytes;
-        size_t available_bytes;
-        size_t free_bytes;
-        bool has_huge_pages;
-        size_t huge_page_size;
-        size_t huge_pages_total;
-        size_t huge_pages_free;
-    };
-    
-    struct SystemCapabilities {
-        bool has_real_time;
-        bool has_shared_memory;
-        bool has_cpu_affinity;
-        bool has_memory_locking;
-        bool has_high_resolution_timer;
-        int max_rt_priority;
-    };
-    
-    void printSystemInfo(bool verbose = false) {
-        std::cout << "🖥️  Alaris System Information" << std::endl;
-        std::cout << "================================" << std::endl;
-        std::cout << std::endl;
-        
-        printBuildInfo();
-        printOSInfo();
-        printCPUInfo(verbose);
-        printMemoryInfo(verbose);
-        printCapabilities(verbose);
-        printPerformanceInfo();
-        
-        if (verbose) {
-            printDetailedInfo();
+    bool validateQuantLibConfig(const std::string& filepath) {
+        if (!fs::exists(filepath)) {
+            errors_.push_back("Configuration file does not exist: " + filepath);
+            return false;
         }
+        
+        try {
+            YAML::Node config = YAML::LoadFile(filepath);
+            
+            // Validate required sections
+            validateProcessSection(config["process"]);
+            validateQuantLibSection(config["quantlib"]);
+            validateSharedMemorySection(config["shared_memory"]);
+            validateMemorySection(config["memory"]);
+            validateExecutorSection(config["executor"]);
+            validatePricingSection(config["pricing"]);
+            validateVolatilitySection(config["volatility"]);
+            validateStrategySection(config["strategy"]);
+            validateLoggingSection(config["logging"]);
+            
+        } catch (const YAML::Exception& e) {
+            errors_.push_back("YAML parsing error: " + std::string(e.what()));
+            return false;
+        } catch (const std::exception& e) {
+            errors_.push_back("Validation error: " + std::string(e.what()));
+            return false;
+        }
+        
+        return errors_.empty();
     }
     
-    bool runHealthCheck() {
-        std::cout << "🔍 Running Alaris Health Check..." << std::endl;
-        std::cout << std::endl;
-        
-        bool healthy = true;
-        std::vector<std::string> issues;
-        std::vector<std::string> warnings;
-        
-        // Check CPU cores
-        auto cpu = getCPUInfo();
-        if (cpu.cores < 2) {
-            issues.push_back("Insufficient CPU cores (minimum 2 required)");
-            healthy = false;
-        } else if (cpu.cores < 4) {
-            warnings.push_back("Low CPU core count (4+ recommended for optimal performance)");
+    bool validateLeanConfig(const std::string& filepath) {
+        if (!fs::exists(filepath)) {
+            errors_.push_back("Configuration file does not exist: " + filepath);
+            return false;
         }
         
-        // Check memory
-        auto memory = getMemoryInfo();
-        const size_t min_memory = 2ULL * 1024 * 1024 * 1024; // 2GB
-        const size_t recommended_memory = 8ULL * 1024 * 1024 * 1024; // 8GB
-        
-        if (memory.total_bytes < min_memory) {
-            issues.push_back("Insufficient memory (minimum 2GB required)");
-            healthy = false;
-        } else if (memory.total_bytes < recommended_memory) {
-            warnings.push_back("Low memory (8GB+ recommended for optimal performance)");
+        try {
+            YAML::Node config = YAML::LoadFile(filepath);
+            
+            // Validate Lean-specific sections
+            validateAlgorithmSection(config["algorithm"]);
+            validateBrokerageSection(config["brokerage"]);
+            validateDataSection(config["data"]);
+            validateRiskManagementSection(config["risk_management"]);
+            validateUniverseSection(config["universe"]);
+            validateIBSettingsSection(config["ib_settings"]);
+            
+        } catch (const YAML::Exception& e) {
+            errors_.push_back("YAML parsing error: " + std::string(e.what()));
+            return false;
+        } catch (const std::exception& e) {
+            errors_.push_back("Validation error: " + std::string(e.what()));
+            return false;
         }
         
-        // Check system capabilities
-        auto caps = getSystemCapabilities();
-        if (!caps.has_shared_memory) {
-            issues.push_back("Shared memory not available");
-            healthy = false;
-        }
-        
-        if (!caps.has_real_time) {
-            warnings.push_back("Real-time capabilities not available (may impact latency)");
-        }
-        
-        // Check huge pages (Linux)
-        if (!memory.has_huge_pages) {
-            warnings.push_back("Huge pages not configured (may impact memory performance)");
-        }
-        
-        // Print results
-        if (!issues.empty()) {
-            std::cout << "❌ Critical Issues:" << std::endl;
-            for (const auto& issue : issues) {
-                std::cout << "   • " << issue << std::endl;
+        return errors_.empty();
+    }
+    
+    void printResults() const {
+        if (!errors_.empty()) {
+            std::cout << "❌ Validation Errors:" << std::endl;
+            for (const auto& error : errors_) {
+                std::cout << "   • " << error << std::endl;
             }
             std::cout << std::endl;
         }
         
-        if (!warnings.empty()) {
+        if (!warnings_.empty()) {
             std::cout << "⚠️  Warnings:" << std::endl;
-            for (const auto& warning : warnings) {
+            for (const auto& warning : warnings_) {
                 std::cout << "   • " << warning << std::endl;
             }
             std::cout << std::endl;
         }
         
-        if (healthy && warnings.empty()) {
-            std::cout << "✅ System health check passed!" << std::endl;
-        } else if (healthy) {
-            std::cout << "✅ System is functional with warnings" << std::endl;
-        } else {
-            std::cout << "❌ System health check failed!" << std::endl;
+        if (errors_.empty()) {
+            std::cout << "✅ Configuration validation passed!" << std::endl;
         }
-        
-        return healthy;
     }
+    
+    bool hasErrors() const { return !errors_.empty(); }
     
 private:
-    void printBuildInfo() {
-#ifdef ALARIS_BUILD_INFO_AVAILABLE
-        std::cout << "📦 Build Information:" << std::endl;
-        std::cout << "   Version: " << Alaris::BuildInfo::getShortVersionString() << std::endl;
-        std::cout << "   Build Type: " << Alaris::BuildInfo::BUILD_TYPE << std::endl;
-        std::cout << "   Build Date: " << Alaris::BuildInfo::BUILD_DATE << std::endl;
-        std::cout << "   Compiler: " << Alaris::BuildInfo::COMPILER_ID 
-                  << " " << Alaris::BuildInfo::COMPILER_VERSION << std::endl;
-        std::cout << std::endl;
-#endif
-    }
-    
-    void printOSInfo() {
-        std::cout << "🐧 Operating System:" << std::endl;
-        
-#ifdef __linux__
-        struct utsname info;
-        if (uname(&info) == 0) {
-            std::cout << "   System: " << info.sysname << std::endl;
-            std::cout << "   Release: " << info.release << std::endl;
-            std::cout << "   Version: " << info.version << std::endl;
-            std::cout << "   Architecture: " << info.machine << std::endl;
+    void validateProcessSection(const YAML::Node& process) {
+        if (!process) {
+            errors_.push_back("Missing 'process' section");
+            return;
         }
         
-        // Try to get distribution info
-        std::ifstream release("/etc/os-release");
-        if (release.is_open()) {
-            std::string line;
-            while (std::getline(release, line)) {
-                if (line.starts_with("PRETTY_NAME=")) {
-                    std::string distro = line.substr(12);
-                    if (distro.front() == '"' && distro.back() == '"') {
-                        distro = distro.substr(1, distro.length() - 2);
+        validateRequired(process, "name", "string");
+        validateOptional(process, "priority", "int", 0, 99);
+        validateOptional(process, "cpu_affinity", "sequence");
+        validateOptional(process, "memory_lock", "bool");
+        validateOptional(process, "huge_pages", "bool");
+        validateOptional(process, "start_trading_enabled", "bool");
+    }
+    
+    void validateQuantLibSection(const YAML::Node& quantlib) {
+        if (!quantlib) {
+            errors_.push_back("Missing 'quantlib' section");
+            return;
+        }
+        
+        validateOptional(quantlib, "threading", "string", {"single", "multi"});
+        validateOptional(quantlib, "date_format", "string", {"ISO", "US", "European"});
+        validateOptional(quantlib, "calendar", "string");
+        validateOptional(quantlib, "enable_debug", "bool");
+    }
+    
+    void validateSharedMemorySection(const YAML::Node& shared_memory) {
+        if (!shared_memory) {
+            errors_.push_back("Missing 'shared_memory' section");
+            return;
+        }
+        
+        validateRequired(shared_memory, "market_data_buffer", "string");
+        validateRequired(shared_memory, "signal_buffer", "string");
+        validateRequired(shared_memory, "control_buffer", "string");
+        
+        auto buffer_sizes = shared_memory["buffer_sizes"];
+        if (buffer_sizes) {
+            validateOptional(buffer_sizes, "market_data", "int", 1024, 65536);
+            validateOptional(buffer_sizes, "signals", "int", 256, 16384);
+            validateOptional(buffer_sizes, "control", "int", 64, 4096);
+        }
+    }
+    
+    void validateMemorySection(const YAML::Node& memory) {
+        if (!memory) {
+            warnings_.push_back("Missing 'memory' section - using defaults");
+            return;
+        }
+        
+        validateOptional(memory, "pool_size_mb", "int", 16, 1024);
+    }
+    
+    void validateExecutorSection(const YAML::Node& executor) {
+        if (!executor) {
+            warnings_.push_back("Missing 'executor' section - using defaults");
+            return;
+        }
+        
+        validateOptional(executor, "major_frame_ms", "int", 1, 1000);
+        validateOptional(executor, "market_data_interval_ms", "int", 1, 1000);
+        validateOptional(executor, "signal_interval_ms", "int", 1, 1000);
+        validateOptional(executor, "control_interval_ms", "int", 1, 1000);
+        validateOptional(executor, "heartbeat_interval_s", "int", 1, 3600);
+        validateOptional(executor, "perf_report_interval_s", "int", 1, 3600);
+    }
+    
+    void validatePricingSection(const YAML::Node& pricing) {
+        if (!pricing) {
+            warnings_.push_back("Missing 'pricing' section - using defaults");
+            return;
+        }
+        
+        auto alo_engine = pricing["alo_engine"];
+        if (alo_engine) {
+            // ALO engine uses iteration schemes, not time-stepping schemes
+            validateOptional(alo_engine, "scheme", "string", 
+                           {"fast", "accurate", "high_precision"});
+            validateOptional(alo_engine, "fixed_point_equation", "string",
+                           {"Auto", "FP_A", "FP_B"});
+            
+            // Warn if old time-stepping parameters are found
+            if (alo_engine["time_steps"]) {
+                warnings_.push_back("'time_steps' parameter is deprecated for ALO engine - use 'scheme' instead");
+            }
+            if (alo_engine["asset_steps"]) {
+                warnings_.push_back("'asset_steps' parameter is deprecated for ALO engine - use 'scheme' instead");
+            }
+        }
+    }
+    
+    void validateVolatilitySection(const YAML::Node& volatility) {
+        if (!volatility) {
+            warnings_.push_back("Missing 'volatility' section - using defaults");
+            return;
+        }
+        
+        // Check for deprecated GJR-GARCH configuration
+        if (volatility["gjr_garch"]) {
+            errors_.push_back("'gjr_garch' section is deprecated - use 'garch' for standard GARCH model");
+            return;
+        }
+        
+        // Validate standard GARCH configuration
+        auto garch = volatility["garch"];
+        if (garch) {
+            validateOptional(garch, "max_iterations", "int", 100, 10000);
+            validateOptional(garch, "tolerance", "double", 1e-8, 1e-3);
+            validateOptional(garch, "mode", "string", 
+                           {"MomentMatchingGuess", "GammaGuess", "BestOfTwo", "DoubleOptimization"});
+            validateOptional(garch, "max_history_length", "int", 100, 10000);
+        }
+        
+        validateOptional(volatility, "update_frequency_ms", "int", 10, 10000);
+    }
+    
+    void validateStrategySection(const YAML::Node& strategy) {
+        if (!strategy) {
+            warnings_.push_back("Missing 'strategy' section - using defaults");
+            return;
+        }
+        
+        auto vol_arbitrage = strategy["vol_arbitrage"];
+        if (vol_arbitrage) {
+            // Core thresholds
+            validateOptional(vol_arbitrage, "entry_threshold", "double", 0.001, 1.0);
+            validateOptional(vol_arbitrage, "exit_threshold", "double", 0.001, 1.0);
+            validateOptional(vol_arbitrage, "confidence_threshold", "double", 0.1, 1.0);
+            
+            // Risk management
+            validateOptional(vol_arbitrage, "max_portfolio_delta", "double", 0.01, 1.0);
+            validateOptional(vol_arbitrage, "max_portfolio_gamma", "double", 0.01, 1.0);
+            validateOptional(vol_arbitrage, "max_portfolio_vega", "double", 0.1, 10.0);
+            validateOptional(vol_arbitrage, "max_position_size", "double", 0.001, 1.0);
+            validateOptional(vol_arbitrage, "max_correlation_exposure", "double", 0.1, 1.0);
+            
+            // Position sizing
+            validateOptional(vol_arbitrage, "kelly_fraction", "double", 0.001, 0.25);
+            validateOptional(vol_arbitrage, "max_kelly_position", "double", 0.001, 0.5);
+            validateOptional(vol_arbitrage, "min_edge_ratio", "double", 1.0, 10.0);
+            
+            // Stop loss and profit taking
+            validateOptional(vol_arbitrage, "stop_loss_percent", "double", 0.01, 1.0);
+            validateOptional(vol_arbitrage, "profit_target_percent", "double", 0.01, 2.0);
+            validateOptional(vol_arbitrage, "trailing_stop_percent", "double", 0.01, 1.0);
+            
+            // Strategy mode
+            validateOptional(vol_arbitrage, "strategy_mode", "string", 
+                           {"DELTA_NEUTRAL", "GAMMA_SCALPING", "VOLATILITY_TIMING", "RELATIVE_VALUE"});
+            
+            // Model selection - updated for standard GARCH
+            validateOptional(vol_arbitrage, "model_selection", "string", 
+                           {"GARCH_DIRECT", "ENSEMBLE_GARCH_HISTORICAL"});
+            
+            // Check for deprecated GJR-GARCH model selection
+            if (vol_arbitrage["model_selection"]) {
+                std::string model = vol_arbitrage["model_selection"].as<std::string>();
+                if (model.find("GJR") != std::string::npos) {
+                    errors_.push_back("GJR-GARCH model selection is deprecated - use GARCH_DIRECT or ENSEMBLE_GARCH_HISTORICAL");
+                }
+            }
+            
+            // Hedging
+            validateOptional(vol_arbitrage, "hedge_threshold_delta", "double", 0.001, 1.0);
+            validateOptional(vol_arbitrage, "hedge_threshold_gamma", "double", 0.001, 1.0);
+            validateOptional(vol_arbitrage, "auto_hedge_enabled", "bool");
+            validateOptional(vol_arbitrage, "hedge_frequency_minutes", "double", 1.0, 1440.0);
+            
+            // Market regime detection
+            validateOptional(vol_arbitrage, "low_vol_threshold", "double", 0.01, 1.0);
+            validateOptional(vol_arbitrage, "high_vol_threshold", "double", 0.01, 2.0);
+            validateOptional(vol_arbitrage, "regime_lookback_days", "int", 5, 252);
+        }
+    }
+    
+    void validateLoggingSection(const YAML::Node& logging) {
+        if (!logging) {
+            warnings_.push_back("Missing 'logging' section - using defaults");
+            return;
+        }
+        
+        validateOptional(logging, "level", "string", {"DEBUG", "INFO", "WARN", "ERROR"});
+        validateRequired(logging, "file", "string");
+        validateOptional(logging, "binary_mode", "bool");
+        validateOptional(logging, "enable_performance_log", "bool");
+    }
+    
+    void validateAlgorithmSection(const YAML::Node& algorithm) {
+        if (!algorithm) {
+            errors_.push_back("Missing 'algorithm' section");
+            return;
+        }
+        
+        validateRequired(algorithm, "name", "string");
+        validateRequired(algorithm, "start_date", "string");
+        validateRequired(algorithm, "end_date", "string");
+        validateRequired(algorithm, "cash", "int");
+    }
+    
+    void validateBrokerageSection(const YAML::Node& brokerage) {
+        if (!brokerage) {
+            errors_.push_back("Missing 'brokerage' section");
+            return;
+        }
+        
+        validateRequired(brokerage, "type", "string");
+        validateRequired(brokerage, "gateway_host", "string");
+        validateRequired(brokerage, "gateway_port", "int");
+        validateRequired(brokerage, "account", "string");
+        
+        // Validate IB-specific port numbers and provide guidance
+        if (brokerage["gateway_port"]) {
+            int port = brokerage["gateway_port"].as<int>();
+            if (port != 4001 && port != 4002) {
+                errors_.push_back("IB Gateway port must be 4001 (live trading) or 4002 (paper trading)");
+            } else if (port == 4001) {
+                warnings_.push_back("⚠️  LIVE TRADING PORT (4001) DETECTED - Ensure this is intended for production use!");
+            } else if (port == 4002) {
+                warnings_.push_back("Paper trading port (4002) configured - Safe for development and testing");
+            }
+        }
+        
+        // Validate account format
+        if (brokerage["account"]) {
+            std::string account = brokerage["account"].as<std::string>();
+            if (account.starts_with("DU") && brokerage["gateway_port"] && brokerage["gateway_port"].as<int>() == 4001) {
+                warnings_.push_back("Paper trading account (DU prefix) with live trading port (4001) - Check configuration");
+            }
+            if (account.starts_with("U") && brokerage["gateway_port"] && brokerage["gateway_port"].as<int>() == 4002) {
+                warnings_.push_back("Live trading account (U prefix) with paper trading port (4002) - Check configuration");
+            }
+        }
+    }
+    
+    void validateDataSection(const YAML::Node& data) {
+        if (!data) {
+            errors_.push_back("Missing 'data' section");
+            return;
+        }
+        
+        validateRequired(data, "provider", "string");
+        validateOptional(data, "resolution", "string", {"Tick", "Second", "Minute", "Hour", "Daily"});
+    }
+    
+    void validateRiskManagementSection(const YAML::Node& risk_management) {
+        if (!risk_management) {
+            warnings_.push_back("Missing 'risk_management' section - using defaults");
+            return;
+        }
+        
+        validateOptional(risk_management, "max_position_size", "double", 0.001, 1.0);
+        validateOptional(risk_management, "max_daily_loss", "double", 0.001, 1.0);
+    }
+    
+    void validateUniverseSection(const YAML::Node& universe) {
+        if (!universe) {
+            errors_.push_back("Missing 'universe' section");
+            return;
+        }
+        
+        validateRequired(universe, "symbols", "sequence");
+        validateOptional(universe, "option_chains", "bool");
+    }
+    
+    void validateIBSettingsSection(const YAML::Node& ib_settings) {
+        if (!ib_settings) {
+            return; // Optional section
+        }
+        
+        validateOptional(ib_settings, "connection_timeout", "int", 5, 300);
+        validateOptional(ib_settings, "enable_market_data", "bool");
+        validateOptional(ib_settings, "order_timeout_seconds", "int", 10, 3600);
+        
+        auto paper_trading = ib_settings["paper_trading"];
+        if (paper_trading) {
+            validateOptional(paper_trading, "enabled", "bool");
+            validateOptional(paper_trading, "starting_cash", "int", 10000, 10000000);
+        }
+        
+        auto live_trading = ib_settings["live_trading"];
+        if (live_trading) {
+            validateOptional(live_trading, "enabled", "bool");
+            if (live_trading["enabled"] && live_trading["enabled"].as<bool>()) {
+                warnings_.push_back("⚠️  Live trading is ENABLED in configuration - Ensure this is intended!");
+            }
+        }
+    }
+    
+    void validateRequired(const YAML::Node& node, const std::string& key, const std::string& type) {
+        if (!node[key]) {
+            errors_.push_back("Missing required field: " + key);
+            return;
+        }
+        
+        validateType(node[key], key, type);
+    }
+    
+    void validateOptional(const YAML::Node& node, const std::string& key, const std::string& type) {
+        if (node[key]) {
+            validateType(node[key], key, type);
+        }
+    }
+    
+    void validateOptional(const YAML::Node& node, const std::string& key, const std::string& type,
+                         const std::vector<std::string>& allowed_values) {
+        if (node[key]) {
+            validateType(node[key], key, type);
+            
+            if (type == "string") {
+                std::string value = node[key].as<std::string>();
+                bool found = false;
+                for (const auto& allowed : allowed_values) {
+                    if (value == allowed) {
+                        found = true;
+                        break;
                     }
-                    std::cout << "   Distribution: " << distro << std::endl;
-                    break;
+                }
+                if (!found) {
+                    errors_.push_back("Invalid value for " + key + ": " + value + " (allowed: " + 
+                                    joinVector(allowed_values, ", ") + ")");
                 }
             }
         }
-#elif __APPLE__
-        struct utsname info;
-        if (uname(&info) == 0) {
-            std::cout << "   System: " << info.sysname << std::endl;
-            std::cout << "   Release: " << info.release << std::endl;
-            std::cout << "   Architecture: " << info.machine << std::endl;
-        }
-#elif _WIN32
-        std::cout << "   System: Windows" << std::endl;
-        
-        OSVERSIONINFOEX osvi;
-        ZeroMemory(&osvi, sizeof(OSVERSIONINFOEX));
-        osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
-        
-        if (GetVersionEx((OSVERSIONINFO*)&osvi)) {
-            std::cout << "   Version: " << osvi.dwMajorVersion << "." << osvi.dwMinorVersion << std::endl;
-        }
-#endif
-        std::cout << std::endl;
     }
     
-    void printCPUInfo(bool verbose) {
-        auto cpu = getCPUInfo();
-        
-        std::cout << "🔧 CPU Information:" << std::endl;
-        std::cout << "   Model: " << cpu.model << std::endl;
-        std::cout << "   Physical Cores: " << cpu.cores << std::endl;
-        std::cout << "   Logical Processors: " << cpu.logical_processors << std::endl;
-        
-        if (cpu.frequency_mhz > 0) {
-            std::cout << "   Base Frequency: " << std::fixed << std::setprecision(0) 
-                      << cpu.frequency_mhz << " MHz" << std::endl;
-        }
-        
-        if (verbose && !cpu.features.empty()) {
-            std::cout << "   Features: ";
-            for (size_t i = 0; i < cpu.features.size(); ++i) {
-                if (i > 0) std::cout << ", ";
-                std::cout << cpu.features[i];
+    template<typename T>
+    void validateOptional(const YAML::Node& node, const std::string& key, const std::string& type,
+                         T min_val, T max_val) {
+        if (node[key]) {
+            validateType(node[key], key, type);
+            
+            try {
+                T value = node[key].as<T>();
+                if (value < min_val || value > max_val) {
+                    errors_.push_back("Value for " + key + " out of range: " + std::to_string(value) + 
+                                    " (allowed: " + std::to_string(min_val) + "-" + std::to_string(max_val) + ")");
+                }
+            } catch (const std::exception& e) {
+                errors_.push_back("Invalid value type for " + key + ": " + e.what());
             }
-            std::cout << std::endl;
         }
-        std::cout << std::endl;
     }
     
-    void printMemoryInfo(bool verbose) {
-        auto memory = getMemoryInfo();
-        
-        std::cout << "💾 Memory Information:" << std::endl;
-        std::cout << "   Total: " << formatBytes(memory.total_bytes) << std::endl;
-        std::cout << "   Available: " << formatBytes(memory.available_bytes) << std::endl;
-        std::cout << "   Free: " << formatBytes(memory.free_bytes) << std::endl;
-        
-        if (memory.has_huge_pages) {
-            std::cout << "   Huge Pages: " << memory.huge_pages_total 
-                      << " total, " << memory.huge_pages_free << " free" << std::endl;
-            std::cout << "   Huge Page Size: " << formatBytes(memory.huge_page_size) << std::endl;
-        } else {
-            std::cout << "   Huge Pages: Not configured" << std::endl;
-        }
-        std::cout << std::endl;
-    }
-    
-    void printCapabilities(bool verbose) {
-        auto caps = getSystemCapabilities();
-        
-        std::cout << "⚙️  System Capabilities:" << std::endl;
-        std::cout << "   Real-time: " << (caps.has_real_time ? "✅ Available" : "❌ Not available") << std::endl;
-        std::cout << "   Shared Memory: " << (caps.has_shared_memory ? "✅ Available" : "❌ Not available") << std::endl;
-        std::cout << "   CPU Affinity: " << (caps.has_cpu_affinity ? "✅ Available" : "❌ Not available") << std::endl;
-        std::cout << "   Memory Locking: " << (caps.has_memory_locking ? "✅ Available" : "❌ Not available") << std::endl;
-        std::cout << "   High-Res Timer: " << (caps.has_high_resolution_timer ? "✅ Available" : "❌ Not available") << std::endl;
-        
-        if (caps.has_real_time && caps.max_rt_priority > 0) {
-            std::cout << "   Max RT Priority: " << caps.max_rt_priority << std::endl;
-        }
-        std::cout << std::endl;
-    }
-    
-    void printPerformanceInfo() {
-        std::cout << "📊 Performance Information:" << std::endl;
-        
-        // Memory bandwidth test (simplified)
-        auto start = std::chrono::high_resolution_clock::now();
-        const size_t test_size = 1024 * 1024; // 1MB
-        std::vector<char> buffer(test_size);
-        
-        for (int i = 0; i < 100; ++i) {
-            std::fill(buffer.begin(), buffer.end(), i % 256);
-        }
-        
-        auto end = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-        
-        double bandwidth_mbps = (100.0 * test_size) / (duration.count() / 1000000.0) / (1024 * 1024);
-        std::cout << "   Memory Bandwidth: " << std::fixed << std::setprecision(1) 
-                  << bandwidth_mbps << " MB/s (estimated)" << std::endl;
-        
-        // Timer resolution test
-        auto timer_start = std::chrono::high_resolution_clock::now();
-        std::this_thread::sleep_for(std::chrono::microseconds(1));
-        auto timer_end = std::chrono::high_resolution_clock::now();
-        auto timer_res = std::chrono::duration_cast<std::chrono::nanoseconds>(timer_end - timer_start).count();
-        
-        std::cout << "   Timer Resolution: ~" << timer_res << " ns" << std::endl;
-        std::cout << std::endl;
-    }
-    
-    void printDetailedInfo() {
-        std::cout << "🔍 Detailed System Information:" << std::endl;
-        
-        // Process limits
-#ifdef __linux__
-        struct rlimit limit;
-        if (getrlimit(RLIMIT_RTPRIO, &limit) == 0) {
-            std::cout << "   RT Priority Limit: " << limit.rlim_cur << "/" << limit.rlim_max << std::endl;
-        }
-        if (getrlimit(RLIMIT_MEMLOCK, &limit) == 0) {
-            std::cout << "   Memory Lock Limit: " << formatBytes(limit.rlim_cur) << std::endl;
-        }
-#endif
-        
-        // CPU governor (Linux)
-#ifdef __linux__
-        std::ifstream governor("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor");
-        if (governor.is_open()) {
-            std::string gov;
-            std::getline(governor, gov);
-            std::cout << "   CPU Governor: " << gov << std::endl;
-        }
-#endif
-        
-        std::cout << std::endl;
-    }
-    
-    CPUInfo getCPUInfo() {
-        CPUInfo cpu;
-        cpu.cores = std::thread::hardware_concurrency();
-        cpu.logical_processors = cpu.cores;
-        cpu.frequency_mhz = 0.0;
-        
-#ifdef __linux__
-        // Get CPU model from /proc/cpuinfo
-        std::ifstream cpuinfo("/proc/cpuinfo");
-        std::string line;
-        while (std::getline(cpuinfo, line)) {
-            if (line.starts_with("model name")) {
-                size_t pos = line.find(':');
-                if (pos != std::string::npos) {
-                    cpu.model = line.substr(pos + 2);
-                    break;
+    void validateType(const YAML::Node& node, const std::string& key, const std::string& expected_type) {
+        try {
+            if (expected_type == "string" && !node.IsScalar()) {
+                errors_.push_back("Field " + key + " must be a string");
+            } else if (expected_type == "int" && !node.IsScalar()) {
+                errors_.push_back("Field " + key + " must be an integer");
+            } else if (expected_type == "double" && !node.IsScalar()) {
+                errors_.push_back("Field " + key + " must be a number");
+            } else if (expected_type == "bool" && !node.IsScalar()) {
+                errors_.push_back("Field " + key + " must be a boolean");
+            } else if (expected_type == "sequence" && !node.IsSequence()) {
+                errors_.push_back("Field " + key + " must be a list");
+            }
+            
+            // Additional type checking for scalars
+            if (node.IsScalar()) {
+                if (expected_type == "int") {
+                    node.as<int>(); // Will throw if not convertible
+                } else if (expected_type == "double") {
+                    node.as<double>(); // Will throw if not convertible
+                } else if (expected_type == "bool") {
+                    node.as<bool>(); // Will throw if not convertible
                 }
             }
+        } catch (const std::exception& e) {
+            errors_.push_back("Type validation error for " + key + ": " + e.what());
         }
-        
-        // Get CPU features
-        cpuinfo.clear();
-        cpuinfo.seekg(0);
-        while (std::getline(cpuinfo, line)) {
-            if (line.starts_with("flags")) {
-                size_t pos = line.find(':');
-                if (pos != std::string::npos) {
-                    std::istringstream iss(line.substr(pos + 2));
-                    std::string feature;
-                    while (iss >> feature) {
-                        if (feature == "avx2" || feature == "fma" || feature == "sse4_2") {
-                            cpu.features.push_back(feature);
-                        }
-                    }
-                    break;
-                }
-            }
-        }
-        
-        // Get actual core count
-        cpu.cores = sysconf(_SC_NPROCESSORS_ONLN);
-#elif __APPLE__
-        size_t size = sizeof(cpu.cores);
-        sysctlbyname("hw.physicalcpu", &cpu.cores, &size, nullptr, 0);
-        sysctlbyname("hw.logicalcpu", &cpu.logical_processors, &size, nullptr, 0);
-        
-        char brand[256];
-        size = sizeof(brand);
-        if (sysctlbyname("machdep.cpu.brand_string", brand, &size, nullptr, 0) == 0) {
-            cpu.model = brand;
-        }
-#elif _WIN32
-        SYSTEM_INFO sysinfo;
-        GetSystemInfo(&sysinfo);
-        cpu.logical_processors = sysinfo.dwNumberOfProcessors;
-        cpu.cores = cpu.logical_processors; // Simplified
-        cpu.model = "Windows CPU";
-#endif
-        
-        if (cpu.model.empty()) {
-            cpu.model = "Unknown";
-        }
-        
-        return cpu;
     }
     
-    MemoryInfo getMemoryInfo() {
-        MemoryInfo memory = {};
-        
-#ifdef __linux__
-        struct sysinfo info;
-        if (sysinfo(&info) == 0) {
-            memory.total_bytes = info.totalram * info.mem_unit;
-            memory.free_bytes = info.freeram * info.mem_unit;
-            memory.available_bytes = memory.free_bytes; // Simplified
+    std::string joinVector(const std::vector<std::string>& vec, const std::string& delimiter) {
+        std::string result;
+        for (size_t i = 0; i < vec.size(); ++i) {
+            if (i > 0) result += delimiter;
+            result += vec[i];
         }
-        
-        // Check huge pages
-        std::ifstream meminfo("/proc/meminfo");
-        std::string line;
-        while (std::getline(meminfo, line)) {
-            if (line.starts_with("HugePages_Total:")) {
-                std::istringstream iss(line);
-                std::string label;
-                iss >> label >> memory.huge_pages_total;
-                memory.has_huge_pages = memory.huge_pages_total > 0;
-            } else if (line.starts_with("HugePages_Free:")) {
-                std::istringstream iss(line);
-                std::string label;
-                iss >> label >> memory.huge_pages_free;
-            } else if (line.starts_with("Hugepagesize:")) {
-                std::istringstream iss(line);
-                std::string label;
-                size_t size_kb;
-                iss >> label >> size_kb;
-                memory.huge_page_size = size_kb * 1024;
-            }
-        }
-#elif __APPLE__
-        int64_t memsize;
-        size_t size = sizeof(memsize);
-        if (sysctlbyname("hw.memsize", &memsize, &size, nullptr, 0) == 0) {
-            memory.total_bytes = memsize;
-        }
-        
-        mach_port_t host = mach_host_self();
-        vm_size_t page_size;
-        vm_statistics64_data_t vm_stat;
-        mach_msg_type_number_t count = HOST_VM_INFO64_COUNT;
-        
-        if (host_page_size(host, &page_size) == KERN_SUCCESS &&
-            host_statistics64(host, HOST_VM_INFO64, (host_info64_t)&vm_stat, &count) == KERN_SUCCESS) {
-            memory.free_bytes = vm_stat.free_count * page_size;
-            memory.available_bytes = memory.free_bytes;
-        }
-#elif _WIN32
-        MEMORYSTATUSEX status;
-        status.dwLength = sizeof(status);
-        if (GlobalMemoryStatusEx(&status)) {
-            memory.total_bytes = status.ullTotalPhys;
-            memory.available_bytes = status.ullAvailPhys;
-            memory.free_bytes = status.ullAvailPhys;
-        }
-#endif
-        
-        return memory;
-    }
-    
-    SystemCapabilities getSystemCapabilities() {
-        SystemCapabilities caps = {};
-        
-#ifdef __linux__
-        caps.has_shared_memory = true; // Linux always has shared memory
-        caps.has_cpu_affinity = true;
-        caps.has_memory_locking = true;
-        caps.has_high_resolution_timer = true;
-        
-        // Check real-time capabilities
-        caps.max_rt_priority = sched_get_priority_max(SCHED_FIFO);
-        caps.has_real_time = caps.max_rt_priority > 0;
-#elif __APPLE__
-        caps.has_shared_memory = true;
-        caps.has_cpu_affinity = true;
-        caps.has_memory_locking = true;
-        caps.has_high_resolution_timer = true;
-        caps.has_real_time = true;
-        caps.max_rt_priority = 31;
-#elif _WIN32
-        caps.has_shared_memory = true;
-        caps.has_cpu_affinity = true;
-        caps.has_memory_locking = false; // Simplified
-        caps.has_high_resolution_timer = true;
-        caps.has_real_time = false; // Windows doesn't have POSIX RT
-        caps.max_rt_priority = 0;
-#endif
-        
-        return caps;
-    }
-    
-    std::string formatBytes(size_t bytes) {
-        const char* units[] = {"B", "KB", "MB", "GB", "TB"};
-        int unit = 0;
-        double size = static_cast<double>(bytes);
-        
-        while (size >= 1024.0 && unit < 4) {
-            size /= 1024.0;
-            unit++;
-        }
-        
-        std::ostringstream oss;
-        oss << std::fixed << std::setprecision(1) << size << " " << units[unit];
-        return oss.str();
+        return result;
     }
 };
 
 void printUsage(const char* program_name) {
-    std::cout << "Alaris System Information Utility" << std::endl;
-    std::cout << "Usage: " << program_name << " [OPTIONS]" << std::endl;
+    std::cout << "Alaris Configuration Validator" << std::endl;
+    std::cout << "Usage: " << program_name << " [OPTIONS] <config_file>" << std::endl;
     std::cout << std::endl;
     std::cout << "Options:" << std::endl;
     std::cout << "  -h, --help              Show this help message" << std::endl;
-    std::cout << "  -v, --verbose           Show detailed information" << std::endl;
-    std::cout << "  --health-check          Run system health check" << std::endl;
-    std::cout << "  --version               Show version information" << std::endl;
+    std::cout << "  -v, --version           Show version information" << std::endl;
+    std::cout << "  -t, --type <type>       Specify config type (quantlib|lean)" << std::endl;
+    std::cout << "  --verbose               Enable verbose output" << std::endl;
     std::cout << std::endl;
+    std::cout << "Examples:" << std::endl;
+    std::cout << "  " << program_name << " config/quantlib_process.yaml" << std::endl;
+    std::cout << "  " << program_name << " -t lean config/lean_process.yaml" << std::endl;
+    std::cout << std::endl;
+    std::cout << "Notes:" << std::endl;
+    std::cout << "  • Port 4001 = Live Trading (⚠️  Use with caution!)" << std::endl;
+    std::cout << "  • Port 4002 = Paper Trading (Safe for development)" << std::endl;
+    std::cout << "  • Standard GARCH model is now used (GJR-GARCH deprecated)" << std::endl;
+    std::cout << "  • ALO engine uses iteration schemes (fast/accurate/high_precision)" << std::endl;
+}
+
+void printVersion() {
+#ifdef ALARIS_BUILD_INFO_AVAILABLE
+    std::cout << Alaris::BuildInfo::getBuildInfoString() << std::endl;
+#else
+    std::cout << "Alaris Configuration Validator" << std::endl;
+    std::cout << "Version: Unknown (build info not available)" << std::endl;
+#endif
 }
 
 int main(int argc, char* argv[]) {
+    if (argc < 2) {
+        printUsage(argv[0]);
+        return 1;
+    }
+    
+    std::string config_file;
+    std::string config_type = "auto";
     bool verbose = false;
-    bool health_check = false;
-    bool show_version = false;
     
     // Parse command line arguments
     for (int i = 1; i < argc; ++i) {
@@ -528,35 +532,72 @@ int main(int argc, char* argv[]) {
         if (arg == "-h" || arg == "--help") {
             printUsage(argv[0]);
             return 0;
-        } else if (arg == "-v" || arg == "--verbose") {
+        } else if (arg == "-v" || arg == "--version") {
+            printVersion();
+            return 0;
+        } else if (arg == "-t" || arg == "--type") {
+            if (i + 1 < argc) {
+                config_type = argv[++i];
+            } else {
+                std::cerr << "Error: --type requires an argument" << std::endl;
+                return 1;
+            }
+        } else if (arg == "--verbose") {
             verbose = true;
-        } else if (arg == "--health-check") {
-            health_check = true;
-        } else if (arg == "--version") {
-            show_version = true;
+        } else if (arg[0] != '-') {
+            if (config_file.empty()) {
+                config_file = arg;
+            } else {
+                std::cerr << "Error: Multiple config files specified" << std::endl;
+                return 1;
+            }
         } else {
-            std::cerr << "Unknown option: " << arg << std::endl;
-            printUsage(argv[0]);
+            std::cerr << "Error: Unknown option: " << arg << std::endl;
             return 1;
         }
     }
     
-    SystemInfo sysinfo;
-    
-    if (show_version) {
-#ifdef ALARIS_BUILD_INFO_AVAILABLE
-        std::cout << Alaris::BuildInfo::getBuildInfoString() << std::endl;
-#else
-        std::cout << "Alaris System Information Utility" << std::endl;
-        std::cout << "Version: Unknown" << std::endl;
-#endif
-        return 0;
+    if (config_file.empty()) {
+        std::cerr << "Error: No configuration file specified" << std::endl;
+        printUsage(argv[0]);
+        return 1;
     }
     
-    if (health_check) {
-        return sysinfo.runHealthCheck() ? 0 : 1;
+    if (verbose) {
+        std::cout << "Validating configuration file: " << config_file << std::endl;
+        std::cout << "Configuration type: " << config_type << std::endl;
+        std::cout << std::endl;
+    }
+    
+    // Auto-detect config type if not specified
+    if (config_type == "auto") {
+        if (config_file.find("quantlib") != std::string::npos) {
+            config_type = "quantlib";
+        } else if (config_file.find("lean") != std::string::npos) {
+            config_type = "lean";
+        } else {
+            config_type = "quantlib";  // Default
+        }
+        
+        if (verbose) {
+            std::cout << "Auto-detected config type: " << config_type << std::endl;
+        }
+    }
+    
+    ConfigValidator validator;
+    bool success = false;
+    
+    if (config_type == "quantlib") {
+        success = validator.validateQuantLibConfig(config_file);
+    } else if (config_type == "lean") {
+        success = validator.validateLeanConfig(config_file);
     } else {
-        sysinfo.printSystemInfo(verbose);
-        return 0;
+        std::cerr << "Error: Unknown config type: " << config_type << std::endl;
+        std::cerr << "Supported types: quantlib, lean" << std::endl;
+        return 1;
     }
+    
+    validator.printResults();
+    
+    return success ? 0 : 1;
 }

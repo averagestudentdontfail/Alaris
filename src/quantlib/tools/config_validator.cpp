@@ -32,6 +32,8 @@ public:
             validateProcessSection(config["process"]);
             validateQuantLibSection(config["quantlib"]);
             validateSharedMemorySection(config["shared_memory"]);
+            validateMemorySection(config["memory"]);
+            validateExecutorSection(config["executor"]);
             validatePricingSection(config["pricing"]);
             validateVolatilitySection(config["volatility"]);
             validateStrategySection(config["strategy"]);
@@ -63,6 +65,7 @@ public:
             validateDataSection(config["data"]);
             validateRiskManagementSection(config["risk_management"]);
             validateUniverseSection(config["universe"]);
+            validateIBSettingsSection(config["ib_settings"]);
             
         } catch (const YAML::Exception& e) {
             errors_.push_back("YAML parsing error: " + std::string(e.what()));
@@ -107,10 +110,11 @@ private:
         }
         
         validateRequired(process, "name", "string");
-        validateOptional(process, "priority", "int", 1, 99);
+        validateOptional(process, "priority", "int", 0, 99);
         validateOptional(process, "cpu_affinity", "sequence");
         validateOptional(process, "memory_lock", "bool");
         validateOptional(process, "huge_pages", "bool");
+        validateOptional(process, "start_trading_enabled", "bool");
     }
     
     void validateQuantLibSection(const YAML::Node& quantlib) {
@@ -143,6 +147,29 @@ private:
         }
     }
     
+    void validateMemorySection(const YAML::Node& memory) {
+        if (!memory) {
+            warnings_.push_back("Missing 'memory' section - using defaults");
+            return;
+        }
+        
+        validateOptional(memory, "pool_size_mb", "int", 16, 1024);
+    }
+    
+    void validateExecutorSection(const YAML::Node& executor) {
+        if (!executor) {
+            warnings_.push_back("Missing 'executor' section - using defaults");
+            return;
+        }
+        
+        validateOptional(executor, "major_frame_ms", "int", 1, 1000);
+        validateOptional(executor, "market_data_interval_ms", "int", 1, 1000);
+        validateOptional(executor, "signal_interval_ms", "int", 1, 1000);
+        validateOptional(executor, "control_interval_ms", "int", 1, 1000);
+        validateOptional(executor, "heartbeat_interval_s", "int", 1, 3600);
+        validateOptional(executor, "perf_report_interval_s", "int", 1, 3600);
+    }
+    
     void validatePricingSection(const YAML::Node& pricing) {
         if (!pricing) {
             warnings_.push_back("Missing 'pricing' section - using defaults");
@@ -151,10 +178,19 @@ private:
         
         auto alo_engine = pricing["alo_engine"];
         if (alo_engine) {
+            // ALO engine uses iteration schemes, not time-stepping schemes
             validateOptional(alo_engine, "scheme", "string", 
-                           {"ModifiedCraigSneyd", "TrBDF2", "CrankNicolson"});
-            validateOptional(alo_engine, "time_steps", "int", 100, 2000);
-            validateOptional(alo_engine, "asset_steps", "int", 100, 2000);
+                           {"fast", "accurate", "high_precision"});
+            validateOptional(alo_engine, "fixed_point_equation", "string",
+                           {"Auto", "FP_A", "FP_B"});
+            
+            // Warn if old time-stepping parameters are found
+            if (alo_engine["time_steps"]) {
+                warnings_.push_back("'time_steps' parameter is deprecated for ALO engine - use 'scheme' instead");
+            }
+            if (alo_engine["asset_steps"]) {
+                warnings_.push_back("'asset_steps' parameter is deprecated for ALO engine - use 'scheme' instead");
+            }
         }
     }
     
@@ -164,10 +200,20 @@ private:
             return;
         }
         
-        auto gjr_garch = volatility["gjr_garch"];
-        if (gjr_garch) {
-            validateOptional(gjr_garch, "max_iterations", "int", 100, 10000);
-            validateOptional(gjr_garch, "tolerance", "double", 1e-8, 1e-3);
+        // Check for deprecated GJR-GARCH configuration
+        if (volatility["gjr_garch"]) {
+            errors_.push_back("'gjr_garch' section is deprecated - use 'garch' for standard GARCH model");
+            return;
+        }
+        
+        // Validate standard GARCH configuration
+        auto garch = volatility["garch"];
+        if (garch) {
+            validateOptional(garch, "max_iterations", "int", 100, 10000);
+            validateOptional(garch, "tolerance", "double", 1e-8, 1e-3);
+            validateOptional(garch, "mode", "string", 
+                           {"MomentMatchingGuess", "GammaGuess", "BestOfTwo", "DoubleOptimization"});
+            validateOptional(garch, "max_history_length", "int", 100, 10000);
         }
         
         validateOptional(volatility, "update_frequency_ms", "int", 10, 10000);
@@ -181,11 +227,54 @@ private:
         
         auto vol_arbitrage = strategy["vol_arbitrage"];
         if (vol_arbitrage) {
+            // Core thresholds
             validateOptional(vol_arbitrage, "entry_threshold", "double", 0.001, 1.0);
             validateOptional(vol_arbitrage, "exit_threshold", "double", 0.001, 1.0);
-            validateOptional(vol_arbitrage, "risk_limit", "double", 0.01, 1.0);
+            validateOptional(vol_arbitrage, "confidence_threshold", "double", 0.1, 1.0);
+            
+            // Risk management
+            validateOptional(vol_arbitrage, "max_portfolio_delta", "double", 0.01, 1.0);
+            validateOptional(vol_arbitrage, "max_portfolio_gamma", "double", 0.01, 1.0);
+            validateOptional(vol_arbitrage, "max_portfolio_vega", "double", 0.1, 10.0);
+            validateOptional(vol_arbitrage, "max_position_size", "double", 0.001, 1.0);
+            validateOptional(vol_arbitrage, "max_correlation_exposure", "double", 0.1, 1.0);
+            
+            // Position sizing
+            validateOptional(vol_arbitrage, "kelly_fraction", "double", 0.001, 0.25);
+            validateOptional(vol_arbitrage, "max_kelly_position", "double", 0.001, 0.5);
+            validateOptional(vol_arbitrage, "min_edge_ratio", "double", 1.0, 10.0);
+            
+            // Stop loss and profit taking
+            validateOptional(vol_arbitrage, "stop_loss_percent", "double", 0.01, 1.0);
+            validateOptional(vol_arbitrage, "profit_target_percent", "double", 0.01, 2.0);
+            validateOptional(vol_arbitrage, "trailing_stop_percent", "double", 0.01, 1.0);
+            
+            // Strategy mode
+            validateOptional(vol_arbitrage, "strategy_mode", "string", 
+                           {"DELTA_NEUTRAL", "GAMMA_SCALPING", "VOLATILITY_TIMING", "RELATIVE_VALUE"});
+            
+            // Model selection - updated for standard GARCH
             validateOptional(vol_arbitrage, "model_selection", "string", 
-                           {"gjr_garch", "standard_garch", "ensemble"});
+                           {"GARCH_DIRECT", "ENSEMBLE_GARCH_HISTORICAL"});
+            
+            // Check for deprecated GJR-GARCH model selection
+            if (vol_arbitrage["model_selection"]) {
+                std::string model = vol_arbitrage["model_selection"].as<std::string>();
+                if (model.find("GJR") != std::string::npos) {
+                    errors_.push_back("GJR-GARCH model selection is deprecated - use GARCH_DIRECT or ENSEMBLE_GARCH_HISTORICAL");
+                }
+            }
+            
+            // Hedging
+            validateOptional(vol_arbitrage, "hedge_threshold_delta", "double", 0.001, 1.0);
+            validateOptional(vol_arbitrage, "hedge_threshold_gamma", "double", 0.001, 1.0);
+            validateOptional(vol_arbitrage, "auto_hedge_enabled", "bool");
+            validateOptional(vol_arbitrage, "hedge_frequency_minutes", "double", 1.0, 1440.0);
+            
+            // Market regime detection
+            validateOptional(vol_arbitrage, "low_vol_threshold", "double", 0.01, 1.0);
+            validateOptional(vol_arbitrage, "high_vol_threshold", "double", 0.01, 2.0);
+            validateOptional(vol_arbitrage, "regime_lookback_days", "int", 5, 252);
         }
     }
     
@@ -197,6 +286,7 @@ private:
         
         validateOptional(logging, "level", "string", {"DEBUG", "INFO", "WARN", "ERROR"});
         validateRequired(logging, "file", "string");
+        validateOptional(logging, "binary_mode", "bool");
         validateOptional(logging, "enable_performance_log", "bool");
     }
     
@@ -222,6 +312,29 @@ private:
         validateRequired(brokerage, "gateway_host", "string");
         validateRequired(brokerage, "gateway_port", "int");
         validateRequired(brokerage, "account", "string");
+        
+        // Validate IB-specific port numbers and provide guidance
+        if (brokerage["gateway_port"]) {
+            int port = brokerage["gateway_port"].as<int>();
+            if (port != 4001 && port != 4002) {
+                errors_.push_back("IB Gateway port must be 4001 (live trading) or 4002 (paper trading)");
+            } else if (port == 4001) {
+                warnings_.push_back("⚠️  LIVE TRADING PORT (4001) DETECTED - Ensure this is intended for production use!");
+            } else if (port == 4002) {
+                warnings_.push_back("Paper trading port (4002) configured - Safe for development and testing");
+            }
+        }
+        
+        // Validate account format
+        if (brokerage["account"]) {
+            std::string account = brokerage["account"].as<std::string>();
+            if (account.starts_with("DU") && brokerage["gateway_port"] && brokerage["gateway_port"].as<int>() == 4001) {
+                warnings_.push_back("Paper trading account (DU prefix) with live trading port (4001) - Check configuration");
+            }
+            if (account.starts_with("U") && brokerage["gateway_port"] && brokerage["gateway_port"].as<int>() == 4002) {
+                warnings_.push_back("Live trading account (U prefix) with paper trading port (4002) - Check configuration");
+            }
+        }
     }
     
     void validateDataSection(const YAML::Node& data) {
@@ -254,6 +367,30 @@ private:
         validateOptional(universe, "option_chains", "bool");
     }
     
+    void validateIBSettingsSection(const YAML::Node& ib_settings) {
+        if (!ib_settings) {
+            return; // Optional section
+        }
+        
+        validateOptional(ib_settings, "connection_timeout", "int", 5, 300);
+        validateOptional(ib_settings, "enable_market_data", "bool");
+        validateOptional(ib_settings, "order_timeout_seconds", "int", 10, 3600);
+        
+        auto paper_trading = ib_settings["paper_trading"];
+        if (paper_trading) {
+            validateOptional(paper_trading, "enabled", "bool");
+            validateOptional(paper_trading, "starting_cash", "int", 10000, 10000000);
+        }
+        
+        auto live_trading = ib_settings["live_trading"];
+        if (live_trading) {
+            validateOptional(live_trading, "enabled", "bool");
+            if (live_trading["enabled"] && live_trading["enabled"].as<bool>()) {
+                warnings_.push_back("⚠️  Live trading is ENABLED in configuration - Ensure this is intended!");
+            }
+        }
+    }
+    
     void validateRequired(const YAML::Node& node, const std::string& key, const std::string& type) {
         if (!node[key]) {
             errors_.push_back("Missing required field: " + key);
@@ -284,7 +421,8 @@ private:
                     }
                 }
                 if (!found) {
-                    errors_.push_back("Invalid value for " + key + ": " + value);
+                    errors_.push_back("Invalid value for " + key + ": " + value + " (allowed: " + 
+                                    joinVector(allowed_values, ", ") + ")");
                 }
             }
         }
@@ -296,9 +434,14 @@ private:
         if (node[key]) {
             validateType(node[key], key, type);
             
-            T value = node[key].as<T>();
-            if (value < min_val || value > max_val) {
-                errors_.push_back("Value for " + key + " out of range: " + std::to_string(value));
+            try {
+                T value = node[key].as<T>();
+                if (value < min_val || value > max_val) {
+                    errors_.push_back("Value for " + key + " out of range: " + std::to_string(value) + 
+                                    " (allowed: " + std::to_string(min_val) + "-" + std::to_string(max_val) + ")");
+                }
+            } catch (const std::exception& e) {
+                errors_.push_back("Invalid value type for " + key + ": " + e.what());
             }
         }
     }
@@ -316,9 +459,29 @@ private:
             } else if (expected_type == "sequence" && !node.IsSequence()) {
                 errors_.push_back("Field " + key + " must be a list");
             }
+            
+            // Additional type checking for scalars
+            if (node.IsScalar()) {
+                if (expected_type == "int") {
+                    node.as<int>(); // Will throw if not convertible
+                } else if (expected_type == "double") {
+                    node.as<double>(); // Will throw if not convertible
+                } else if (expected_type == "bool") {
+                    node.as<bool>(); // Will throw if not convertible
+                }
+            }
         } catch (const std::exception& e) {
             errors_.push_back("Type validation error for " + key + ": " + e.what());
         }
+    }
+    
+    std::string joinVector(const std::vector<std::string>& vec, const std::string& delimiter) {
+        std::string result;
+        for (size_t i = 0; i < vec.size(); ++i) {
+            if (i > 0) result += delimiter;
+            result += vec[i];
+        }
+        return result;
     }
 };
 
@@ -335,6 +498,12 @@ void printUsage(const char* program_name) {
     std::cout << "Examples:" << std::endl;
     std::cout << "  " << program_name << " config/quantlib_process.yaml" << std::endl;
     std::cout << "  " << program_name << " -t lean config/lean_process.yaml" << std::endl;
+    std::cout << std::endl;
+    std::cout << "Notes:" << std::endl;
+    std::cout << "  • Port 4001 = Live Trading (⚠️  Use with caution!)" << std::endl;
+    std::cout << "  • Port 4002 = Paper Trading (Safe for development)" << std::endl;
+    std::cout << "  • Standard GARCH model is now used (GJR-GARCH deprecated)" << std::endl;
+    std::cout << "  • ALO engine uses iteration schemes (fast/accurate/high_precision)" << std::endl;
 }
 
 void printVersion() {
@@ -421,14 +590,4 @@ int main(int argc, char* argv[]) {
     if (config_type == "quantlib") {
         success = validator.validateQuantLibConfig(config_file);
     } else if (config_type == "lean") {
-        success = validator.validateLeanConfig(config_file);
-    } else {
-        std::cerr << "Error: Unknown config type: " << config_type << std::endl;
-        std::cerr << "Supported types: quantlib, lean" << std::endl;
-        return 1;
-    }
-    
-    validator.printResults();
-    
-    return success ? 0 : 1;
-}
+        success = validator.validateLeanCon

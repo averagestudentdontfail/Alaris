@@ -1,10 +1,11 @@
 # QuantLib Process Configuration
 process:
-  name: "alaris_quantlib"
+  name: "quantlib"
   priority: 0
   cpu_affinity: []
   memory_lock: false
   huge_pages: false
+  start_trading_enabled: false
 
 quantlib:
   threading: single
@@ -21,26 +22,81 @@ shared_memory:
     signals: 1024
     control: 256
 
+memory:
+  pool_size_mb: 64
+
+executor:
+  major_frame_ms: 10
+  market_data_interval_ms: 1
+  signal_interval_ms: 10
+  control_interval_ms: 5
+  heartbeat_interval_s: 1
+  perf_report_interval_s: 10
+
 pricing:
   alo_engine:
-    scheme: "ModifiedCraigSneyd"
-    time_steps: 800
-    asset_steps: 800
+    # ALO engine uses iteration schemes, not time-stepping schemes
+    # Available schemes: fast, accurate, high_precision
+    scheme: "accurate"  # Uses QdFpLegendreTanhSinhScheme(25, 5, 13, 1e-8)
+    # Alternative options:
+    # "fast" - Uses QdFpLegendreScheme(7, 2, 7, 27)
+    # "high_precision" - Uses QdFpTanhSinhIterationScheme(10, 30, 1e-10)
+    
+    # Fixed point equation type: Auto, FP_A, or FP_B
+    fixed_point_equation: "Auto"
   
 volatility:
-  gjr_garch:
+  # Using standard GARCH model instead of GJR-GARCH
+  garch:
     max_iterations: 1000
     tolerance: 1e-6
+    mode: "BestOfTwo"  # Options: MomentMatchingGuess, GammaGuess, BestOfTwo, DoubleOptimization
+    max_history_length: 2520  # ~10 years of daily data
   update_frequency_ms: 100
 
 strategy:
   vol_arbitrage:
-    entry_threshold: 0.05
-    exit_threshold: 0.02
-    risk_limit: 0.10
-    model_selection: "ensemble"
+    # Core volatility thresholds
+    entry_threshold: 0.03  # vol_difference_threshold
+    exit_threshold: 0.01   # vol_exit_threshold
+    confidence_threshold: 0.75
+    
+    # Risk management
+    max_portfolio_delta: 0.1
+    max_portfolio_gamma: 0.05
+    max_portfolio_vega: 1.0
+    max_position_size: 0.02
+    max_correlation_exposure: 0.3
+    
+    # Position sizing (Kelly criterion)
+    kelly_fraction: 0.02
+    max_kelly_position: 0.05
+    min_edge_ratio: 1.5
+    
+    # Stop loss and profit taking
+    stop_loss_percent: 0.15
+    profit_target_percent: 0.30
+    trailing_stop_percent: 0.08
+    
+    # Strategy mode: DELTA_NEUTRAL, GAMMA_SCALPING, VOLATILITY_TIMING, RELATIVE_VALUE
+    strategy_mode: "DELTA_NEUTRAL"
+    
+    # Model selection: GARCH_DIRECT, ENSEMBLE_GARCH_HISTORICAL
+    model_selection: "ENSEMBLE_GARCH_HISTORICAL"
+    
+    # Hedging parameters
+    hedge_threshold_delta: 0.05
+    hedge_threshold_gamma: 0.03
+    auto_hedge_enabled: true
+    hedge_frequency_minutes: 15.0
+    
+    # Market regime detection
+    low_vol_threshold: 0.12
+    high_vol_threshold: 0.30
+    regime_lookback_days: 30
 
 logging:
   level: "DEBUG"
   file: "logs/quantlib.log"
+  binary_mode: true
   enable_performance_log: true

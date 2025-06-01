@@ -1,24 +1,37 @@
 #!/bin/bash
 
 # Configuration
-IB_GATEWAY_HOST="localhost"
+IB_GATEWAY_HOSTS=("localhost" "127.0.0.1")
 IB_GATEWAY_PORT="4002"
 ALARIS_CONFIG_FILE="config/quantlib_process.yaml"
 
 # Colors for output
 GREEN='\033[0;32m'
+RED='\033[0;31m'
 NC='\033[0m' # No Color
 
-# Helper function
+# Helper functions
 log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
+log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
-# Check if IB Gateway is running
-if ! nc -z $IB_GATEWAY_HOST $IB_GATEWAY_PORT; then
-    echo "Error: IB Gateway is not running on $IB_GATEWAY_HOST:$IB_GATEWAY_PORT"
-    echo "Please start IB Gateway first and ensure it's configured for:"
+# Try to connect to IB Gateway
+IB_GATEWAY_CONNECTED=false
+for host in "${IB_GATEWAY_HOSTS[@]}"; do
+    if nc -z $host $IB_GATEWAY_PORT; then
+        IB_GATEWAY_HOST=$host
+        IB_GATEWAY_CONNECTED=true
+        log_info "Connected to IB Gateway at $host:$IB_GATEWAY_PORT"
+        break
+    fi
+done
+
+if [ "$IB_GATEWAY_CONNECTED" = false ]; then
+    log_error "Could not connect to IB Gateway on any of: ${IB_GATEWAY_HOSTS[*]}:$IB_GATEWAY_PORT"
+    echo "Please ensure IB Gateway is running and configured for:"
     echo "  - Port: $IB_GATEWAY_PORT"
     echo "  - Market Data Farm: hfarm"
     echo "  - Historical Data Farm: apachmds"
+    echo "  - Trusted IP addresses include: 127.0.0.1"
     exit 1
 fi
 
@@ -32,7 +45,7 @@ sleep 2
 
 # Check if QuantLib is still running
 if ! kill -0 $QUANTLIB_PID 2>/dev/null; then
-    echo "Error: quantlib-process failed to start"
+    log_error "quantlib-process failed to start"
     exit 1
 fi
 
