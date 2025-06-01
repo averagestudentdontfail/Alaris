@@ -7,7 +7,7 @@ algorithm:
 
 brokerage:
   type: "InteractiveBrokers"
-  gateway_host: "$(cat /etc/resolv.conf | grep nameserver | awk '{print $2}')"  # Windows host IP
+  gateway_host: "host.docker.internal"  # WSL2 special DNS name for Windows host
   gateway_port: 4002  # Paper trading port
   account: "DUE407919"
 
