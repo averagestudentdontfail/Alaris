@@ -61,8 +61,8 @@ endfunction()
 
 # Function to configure all C++ components (libraries and executables)
 function(configure_all_components)
-    # Create the main quantlib_core library
-    create_component_library(quantlib_core)
+    # Create the main quantlib library
+    create_component_library(quantlib)
 
     # Configure the main 'alaris' executable
     add_executable(alaris ${CMAKE_SOURCE_DIR}/src/quantlib/main.cpp)
@@ -71,22 +71,31 @@ function(configure_all_components)
         ${CMAKE_SOURCE_DIR}/src                # Allows #include "quantlib/..." for its own sources
         ${CMAKE_SOURCE_DIR}/external/quant     # For QuantLib headers
     )
-    target_link_libraries(alaris PRIVATE quantlib_core) 
+    target_link_libraries(alaris PRIVATE quantlib) 
     message(STATUS "alaris executable configured.")
 
+    # Configure the quantlib-process executable
+    add_executable(quantlib-process ${CMAKE_SOURCE_DIR}/src/quantlib/main.cpp)
+    target_include_directories(quantlib-process PRIVATE
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/external/quant
+    )
+    target_link_libraries(quantlib-process PRIVATE quantlib)
+    message(STATUS "quantlib-process executable configured.")
+
     # Configure tool executables
-    add_executable(alaris-config-validator ${CMAKE_SOURCE_DIR}/src/quantlib/tools/config_validator.cpp)
-    target_include_directories(alaris-config-validator PRIVATE
+    add_executable(alaris-config ${CMAKE_SOURCE_DIR}/src/quantlib/tools/config_validator.cpp)
+    target_include_directories(alaris-config PRIVATE
         ${CMAKE_SOURCE_DIR}/src
         ${CMAKE_SOURCE_DIR}/external/yaml-cpp/include # If yaml-cpp headers are needed directly
     )
-    target_link_libraries(alaris-config-validator PRIVATE quantlib_core yaml-cpp)
-    message(STATUS "alaris-config-validator executable configured.")
+    target_link_libraries(alaris-config PRIVATE quantlib yaml-cpp)
+    message(STATUS "alaris-config executable configured.")
 
-    add_executable(alaris-system-info ${CMAKE_SOURCE_DIR}/src/quantlib/tools/system_info.cpp)
-    target_include_directories(alaris-system-info PRIVATE
+    add_executable(alaris-system ${CMAKE_SOURCE_DIR}/src/quantlib/tools/system_info.cpp)
+    target_include_directories(alaris-system PRIVATE
         ${CMAKE_SOURCE_DIR}/src
     )
-    target_link_libraries(alaris-system-info PRIVATE quantlib_core) 
-    message(STATUS "alaris-system-info executable configured.")
+    target_link_libraries(alaris-system PRIVATE quantlib) 
+    message(STATUS "alaris-system executable configured.")
 endfunction()

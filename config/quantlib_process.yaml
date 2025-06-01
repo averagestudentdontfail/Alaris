@@ -1,16 +1,16 @@
 # QuantLib Process Configuration
 process:
   name: "alaris_quantlib"
-  priority: 80
-  cpu_affinity: [2, 3]
-  memory_lock: true
-  huge_pages: true
+  priority: 0
+  cpu_affinity: []
+  memory_lock: false
+  huge_pages: false
 
 quantlib:
   threading: single
   date_format: "ISO"
   calendar: "UnitedStates"
-  enable_debug: false
+  enable_debug: true
 
 shared_memory:
   market_data_buffer: "/alaris_market_data"
@@ -41,6 +41,6 @@ strategy:
     model_selection: "ensemble"
 
 logging:
-  level: "INFO"
-  file: "/var/log/alaris/quantlib.log"
+  level: "DEBUG"
+  file: "logs/quantlib.log"
   enable_performance_log: true
