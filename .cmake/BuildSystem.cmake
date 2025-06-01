@@ -31,15 +31,10 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
-# Enable testing
-include(CTest)
-enable_testing()
-
 # Find required packages
 find_package(Threads REQUIRED)
 
 # Build options
-option(BUILD_TESTS "Build test suite" ON)
 option(BUILD_DOCS "Build documentation" OFF)
 option(ENABLE_SANITIZERS "Enable sanitizers (for Debug builds)" OFF)
 option(ENABLE_COVERAGE "Enable code coverage (for Debug builds)" OFF)

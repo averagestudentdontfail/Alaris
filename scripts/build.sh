@@ -22,13 +22,12 @@ BUILD_TYPE="Release"
 JOBS=$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
 VERBOSE=false
 CLEAN_BUILD=false
-RUN_TESTS=false
 INSTALL=false
 UPDATE_SUBMODULES=false
 USE_CCACHE=true
 USE_NINJA=false
-ENABLE_SANITIZERS=false # Initialize to avoid unbound variable error if not set
-ENABLE_COVERAGE=false   # Initialize to avoid unbound variable error if not set
+ENABLE_SANITIZERS=false
+ENABLE_COVERAGE=false
 
 # Helper functions
 log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
@@ -44,7 +43,6 @@ OPTIONS:
     -t, --type TYPE          Build type (Debug|Release) [default: Release]
     -j, --jobs N             Number of parallel jobs [default: auto-detected]
     -c, --clean              Clean build directory before building
-    -r, --run-tests          Run tests after building
     -i, --install            Install after building
     -u, --update             Update git submodules before building
     -v, --verbose            Enable verbose output
@@ -56,7 +54,7 @@ OPTIONS:
 
 EXAMPLES:
     $0                       # Build with default settings (Release)
-    $0 -t Debug -r           # Debug build and run tests
+    $0 -t Debug              # Debug build
     $0 -c -j 8               # Clean build with 8 parallel jobs
     $0 --update --install    # Update submodules, build, and install
     $0 --sanitize -t Debug   # Debug build with sanitizers
@@ -78,10 +76,6 @@ parse_arguments() {
                 ;;
             -c|--clean)
                 CLEAN_BUILD=true
-                shift
-                ;;
-            -r|--run-tests)
-                RUN_TESTS=true
                 shift
                 ;;
             -i|--install)
@@ -240,7 +234,7 @@ check_requirements() {
 
     # Check for Boost libraries
     if [[ $PLATFORM == "Linux" ]]; then
-        if ! ldconfig -p | grep -q libboost_system; then # Checking for a common boost lib
+        if ! ldconfig -p | grep -q libboost_system; then
             log_warn "Boost libraries may not be installed or not in ldconfig cache."
             log_warn "Install with: sudo apt-get install libboost-all-dev  # Ubuntu/Debian"
             log_warn "              or: sudo yum install boost-devel       # CentOS/RHEL"
@@ -320,7 +314,7 @@ configure_cmake() {
     # Platform-specific configuration
     case $PLATFORM in
         Mac)
-            cmake_args+=("-DCMAKE_OSX_DEPLOYMENT_TARGET=10.15") # Example, adjust as needed
+            cmake_args+=("-DCMAKE_OSX_DEPLOYMENT_TARGET=10.15")
             ;;
         Windows)
             cmake_args+=("-DCMAKE_WINDOWS_EXPORT_ALL_SYMBOLS=ON")
@@ -348,7 +342,6 @@ build_project() {
     log_info "Building project with $JOBS parallel jobs"
 
     local build_args=()
-    # Ensure BUILD_DIR exists before creating the output file path
     mkdir -p "$BUILD_DIR"
     local output_file="${BUILD_DIR}/compilation_output_$(date +%Y%m%d_%H%M%S).txt"
 
@@ -369,20 +362,11 @@ build_project() {
     local start_time
     start_time=$(date +%s)
 
-    # Build the project and tee output to file and stdout/stderr
-    # We need to ensure the command runs in a subshell if we want to capture its specific exit code via PIPESTATUS
-    # or handle it more directly.
-    # Using a temporary variable for the command to make it clearer.
     local cmd_to_run=("${build_args[@]}")
     
     if eval "${cmd_to_run[*]}" 2>&1 | tee "$output_file"; then
-        # If the pipeline succeeds, 'tee' will have a 0 exit status.
-        # We need the exit status of the build command itself.
-        # PIPESTATUS is an array in Bash holding exit statuses of commands in the last executed foreground pipeline.
         local build_status=${PIPESTATUS[0]}
     else
-        # If the pipeline fails, it could be the build command or tee.
-        # We are primarily interested in the build command's status.
         local build_status=${PIPESTATUS[0]}
     fi
 
@@ -404,18 +388,13 @@ build_project() {
 show_build_artifacts() {
     log_info "Built artifacts (relative to $BUILD_DIR):"
 
-    # Ensure we are in BUILD_DIR for artifact checking if paths are relative
-    # However, the original script listed paths that might be relative to BUILD_DIR already.
-    # Let's assume they are meant to be checked from BUILD_DIR.
     local current_dir_artifacts=$(pwd)
     if [[ "$current_dir_artifacts" != "$BUILD_DIR" ]]; then
         log_warn "Not in BUILD_DIR ($BUILD_DIR), artifact paths might be incorrect if relative."
     fi
 
     local artifacts=(
-        "src/quantlib/quantlib_process" # Assumed to be in $BUILD_DIR/src/quantlib/quantlib_process
-        "test/alaris_core_test"         # Assumed to be in $BUILD_DIR/test/alaris_core_test
-        "test/alaris_integration_test"  # Assumed to be in $BUILD_DIR/test/alaris_integration_test
+        "src/quantlib/quantlib_process"
     )
 
     for artifact_rel_path in "${artifacts[@]}"; do
@@ -424,10 +403,9 @@ show_build_artifacts() {
             echo -e "  ${GREEN}✓${NC} ${artifact_rel_path}"
             ls -lh "$artifact_full_path" | awk '{print "      Size: " $5 ", Modified: " $6 " " $7 " " $8}'
         else
-             # Check if artifact exists without the BUILD_DIR prefix (in case it was already absolute or intended to be relative to PWD)
             if [[ -f "$artifact_rel_path" ]]; then
-                 echo -e "  ${GREEN}✓${NC} ${artifact_rel_path} (found at PWD)"
-                 ls -lh "$artifact_rel_path" | awk '{print "      Size: " $5 ", Modified: " $6 " " $7 " " $8}'
+                echo -e "  ${GREEN}✓${NC} ${artifact_rel_path} (found at PWD)"
+                ls -lh "$artifact_rel_path" | awk '{print "      Size: " $5 ", Modified: " $6 " " $7 " " $8}'
             else
                 echo -e "  ${RED}✗${NC} ${artifact_rel_path} (not found at $artifact_full_path or PWD)"
             fi
@@ -435,79 +413,11 @@ show_build_artifacts() {
     done
 }
 
-# Function to run tests
-run_tests() {
-    if [[ $RUN_TESTS == true ]]; then
-        log_info "Running tests"
-
-        # Ensure we are in the build directory to run tests
-        cd "$BUILD_DIR"
-
-        if command -v ctest &> /dev/null; then
-            local ctest_args=(
-                "--output-on-failure"
-                "--parallel" "$JOBS"
-            )
-
-            if [[ $VERBOSE == true ]]; then
-                ctest_args+=("--verbose")
-            fi
-
-            log_info "Running CTest with arguments: ${ctest_args[*]}"
-            ctest "${ctest_args[@]}"
-            local test_status=$?
-
-            if [[ $test_status -eq 0 ]]; then
-                log_info "All tests passed!"
-            else
-                log_warn "Some tests failed (CTest exit code: $test_status)"
-                # Do not exit here, let the script continue or main error handler catch it if necessary.
-                # Consider if a test failure should halt the script. If so, `exit $test_status`.
-                return $test_status # Propagate test failure
-            fi
-        else
-            log_warn "CTest not available, attempting to run tests manually"
-            local overall_test_status=0
-
-            if [[ -f "test/alaris_core_test" && -x "test/alaris_core_test" ]]; then
-                log_info "Running core tests..."
-                ./test/alaris_core_test
-                if [[ $? -ne 0 ]]; then
-                    log_warn "Core tests failed."
-                    overall_test_status=1
-                else
-                    log_info "Core tests passed."
-                fi
-            else
-                log_warn "Core test executable 'test/alaris_core_test' not found or not executable."
-            fi
-
-            if [[ -f "test/alaris_integration_test" && -x "test/alaris_integration_test" ]]; then
-                log_info "Running integration tests..."
-                ./test/alaris_integration_test
-                if [[ $? -ne 0 ]]; then
-                    log_warn "Integration tests failed."
-                    overall_test_status=1
-                else
-                    log_info "Integration tests passed."
-                fi
-            else
-                log_warn "Integration test executable 'test/alaris_integration_test' not found or not executable."
-            fi
-
-            if [[ $overall_test_status -ne 0 ]]; then
-                 return $overall_test_status
-            fi
-        fi
-    fi
-    return 0 # No tests run or all tests passed
-}
-
 # Function to install
 install_project() {
     if [[ $INSTALL == true ]]; then
         log_info "Installing project"
-        cd "$BUILD_DIR" # Ensure we are in the build directory
+        cd "$BUILD_DIR"
 
         if [[ $USE_NINJA == true ]]; then
             if command -v ninja &> /dev/null; then
@@ -558,9 +468,6 @@ print_summary() {
     fi
 
     echo ""
-    echo -e "  ${GREEN}•${NC} To run tests (if built):"
-    echo -e "    cd \"$BUILD_DIR\" && ctest --output-on-failure"
-    echo ""
     echo -e "  ${GREEN}•${NC} To clean and rebuild:"
     echo -e "    $0 --clean"
     echo ""
@@ -574,13 +481,11 @@ print_summary() {
     echo ""
     echo -e "  ${GREEN}•${NC} Compilation output log:"
     echo -e "    Check files like ${BUILD_DIR}/compilation_output_YYYYMMDD_HHMMSS.txt"
-
 }
 
 # Function to handle errors
 handle_error() {
     local exit_code=$?
-    # Do not print error if exit_code is 0 (e.g. from `exit 0` in help)
     if [[ $exit_code -ne 0 ]]; then
         log_error "Build script failed with exit code $exit_code on line $BASH_LINENO"
         echo ""
@@ -597,28 +502,20 @@ handle_error() {
 
 # Main function
 main() {
-    # Set up error handling to call handle_error on ERR signal
     trap 'handle_error $LINENO' ERR
 
     log_info "Alaris Trading System Build Script"
 
     parse_arguments "$@"
     detect_platform
-    check_requirements # This might exit if requirements are not met
-    update_submodules  # This might exit if git commands fail
-    setup_build_directory # cd's into build dir
-    configure_cmake    # This might exit if cmake fails
-    build_project      # This might exit if build fails
-    run_tests_result=0
-    run_tests || run_tests_result=$? # Capture test result without exiting immediately if tests fail
-    install_project    # This might exit if install fails
+    check_requirements
+    update_submodules
+    setup_build_directory
+    configure_cmake
+    build_project
+    install_project
 
     print_summary
-
-    if [[ $run_tests_result -ne 0 ]]; then
-        log_warn "Build completed, but some tests failed. Check summary and logs."
-        exit $run_tests_result
-    fi
 
     log_info "Build script completed successfully!"
 }

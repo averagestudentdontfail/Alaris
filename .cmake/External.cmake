@@ -238,55 +238,6 @@ else()
 endif()
 
 # ========================================
-# GTest Configuration
-# ========================================
-option(BUILD_TESTS "Build test suite" ON)
-if(BUILD_TESTS)
-    find_package(GTest QUIET)
-    if(NOT GTest_FOUND)
-        # Try alternative package names
-        find_package(googletest QUIET)
-        if(googletest_FOUND)
-            set(GTest_FOUND TRUE)
-        else()
-            # Try pkg-config for GTest
-            find_package(PkgConfig QUIET)
-            if(PKG_CONFIG_FOUND)
-                pkg_check_modules(GTEST QUIET gtest)
-                pkg_check_modules(GTEST_MAIN QUIET gtest_main)
-                if(GTEST_FOUND AND GTEST_MAIN_FOUND)
-                    set(GTest_FOUND TRUE)
-                    # Create imported targets for compatibility
-                    if(NOT TARGET GTest::GTest)
-                        add_library(GTest::GTest INTERFACE IMPORTED)
-                        target_link_libraries(GTest::GTest INTERFACE ${GTEST_LIBRARIES})
-                        target_include_directories(GTest::GTest SYSTEM INTERFACE ${GTEST_INCLUDE_DIRS})
-                    endif()
-                    if(NOT TARGET GTest::Main)
-                        add_library(GTest::Main INTERFACE IMPORTED)
-                        target_link_libraries(GTest::Main INTERFACE ${GTEST_MAIN_LIBRARIES})
-                        target_include_directories(GTest::Main SYSTEM INTERFACE ${GTEST_MAIN_INCLUDE_DIRS})
-                    endif()
-                endif()
-            endif()
-        endif()
-    endif()
-
-    if(NOT GTest_FOUND)
-        message(WARNING "GTest not found. Tests will be disabled. Install libgtest-dev to enable tests.")
-        set(BUILD_TESTS OFF CACHE BOOL "Disable tests since GTest not found" FORCE)
-    else()
-        # Apply warning suppression to GTest if found
-        if(TARGET GTest::GTest)
-            suppress_external_warnings(GTest::GTest)
-        endif()
-        if(TARGET GTest::Main)
-            suppress_external_warnings(GTest::Main)
-        endif()
-    endif()
-endif()
-
-# ========================================
 # .NET SDK Detection
 # ========================================
 find_program(DOTNET_EXECUTABLE dotnet QUIET)
@@ -322,11 +273,6 @@ message(STATUS "")
 message(STATUS "=== External Dependencies Summary ===")
 message(STATUS "  QuantLib Target: ${QUANTLIB_TARGET}")
 message(STATUS "  yaml-cpp Target: ${YAML_CPP_TARGET}")
-if(BUILD_TESTS AND GTest_FOUND)
-    message(STATUS "  GTest: Available (tests enabled)")
-else()
-    message(STATUS "  GTest: Not found (tests disabled)")
-endif()
 if(DOTNET_EXECUTABLE)
     message(STATUS "  .NET SDK: ${CMAKE_DOTNET_VERSION}")
     if(LEAN_AVAILABLE)

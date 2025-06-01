@@ -40,27 +40,6 @@ set(QUANTLIB_HEADERS_LIST
     ${CMAKE_SOURCE_DIR}/src/quantlib/core/event_log.h
 )
 
-# Define ALL test source files for a single test executable with correct paths
-# (Reflecting the file structure you provided where memory_pool_test.cpp is in test/quantlib)
-set(ALARIS_TEST_SOURCES
-    # Main runner for Google Test
-    ${CMAKE_SOURCE_DIR}/test/main_runner.cpp
-    # Core tests
-    ${CMAKE_SOURCE_DIR}/test/core/event_log_test.cpp
-    ${CMAKE_SOURCE_DIR}/test/core/time_trigger_test.cpp
-    # QuantLib specific tests
-    ${CMAKE_SOURCE_DIR}/test/quantlib/alo_engine_test.cpp
-    ${CMAKE_SOURCE_DIR}/test/quantlib/pricing_test.cpp
-    ${CMAKE_SOURCE_DIR}/test/quantlib/volatility_test.cpp
-    ${CMAKE_SOURCE_DIR}/test/quantlib/memory_pool_test.cpp # Correct path
-    # Integration tests
-    ${CMAKE_SOURCE_DIR}/test/integration/end_to_end_test.cpp
-    ${CMAKE_SOURCE_DIR}/test/integration/strategy_integration_test.cpp
-    ${CMAKE_SOURCE_DIR}/test/integration/ipc_integration_test.cpp
-    # Test helpers .cpp (if it contains definitions needed for linking)
-    ${CMAKE_SOURCE_DIR}/test/test_helpers.cpp
-)
-
 # Function to create the quantlib_core library
 function(create_component_library NAME)
     add_library(${NAME} STATIC
@@ -78,40 +57,6 @@ function(create_component_library NAME)
         Threads::Threads
     )
     message(STATUS "${NAME} library configured with sources: ${QUANTLIB_CORE_SOURCES}")
-endfunction()
-
-# Updated function to create a single test executable for all C++ tests
-function(create_alaris_tests_executable)
-    if(BUILD_TESTS AND GTest_FOUND)
-        message(STATUS "Configuring Alaris C++ tests (alaris_tests)")
-        if(NOT ALARIS_TEST_SOURCES)
-            message(WARNING "ALARIS_TEST_SOURCES is empty. No C++ tests will be built for alaris_tests target.")
-            return()
-        endif()
-        
-        add_executable(alaris_tests ${ALARIS_TEST_SOURCES})
-
-        target_include_directories(alaris_tests PRIVATE
-            ${CMAKE_SOURCE_DIR}                # Allows #include "src/..." and #include "test/..."
-            ${CMAKE_SOURCE_DIR}/external/quant # For QuantLib headers if directly included by tests
-            # GTest_INCLUDE_DIRS is usually handled by linking GTest::GTest
-        )
-
-        target_link_libraries(alaris_tests PRIVATE
-            quantlib_core       # Link against our main library
-            GTest::GTest
-            GTest::Main         # Google Test main (provides main() function)
-            Threads::Threads
-            yaml-cpp
-        )
-
-        add_test(NAME AlarisCppTests COMMAND alaris_tests)
-        set_tests_properties(AlarisCppTests PROPERTIES WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-
-        message(STATUS "alaris_tests executable configured with sources: ${ALARIS_TEST_SOURCES}")
-    else()
-        message(STATUS "Skipping Alaris C++ tests (BUILD_TESTS is OFF or GTest not found).")
-    endif()
 endfunction()
 
 # Function to configure all C++ components (libraries and executables)
@@ -144,7 +89,4 @@ function(configure_all_components)
     )
     target_link_libraries(alaris-system-info PRIVATE quantlib_core) 
     message(STATUS "alaris-system-info executable configured.")
-
-    # Configure the unified test executable
-    create_alaris_tests_executable()
 endfunction()

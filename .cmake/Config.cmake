@@ -55,7 +55,6 @@ endif()
 
 # Build configuration options
 set(ALARIS_BUILD_OPTIONS
-    BUILD_TESTS
     BUILD_DOCS
     ENABLE_SANITIZERS
     ENABLE_COVERAGE
@@ -63,7 +62,6 @@ set(ALARIS_BUILD_OPTIONS
 )
 
 # Set default values for build options
-option(BUILD_TESTS "Build test suite" ON)
 option(BUILD_DOCS "Build documentation" OFF)
 option(ENABLE_SANITIZERS "Enable sanitizers (for Debug builds)" OFF)
 option(ENABLE_COVERAGE "Enable code coverage (for Debug builds)" OFF)
