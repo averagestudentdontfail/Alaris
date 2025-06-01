@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Configuration
-IB_GATEWAY_HOSTS=("localhost" "127.0.0.1")
+IB_GATEWAY_HOSTS=("172.31.16.1")
 IB_GATEWAY_PORT="4002"
 ALARIS_CONFIG_FILE="config/quantlib_process.yaml"
 
