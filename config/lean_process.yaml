@@ -7,7 +7,7 @@ algorithm:
 
 brokerage:
   type: "InteractiveBrokers"
-  gateway_host: "172.31.16.1"
+  gateway_host: "$(cat /etc/resolv.conf | grep nameserver | awk '{print $2}')"  # Windows host IP
   gateway_port: 4002  # Paper trading port
   account: "DUE407919"
 

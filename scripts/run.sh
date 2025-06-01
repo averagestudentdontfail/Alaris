@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # Configuration
-IB_GATEWAY_HOSTS=("172.31.16.1")
+WINDOWS_HOST=$(cat /etc/resolv.conf | grep nameserver | awk '{print $2}')
+IB_GATEWAY_HOSTS=("$WINDOWS_HOST" "localhost" "127.0.0.1")  # Try Windows host first, then localhost
 IB_GATEWAY_PORT="4002"
 ALARIS_CONFIG_FILE="config/quantlib_process.yaml"
 
