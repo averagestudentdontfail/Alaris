@@ -394,7 +394,7 @@ show_build_artifacts() {
     fi
 
     local artifacts=(
-        "src/quantlib/quantlib_process"
+        "bin/quantlib-process"
     )
 
     for artifact_rel_path in "${artifacts[@]}"; do
