@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../ipc/message_types.h"
-#include "time_trigger.h"
+#include "time_type.h"
 #include <fstream>
 #include <string>
 #include <vector>
@@ -90,9 +90,9 @@ public:
     bool is_healthy() const;
 };
 
-// TimePoint and Duration definitions for consistency
-using TimePoint = Alaris::Core::TimeTriggeredExecutor::Clock::time_point;
-using Duration = Alaris::Core::TimeTriggeredExecutor::Clock::duration;
+// Update TimePoint and Duration definitions to use unified timing
+using TimePoint = Timing::TimePoint;
+using Duration = Timing::Duration;
 
 using EventReplayCallback = std::function<void(const EventHeader& header, const std::vector<std::byte>& data_buffer)>;
 
