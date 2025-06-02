@@ -1,9 +1,9 @@
 // src/quantlib/main.cpp
 #include "pricing/alo_engine.h"
-#include "volatility/garch_wrapper.h"  // Changed from gjrgarch_wrapper.h
+#include "volatility/garch_wrapper.h"
 #include "strategy/vol_arb.h"
 #include "core/memory_pool.h"
-#include "core/task_scheduler.h"  // Changed from time_trigger.h
+#include "core/task_scheduler.h"
 #include "core/event_log.h"
 #include "ipc/shared_memory.h"
 #include <iostream>
