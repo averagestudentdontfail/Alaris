@@ -170,7 +170,7 @@ namespace MessageValidation {
 // Update the validate_tta_message template to use the free functions
 template<typename MessageType>
 inline bool validate_tta_message(const MessageType& msg) noexcept {
-    static_assert(sizeof(MessageType) == 64, "TTA messages must be 64 bytes");
+    static_assert(sizeof(MessageType) == 128, "TTA messages must be 128 bytes");
     if constexpr (std::is_same_v<MessageType, MarketDataMessage>) {
         return MessageValidation::is_valid_market_data(msg);
     } else if constexpr (std::is_same_v<MessageType, TradingSignalMessage>) {
