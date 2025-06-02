@@ -49,21 +49,21 @@ private:
     uint64_t cycles_executed_{0};
     
     // Task timing configuration (in microseconds for precision)
-    static constexpr auto BASIC_TIME_UNIT = std::chrono::microseconds(100);  // 100μs basic unit
+    static constexpr auto BASIC_TIME_UNIT = std::chrono::milliseconds(1);  // 1ms basic unit for simpler scheduling
     
-    // Task periods (all must be multiples of BASIC_TIME_UNIT)
-    static constexpr auto MARKET_DATA_PERIOD = std::chrono::milliseconds(1);     // 1ms = 10 * 100μs
-    static constexpr auto SIGNAL_GENERATION_PERIOD = std::chrono::milliseconds(10);   // 10ms = 100 * 100μs  
-    static constexpr auto CONTROL_PROCESSING_PERIOD = std::chrono::milliseconds(5);   // 5ms = 50 * 100μs
-    static constexpr auto HEARTBEAT_PERIOD = std::chrono::seconds(1);               // 1s = 10000 * 100μs
-    static constexpr auto PERFORMANCE_REPORT_PERIOD = std::chrono::seconds(10);     // 10s = 100000 * 100μs
+    // Task periods (all must be multiples of BASIC_TIME_UNIT) - Adjusted for TTA compatibility
+    static constexpr auto MARKET_DATA_PERIOD = std::chrono::milliseconds(10);      // 10ms = 10 * 1ms
+    static constexpr auto SIGNAL_GENERATION_PERIOD = std::chrono::milliseconds(100);  // 100ms = 100 * 1ms  
+    static constexpr auto CONTROL_PROCESSING_PERIOD = std::chrono::milliseconds(50);  // 50ms = 50 * 1ms
+    static constexpr auto HEARTBEAT_PERIOD = std::chrono::seconds(1);              // 1s = 1000 * 1ms
+    static constexpr auto PERFORMANCE_REPORT_PERIOD = std::chrono::seconds(10);    // 10s = 10000 * 1ms
     
-    // Worst-Case Execution Time estimates (conservative)
-    static constexpr auto MARKET_DATA_WCET = std::chrono::microseconds(200);      // 200μs
-    static constexpr auto SIGNAL_GENERATION_WCET = std::chrono::microseconds(800); // 800μs
-    static constexpr auto CONTROL_PROCESSING_WCET = std::chrono::microseconds(150); // 150μs
-    static constexpr auto HEARTBEAT_WCET = std::chrono::microseconds(50);         // 50μs
-    static constexpr auto PERFORMANCE_REPORT_WCET = std::chrono::microseconds(1000); // 1ms
+    // Worst-Case Execution Time estimates (conservative but realistic)
+    static constexpr auto MARKET_DATA_WCET = std::chrono::milliseconds(1);         // 1ms
+    static constexpr auto SIGNAL_GENERATION_WCET = std::chrono::milliseconds(5);   // 5ms
+    static constexpr auto CONTROL_PROCESSING_WCET = std::chrono::milliseconds(1);  // 1ms
+    static constexpr auto HEARTBEAT_WCET = std::chrono::milliseconds(1);           // 1ms
+    static constexpr auto PERFORMANCE_REPORT_WCET = std::chrono::milliseconds(2);  // 2ms
     
 public:
     AlarisQuantLibProcess(const std::string& config_file_path) {
