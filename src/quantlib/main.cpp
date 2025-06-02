@@ -3,7 +3,7 @@
 #include "volatility/garch_wrapper.h"  // Changed from gjrgarch_wrapper.h
 #include "strategy/vol_arb.h"
 #include "core/memory_pool.h"
-#include "core/time_trigger.h"
+#include "core/task_scheduler.h"  // Changed from time_trigger.h
 #include "core/event_log.h"
 #include "ipc/shared_memory.h"
 #include <iostream>
@@ -33,7 +33,7 @@ private:
     std::unique_ptr<Core::PerCycleAllocator> allocator_;
     std::unique_ptr<Core::EventLogger> event_logger_;
     std::unique_ptr<IPC::SharedMemoryManager> shared_memory_manager_;
-    std::unique_ptr<Core::TimeTriggeredExecutor> executor_;
+    std::unique_ptr<Core::TaskScheduler> scheduler_;  // Changed from TimeTriggeredExecutor
     
     // Trading components
     std::unique_ptr<Pricing::QuantLibALOEngine> pricer_;
@@ -48,12 +48,30 @@ private:
     // Performance metrics
     uint64_t cycles_executed_{0};
     
+    // Task timing configuration (in microseconds for precision)
+    static constexpr auto BASIC_TIME_UNIT = std::chrono::microseconds(100);  // 100μs basic unit
+    
+    // Task periods (all must be multiples of BASIC_TIME_UNIT)
+    static constexpr auto MARKET_DATA_PERIOD = std::chrono::milliseconds(1);     // 1ms = 10 * 100μs
+    static constexpr auto SIGNAL_GENERATION_PERIOD = std::chrono::milliseconds(10);   // 10ms = 100 * 100μs  
+    static constexpr auto CONTROL_PROCESSING_PERIOD = std::chrono::milliseconds(5);   // 5ms = 50 * 100μs
+    static constexpr auto HEARTBEAT_PERIOD = std::chrono::seconds(1);               // 1s = 10000 * 100μs
+    static constexpr auto PERFORMANCE_REPORT_PERIOD = std::chrono::seconds(10);     // 10s = 100000 * 100μs
+    
+    // Worst-Case Execution Time estimates (conservative)
+    static constexpr auto MARKET_DATA_WCET = std::chrono::microseconds(200);      // 200μs
+    static constexpr auto SIGNAL_GENERATION_WCET = std::chrono::microseconds(800); // 800μs
+    static constexpr auto CONTROL_PROCESSING_WCET = std::chrono::microseconds(150); // 150μs
+    static constexpr auto HEARTBEAT_WCET = std::chrono::microseconds(50);         // 50μs
+    static constexpr auto PERFORMANCE_REPORT_WCET = std::chrono::microseconds(1000); // 1ms
+    
 public:
     AlarisQuantLibProcess(const std::string& config_file_path) {
         try {
             config_ = YAML::LoadFile(config_file_path);
             initialize_system_settings();
             initialize_components();
+            setup_task_schedule();
             
             std::cout << "Alaris QuantLib Process initialized successfully from config: " << config_file_path << std::endl;
             if(event_logger_) event_logger_->log_system_status("QuantLib process started and initialized.");
@@ -70,37 +88,24 @@ public:
     }
     
     ~AlarisQuantLibProcess() {
-        if (executor_ && executor_->is_running()) {
-             executor_->stop();
+        if (scheduler_ && scheduler_->is_running()) {
+             scheduler_->stop_execution();
         }
         if(event_logger_) event_logger_->log_system_status("QuantLib process destructor called.");
     }
     
     void run() {
-        if (!executor_ || !strategy_ || !shared_memory_manager_ || !event_logger_) {
+        if (!scheduler_ || !strategy_ || !shared_memory_manager_ || !event_logger_) {
             std::cerr << "Cannot run: Essential components not initialized." << std::endl;
             return;
         }
 
         try {
-            std::cout << "Starting Alaris QuantLib Process main loop..." << std::endl;
-            event_logger_->log_system_status("QuantLib process main loop starting.");
+            std::cout << "Starting Alaris QuantLib Process with TTA scheduling..." << std::endl;
+            event_logger_->log_system_status("QuantLib process starting TTA execution.");
             
-            // Register tasks with the time-triggered executor
-            executor_->register_task([this]() { this->process_market_data(); }, 
-                                   std::chrono::milliseconds(config_["executor"]["market_data_interval_ms"].as<long>(1)));
-            
-            executor_->register_task([this]() { this->generate_trading_signals(); }, 
-                                   std::chrono::milliseconds(config_["executor"]["signal_interval_ms"].as<long>(10)));
-            
-            executor_->register_task([this]() { this->process_control_messages(); }, 
-                                   std::chrono::milliseconds(config_["executor"]["control_interval_ms"].as<long>(5)));
-
-            executor_->register_task([this]() { this->send_heartbeat(); }, 
-                                   std::chrono::seconds(config_["executor"]["heartbeat_interval_s"].as<long>(1)));
-            
-            executor_->register_task([this]() { this->report_performance_metrics(); }, 
-                                   std::chrono::seconds(config_["executor"]["perf_report_interval_s"].as<long>(10)));
+            // Print the computed schedule for verification
+            scheduler_->print_schedule_table();
             
             // Initial state from config or default to false
             trading_enabled_ = config_["process"]["start_trading_enabled"].as<bool>(false);
@@ -110,8 +115,16 @@ public:
                 event_logger_->log_system_status("Trading disabled on startup as per configuration.");
             }
             
-            // Run main execution loop
-            executor_->run_continuous(g_shutdown_requested);
+            // Start the TTA scheduler
+            if (!scheduler_->start_execution()) {
+                std::cerr << "Failed to start TaskScheduler" << std::endl;
+                return;
+            }
+            
+            // Main loop - just monitor shutdown signal
+            while (!g_shutdown_requested.load()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
             
             std::cout << "Alaris QuantLib Process main loop finished." << std::endl;
             event_logger_->log_system_status("QuantLib process main loop finished.");
@@ -133,8 +146,8 @@ public:
         
         trading_enabled_ = false;
         
-        if (executor_) {
-            executor_->stop();
+        if (scheduler_) {
+            scheduler_->stop_execution();
         }
         
         report_performance_metrics();
@@ -194,9 +207,8 @@ private:
         // Shared Memory Manager
         shared_memory_manager_ = std::make_unique<IPC::SharedMemoryManager>(true);
         
-        // Time-Triggered Executor
-        long major_frame_ms = config_["executor"]["major_frame_ms"].as<long>(10);
-        executor_ = std::make_unique<Core::TimeTriggeredExecutor>(std::chrono::milliseconds(major_frame_ms));
+        // Task Scheduler (TTA)
+        scheduler_ = std::make_unique<Core::TaskScheduler>(BASIC_TIME_UNIT);
         
         // Pricing Engine (QuantLibALOEngine)
         pricer_ = std::make_unique<Pricing::QuantLibALOEngine>(*mem_pool_);
@@ -234,6 +246,93 @@ private:
             } else {
                 strategy_->set_active_volatility_model_type(Strategy::VolatilityModelType::ENSEMBLE_GARCH_HISTORICAL);
             }
+        }
+    }
+    
+    void setup_task_schedule() {
+        if (!scheduler_) {
+            throw std::runtime_error("TaskScheduler not initialized");
+        }
+        
+        // Use TaskSetBuilder for clean task definition
+        Core::TaskSetBuilder builder(BASIC_TIME_UNIT);
+        
+        // Add tasks with their periods, WCETs, and priorities
+        // Higher priority numbers = higher priority
+        
+        builder.add_critical_task(
+            "MarketDataProcessor",
+            [this]() { this->process_market_data(); },
+            MARKET_DATA_PERIOD,
+            MARKET_DATA_WCET,
+            100  // Highest priority - market data is critical
+        );
+        
+        builder.add_periodic_task(
+            "ControlMessageProcessor", 
+            [this]() { this->process_control_messages(); },
+            CONTROL_PROCESSING_PERIOD,
+            CONTROL_PROCESSING_WCET,
+            90   // High priority - control messages are important
+        );
+        
+        builder.add_periodic_task(
+            "SignalGenerator",
+            [this]() { this->generate_trading_signals(); },
+            SIGNAL_GENERATION_PERIOD,
+            SIGNAL_GENERATION_WCET,
+            80   // Medium-high priority - trading signals
+        );
+        
+        builder.add_periodic_task(
+            "HeartbeatSender",
+            [this]() { this->send_heartbeat(); },
+            HEARTBEAT_PERIOD,
+            HEARTBEAT_WCET,
+            20   // Low priority - heartbeat
+        );
+        
+        builder.add_periodic_task(
+            "PerformanceReporter",
+            [this]() { this->report_performance_metrics(); },
+            PERFORMANCE_REPORT_PERIOD,
+            PERFORMANCE_REPORT_WCET,
+            10   // Lowest priority - performance reporting
+        );
+        
+        // Validate the task set before building
+        auto validation_report = builder.validate();
+        if (!validation_report.is_schedulable) {
+            std::cerr << "Task set is not schedulable!" << std::endl;
+            for (const auto& conflict : validation_report.conflicts) {
+                std::cerr << "  Conflict: " << conflict << std::endl;
+            }
+            throw std::runtime_error("Task set validation failed");
+        }
+        
+        // Print validation report
+        std::cout << "\n=== TTA Schedulability Analysis ===" << std::endl;
+        std::cout << "CPU Utilization: " << (validation_report.cpu_utilization * 100) << "%" << std::endl;
+        std::cout << "Hyperperiod: " << std::chrono::duration_cast<std::chrono::milliseconds>(validation_report.hyperperiod).count() << "ms" << std::endl;
+        std::cout << "Basic Time Unit: " << std::chrono::duration_cast<std::chrono::microseconds>(validation_report.basic_time_unit).count() << "μs" << std::endl;
+        std::cout << "Total Executions per Hyperperiod: " << validation_report.total_executions_per_hyperperiod << std::endl;
+        
+        for (const auto& warning : validation_report.warnings) {
+            std::cout << "Warning: " << warning << std::endl;
+        }
+        std::cout << "Status: SCHEDULABLE ✓" << std::endl;
+        std::cout << std::endl;
+        
+        // Build the scheduler
+        if (!builder.build_scheduler(*scheduler_)) {
+            throw std::runtime_error("Failed to build task scheduler");
+        }
+        
+        if(event_logger_) {
+            event_logger_->log_system_status("TTA task schedule created successfully");
+            event_logger_->log_performance_metric("tta_cpu_utilization", validation_report.cpu_utilization);
+            event_logger_->log_performance_metric("tta_hyperperiod_ms", 
+                std::chrono::duration_cast<std::chrono::milliseconds>(validation_report.hyperperiod).count());
         }
     }
         
@@ -317,25 +416,52 @@ private:
     }
     
     void report_performance_metrics() {
-        if (!executor_ || !event_logger_ || !shared_memory_manager_) return;
+        if (!scheduler_ || !event_logger_ || !shared_memory_manager_) return;
 
-        auto exec_metrics = executor_->get_performance_metrics();
+        // Get task scheduler metrics
+        std::cout << "\n=== TTA Performance Report ===" << std::endl;
+        std::cout << "Hyperperiod: " << std::chrono::duration_cast<std::chrono::milliseconds>(scheduler_->get_hyperperiod()).count() << "ms" << std::endl;
+        
+        // Report metrics for each task
+        const std::vector<std::string> task_names = {
+            "MarketDataProcessor", "ControlMessageProcessor", "SignalGenerator", 
+            "HeartbeatSender", "PerformanceReporter"
+        };
+        
+        for (const auto& task_name : task_names) {
+            try {
+                const auto& metrics = scheduler_->get_task_metrics(task_name);
+                std::cout << task_name << ": "
+                          << "Executions=" << metrics.executions_completed
+                          << ", Misses=" << metrics.deadline_misses
+                          << ", Avg=" << std::chrono::duration_cast<std::chrono::microseconds>(
+                                metrics.executions_completed > 0 ? 
+                                metrics.total_execution_time / metrics.executions_completed :
+                                Core::TaskScheduler::Duration::zero()).count() << "μs"
+                          << ", Max=" << std::chrono::duration_cast<std::chrono::microseconds>(metrics.max_execution_time).count() << "μs"
+                          << std::endl;
+                
+                // Log to EventLogger
+                event_logger_->log_performance_metric(task_name + "_executions", static_cast<double>(metrics.executions_completed));
+                event_logger_->log_performance_metric(task_name + "_deadline_misses", static_cast<double>(metrics.deadline_misses));
+                if (metrics.executions_completed > 0) {
+                    auto avg_exec_time_us = std::chrono::duration_cast<std::chrono::microseconds>(
+                        metrics.total_execution_time / metrics.executions_completed).count();
+                    event_logger_->log_performance_metric(task_name + "_avg_execution_us", static_cast<double>(avg_exec_time_us));
+                }
+                auto max_exec_time_us = std::chrono::duration_cast<std::chrono::microseconds>(metrics.max_execution_time).count();
+                event_logger_->log_performance_metric(task_name + "_max_execution_us", static_cast<double>(max_exec_time_us));
+                
+            } catch (const std::exception& e) {
+                std::cerr << "Error getting metrics for " << task_name << ": " << e.what() << std::endl;
+            }
+        }
+        
+        // Shared memory status
         auto sm_status = shared_memory_manager_->get_status();
-
-        // Log to console
-        std::cout << "--- Performance Report ---" << std::endl;
-        std::cout << "Executor Cycles: " << exec_metrics.total_cycles
-                  << ", Avg Cycle (us): " << exec_metrics.average_cycle_time_us
-                  << ", Max Cycle (us): " << exec_metrics.max_cycle_time_us
-                  << ", Deadlines Missed: " << exec_metrics.total_deadlines_missed << std::endl;
-        std::cout << "MarketData Buffer: " << sm_status.market_data_size << "/" << 4096
+        std::cout << "SharedMemory - MarketData: " << sm_status.market_data_size << "/" << 4096
                   << " (Util: " << sm_status.market_data_utilization * 100 << "%)" << std::endl;
         
-        // Log to EventLogger
-        event_logger_->log_performance_metric("executor_total_cycles", static_cast<double>(exec_metrics.total_cycles));
-        event_logger_->log_performance_metric("executor_avg_cycle_us", exec_metrics.average_cycle_time_us);
-        event_logger_->log_performance_metric("executor_max_cycle_us", exec_metrics.max_cycle_time_us);
-        event_logger_->log_performance_metric("executor_missed_deadlines", static_cast<double>(exec_metrics.total_deadlines_missed));
         event_logger_->log_performance_metric("sm_market_data_util", sm_status.market_data_utilization);
         event_logger_->log_performance_metric("sm_signal_util", sm_status.signal_utilization);
         event_logger_->log_performance_metric("sm_control_util", sm_status.control_utilization);
@@ -343,6 +469,8 @@ private:
         if (!shared_memory_manager_->is_healthy()) {
             event_logger_->log_error("Shared memory buffers approaching capacity or unhealthy!");
         }
+        
+        std::cout << std::endl;
     }
 };
 
@@ -356,7 +484,7 @@ int main(int argc, char* argv[]) {
     if (argc > 1) {
         config_file = argv[1];
     }
-    std::cout << "Alaris QuantLib Process starting..." << std::endl;
+    std::cout << "Alaris QuantLib Process starting with TTA scheduling..." << std::endl;
     std::cout << "Using configuration file: " << config_file << std::endl;
 
     try {

@@ -21,6 +21,7 @@ set(QUANTLIB_CORE_SOURCES # Renamed for clarity, as this will build 'quantlib_co
     ${CMAKE_SOURCE_DIR}/src/quantlib/ipc/shared_memory_manager.cpp
     ${CMAKE_SOURCE_DIR}/src/quantlib/core/memory_pool.cpp
     ${CMAKE_SOURCE_DIR}/src/quantlib/core/time_trigger.cpp
+    ${CMAKE_SOURCE_DIR}/src/quantlib/core/task_scheduler.cpp
     ${CMAKE_SOURCE_DIR}/src/quantlib/core/event_log.cpp
     # main.cpp for the 'alaris' executable is handled separately
 )

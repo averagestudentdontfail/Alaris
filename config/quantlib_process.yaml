@@ -1,102 +1,102 @@
 # QuantLib Process Configuration
 process:
-  name: "quantlib"
-  priority: 0
-  cpu_affinity: []
-  memory_lock: false
-  huge_pages: false
-  start_trading_enabled: false
+  name: "QuantLib"
+  priority: 80                   # Real-time priority (0-99)
+  cpu_affinity: [2, 3]           # Isolated CPU cores
+  memory_lock: true              # Lock memory to prevent paging
+  huge_pages: false              # Optional huge pages
+  start_trading_enabled: false   # Start with trading disabled for safety
 
 quantlib:
-  threading: single
-  date_format: "ISO"
-  calendar: "UnitedStates"
-  enable_debug: true
+  threading: "single"            # Single-threaded for deterministic execution
+  date_format: "ISO"             # ISO date format
+  calendar: "UnitedStates"       # US calendar for option pricing
+  enable_debug: false            # Disable debug for performance
 
 shared_memory:
   market_data_buffer: "/alaris_market_data"
-  signal_buffer: "/alaris_signals" 
+  signal_buffer: "/alaris_signals"
   control_buffer: "/alaris_control"
   buffer_sizes:
-    market_data: 4096
-    signals: 1024
-    control: 256
+    market_data: 4096            # Ring buffer size
+    signals: 1024               # Signal buffer size
+    control: 256                # Control message buffer size
 
 memory:
-  pool_size_mb: 64
+  pool_size_mb: 64              # Memory pool size in MB
 
+# TTA Executor Configuration
+# NOTE: These values are now handled by TaskScheduler in code
+# The TaskScheduler uses:
+# - Basic Time Unit: 100μs (all periods must be multiples)
+# - Market Data: 1ms period, 200μs WCET, Priority 100
+# - Control Processing: 5ms period, 150μs WCET, Priority 90  
+# - Signal Generation: 10ms period, 800μs WCET, Priority 80
+# - Heartbeat: 1s period, 50μs WCET, Priority 20
+# - Performance Report: 10s period, 1ms WCET, Priority 10
 executor:
-  major_frame_ms: 10
-  market_data_interval_ms: 1
-  signal_interval_ms: 10
-  control_interval_ms: 5
-  heartbeat_interval_s: 1
-  perf_report_interval_s: 10
+  # These are legacy config values - TTA uses hardcoded optimal values
+  major_frame_ms: 10            # Legacy - not used by TaskScheduler
+  market_data_interval_ms: 1    # Legacy - TaskScheduler uses 1ms
+  signal_interval_ms: 10        # Legacy - TaskScheduler uses 10ms  
+  control_interval_ms: 5        # Legacy - TaskScheduler uses 5ms
+  heartbeat_interval_s: 1       # Legacy - TaskScheduler uses 1s
+  perf_report_interval_s: 10    # Legacy - TaskScheduler uses 10s
 
 pricing:
   alo_engine:
-    # ALO engine uses iteration schemes, not time-stepping schemes
-    # Available schemes: fast, accurate, high_precision
-    scheme: "accurate"  # Uses QdFpLegendreTanhSinhScheme(25, 5, 13, 1e-8)
-    # Alternative options:
-    # "fast" - Uses QdFpLegendreScheme(7, 2, 7, 27)
-    # "high_precision" - Uses QdFpTanhSinhIterationScheme(10, 30, 1e-10)
-    
-    # Fixed point equation type: Auto, FP_A, or FP_B
-    fixed_point_equation: "Auto"
-  
+    scheme: "accurate"           # ALO iteration scheme: fast|accurate|high_precision
+    fixed_point_equation: "Auto" # Auto|FP_A|FP_B
+
 volatility:
-  # Using standard GARCH model instead of GJR-GARCH
-  garch:
+  garch:                        # Standard GARCH model (GJR-GARCH deprecated)
     max_iterations: 1000
     tolerance: 1e-6
-    mode: "BestOfTwo"  # Options: MomentMatchingGuess, GammaGuess, BestOfTwo, DoubleOptimization
-    max_history_length: 2520  # ~10 years of daily data
-  update_frequency_ms: 100
+    mode: "BestOfTwo"           # MomentMatchingGuess|GammaGuess|BestOfTwo|DoubleOptimization
+    max_history_length: 252    # Trading days of history
+  update_frequency_ms: 10       # Update frequency (multiple of basic time unit)
 
 strategy:
   vol_arbitrage:
-    # Core volatility thresholds
-    entry_threshold: 0.03  # vol_difference_threshold
-    exit_threshold: 0.01   # vol_exit_threshold
-    confidence_threshold: 0.75
+    # Core thresholds
+    entry_threshold: 0.05        # 5% volatility difference for entry
+    exit_threshold: 0.02         # 2% volatility difference for exit
+    confidence_threshold: 0.7    # Minimum confidence for signals
     
-    # Risk management
-    max_portfolio_delta: 0.1
-    max_portfolio_gamma: 0.05
-    max_portfolio_vega: 1.0
-    max_position_size: 0.02
-    max_correlation_exposure: 0.3
+    # Risk management  
+    max_portfolio_delta: 0.10    # Maximum portfolio delta exposure
+    max_portfolio_gamma: 0.05    # Maximum portfolio gamma exposure
+    max_portfolio_vega: 2.0      # Maximum portfolio vega exposure
+    max_position_size: 0.05      # Maximum position size (5% of portfolio)
+    max_correlation_exposure: 0.30 # Maximum exposure to correlated positions
     
-    # Position sizing (Kelly criterion)
-    kelly_fraction: 0.02
-    max_kelly_position: 0.05
-    min_edge_ratio: 1.5
+    # Position sizing
+    kelly_fraction: 0.05         # Kelly criterion fraction
+    max_kelly_position: 0.20     # Maximum Kelly-based position size
+    min_edge_ratio: 2.0          # Minimum edge ratio for trade
     
     # Stop loss and profit taking
-    stop_loss_percent: 0.15
-    profit_target_percent: 0.30
-    trailing_stop_percent: 0.08
+    stop_loss_percent: 0.15      # 15% stop loss
+    profit_target_percent: 0.30  # 30% profit target
+    trailing_stop_percent: 0.10  # 10% trailing stop
     
-    # Strategy mode: DELTA_NEUTRAL, GAMMA_SCALPING, VOLATILITY_TIMING, RELATIVE_VALUE
-    strategy_mode: "DELTA_NEUTRAL"
+    # Strategy configuration
+    strategy_mode: "DELTA_NEUTRAL" # DELTA_NEUTRAL|GAMMA_SCALPING|VOLATILITY_TIMING|RELATIVE_VALUE
+    model_selection: "garch_direct" # garch_direct|ensemble_garch_historical
     
-    # Model selection: GARCH_DIRECT, ENSEMBLE_GARCH_HISTORICAL
-    model_selection: "ENSEMBLE_GARCH_HISTORICAL"
-    
-    # Hedging parameters
-    hedge_threshold_delta: 0.05
-    hedge_threshold_gamma: 0.03
-    auto_hedge_enabled: true
-    hedge_frequency_minutes: 15.0
+    # Hedging
+    hedge_threshold_delta: 0.10   # Delta threshold for hedging
+    hedge_threshold_gamma: 0.05   # Gamma threshold for hedging  
+    auto_hedge_enabled: true      # Enable automatic hedging
+    hedge_frequency_minutes: 15   # Hedging frequency
     
     # Market regime detection
-    low_vol_threshold: 0.12
-    high_vol_threshold: 0.30
-    regime_lookback_days: 30
+    low_vol_threshold: 0.15       # Low volatility threshold
+    high_vol_threshold: 0.40      # High volatility threshold
+    regime_lookback_days: 21      # Lookback period for regime detection
 
 logging:
-  level: "DEBUG"
-  file: "logs/quantlib.log"
-  binary_mode: true
-  enable_performance_log: true
+  level: "INFO"                 # DEBUG|INFO|WARN|ERROR
+  file: "/var/log/alaris/quantlib.log"
+  binary_mode: true             # Use binary logging for performance
+  enable_performance_log: true  # Log detailed performance metrics
