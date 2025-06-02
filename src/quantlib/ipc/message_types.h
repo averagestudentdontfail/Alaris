@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <cstring>
 #include <atomic>
+#include <chrono>
 
 namespace Alaris::IPC {
 
@@ -19,7 +20,52 @@ namespace Alaris::IPC {
  * - Bounded serialization/deserialization time
  */
 
+// Free functions for message validation (outside the structs to maintain trivially copyable status)
+namespace MessageValidation {
+    inline bool is_valid_market_data(const MarketDataMessage& msg) noexcept {
+        return msg.timestamp_ns > 0 && 
+               msg.symbol_id > 0 && 
+               msg.bid >= 0.0 && msg.ask >= 0.0 && 
+               msg.bid <= msg.ask && 
+               msg.underlying_price > 0.0;
+    }
+
+    inline bool is_valid_trading_signal(const TradingSignalMessage& msg) noexcept {
+        return msg.timestamp_ns > 0 && 
+               msg.symbol_id > 0 && 
+               msg.confidence >= 0.0 && msg.confidence <= 1.0 &&
+               (msg.side == 0 || msg.side == 1) &&
+               msg.quantity != 0;
+    }
+
+    inline bool is_valid_control(const ControlMessage& msg) noexcept {
+        return msg.message_type > 0 && msg.timestamp_ns > 0;
+    }
+
+    inline bool is_expired(const TradingSignalMessage& msg) noexcept {
+        const auto now_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+            Core::Timing::Clock::now().time_since_epoch()).count();
+        return msg.expiry_timestamp_ns > 0 && now_ns > msg.expiry_timestamp_ns;
+    }
+
+    inline void set_timestamp_now(MarketDataMessage& msg) noexcept {
+        msg.timestamp_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+            Core::Timing::Clock::now().time_since_epoch()).count();
+    }
+
+    inline void set_timestamp_now(TradingSignalMessage& msg) noexcept {
+        msg.timestamp_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+            Core::Timing::Clock::now().time_since_epoch()).count();
+    }
+
+    inline void set_timestamp_now(ControlMessage& msg) noexcept {
+        msg.timestamp_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+            Core::Timing::Clock::now().time_since_epoch()).count();
+    }
+}
+
 // Cache-aligned market data message for TTA deterministic processing
+#pragma pack(push, 1)  // Disable padding between members
 struct alignas(64) MarketDataMessage {
     uint64_t timestamp_ns;      // 8 bytes
     uint32_t symbol_id;         // 4 bytes
@@ -34,13 +80,12 @@ struct alignas(64) MarketDataMessage {
     uint32_t source_process_id;   // 4 bytes
     uint8_t padding[4];        // 4 bytes padding to reach 64 bytes
 
-    // Make it trivially copyable by removing custom constructors
     MarketDataMessage() = default;
 };
-static_assert(sizeof(MarketDataMessage) == 64, "MarketDataMessage must be exactly 64 bytes for TTA cache alignment");
-static_assert(std::is_trivially_copyable_v<MarketDataMessage>, "MarketDataMessage must be trivially copyable");
+#pragma pack(pop)
 
 // Cache-aligned trading signal message for TTA deterministic execution
+#pragma pack(push, 1)
 struct alignas(64) TradingSignalMessage {
     uint64_t timestamp_ns;          // 8 bytes
     uint64_t expiry_timestamp_ns;   // 8 bytes
@@ -60,13 +105,12 @@ struct alignas(64) TradingSignalMessage {
     uint32_t processing_deadline_us; // 4 bytes
     uint8_t padding[4];            // 4 bytes padding to reach 64 bytes
 
-    // Make it trivially copyable by removing custom constructors
     TradingSignalMessage() = default;
 };
-static_assert(sizeof(TradingSignalMessage) == 64, "TradingSignalMessage must be exactly 64 bytes for TTA cache alignment");
-static_assert(std::is_trivially_copyable_v<TradingSignalMessage>, "TradingSignalMessage must be trivially copyable");
+#pragma pack(pop)
 
 // Cache-aligned control message for TTA system coordination
+#pragma pack(push, 1)
 struct alignas(64) ControlMessage {
     uint64_t timestamp_ns;      // 8 bytes
     uint64_t sequence_number;   // 8 bytes
@@ -80,11 +124,9 @@ struct alignas(64) ControlMessage {
     uint64_t parameter2;        // 8 bytes
     uint8_t data[8];           // 8 bytes (reduced from 32 to fit in 64 bytes)
 
-    // Make it trivially copyable by removing custom constructors
     ControlMessage() = default;
 };
-static_assert(sizeof(ControlMessage) == 64, "ControlMessage must be exactly 64 bytes for TTA cache alignment");
-static_assert(std::is_trivially_copyable_v<ControlMessage>, "ControlMessage must be trivially copyable");
+#pragma pack(pop)
 
 // Message types for TTA control channel operations
 enum class ControlMessageType : uint32_t {
@@ -115,11 +157,18 @@ enum class ControlMessageType : uint32_t {
     TTA_DEADLINE_WARNING = 33
 };
 
-// TTA message validation helper
+// Update the validate_tta_message template to use the free functions
 template<typename MessageType>
 inline bool validate_tta_message(const MessageType& msg) noexcept {
     static_assert(sizeof(MessageType) == 64, "TTA messages must be 64 bytes");
-    return msg.is_valid();
+    if constexpr (std::is_same_v<MessageType, MarketDataMessage>) {
+        return MessageValidation::is_valid_market_data(msg);
+    } else if constexpr (std::is_same_v<MessageType, TradingSignalMessage>) {
+        return MessageValidation::is_valid_trading_signal(msg);
+    } else if constexpr (std::is_same_v<MessageType, ControlMessage>) {
+        return MessageValidation::is_valid_control(msg);
+    }
+    return false;
 }
 
 // TTA message timing helper

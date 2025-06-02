@@ -166,7 +166,7 @@ bool SharedMemoryManager::publish_signal(const TradingSignalMessage& signal) {
     const auto start_time = Core::Timing::Clock::now();
     
     // TTA validation including deadline checking
-    if (!validate_tta_message(signal) || signal.is_expired()) [[unlikely]] {
+    if (!validate_tta_message(signal) || MessageValidation::is_expired(signal)) [[unlikely]] {
         update_tta_metrics(false);
         return false;
     }
@@ -201,7 +201,7 @@ bool SharedMemoryManager::consume_signal(TradingSignalMessage& signal) {
     
     if (success) {
         // TTA deadline and validity checking
-        if (!validate_tta_message(signal) || signal.is_expired()) [[unlikely]] {
+        if (!validate_tta_message(signal) || MessageValidation::is_expired(signal)) [[unlikely]] {
             update_tta_metrics(false);
             return false;
         }
@@ -231,7 +231,7 @@ size_t SharedMemoryManager::consume_signal_batch(TradingSignalMessage* signals_a
     // TTA validation with deadline filtering
     size_t valid_count = 0;
     for (size_t i = 0; i < consumed; ++i) {
-        if (validate_tta_message(signals_array[i]) && !signals_array[i].is_expired()) {
+        if (validate_tta_message(signals_array[i]) && !MessageValidation::is_expired(signals_array[i])) {
             if (i != valid_count) {
                 signals_array[valid_count] = signals_array[i];
             }
