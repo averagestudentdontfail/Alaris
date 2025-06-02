@@ -431,13 +431,14 @@ private:
         for (const auto& task_name : task_names) {
             try {
                 const auto& metrics = scheduler_->get_task_metrics(task_name);
+                auto avg_exec_time = metrics.executions_completed > 0 ? 
+                    metrics.total_execution_time / static_cast<int64_t>(metrics.executions_completed) :
+                    Core::TaskScheduler::Duration::zero();
+                    
                 std::cout << task_name << ": "
                           << "Executions=" << metrics.executions_completed
                           << ", Misses=" << metrics.deadline_misses
-                          << ", Avg=" << std::chrono::duration_cast<std::chrono::microseconds>(
-                                metrics.executions_completed > 0 ? 
-                                metrics.total_execution_time / metrics.executions_completed :
-                                Core::TaskScheduler::Duration::zero()).count() << "μs"
+                          << ", Avg=" << std::chrono::duration_cast<std::chrono::microseconds>(avg_exec_time).count() << "μs"
                           << ", Max=" << std::chrono::duration_cast<std::chrono::microseconds>(metrics.max_execution_time).count() << "μs"
                           << std::endl;
                 
@@ -445,8 +446,7 @@ private:
                 event_logger_->log_performance_metric(task_name + "_executions", static_cast<double>(metrics.executions_completed));
                 event_logger_->log_performance_metric(task_name + "_deadline_misses", static_cast<double>(metrics.deadline_misses));
                 if (metrics.executions_completed > 0) {
-                    auto avg_exec_time_us = std::chrono::duration_cast<std::chrono::microseconds>(
-                        metrics.total_execution_time / metrics.executions_completed).count();
+                    auto avg_exec_time_us = std::chrono::duration_cast<std::chrono::microseconds>(avg_exec_time).count();
                     event_logger_->log_performance_metric(task_name + "_avg_execution_us", static_cast<double>(avg_exec_time_us));
                 }
                 auto max_exec_time_us = std::chrono::duration_cast<std::chrono::microseconds>(metrics.max_execution_time).count();
