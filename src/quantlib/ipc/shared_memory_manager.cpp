@@ -481,7 +481,7 @@ void SharedMemoryManager::update_tta_metrics(bool success) const {
 
 template<typename MessageType>
 bool SharedMemoryManager::validate_tta_message(const MessageType& msg) const {
-    return msg.is_valid();
+    return validate_tta_message(msg);  // Use the free function from message_types.h
 }
 
 bool SharedMemoryManager::should_timeout(Core::Timing::TimePoint start_time) const {

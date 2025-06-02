@@ -20,50 +20,6 @@ namespace Alaris::IPC {
  * - Bounded serialization/deserialization time
  */
 
-// Free functions for message validation (outside the structs to maintain trivially copyable status)
-namespace MessageValidation {
-    inline bool is_valid_market_data(const MarketDataMessage& msg) noexcept {
-        return msg.timestamp_ns > 0 && 
-               msg.symbol_id > 0 && 
-               msg.bid >= 0.0 && msg.ask >= 0.0 && 
-               msg.bid <= msg.ask && 
-               msg.underlying_price > 0.0;
-    }
-
-    inline bool is_valid_trading_signal(const TradingSignalMessage& msg) noexcept {
-        return msg.timestamp_ns > 0 && 
-               msg.symbol_id > 0 && 
-               msg.confidence >= 0.0 && msg.confidence <= 1.0 &&
-               (msg.side == 0 || msg.side == 1) &&
-               msg.quantity != 0;
-    }
-
-    inline bool is_valid_control(const ControlMessage& msg) noexcept {
-        return msg.message_type > 0 && msg.timestamp_ns > 0;
-    }
-
-    inline bool is_expired(const TradingSignalMessage& msg) noexcept {
-        const auto now_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
-            Core::Timing::Clock::now().time_since_epoch()).count();
-        return msg.expiry_timestamp_ns > 0 && now_ns > msg.expiry_timestamp_ns;
-    }
-
-    inline void set_timestamp_now(MarketDataMessage& msg) noexcept {
-        msg.timestamp_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
-            Core::Timing::Clock::now().time_since_epoch()).count();
-    }
-
-    inline void set_timestamp_now(TradingSignalMessage& msg) noexcept {
-        msg.timestamp_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
-            Core::Timing::Clock::now().time_since_epoch()).count();
-    }
-
-    inline void set_timestamp_now(ControlMessage& msg) noexcept {
-        msg.timestamp_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
-            Core::Timing::Clock::now().time_since_epoch()).count();
-    }
-}
-
 // Cache-aligned market data message for TTA deterministic processing
 #pragma pack(push, 1)  // Disable padding between members
 struct alignas(64) MarketDataMessage {
@@ -157,6 +113,60 @@ enum class ControlMessageType : uint32_t {
     TTA_DEADLINE_WARNING = 33
 };
 
+// TTA message priority levels for system coordination
+enum class TTAPriority : uint32_t {
+    EMERGENCY = 0,      // Emergency stop, system critical
+    CRITICAL = 1,       // Market data, trading signals
+    HIGH = 2,           // Control messages, parameter updates
+    NORMAL = 3,         // Status updates, heartbeats
+    LOW = 4,            // Performance reports, logging
+    BACKGROUND = 5      // Non-time-critical operations
+};
+
+// Message validation functions
+namespace MessageValidation {
+    inline bool is_valid_market_data(const MarketDataMessage& msg) noexcept {
+        return msg.timestamp_ns > 0 && 
+               msg.symbol_id > 0 && 
+               msg.bid >= 0.0 && msg.ask >= 0.0 && 
+               msg.bid <= msg.ask && 
+               msg.underlying_price > 0.0;
+    }
+
+    inline bool is_valid_trading_signal(const TradingSignalMessage& msg) noexcept {
+        return msg.timestamp_ns > 0 && 
+               msg.symbol_id > 0 && 
+               msg.confidence >= 0.0 && msg.confidence <= 1.0 &&
+               (msg.side == 0 || msg.side == 1) &&
+               msg.quantity != 0;
+    }
+
+    inline bool is_valid_control(const ControlMessage& msg) noexcept {
+        return msg.message_type > 0 && msg.timestamp_ns > 0;
+    }
+
+    inline bool is_expired(const TradingSignalMessage& msg) noexcept {
+        const auto now_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+            Core::Timing::Clock::now().time_since_epoch()).count();
+        return msg.expiry_timestamp_ns > 0 && now_ns > msg.expiry_timestamp_ns;
+    }
+
+    inline void set_timestamp_now(MarketDataMessage& msg) noexcept {
+        msg.timestamp_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+            Core::Timing::Clock::now().time_since_epoch()).count();
+    }
+
+    inline void set_timestamp_now(TradingSignalMessage& msg) noexcept {
+        msg.timestamp_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+            Core::Timing::Clock::now().time_since_epoch()).count();
+    }
+
+    inline void set_timestamp_now(ControlMessage& msg) noexcept {
+        msg.timestamp_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+            Core::Timing::Clock::now().time_since_epoch()).count();
+    }
+}
+
 // Update the validate_tta_message template to use the free functions
 template<typename MessageType>
 inline bool validate_tta_message(const MessageType& msg) noexcept {
@@ -170,21 +180,5 @@ inline bool validate_tta_message(const MessageType& msg) noexcept {
     }
     return false;
 }
-
-// TTA message timing helper
-template<typename MessageType>
-inline void set_tta_timestamp(MessageType& msg) noexcept {
-    msg.set_timestamp_now();
-}
-
-// TTA message priority levels for system coordination
-enum class TTAPriority : uint32_t {
-    EMERGENCY = 0,      // Emergency stop, system critical
-    CRITICAL = 1,       // Market data, trading signals
-    HIGH = 2,           // Control messages, parameter updates
-    NORMAL = 3,         // Status updates, heartbeats
-    LOW = 4,            // Performance reports, logging
-    BACKGROUND = 5      // Non-time-critical operations
-};
 
 } // namespace Alaris::IPC
