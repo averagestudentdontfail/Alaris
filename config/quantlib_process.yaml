@@ -1,10 +1,10 @@
 # QuantLib Process Configuration
 process:
   name: "QuantLib"
-  priority: 80                   # Real-time priority (0-99)
+  priority: 80                   # Real-time priority (0-99) 
   cpu_affinity: [2, 3]           # Isolated CPU cores
-  memory_lock: true              # Lock memory to prevent paging
-  huge_pages: false              # Optional huge pages
+  memory_lock: false             # DISABLED to avoid memory pressure 
+  huge_pages: false              # DISABLED to reduce memory requirements
   start_trading_enabled: false   # Start with trading disabled for safety
 
 quantlib:
@@ -15,45 +15,27 @@ quantlib:
 
 shared_memory:
   market_data_buffer: "/alaris_market_data"
-  signal_buffer: "/alaris_signals"
+  signal_buffer: "/alaris_signals" 
   control_buffer: "/alaris_control"
   buffer_sizes:
-    market_data: 4096            # Ring buffer size
-    signals: 1024               # Signal buffer size
-    control: 256                # Control message buffer size
+    market_data: 1024           # REDUCED from 4096 for memory efficiency
+    signals: 512                # REDUCED from 1024
+    control: 128                # REDUCED from 256
 
 memory:
-  pool_size_mb: 64              # Memory pool size in MB
-
-# TTA Executor Configuration
-# NOTE: These values are now handled by TaskScheduler in code
-# The TaskScheduler uses:
-# - Basic Time Unit: 100μs (all periods must be multiples)
-# - Market Data: 1ms period, 200μs WCET, Priority 100
-# - Control Processing: 5ms period, 150μs WCET, Priority 90  
-# - Signal Generation: 10ms period, 800μs WCET, Priority 80
-# - Heartbeat: 1s period, 50μs WCET, Priority 20
-# - Performance Report: 10s period, 1ms WCET, Priority 10
-executor:
-  # These are legacy config values - TTA uses hardcoded optimal values
-  major_frame_ms: 10            # Legacy - not used by TaskScheduler
-  market_data_interval_ms: 1    # Legacy - TaskScheduler uses 1ms
-  signal_interval_ms: 10        # Legacy - TaskScheduler uses 10ms  
-  control_interval_ms: 5        # Legacy - TaskScheduler uses 5ms
-  heartbeat_interval_s: 1       # Legacy - TaskScheduler uses 1s
-  perf_report_interval_s: 10    # Legacy - TaskScheduler uses 10s
+  pool_size_mb: 8               # REDUCED from 32MB to 8MB to fix allocation failure
 
 pricing:
   alo_engine:
-    scheme: "accurate"           # ALO iteration scheme: fast|accurate|high_precision
+    scheme: "fast"              # Use fast scheme to reduce memory usage
     fixed_point_equation: "Auto" # Auto|FP_A|FP_B
 
 volatility:
-  garch:                        # Standard GARCH model (GJR-GARCH deprecated)
-    max_iterations: 1000
+  garch:                        # Standard GARCH model 
+    max_iterations: 500         # REDUCED from 1000 to save memory
     tolerance: 1e-6
     mode: "BestOfTwo"           # MomentMatchingGuess|GammaGuess|BestOfTwo|DoubleOptimization
-    max_history_length: 252    # Trading days of history
+    max_history_length: 126     # REDUCED from 252 (half year of trading days)
   update_frequency_ms: 10       # Update frequency (multiple of basic time unit)
 
 strategy:
@@ -97,6 +79,6 @@ strategy:
 
 logging:
   level: "INFO"                 # DEBUG|INFO|WARN|ERROR
-  file: "/var/log/alaris/quantlib.log"
-  binary_mode: true             # Use binary logging for performance
+  file: "/tmp/alaris_quantlib.log"  # Use /tmp to avoid permission issues
+  binary_mode: false            # Use text mode to reduce memory overhead
   enable_performance_log: true  # Log detailed performance metrics
