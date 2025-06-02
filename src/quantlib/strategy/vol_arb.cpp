@@ -279,7 +279,6 @@ std::vector<IPC::TradingSignalMessage> VolatilityArbitrageStrategy::generate_del
         
         if (vol_diff >= params_.vol_difference_threshold && confidence >= params_.confidence_threshold) {
             // Calculate Greeks for position sizing
-            Pricing::OptionGreeks greeks = pricer_.calculate_greeks(option);
             
             // Calculate Kelly position size
             double edge = vol_diff / market_iv;
@@ -663,13 +662,11 @@ double VolatilityArbitrageStrategy::calculate_portfolio_var(double confidence_le
     if (positions_.empty()) return 0.0;
     
     // Simplified VaR calculation using delta-normal method
-    double portfolio_value = 0.0;
     double portfolio_volatility = 0.0;
     
     for (const auto& pos_pair : positions_) {
         const auto& position = pos_pair.second;
         double position_value = position.quantity * position.current_price;
-        portfolio_value += position_value;
         
         double position_vol = 0.20;  // Default 20% volatility
         portfolio_volatility += std::pow(position_value * position_vol, 2);
