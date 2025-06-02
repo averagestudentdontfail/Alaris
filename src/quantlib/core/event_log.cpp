@@ -1,4 +1,5 @@
 #include "event_log.h"
+#include "time_type.h"
 #include <stdexcept>
 #include <iomanip>
 #include <cstring>
@@ -71,7 +72,7 @@ uint32_t EventLogger::calculate_data_checksum(const void* data, size_t size) con
 
 void EventLogger::write_log_entry(EventType type, const void* data_payload, size_t payload_size) {
     EventHeader header;
-    auto now = TimeTriggeredExecutor::Clock::now();
+    auto now = Timing::Clock::now();
     header.timestamp_ns = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count());
     header.sequence_number = current_sequence_number_++;
     header.event_type = type;
@@ -325,7 +326,7 @@ void EventReplayEngine::replay_loop(uint64_t start_sequence_num) {
     bool found_start_seq = (start_sequence_num == 0);
     bool first_event_after_skip = true;
     
-    replay_session_start_host_time_ = TimeTriggeredExecutor::Clock::now();
+    replay_session_start_host_time_ = Timing::Clock::now();
 
     while (is_replaying_.load(std::memory_order_acquire)) {
         while (is_paused_.load(std::memory_order_acquire) && is_replaying_.load(std::memory_order_acquire)) {
@@ -343,7 +344,7 @@ void EventReplayEngine::replay_loop(uint64_t start_sequence_num) {
             if (header.sequence_number >= start_sequence_num) {
                 found_start_seq = true;
                 first_event_after_skip = true;
-                replay_session_start_host_time_ = TimeTriggeredExecutor::Clock::now();
+                replay_session_start_host_time_ = Timing::Clock::now();
             } else {
                 continue;
             }
@@ -364,7 +365,7 @@ void EventReplayEngine::replay_loop(uint64_t start_sequence_num) {
             );
             
             TimePoint target_dispatch_host_time = replay_session_start_host_time_ + desired_host_time_for_event_ns;
-            TimePoint current_host_time = TimeTriggeredExecutor::Clock::now();
+            TimePoint current_host_time = Timing::Clock::now();
 
             if (target_dispatch_host_time > current_host_time) {
                 std::this_thread::sleep_until(target_dispatch_host_time);
