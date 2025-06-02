@@ -43,18 +43,12 @@ struct alignas(64) MarketDataMessage {
     uint32_t source_process_id;    // Source identifier
     
     // Padding to ensure exactly 64-byte cache line alignment
-    char padding[64 - (8 + 4 + 5*8 + 2*4 + 2*4)];
+    uint8_t padding[4];  // Fixed size padding to reach 64 bytes
+    
+    // Default constructor (trivially copyable)
+    MarketDataMessage() = default;
     
     // TTA-optimized constructor with minimal initialization overhead
-    MarketDataMessage() noexcept : 
-        timestamp_ns(0), symbol_id(0), bid(0.0), ask(0.0), 
-        underlying_price(0.0), bid_iv(0.0), ask_iv(0.0),
-        bid_size(0), ask_size(0), processing_sequence(0), source_process_id(0) {
-        // Zero-initialize padding for deterministic memory layout
-        std::memset(padding, 0, sizeof(padding));
-    }
-    
-    // TTA-optimized copy constructor (bounded execution time)
     MarketDataMessage(const MarketDataMessage& other) noexcept {
         std::memcpy(this, &other, sizeof(MarketDataMessage));
     }
@@ -83,6 +77,7 @@ struct alignas(64) MarketDataMessage {
     }
 };
 static_assert(sizeof(MarketDataMessage) == 64, "MarketDataMessage must be exactly 64 bytes for TTA cache alignment");
+static_assert(std::is_trivially_copyable_v<MarketDataMessage>, "MarketDataMessage must be trivially copyable");
 
 // Cache-aligned trading signal message for TTA deterministic execution
 struct alignas(64) TradingSignalMessage {
@@ -111,17 +106,10 @@ struct alignas(64) TradingSignalMessage {
     uint32_t processing_deadline_us; // Max processing time in microseconds
     
     // Padding to maintain 64-byte alignment
-    char padding[64 - (2*8 + 4 + 6*8 + 4 + 4*1 + 2*4)];
+    uint8_t padding[4];  // Fixed size padding to reach 64 bytes
     
-    // TTA-optimized constructor
-    TradingSignalMessage() noexcept :
-        timestamp_ns(0), expiry_timestamp_ns(0), symbol_id(0),
-        theoretical_price(0.0), market_price(0.0), implied_volatility(0.0),
-        forecast_volatility(0.0), confidence(0.0), expected_profit(0.0),
-        quantity(0), side(0), urgency(0), signal_type(0), model_source(0),
-        sequence_number(0), processing_deadline_us(1000) {  // Default 1ms deadline
-        std::memset(padding, 0, sizeof(padding));
-    }
+    // Default constructor (trivially copyable)
+    TradingSignalMessage() = default;
     
     // TTA-optimized copy operations
     TradingSignalMessage(const TradingSignalMessage& other) noexcept {
@@ -161,6 +149,7 @@ struct alignas(64) TradingSignalMessage {
     }
 };
 static_assert(sizeof(TradingSignalMessage) == 64, "TradingSignalMessage must be exactly 64 bytes for TTA cache alignment");
+static_assert(std::is_trivially_copyable_v<TradingSignalMessage>, "TradingSignalMessage must be trivially copyable");
 
 // Cache-aligned control message for TTA system coordination
 struct alignas(64) ControlMessage {
@@ -181,19 +170,13 @@ struct alignas(64) ControlMessage {
     uint64_t parameter2;
     
     // Variable data payload (32 bytes for TTA determinism)
-    char data[32];
+    uint8_t data[32];
     
-    // No padding needed - naturally aligns to 64 bytes
+    // Default constructor (trivially copyable)
+    ControlMessage() = default;
     
     // TTA-optimized constructors
-    ControlMessage() noexcept :
-        timestamp_ns(0), sequence_number(0), message_type(0),
-        source_process_id(0), target_process_id(0), priority(0),
-        value1(0.0), value2(0.0), parameter1(0), parameter2(0) {
-        std::memset(data, 0, sizeof(data));
-    }
-    
-    explicit ControlMessage(uint32_t type) noexcept :
+    ControlMessage(uint32_t type) noexcept :
         timestamp_ns(0), sequence_number(0), message_type(type),
         source_process_id(0), target_process_id(0), priority(0),
         value1(0.0), value2(0.0), parameter1(0), parameter2(0) {
@@ -241,6 +224,7 @@ struct alignas(64) ControlMessage {
     }
 };
 static_assert(sizeof(ControlMessage) == 64, "ControlMessage must be exactly 64 bytes for TTA cache alignment");
+static_assert(std::is_trivially_copyable_v<ControlMessage>, "ControlMessage must be trivially copyable");
 
 // Message types for TTA control channel operations
 enum class ControlMessageType : uint32_t {

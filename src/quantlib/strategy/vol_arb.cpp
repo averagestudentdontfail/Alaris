@@ -89,7 +89,7 @@ void VolatilityArbitrageStrategy::on_market_data(const IPC::MarketDataMessage& m
         position.current_price = (market_data.bid + market_data.ask) / 2.0;
         position.current_implied_vol = (market_data.bid_iv + market_data.ask_iv) / 2.0;
         position.unrealized_pnl = position.quantity * (position.current_price - position.entry_price);
-        position.last_update_timestamp = market_data.timestamp;
+        position.last_update_timestamp = market_data.timestamp_ns;
         
         // Update max unrealized PnL for trailing stops
         if (position.unrealized_pnl > position.max_unrealized_pnl) {
@@ -292,7 +292,7 @@ std::vector<IPC::TradingSignalMessage> VolatilityArbitrageStrategy::generate_del
             
             if (var_adjusted_size > 0) {
                 IPC::TradingSignalMessage signal;
-                signal.timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                signal.timestamp_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
                     std::chrono::high_resolution_clock::now().time_since_epoch()).count();
                 signal.symbol_id = option.symbol_id;
                 signal.theoretical_price = pricer_.calculate_option_price(option);
@@ -374,7 +374,7 @@ std::vector<IPC::TradingSignalMessage> VolatilityArbitrageStrategy::generate_gam
                         double position_size = std::min(100.0, 10000.0 / market_mid);
                         
                         IPC::TradingSignalMessage signal;
-                        signal.timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                        signal.timestamp_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
                             std::chrono::high_resolution_clock::now().time_since_epoch()).count();
                         signal.symbol_id = option.symbol_id;
                         signal.theoretical_price = greeks.price;
@@ -629,7 +629,7 @@ void VolatilityArbitrageStrategy::emergency_liquidation(std::vector<IPC::Trading
         
         if (position.state == EnhancedPosition::State::ACTIVE) {
             IPC::TradingSignalMessage exit_signal;
-            exit_signal.timestamp = current_time;
+            exit_signal.timestamp_ns = current_time;
             exit_signal.symbol_id = position.symbol_id;
             exit_signal.quantity = static_cast<int32_t>(-position.quantity);  // Opposite of current position
             exit_signal.side = (position.quantity > 0) ? 1 : 0;  // Sell if long, buy if short
@@ -720,7 +720,7 @@ void VolatilityArbitrageStrategy::analyze_volatility_surface(
         
         point.model_vol = vol_forecaster_->generate_ensemble_forecast(1, returns);
         point.arbitrage_score = std::abs(point.implied_vol - point.model_vol) / point.implied_vol;
-        point.timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(
+        point.timestamp_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
             std::chrono::high_resolution_clock::now().time_since_epoch()).count();
         
         vol_surface_analysis_.push_back(point);
@@ -797,7 +797,7 @@ void VolatilityArbitrageStrategy::apply_stop_losses(std::vector<IPC::TradingSign
         // Check stop loss
         if (position.unrealized_pnl < -loss_threshold) {
             IPC::TradingSignalMessage exit_signal;
-            exit_signal.timestamp = current_time;
+            exit_signal.timestamp_ns = current_time;
             exit_signal.symbol_id = position.symbol_id;
             exit_signal.quantity = static_cast<int32_t>(-position.quantity);
             exit_signal.side = (position.quantity > 0) ? 1 : 0;
@@ -817,7 +817,7 @@ void VolatilityArbitrageStrategy::apply_stop_losses(std::vector<IPC::TradingSign
             position.unrealized_pnl < (position.max_unrealized_pnl - trailing_threshold)) {
             
             IPC::TradingSignalMessage exit_signal;
-            exit_signal.timestamp = current_time;
+            exit_signal.timestamp_ns = current_time;
             exit_signal.symbol_id = position.symbol_id;
             exit_signal.quantity = static_cast<int32_t>(-position.quantity);
             exit_signal.side = (position.quantity > 0) ? 1 : 0;
@@ -847,7 +847,7 @@ void VolatilityArbitrageStrategy::apply_profit_targets(std::vector<IPC::TradingS
         
         if (position.unrealized_pnl > profit_threshold) {
             IPC::TradingSignalMessage exit_signal;
-            exit_signal.timestamp = current_time;
+            exit_signal.timestamp_ns = current_time;
             exit_signal.symbol_id = position.symbol_id;
             exit_signal.quantity = static_cast<int32_t>(-position.quantity);
             exit_signal.side = (position.quantity > 0) ? 1 : 0;
