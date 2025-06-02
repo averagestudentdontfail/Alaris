@@ -21,207 +21,67 @@ namespace Alaris::IPC {
 
 // Cache-aligned market data message for TTA deterministic processing
 struct alignas(64) MarketDataMessage {
-    // Timestamp in nanoseconds since epoch (TTA timing reference)
-    uint64_t timestamp_ns;
-    
-    // Symbol identifier (mapped to integer for TTA efficiency) 
-    uint32_t symbol_id;
-    
-    // Core pricing data (8-byte aligned for optimal access)
-    double bid;
-    double ask;
-    double underlying_price;
-    double bid_iv;
-    double ask_iv;
-    
-    // Size information
-    uint32_t bid_size;
-    uint32_t ask_size;
-    
-    // TTA performance tracking
-    uint32_t processing_sequence;  // For TTA ordering verification
-    uint32_t source_process_id;    // Source identifier
-    
-    // Padding to ensure exactly 64-byte cache line alignment
-    uint8_t padding[4];  // Fixed size padding to reach 64 bytes
-    
-    // Default constructor (trivially copyable)
+    uint64_t timestamp_ns;      // 8 bytes
+    uint32_t symbol_id;         // 4 bytes
+    double bid;                 // 8 bytes
+    double ask;                 // 8 bytes
+    double underlying_price;    // 8 bytes
+    double bid_iv;             // 8 bytes
+    double ask_iv;             // 8 bytes
+    uint32_t bid_size;         // 4 bytes
+    uint32_t ask_size;         // 4 bytes
+    uint32_t processing_sequence; // 4 bytes
+    uint32_t source_process_id;   // 4 bytes
+    uint8_t padding[4];        // 4 bytes padding to reach 64 bytes
+
+    // Make it trivially copyable by removing custom constructors
     MarketDataMessage() = default;
-    
-    // TTA-optimized constructor with minimal initialization overhead
-    MarketDataMessage(const MarketDataMessage& other) noexcept {
-        std::memcpy(this, &other, sizeof(MarketDataMessage));
-    }
-    
-    // TTA-optimized assignment (bounded execution time)
-    MarketDataMessage& operator=(const MarketDataMessage& other) noexcept {
-        if (this != &other) {
-            std::memcpy(this, &other, sizeof(MarketDataMessage));
-        }
-        return *this;
-    }
-    
-    // TTA validation for data integrity
-    bool is_valid() const noexcept {
-        return timestamp_ns > 0 && 
-               symbol_id > 0 && 
-               bid >= 0.0 && ask >= 0.0 && 
-               bid <= ask && 
-               underlying_price > 0.0;
-    }
-    
-    // TTA-optimized timestamp setting
-    void set_timestamp_now() noexcept {
-        timestamp_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
-            Core::Timing::Clock::now().time_since_epoch()).count();
-    }
 };
 static_assert(sizeof(MarketDataMessage) == 64, "MarketDataMessage must be exactly 64 bytes for TTA cache alignment");
 static_assert(std::is_trivially_copyable_v<MarketDataMessage>, "MarketDataMessage must be trivially copyable");
 
 // Cache-aligned trading signal message for TTA deterministic execution
 struct alignas(64) TradingSignalMessage {
-    // TTA timing information
-    uint64_t timestamp_ns;
-    uint64_t expiry_timestamp_ns;  // When signal expires for TTA scheduling
-    
-    // Trading signal data
-    uint32_t symbol_id;
-    double theoretical_price;
-    double market_price;
-    double implied_volatility;
-    double forecast_volatility;
-    double confidence;
-    double expected_profit;        // For TTA decision making
-    
-    // Position and execution data
-    int32_t quantity;
-    uint8_t side;           // 0=buy, 1=sell
-    uint8_t urgency;        // 0-255, higher = more urgent (TTA priority)
-    uint8_t signal_type;    // 0=entry, 1=exit, 2=adjustment
-    uint8_t model_source;   // Which volatility model generated this
-    
-    // TTA execution tracking
-    uint32_t sequence_number;      // For TTA ordering
-    uint32_t processing_deadline_us; // Max processing time in microseconds
-    
-    // Padding to maintain 64-byte alignment
-    uint8_t padding[4];  // Fixed size padding to reach 64 bytes
-    
-    // Default constructor (trivially copyable)
+    uint64_t timestamp_ns;          // 8 bytes
+    uint64_t expiry_timestamp_ns;   // 8 bytes
+    uint32_t symbol_id;             // 4 bytes
+    double theoretical_price;       // 8 bytes
+    double market_price;            // 8 bytes
+    double implied_volatility;      // 8 bytes
+    double forecast_volatility;     // 8 bytes
+    double confidence;              // 8 bytes
+    double expected_profit;         // 8 bytes
+    int32_t quantity;              // 4 bytes
+    uint8_t side;                  // 1 byte
+    uint8_t urgency;               // 1 byte
+    uint8_t signal_type;           // 1 byte
+    uint8_t model_source;          // 1 byte
+    uint32_t sequence_number;       // 4 bytes
+    uint32_t processing_deadline_us; // 4 bytes
+    uint8_t padding[4];            // 4 bytes padding to reach 64 bytes
+
+    // Make it trivially copyable by removing custom constructors
     TradingSignalMessage() = default;
-    
-    // TTA-optimized copy operations
-    TradingSignalMessage(const TradingSignalMessage& other) noexcept {
-        std::memcpy(this, &other, sizeof(TradingSignalMessage));
-    }
-    
-    TradingSignalMessage& operator=(const TradingSignalMessage& other) noexcept {
-        if (this != &other) {
-            std::memcpy(this, &other, sizeof(TradingSignalMessage));
-        }
-        return *this;
-    }
-    
-    // TTA validation
-    bool is_valid() const noexcept {
-        return timestamp_ns > 0 && 
-               symbol_id > 0 && 
-               confidence >= 0.0 && confidence <= 1.0 &&
-               (side == 0 || side == 1) &&
-               quantity != 0;
-    }
-    
-    // TTA deadline checking
-    bool is_expired() const noexcept {
-        const auto now_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
-            Core::Timing::Clock::now().time_since_epoch()).count();
-        return expiry_timestamp_ns > 0 && now_ns > expiry_timestamp_ns;
-    }
-    
-    // TTA urgency calculation based on multiple factors
-    void calculate_tta_urgency() noexcept {
-        // Combine confidence, expected profit, and time sensitivity
-        const double time_factor = is_expired() ? 0.0 : 1.0;
-        const double profit_factor = std::max(0.0, std::min(1.0, expected_profit / 0.1)); // Normalize to 10% profit
-        const double combined_urgency = confidence * profit_factor * time_factor;
-        urgency = static_cast<uint8_t>(combined_urgency * 255.0);
-    }
 };
 static_assert(sizeof(TradingSignalMessage) == 64, "TradingSignalMessage must be exactly 64 bytes for TTA cache alignment");
 static_assert(std::is_trivially_copyable_v<TradingSignalMessage>, "TradingSignalMessage must be trivially copyable");
 
 // Cache-aligned control message for TTA system coordination
 struct alignas(64) ControlMessage {
-    // TTA timing and identification
-    uint64_t timestamp_ns;
-    uint64_t sequence_number;
-    
-    // Control message data
-    uint32_t message_type;
-    uint32_t source_process_id;
-    uint32_t target_process_id;  // 0 = broadcast
-    uint32_t priority;           // TTA priority level
-    
-    // Parameter data for control operations
-    double value1;
-    double value2;
-    uint64_t parameter1;
-    uint64_t parameter2;
-    
-    // Variable data payload (32 bytes for TTA determinism)
-    uint8_t data[32];
-    
-    // Default constructor (trivially copyable)
+    uint64_t timestamp_ns;      // 8 bytes
+    uint64_t sequence_number;   // 8 bytes
+    uint32_t message_type;      // 4 bytes
+    uint32_t source_process_id; // 4 bytes
+    uint32_t target_process_id; // 4 bytes
+    uint32_t priority;          // 4 bytes
+    double value1;              // 8 bytes
+    double value2;              // 8 bytes
+    uint64_t parameter1;        // 8 bytes
+    uint64_t parameter2;        // 8 bytes
+    uint8_t data[8];           // 8 bytes (reduced from 32 to fit in 64 bytes)
+
+    // Make it trivially copyable by removing custom constructors
     ControlMessage() = default;
-    
-    // TTA-optimized constructors
-    ControlMessage(uint32_t type) noexcept :
-        timestamp_ns(0), sequence_number(0), message_type(type),
-        source_process_id(0), target_process_id(0), priority(0),
-        value1(0.0), value2(0.0), parameter1(0), parameter2(0) {
-        std::memset(data, 0, sizeof(data));
-    }
-    
-    // TTA-optimized copy operations
-    ControlMessage(const ControlMessage& other) noexcept {
-        std::memcpy(this, &other, sizeof(ControlMessage));
-    }
-    
-    ControlMessage& operator=(const ControlMessage& other) noexcept {
-        if (this != &other) {
-            std::memcpy(this, &other, sizeof(ControlMessage));
-        }
-        return *this;
-    }
-    
-    // TTA validation
-    bool is_valid() const noexcept {
-        return message_type > 0 && timestamp_ns > 0;
-    }
-    
-    // TTA-optimized string data setting (bounded execution time)
-    void set_data_string(const char* str) noexcept {
-        if (str) {
-            size_t len = 0;
-            // Bounded string length calculation
-            while (len < sizeof(data) - 1 && str[len] != '\0') {
-                ++len;
-            }
-            std::memcpy(data, str, len);
-            data[len] = '\0';
-            // Zero remaining bytes for deterministic memory layout
-            if (len < sizeof(data) - 1) {
-                std::memset(data + len + 1, 0, sizeof(data) - len - 1);
-            }
-        }
-    }
-    
-    // TTA timestamp utilities
-    void set_timestamp_now() noexcept {
-        timestamp_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
-            Core::Timing::Clock::now().time_since_epoch()).count();
-    }
 };
 static_assert(sizeof(ControlMessage) == 64, "ControlMessage must be exactly 64 bytes for TTA cache alignment");
 static_assert(std::is_trivially_copyable_v<ControlMessage>, "ControlMessage must be trivially copyable");

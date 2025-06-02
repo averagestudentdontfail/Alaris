@@ -720,7 +720,7 @@ void VolatilityArbitrageStrategy::analyze_volatility_surface(
         
         point.model_vol = vol_forecaster_->generate_ensemble_forecast(1, returns);
         point.arbitrage_score = std::abs(point.implied_vol - point.model_vol) / point.implied_vol;
-        point.timestamp_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+        point.timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(
             std::chrono::high_resolution_clock::now().time_since_epoch()).count();
         
         vol_surface_analysis_.push_back(point);
