@@ -354,10 +354,19 @@ private:
         
     void send_heartbeat() {
         if (!shared_memory_manager_ || !strategy_) return;
-        IPC::ControlMessage heartbeat_msg(static_cast<uint32_t>(IPC::ControlMessageType::HEARTBEAT));
-        heartbeat_msg.timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                                  std::chrono::system_clock::now().time_since_epoch()).count();
+        
+        // FIXED: Use default constructor and set fields manually
+        IPC::ControlMessage heartbeat_msg;
+        heartbeat_msg.message_type = static_cast<uint32_t>(IPC::ControlMessageType::HEARTBEAT);
+        
+        // FIXED: Use correct field name 'timestamp_ns' instead of 'timestamp'
+        heartbeat_msg.timestamp_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                     std::chrono::system_clock::now().time_since_epoch()).count();
         heartbeat_msg.value1 = static_cast<double>(cycles_executed_);
+        heartbeat_msg.sequence_number = 0; // Set appropriate sequence number
+        heartbeat_msg.source_process_id = 1; // Set appropriate process ID
+        heartbeat_msg.target_process_id = 0; // Broadcast
+        heartbeat_msg.priority = static_cast<uint32_t>(IPC::TTAPriority::LOW);
         
         shared_memory_manager_->publish_control(heartbeat_msg);
     }
