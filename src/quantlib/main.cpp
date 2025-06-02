@@ -183,21 +183,37 @@ private:
             }
         }
         
-        // Memory Locking (from config)
+        // Memory Locking (from config) - More conservative approach
         if (config_["process"]["memory_lock"] && config_["process"]["memory_lock"].as<bool>(true)) {
-            if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
-                perror("Warning: Failed to lock memory (mlockall)");
+            // Try MCL_CURRENT first (lock current pages)
+            if (mlockall(MCL_CURRENT) != 0) {
+                perror("Warning: Failed to lock current memory pages (mlockall MCL_CURRENT)");
+                // Continue without memory locking
             } else {
-                std::cout << "Memory locking (mlockall) enabled." << std::endl;
+                std::cout << "Memory locking (mlockall MCL_CURRENT) enabled." << std::endl;
+                
+                // Only try MCL_FUTURE if MCL_CURRENT succeeded
+                if (mlockall(MCL_FUTURE) != 0) {
+                    perror("Warning: Failed to lock future memory pages (mlockall MCL_FUTURE)");
+                    // Continue with only current pages locked
+                } else {
+                    std::cout << "Memory locking (mlockall MCL_FUTURE) enabled." << std::endl;
+                }
             }
         }
     }
     
     void initialize_components() {
-        // Memory Pool
-        size_t pool_size_mb = config_["memory"]["pool_size_mb"].as<size_t>(64);
-        mem_pool_ = std::make_unique<Core::MemoryPool>(pool_size_mb * 1024 * 1024);
-        allocator_ = std::make_unique<Core::PerCycleAllocator>(*mem_pool_);
+        // Memory Pool - More conservative size
+        size_t pool_size_mb = config_["memory"]["pool_size_mb"].as<size_t>(32);  // Reduced from 64MB to 32MB
+        try {
+            mem_pool_ = std::make_unique<Core::MemoryPool>(pool_size_mb * 1024 * 1024);
+            allocator_ = std::make_unique<Core::PerCycleAllocator>(*mem_pool_);
+        } catch (const std::bad_alloc& e) {
+            std::cerr << "Failed to initialize memory pool: " << e.what() << std::endl;
+            std::cerr << "Try reducing pool_size_mb in config or check system memory limits" << std::endl;
+            throw;
+        }
         
         // Event Logger
         std::string log_file = config_["logging"]["file"].as<std::string>("/var/log/alaris/quantlib.log");
