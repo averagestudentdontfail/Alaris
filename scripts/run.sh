@@ -373,7 +373,7 @@ main() {
     log_step "Starting Lean process (market data & execution engine)..."
 
     # Use the new output path for Lean launcher
-    local lean_launcher_path="build/lean/release/QuantConnect.Lean.Launcher.dll"
+    local lean_launcher_path="build/external/lean/release/QuantConnect.Lean.Launcher.dll"
     if [[ ! -f "$lean_launcher_path" ]]; then
         log_error "Lean launcher not found at $lean_launcher_path"
         log_error "You may need to run ./scripts/build.sh first."
