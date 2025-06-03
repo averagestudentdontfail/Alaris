@@ -17,7 +17,6 @@ using QuantConnect.Lean.Engine.DataFeeds;
 using QuantConnect.Lean.Engine.Setup;
 using QuantConnect.Data.Auxiliary;
 using QuantConnect.Data;
-using QuantConnect.Composer;
 
 namespace Alaris
 {
@@ -123,7 +122,7 @@ namespace Alaris
                         Console.WriteLine($"Starting backtest for {symbol} from {startDate} to {endDate}");
 
                         // Use Lean's built-in handler factories
-                        var composer = QuantConnect.Composer.Instance;
+                        var composer = QuantConnect.Util.Composer.Instance;
                         var systemHandlers = QuantConnect.Lean.Engine.LeanEngineSystemHandlers.FromConfiguration(composer);
                         var algorithmHandlers = QuantConnect.Lean.Engine.LeanEngineAlgorithmHandlers.FromConfiguration(composer);
 
