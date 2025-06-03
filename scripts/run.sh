@@ -19,6 +19,86 @@ log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 
+# Default values
+SYMBOL="SPY"
+MODE="paper"
+STRATEGY="deltaneutral"
+START_DATE=""
+END_DATE=""
+
+# Help message
+show_help() {
+    echo "Usage: $0 [options]"
+    echo "Options:"
+    echo "  -s, --symbol SYMBOL     Trading symbol (default: SPY)"
+    echo "  -m, --mode MODE         Trading mode: live, paper, or backtest (default: paper)"
+    echo "  -t, --strategy STRAT    Strategy mode: deltaneutral, gammascalping, volatilitytiming, or relativevalue (default: deltaneutral)"
+    echo "  -sd, --start-date DATE  Backtest start date (YYYY-MM-DD)"
+    echo "  -ed, --end-date DATE    Backtest end date (YYYY-MM-DD)"
+    echo "  -h, --help              Show this help message"
+    exit 0
+}
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -s|--symbol)
+            SYMBOL="$2"
+            shift 2
+            ;;
+        -m|--mode)
+            MODE="$2"
+            shift 2
+            ;;
+        -t|--strategy)
+            STRATEGY="$2"
+            shift 2
+            ;;
+        -sd|--start-date)
+            START_DATE="$2"
+            shift 2
+            ;;
+        -ed|--end-date)
+            END_DATE="$2"
+            shift 2
+            ;;
+        -h|--help)
+            show_help
+            ;;
+        *)
+            echo "Unknown option: $1"
+            show_help
+            ;;
+    esac
+done
+
+# Validate mode
+if [[ ! "$MODE" =~ ^(live|paper|backtest)$ ]]; then
+    echo "Error: Invalid mode. Must be one of: live, paper, backtest"
+    exit 1
+fi
+
+# Validate strategy
+if [[ ! "$STRATEGY" =~ ^(deltaneutral|gammascalping|volatilitytiming|relativevalue)$ ]]; then
+    echo "Error: Invalid strategy. Must be one of: deltaneutral, gammascalping, volatilitytiming, relativevalue"
+    exit 1
+fi
+
+# Validate dates for backtest mode
+if [[ "$MODE" == "backtest" ]]; then
+    if [[ -z "$START_DATE" || -z "$END_DATE" ]]; then
+        echo "Error: Start date and end date are required for backtest mode"
+        exit 1
+    fi
+    
+    # Validate date format
+    date_regex="^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    if [[ ! "$START_DATE" =~ $date_regex ]] || [[ ! "$END_DATE" =~ $date_regex ]]; then
+        echo "Error: Dates must be in YYYY-MM-DD format"
+        exit 1
+    fi
+fi
+
 # Display connection information
 echo "=== IB Gateway Connection Diagnostics ==="
 log_info "Using WSL2 host.docker.internal for Windows connection"
@@ -93,4 +173,32 @@ trap cleanup INT TERM
 
 # Wait for processes
 log_info "Alaris system is running. Press Ctrl+C to stop."
-wait 
+wait
+
+# Build command
+CMD="dotnet run --project src/csharp/Alaris.csproj"
+
+# Add parameters
+CMD="$CMD --symbol $SYMBOL"
+CMD="$CMD --mode $MODE"
+CMD="$CMD --strategy $STRATEGY"
+
+if [[ "$MODE" == "backtest" ]]; then
+    CMD="$CMD --start-date $START_DATE"
+    CMD="$CMD --end-date $END_DATE"
+fi
+
+# Print configuration
+echo "Starting Alaris with configuration:"
+echo "Symbol: $SYMBOL"
+echo "Mode: $MODE"
+echo "Strategy: $STRATEGY"
+if [[ "$MODE" == "backtest" ]]; then
+    echo "Start date: $START_DATE"
+    echo "End date: $END_DATE"
+fi
+echo
+
+# Run the algorithm
+echo "Executing: $CMD"
+eval $CMD 

@@ -1,4 +1,4 @@
-// src/csharp/Algorithm/DeterministicVolArbitrageAlgorithm.cs
+// src/csharp/Algorithm/ArbitrageAlgorithm.cs
 using QuantConnect;
 using QuantConnect.Algorithm;
 using QuantConnect.Data;
@@ -12,14 +12,24 @@ using System.Collections.Generic;
 using System.Linq;
 using Alaris.IPC;
 using Alaris.Monitoring;
+using QuantConnect.Indicators;
+using QuantConnect.Statistics;
+using QuantConnect.Logging;
+using System.Threading.Tasks;
 
 namespace Alaris.Algorithm
 {
-    public class DeterministicVolArbitrageAlgorithm : QCAlgorithm
+    public class ArbitrageAlgorithm : QCAlgorithm
     {
         private SharedMemoryBridge? _sharedMemory;
         private PerformanceMonitor? _performanceMonitor;
         private GCOptimizer? _gcOptimizer;
+        private string _symbol = "SPY";  // Default symbol
+        private StrategyMode _strategyMode = StrategyMode.DeltaNeutral;
+        private MarketRegime _currentRegime = MarketRegime.MediumVol;
+        private bool _isInitialized = false;
+        private DateTime _lastRegimeUpdate = DateTime.MinValue;
+        private readonly TimeSpan _regimeUpdateInterval = TimeSpan.FromMinutes(15);
 
         // Algorithm configuration
         private readonly Dictionary<string, uint> _symbolToId = new Dictionary<string, uint>();
@@ -40,17 +50,104 @@ namespace Alaris.Algorithm
         private int _ordersPlaced = 0;
         private int _successfulTrades = 0;
 
+        // Strategy-specific parameters
+        private readonly Dictionary<StrategyMode, StrategyConfig> _strategyConfigs = new()
+        {
+            {
+                StrategyMode.DeltaNeutral,
+                new StrategyConfig
+                {
+                    MaxPortfolioExposure = 0.2m,
+                    DeltaThreshold = 0.1m,
+                    GammaThreshold = 0.05m,
+                    VegaThreshold = 0.15m,
+                    ThetaThreshold = -0.1m,
+                    VolThreshold = 0.2m,
+                    MaxDrawdown = 0.1m,
+                    MaxPositionSize = 100,
+                    MinDaysToExpiry = 5,
+                    MaxDaysToExpiry = 45,
+                    RebalanceFrequency = TimeSpan.FromHours(4),
+                    HedgeFrequency = TimeSpan.FromHours(1)
+                }
+            },
+            {
+                StrategyMode.GammaScalping,
+                new StrategyConfig
+                {
+                    MaxPortfolioExposure = 0.15m,
+                    DeltaThreshold = 0.05m,
+                    GammaThreshold = 0.1m,
+                    VegaThreshold = 0.1m,
+                    ThetaThreshold = -0.05m,
+                    VolThreshold = 0.15m,
+                    MaxDrawdown = 0.08m,
+                    MaxPositionSize = 50,
+                    MinDaysToExpiry = 1,
+                    MaxDaysToExpiry = 30,
+                    RebalanceFrequency = TimeSpan.FromHours(2),
+                    HedgeFrequency = TimeSpan.FromMinutes(30)
+                }
+            },
+            {
+                StrategyMode.VolatilityTiming,
+                new StrategyConfig
+                {
+                    MaxPortfolioExposure = 0.25m,
+                    DeltaThreshold = 0.15m,
+                    GammaThreshold = 0.08m,
+                    VegaThreshold = 0.2m,
+                    ThetaThreshold = -0.15m,
+                    VolThreshold = 0.25m,
+                    MaxDrawdown = 0.12m,
+                    MaxPositionSize = 75,
+                    MinDaysToExpiry = 10,
+                    MaxDaysToExpiry = 60,
+                    RebalanceFrequency = TimeSpan.FromHours(6),
+                    HedgeFrequency = TimeSpan.FromHours(2)
+                }
+            },
+            {
+                StrategyMode.RelativeValue,
+                new StrategyConfig
+                {
+                    MaxPortfolioExposure = 0.3m,
+                    DeltaThreshold = 0.2m,
+                    GammaThreshold = 0.12m,
+                    VegaThreshold = 0.25m,
+                    ThetaThreshold = -0.2m,
+                    VolThreshold = 0.3m,
+                    MaxDrawdown = 0.15m,
+                    MaxPositionSize = 100,
+                    MinDaysToExpiry = 15,
+                    MaxDaysToExpiry = 90,
+                    RebalanceFrequency = TimeSpan.FromHours(8),
+                    HedgeFrequency = TimeSpan.FromHours(4)
+                }
+            }
+        };
+
         public override void Initialize()
         {
             try
             {
-                SetStartDate(2024, 1, 1);
-                SetEndDate(2024, 12, 31);
-                SetCash(1000000);
+                // Load configuration from environment
+                _symbol = Environment.GetEnvironmentVariable("ALARIS_SYMBOL") ?? "SPY";
+                var strategyModeStr = Environment.GetEnvironmentVariable("ALARIS_STRATEGY")?.ToLower() ?? "deltaneutral";
+                _strategyMode = strategyModeStr switch
+                {
+                    "gammascalping" => StrategyMode.GammaScalping,
+                    "volatilitytiming" => StrategyMode.VolatilityTiming,
+                    "relativevalue" => StrategyMode.RelativeValue,
+                    _ => StrategyMode.DeltaNeutral
+                };
+
+                // Set up algorithm parameters
+                SetStartDate(2018, 1, 1);
+                SetEndDate(DateTime.Now);
+                SetCash(100000);
                 _startingCash = Portfolio.Cash;
                 _dailyStartingValue = Portfolio.TotalPortfolioValue;
-
-                // Configure Interactive Brokers brokerage
                 SetBrokerageModel(BrokerageName.InteractiveBrokersBrokerage, AccountType.Margin);
 
                 // Initialize universe
@@ -62,15 +159,23 @@ namespace Alaris.Algorithm
                 _sharedMemory.ControlMessageReceived += OnControlMessageReceived;
 
                 // Initialize performance monitoring
-                _performanceMonitor = new PerformanceMonitor();
+                _performanceMonitor = new PerformanceMonitor(_symbol, _strategyMode);
 
                 // Initialize GC optimization
                 _gcOptimizer = new GCOptimizer();
 
-                // Send start trading signal to QuantLib process
-                _sharedMemory.SendControlMessage(ControlMessageType.StartTrading);
+                // Schedule regular tasks
+                Schedule.On(DateRules.EveryDay(), TimeRules.Every(TimeSpan.FromMinutes(1)), () =>
+                {
+                    if (_isInitialized)
+                    {
+                        UpdateMarketRegime();
+                        RebalancePortfolio();
+                    }
+                });
 
-                Log("Alaris Volatility Arbitrage Algorithm initialized successfully");
+                _isInitialized = true;
+                Log.Trace($"Alaris algorithm initialized for {_symbol} in {_strategyMode} mode");
             }
             catch (Exception ex)
             {
@@ -104,6 +209,8 @@ namespace Alaris.Algorithm
 
         public override void OnData(Slice data)
         {
+            if (!_isInitialized) return;
+
             try
             {
                 _performanceMonitor?.StartMeasurement("OnData");
@@ -285,6 +392,8 @@ namespace Alaris.Algorithm
         {
             try
             {
+                _performanceMonitor?.OnOrderEvent(orderEvent);
+                
                 if (orderEvent.Status == OrderStatus.Filled)
                 {
                     _successfulTrades++;
@@ -403,6 +512,191 @@ namespace Alaris.Algorithm
             }
         }
 
+        private void UpdateMarketRegime()
+        {
+            if (Time - _lastRegimeUpdate < _regimeUpdateInterval)
+                return;
+
+            try
+            {
+                var realizedVol = CalculateRealizedVolatility();
+                var impliedVol = CalculateImpliedVolatility();
+                var skew = CalculateVolatilitySkew();
+                var termStructure = CalculateVolatilityTermStructure();
+
+                var regimeMessage = new MarketRegimeMessage
+                {
+                    Timestamp = Time,
+                    RealizedVolatility = realizedVol,
+                    ImpliedVolatility = impliedVol,
+                    VolatilitySkew = skew,
+                    TermStructure = termStructure,
+                    MarketRegime = DetermineMarketRegime(realizedVol, impliedVol, skew, termStructure)
+                };
+
+                _sharedMemory?.SendMarketRegime(regimeMessage);
+                _currentRegime = regimeMessage.MarketRegime;
+                _lastRegimeUpdate = Time;
+
+                Log.Trace($"Market regime updated: {_currentRegime} at {Time}");
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"Error updating market regime: {ex.Message}");
+            }
+        }
+
+        private MarketRegime DetermineMarketRegime(decimal realizedVol, decimal impliedVol, decimal skew, decimal[] termStructure)
+        {
+            // Implement sophisticated regime detection logic
+            var volRatio = impliedVol / realizedVol;
+            var volSpread = impliedVol - realizedVol;
+            var skewChange = skew - _performanceMonitor?.GetHistoricalSkew() ?? 0;
+            var termStructureChange = termStructure[0] - termStructure[^1];
+
+            return (volRatio, volSpread, skewChange, termStructureChange) switch
+            {
+                (var ratio, _, _, _) when ratio < 0.8m => MarketRegime.LowVol,
+                (var ratio, _, _, _) when ratio > 1.2m => MarketRegime.HighVol,
+                (_, var spread, _, _) when Math.Abs(spread) > 0.05m => MarketRegime.Transitioning,
+                _ => MarketRegime.MediumVol
+            };
+        }
+
+        private void RebalancePortfolio()
+        {
+            try
+            {
+                var config = _strategyConfigs[_strategyMode];
+                var currentExposure = Portfolio.TotalPortfolioValue > 0 
+                    ? Math.Abs(Portfolio.TotalHoldingsValue / Portfolio.TotalPortfolioValue)
+                    : 0;
+
+                if (currentExposure > config.MaxPortfolioExposure)
+                {
+                    Log.Trace($"Reducing exposure from {currentExposure:P2} to {config.MaxPortfolioExposure:P2}");
+                    ReduceExposure();
+                }
+
+                // Strategy-specific rebalancing
+                switch (_strategyMode)
+                {
+                    case StrategyMode.DeltaNeutral:
+                        RebalanceDeltaNeutral();
+                        break;
+                    case StrategyMode.GammaScalping:
+                        RebalanceGammaScalping();
+                        break;
+                    case StrategyMode.VolatilityTiming:
+                        RebalanceVolatilityTiming();
+                        break;
+                    case StrategyMode.RelativeValue:
+                        RebalanceRelativeValue();
+                        break;
+                }
+
+                _performanceMonitor?.UpdateMetrics(Portfolio);
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"Error rebalancing portfolio: {ex.Message}");
+            }
+        }
+
+        private void RebalanceDeltaNeutral()
+        {
+            var config = _strategyConfigs[StrategyMode.DeltaNeutral];
+            var portfolioDelta = Portfolio.TotalHoldingsValue > 0
+                ? Portfolio.TotalHoldingsValue * (decimal)Portfolio.TotalHoldingsValue
+                : 0;
+
+            if (Math.Abs(portfolioDelta) > config.DeltaThreshold)
+            {
+                var hedgeAmount = -portfolioDelta;
+                var hedgeOrder = MarketOrder(_symbol, (int)hedgeAmount);
+                Log.Trace($"Delta hedging: {hedgeAmount} shares of {_symbol}");
+            }
+        }
+
+        private void RebalanceGammaScalping()
+        {
+            var config = _strategyConfigs[StrategyMode.GammaScalping];
+            var portfolioGamma = CalculatePortfolioGamma();
+
+            if (Math.Abs(portfolioGamma) > config.GammaThreshold)
+            {
+                // Implement gamma scalping logic
+                var underlyingPrice = Securities[_symbol].Price;
+                var targetGamma = config.GammaThreshold * Math.Sign(portfolioGamma);
+                var adjustment = CalculateGammaAdjustment(portfolioGamma, targetGamma, underlyingPrice);
+                
+                if (Math.Abs(adjustment) > 0)
+                {
+                    var order = MarketOrder(_symbol, (int)adjustment);
+                    Log.Trace($"Gamma scalping: {adjustment} shares of {_symbol}");
+                }
+            }
+        }
+
+        private void RebalanceVolatilityTiming()
+        {
+            var config = _strategyConfigs[StrategyMode.VolatilityTiming];
+            var realizedVol = CalculateRealizedVolatility();
+            var impliedVol = CalculateImpliedVolatility();
+            var volRatio = impliedVol / realizedVol;
+
+            if (volRatio > 1.2m)
+            {
+                // High implied vol relative to realized - sell volatility
+                var vegaExposure = CalculatePortfolioVega();
+                if (vegaExposure < -config.VegaThreshold)
+                {
+                    ReduceVegaExposure();
+                }
+            }
+            else if (volRatio < 0.8m)
+            {
+                // Low implied vol relative to realized - buy volatility
+                var vegaExposure = CalculatePortfolioVega();
+                if (vegaExposure > config.VegaThreshold)
+                {
+                    IncreaseVegaExposure();
+                }
+            }
+        }
+
+        private void RebalanceRelativeValue()
+        {
+            var config = _strategyConfigs[StrategyMode.RelativeValue];
+            var skew = CalculateVolatilitySkew();
+            var termStructure = CalculateVolatilityTermStructure();
+
+            // Implement relative value trading based on skew and term structure
+            if (Math.Abs(skew) > config.VolThreshold)
+            {
+                // Trade skew
+                var skewTrade = CalculateSkewTrade(skew);
+                if (skewTrade != 0)
+                {
+                    var order = MarketOrder(_symbol, skewTrade);
+                    Log.Trace($"Relative value skew trade: {skewTrade} shares of {_symbol}");
+                }
+            }
+
+            if (termStructure.Length > 1 && Math.Abs(termStructure[0] - termStructure[^1]) > config.VolThreshold)
+            {
+                // Trade term structure
+                var termStructureTrade = CalculateTermStructureTrade(termStructure);
+                if (termStructureTrade != 0)
+                {
+                    var order = MarketOrder(_symbol, termStructureTrade);
+                    Log.Trace($"Relative value term structure trade: {termStructureTrade} shares of {_symbol}");
+                }
+            }
+        }
+
+        // ... (implement helper methods for calculations)
+
         private class PositionInfo
         {
             public double Quantity { get; set; }
@@ -411,5 +705,21 @@ namespace Alaris.Algorithm
             public double UnrealizedPnL { get; set; }
             public TradingSignalMessage LastSignal { get; set; }
         }
+    }
+
+    public class StrategyConfig
+    {
+        public decimal MaxPortfolioExposure { get; set; }
+        public decimal DeltaThreshold { get; set; }
+        public decimal GammaThreshold { get; set; }
+        public decimal VegaThreshold { get; set; }
+        public decimal ThetaThreshold { get; set; }
+        public decimal VolThreshold { get; set; }
+        public decimal MaxDrawdown { get; set; }
+        public int MaxPositionSize { get; set; }
+        public int MinDaysToExpiry { get; set; }
+        public int MaxDaysToExpiry { get; set; }
+        public TimeSpan RebalanceFrequency { get; set; }
+        public TimeSpan HedgeFrequency { get; set; }
     }
 }

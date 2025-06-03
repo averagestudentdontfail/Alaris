@@ -104,7 +104,7 @@ project/
 │   │   └── main.cpp      # Main QuantLib process entry point
 │   └── csharp/           # C# Process Components
 │       ├── Algorithm/    # Lean algorithm implementation
-│       │   ├── DeterministicVolArbitrageAlgorithm.cs # Main algorithm
+│       │   ├── ArbitrageAlgorithm.cs # Main algorithm
 │       │   ├── SharedMemoryBridge.cs   # Shared memory communication
 │       │   └── GCOptimizer.cs          # Garbage collection optimization
 │       ├── IPC/          # Inter-process communication

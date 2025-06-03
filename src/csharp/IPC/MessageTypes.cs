@@ -79,13 +79,75 @@ namespace Alaris.IPC
         }
     }
 
-    public enum ControlMessageType : uint
+    public enum StrategyMode
     {
-        StartTrading = 1,
-        StopTrading = 2,
-        UpdateParameters = 3,
-        ResetModels = 4,
-        SystemStatus = 5,
-        Heartbeat = 6
+        DeltaNeutral = 0,
+        GammaScalping = 1,
+        VolatilityTiming = 2,
+        RelativeValue = 3
+    }
+
+    public enum MarketRegime
+    {
+        LowVol = 0,
+        MediumVol = 1,
+        HighVol = 2,
+        Transitioning = 3
+    }
+
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    public struct MarketRegimeMessage
+    {
+        public ulong Timestamp;
+        public MarketRegime VolRegime;
+        public double CurrentRealizedVol;
+        public double CurrentImpliedVol;
+        public double VolRiskPremium;
+        public double RegimeConfidence;
+        public double ExpectedVolNextWeek;
+        public double VolClusteringStrength;
+        public double MeanReversionSpeed;
+        
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
+        public byte[] Padding;
+    }
+
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    public struct StrategyConfigMessage
+    {
+        public ulong Timestamp;
+        public StrategyMode Mode;
+        public double VolDifferenceThreshold;
+        public double VolExitThreshold;
+        public double ConfidenceThreshold;
+        public double MaxPortfolioDelta;
+        public double MaxPortfolioGamma;
+        public double MaxPortfolioVega;
+        public double MaxPositionSize;
+        public double MaxCorrelationExposure;
+        public double KellyFraction;
+        public double MaxKellyPosition;
+        public double MinEdgeRatio;
+        public double StopLossPercent;
+        public double ProfitTargetPercent;
+        public double TrailingStopPercent;
+        public bool AutoHedgeEnabled;
+        public double HedgeThresholdDelta;
+        public double HedgeThresholdGamma;
+        public double HedgeFrequencyMinutes;
+        
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 8)]
+        public byte[] Padding;
+    }
+
+    public enum ControlMessageType
+    {
+        StartTrading = 0,
+        StopTrading = 1,
+        SystemStatus = 2,
+        Heartbeat = 3,
+        UpdateStrategyConfig = 4,
+        UpdateMarketRegime = 5,
+        EmergencyLiquidation = 6
     }
 }
