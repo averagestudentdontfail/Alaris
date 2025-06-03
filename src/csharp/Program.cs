@@ -394,7 +394,6 @@ namespace Alaris
                 Console.WriteLine($"Data Directory: {dataDir}");
                 Console.WriteLine($"Results Directory: {resultsDir}");
                 Console.WriteLine($"Log Level: {Config.Get("log-level")}");
-                
                 Console.WriteLine("Lean configuration completed");
             }
             catch (Exception ex)
