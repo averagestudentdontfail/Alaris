@@ -2,7 +2,7 @@
 using System;
 using System.Threading.Tasks;
 using QuantConnect.Configuration;
-using QuantConnect.Util;
+using QuantConnect.Util; // For Composer
 using QuantConnect.Interfaces;
 using QuantConnect.Lean.Engine;
 using QuantConnect.Lean.Engine.Results;
@@ -17,6 +17,7 @@ using QuantConnect.Lean.Engine.DataFeeds;
 using QuantConnect.Lean.Engine.Setup;
 using QuantConnect.Data.Auxiliary;
 using QuantConnect.Data;
+using QuantConnect.Composer;
 
 namespace Alaris
 {
