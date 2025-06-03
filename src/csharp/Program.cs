@@ -3,7 +3,7 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using QuantConnect.Configuration;
-using QuantConnect.Util; // For Composer and WorkerThread
+using QuantConnect.Util; 
 using QuantConnect.Interfaces;
 using QuantConnect.Lean.Engine;
 using QuantConnect.Lean.Engine.Results;
@@ -17,7 +17,7 @@ using QuantConnect.Lean.Engine.RealTime;
 using QuantConnect.Lean.Engine.DataFeeds;
 using QuantConnect.Lean.Engine.Setup;
 using QuantConnect.Lean.Engine.Storage;
-using QuantConnect.Lean.Engine.HistoryProvider;
+using QuantConnect.Lean.Engine.HistoricalData;
 using QuantConnect.Data.Auxiliary;
 
 namespace Alaris
@@ -318,7 +318,7 @@ namespace Alaris
             else
             {
                 Config.Set("debug-mode", "false");
-                Config.Set("log-level", "Trace"); 
+                Config.Set("log-level", "Trace"); // Use Trace for detailed output
             }
 
             // Backtest specific configuration
@@ -341,6 +341,8 @@ namespace Alaris
                 // Object store and caching
                 Config.Set("object-store", "QuantConnect.Lean.Engine.Storage.LocalObjectStore");
                 Config.Set("data-cache-provider", "QuantConnect.Lean.Engine.DataFeeds.SingleEntryDataCacheProvider");
+                
+                // Remove problematic lean-manager-type - let MEF auto-discover
                 
                 // Algorithm settings
                 Config.Set("algorithm-location", "QuantConnect.Algorithm.CSharp.dll");
