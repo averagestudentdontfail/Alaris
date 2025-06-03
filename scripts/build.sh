@@ -461,8 +461,8 @@ build_lean_engine() {
             exit 1
         fi
         log_info "Using .NET SDK version: $current_dotnet_version"
-        log_info "Running: dotnet build $lean_solution_path -c Debug -o $lean_output_dir -warn:0"
-        if dotnet build "$lean_solution_path" -c Debug -o "$lean_output_dir" -warn:0; then
+        log_info "Running: dotnet build $lean_solution_path -c Debug -o $lean_output_dir /p:WarningLevel=0"
+        if dotnet build "$lean_solution_path" -c Debug -o "$lean_output_dir" /p:WarningLevel=0; then
             log_info "Lean engine built successfully. Binaries are in $lean_output_dir"
             if [[ -f "$lean_output_dir/QuantConnect.Lean.Launcher.dll" ]]; then
                 log_info "✓ QuantConnect.Lean.Launcher.dll found in $lean_output_dir"
