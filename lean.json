@@ -1,24 +1,19 @@
 {
-  // Standard QuantConnect Lean configuration for Alaris Trading System
-  // This integrates with the existing QuantLib process via shared memory
+  "_comment": "Alaris Trading System - QuantConnect Lean Configuration",
   
-  // Algorithm Configuration
   "algorithm-type-name": "Alaris.Algorithm.ArbitrageAlgorithm",
   "algorithm-language": "CSharp",
   "algorithm-location": "Alaris.Lean.dll",
   
-  // Data and Output Directories
   "data-directory": "./data/",
-  "cache-location": "./cache/",
+  "cache-location": "./cache/", 
   "results-destination-folder": "./results/",
   
-  // Core System Handlers
   "log-handler": "QuantConnect.Logging.CompositeLogHandler",
-  "messaging-handler": "QuantConnect.Messaging.Messaging", 
+  "messaging-handler": "QuantConnect.Messaging.Messaging",
   "job-queue-handler": "QuantConnect.Queues.JobQueue",
   "api-handler": "QuantConnect.Api.Api",
   
-  // Data Providers (Corrected Types)
   "map-file-provider": "QuantConnect.Data.Auxiliary.LocalDiskMapFileProvider",
   "factor-file-provider": "QuantConnect.Data.Auxiliary.LocalDiskFactorFileProvider",
   "data-provider": "QuantConnect.Lean.Engine.DataFeeds.DefaultDataProvider",
@@ -26,12 +21,10 @@
   "data-cache-provider": "QuantConnect.Lean.Engine.DataFeeds.SingleEntryDataCacheProvider",
   "data-permission-manager": "QuantConnect.Data.Auxiliary.DataPermissionManager",
   
-  // Logging and Debug Configuration
   "debug-mode": false,
   "log-level": "Trace",
   "show-missing-data-logs": false,
   
-  // Performance Settings
   "maximum-data-points-per-chart-series": 100000,
   "maximum-chart-series": 30,
   "maximum-runtime-minutes": 0,
@@ -39,13 +32,12 @@
   "force-exchange-always-open": true,
   "enable-automatic-indicator-warm-up": false,
   
-  // Environment-Specific Configurations
   "environments": {
     "backtesting": {
       "live-mode": false,
       "setup-handler": "QuantConnect.Lean.Engine.Setup.ConsoleSetupHandler",
-      "result-handler": "QuantConnect.Lean.Engine.Results.BacktestingResultHandler", 
-      "data-feed-handler": "QuantConnect.Lean.Engine.DataFeeds.FileSystemDataFeed",
+      "result-handler": "QuantConnect.Lean.Engine.Results.BacktestingResultHandler",
+      "data-feed-handler": "QuantConnect.Lean.Engine.DataFeeds.FileSystemDataFeed", 
       "real-time-handler": "QuantConnect.Lean.Engine.RealTime.BacktestingRealTimeHandler",
       "history-provider": "QuantConnect.Lean.Engine.HistoryProvider.SubscriptionDataReaderHistoryProvider",
       "transaction-handler": "QuantConnect.Lean.Engine.TransactionHandlers.BacktestingTransactionHandler"
@@ -55,23 +47,26 @@
       "live-mode": true,
       "setup-handler": "QuantConnect.Lean.Engine.Setup.BrokerageSetupHandler",
       "result-handler": "QuantConnect.Lean.Engine.Results.LiveTradingResultHandler",
-      "data-feed-handler": "QuantConnect.Lean.Engine.DataFeeds.LiveTradingDataFeed", 
-      "real-time-handler": "QuantConnect.Lean.Engine.RealTime.LiveTradingRealTimeHandler",
+      "data-feed-handler": "QuantConnect.Lean.Engine.DataFeeds.LiveTradingDataFeed",
+      "real-time-handler": "QuantConnect.Lean.Engine.RealTime.LiveTradingRealTimeHandler", 
       "transaction-handler": "QuantConnect.Lean.Engine.TransactionHandlers.BrokerageTransactionHandler",
       
-      // Interactive Brokers Configuration
       "live-mode-brokerage": "InteractiveBrokersBrokerage",
       "data-queue-handler": "QuantConnect.Brokerages.InteractiveBrokers.InteractiveBrokersDataQueueHandler",
       "ib-account": "DU123456",
       "ib-user-name": "",
       "ib-password": "",
-      "ib-host": "127.0.0.1", 
-      "ib-port": "4002",
+      "ib-host": "127.0.0.1",
+      "ib-port": "4002", 
       "ib-agent-description": "Individual"
     }
   },
   
-  // Alaris-Specific Configuration
+  "job-user-id": "1",
+  "job-project-id": "1",
+  "job-organization-id": "1",
+  "api-access-token": "",
+  
   "alaris": {
     "quantlib-process": {
       "enabled": true,
@@ -88,22 +83,6 @@
         "max-daily-loss": 0.02,
         "max-position-size": 0.05
       }
-    }
-  },
-  
-  // Job Configuration
-  "job-user-id": "1",
-  "job-project-id": "1", 
-  "job-organization-id": "1",
-  "api-access-token": "",
-  
-  // Additional Data Feeds (if needed)
-  "data-feeds": {
-    "polygon": {
-      "api-key": ""
-    },
-    "iex": {
-      "api-key": ""
     }
   }
 }
