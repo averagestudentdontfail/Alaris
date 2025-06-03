@@ -33,7 +33,7 @@ show_help() {
     echo "Usage: $0 [options]"
     echo "Options:"
     echo "  -s, --symbol SYMBOL     Trading symbol (default: SPY)"
-    echo "  -m, --mode MODE         Trading mode: live, paper, or backtest (default: paper)"
+    echo "  -m, --mode MODE         Trading mode: live, paper, or backtest (default: backtest)"
     echo "  -t, --strategy STRAT    Strategy mode: deltaneutral, gammascalping, volatilitytiming, or relativevalue (default: deltaneutral)"
     echo "  -sd, --start-date DATE  Backtest start date (YYYY-MM-DD)"
     echo "  -ed, --end-date DATE    Backtest end date (YYYY-MM-DD)"
@@ -224,4 +224,6 @@ eval $CMD
 # For live/paper trading, wait for QuantLib process
 if [[ "$MODE" == "live" || "$MODE" == "paper" ]]; then
     wait $QUANTLIB_PID
-fi 
+fi
+
+# Update all references to use 'data' and 'results' (lowercase)

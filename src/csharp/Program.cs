@@ -2,7 +2,7 @@
 using System;
 using System.Threading.Tasks;
 using QuantConnect.Configuration;
-using QuantConnect.Util; // For Composer
+using QuantConnect.Util; // For Composer and WorkerThread
 using QuantConnect.Interfaces;
 using QuantConnect.Lean.Engine;
 using QuantConnect.Lean.Engine.Results;
@@ -38,7 +38,8 @@ namespace Alaris
                 
                 var modeOption = new Option<string>(
                     "--mode",
-                    "Trading mode: live, paper, or backtest");
+                    "Trading mode: live, paper, or backtest (default: backtest)",
+                    getDefaultValue: () => "backtest");
                 modeOption.AddAlias("-m");
                 
                 var strategyOption = new Option<string>(
@@ -129,14 +130,17 @@ namespace Alaris
                         // Initialize the engine
                         var engine = new QuantConnect.Lean.Engine.Engine(systemHandlers, algorithmHandlers, false);
 
-                        // Run the backtest
-                        var algorithmManager = new QuantConnect.Lean.Engine.AlgorithmManager(false);
-                        // The Engine.Run method expects a job queue, so we use the system handler's job queue
-                        // But for a single backtest, we can call Run directly with the job
-                        // (You may need to adapt this to your Lean version)
-                        // engine.Run(job, algorithmManager, algorithmHandlers, systemHandlers);
-                        // For now, just print a message
-                        Console.WriteLine("Backtest engine initialized. Please implement the engine.Run logic as per your Lean version.");
+                        // Get the path to the algorithm assembly (usually the current assembly)
+                        var assemblyPath = System.Reflection.Assembly.GetExecutingAssembly().Location;
+                        // Use the default worker thread
+                        var workerThread = QuantConnect.Util.WorkerThread.Instance;
+                        // Create the algorithm manager
+                        var algorithmManager = new QuantConnect.Lean.Engine.AlgorithmManager(false, job);
+                        // Initialize the Lean manager
+                        systemHandlers.LeanManager.Initialize(systemHandlers, algorithmHandlers, job, algorithmManager);
+
+                        // Run the backtest using the correct Lean Engine signature
+                        engine.Run(job, algorithmManager, assemblyPath, workerThread);
 
                         // Cleanup
                         systemHandlers.Dispose();
@@ -197,9 +201,9 @@ namespace Alaris
         private static void ConfigureLean(string mode, string? symbol, string strategy, string? startDate, string? endDate, string frequency, bool debug)
         {
             // Set up basic configuration
-            Config.Set("data-directory", "./Data");
+            Config.Set("data-directory", "./data");
             Config.Set("cache-location", "./Cache");
-            Config.Set("results-destination-folder", "./Results");
+            Config.Set("results-destination-folder", "./results");
             
             // Configure trading mode
             Config.Set("live-mode", mode == "live" ? "true" : "false");
