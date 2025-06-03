@@ -39,14 +39,15 @@ namespace Alaris
                 
                 var modeOption = new Option<string>(
                     "--mode",
-                    "Trading mode: live, paper, or backtest (default: backtest)",
-                    getDefaultValue: () => "backtest");
+                    "Trading mode: live, paper, or backtest (default: backtest)");
                 modeOption.AddAlias("-m");
+                modeOption.SetDefaultValue("backtest");
                 
                 var strategyOption = new Option<string>(
                     "--strategy",
                     "Strategy mode: DeltaNeutral, GammaScalping, VolatilityTiming, or RelativeValue");
                 strategyOption.AddAlias("-t");
+                strategyOption.SetDefaultValue("deltaneutral");
                 
                 var startDateOption = new Option<string>(
                     "--start-date",
@@ -62,6 +63,7 @@ namespace Alaris
                     "--frequency",
                     "Data frequency: minute, hour, or daily");
                 frequencyOption.AddAlias("-f");
+                frequencyOption.SetDefaultValue("minute");
                 
                 var debugOption = new Option<bool>(
                     "--debug",
@@ -79,12 +81,17 @@ namespace Alaris
                 rootCommand.SetHandler(async (context) =>
                 {
                     var symbol = context.ParseResult.GetValueForOption(symbolOption);
-                    var mode = context.ParseResult.GetValueForOption(modeOption)?.ToLower() ?? "backtest";
-                    var strategy = context.ParseResult.GetValueForOption(strategyOption)?.ToLower() ?? "deltaneutral";
+                    var mode = context.ParseResult.GetValueForOption(modeOption) ?? "backtest";
+                    var strategy = context.ParseResult.GetValueForOption(strategyOption) ?? "deltaneutral";
                     var startDate = context.ParseResult.GetValueForOption(startDateOption);
                     var endDate = context.ParseResult.GetValueForOption(endDateOption);
-                    var frequency = context.ParseResult.GetValueForOption(frequencyOption)?.ToLower() ?? "minute";
+                    var frequency = context.ParseResult.GetValueForOption(frequencyOption) ?? "minute";
                     var debug = context.ParseResult.GetValueForOption(debugOption);
+
+                    // Ensure mode and strategy are lowercase for consistency
+                    mode = mode.ToLower();
+                    strategy = strategy.ToLower();
+                    frequency = frequency.ToLower();
 
                     try
                     {
