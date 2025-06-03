@@ -176,7 +176,7 @@ if [[ "$MODE" == "live" || "$MODE" == "paper" ]]; then
 fi
 
 # Build command for the algorithm
-CMD="dotnet run --project src/csharp/Alaris.csproj"
+CMD="dotnet run --project src/csharp/Alaris.Lean.csproj"
 
 # Add parameters
 CMD="$CMD --symbol $SYMBOL"
