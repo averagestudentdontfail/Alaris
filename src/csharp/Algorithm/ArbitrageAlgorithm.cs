@@ -17,6 +17,7 @@ using QuantConnect.Statistics;
 using QuantConnect.Logging;
 using System.Threading.Tasks;
 using System.Runtime.CompilerServices;
+using Symbol = QuantConnect.Symbol;  // Add explicit alias for Symbol
 
 namespace Alaris.Algorithm
 {
