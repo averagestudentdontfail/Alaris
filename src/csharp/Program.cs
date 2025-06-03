@@ -150,30 +150,36 @@ namespace Alaris
                                 // Initialize the engine
                                 var engine = new QuantConnect.Lean.Engine.Engine(systemHandlers, algorithmHandlers, false);
 
-                            // Get the path to the algorithm assembly (usually the current assembly)
-                            var assemblyPath = System.Reflection.Assembly.GetExecutingAssembly().Location;
-                            Console.WriteLine($"Algorithm assembly path: {assemblyPath}");
-                            
-                            // Use the default worker thread
-                            var workerThread = QuantConnect.Util.WorkerThread.Instance;
-                            
-                            // Create the algorithm manager
-                            var algorithmManager = new QuantConnect.Lean.Engine.AlgorithmManager(false, job);
-                            
-                            // Initialize the Lean manager
-                            systemHandlers.LeanManager.Initialize(systemHandlers, algorithmHandlers, job, algorithmManager);
+                                // Get the path to the algorithm assembly (usually the current assembly)
+                                var assemblyPath = System.Reflection.Assembly.GetExecutingAssembly().Location;
+                                Console.WriteLine($"Algorithm assembly path: {assemblyPath}");
+                                
+                                // Use the default worker thread
+                                var workerThread = QuantConnect.Util.WorkerThread.Instance;
+                                
+                                // Create the algorithm manager
+                                var algorithmManager = new QuantConnect.Lean.Engine.AlgorithmManager(false, job);
+                                
+                                // Initialize the Lean manager
+                                systemHandlers.LeanManager.Initialize(systemHandlers, algorithmHandlers, job, algorithmManager);
 
-                            Console.WriteLine("Starting Lean Engine...");
-                            
-                            // Run the backtest using the correct Lean Engine signature
-                            engine.Run(job, algorithmManager, assemblyPath, workerThread);
+                                Console.WriteLine("Starting Lean Engine...");
+                                
+                                // Run the backtest using the correct Lean Engine signature
+                                engine.Run(job, algorithmManager, assemblyPath, workerThread);
 
-                            Console.WriteLine("Backtest completed.");
+                                Console.WriteLine("Backtest completed.");
 
-                            // Cleanup
-                            systemHandlers.Dispose();
-                            algorithmHandlers.Dispose();
-                        }
+                                // Cleanup
+                                systemHandlers.Dispose();
+                                algorithmHandlers.Dispose();
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"Error during backtest: {ex.Message}");
+                                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                                throw;
+                            }
                         }
                         else
                         {
@@ -312,7 +318,7 @@ namespace Alaris
             else
             {
                 Config.Set("debug-mode", "false");
-                Config.Set("log-level", "Trace"); // Use Trace for detailed output
+                Config.Set("log-level", "Trace"); 
             }
 
             // Backtest specific configuration
@@ -335,8 +341,6 @@ namespace Alaris
                 // Object store and caching
                 Config.Set("object-store", "QuantConnect.Lean.Engine.Storage.LocalObjectStore");
                 Config.Set("data-cache-provider", "QuantConnect.Lean.Engine.DataFeeds.SingleEntryDataCacheProvider");
-                
-                // Remove problematic lean-manager-type - let MEF auto-discover
                 
                 // Algorithm settings
                 Config.Set("algorithm-location", "QuantConnect.Algorithm.CSharp.dll");
