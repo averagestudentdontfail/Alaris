@@ -187,9 +187,7 @@ namespace Alaris.IPC
                 quantity = quantity,
                 side = side,
                 urgency = urgency,
-                signal_type = signalType,
-                reserved = 0,
-                padding = new byte[24]
+                signal_type = signalType
             };
 
             return signal;

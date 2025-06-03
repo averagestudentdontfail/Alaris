@@ -274,7 +274,7 @@ namespace Alaris.Algorithm
                     if (_sharedMemory?.PublishTradingSignal(signal) == true)
                     {
                         _signalsPublished++;
-                        Debug($"Published signal to QuantLib: {signal.SymbolId} qty={signal.Quantity}");
+                        Debug($"Published signal to QuantLib: {signal.symbol_id} qty={signal.quantity}");
                     }
                 }
 
@@ -297,12 +297,12 @@ namespace Alaris.Algorithm
                 
                 // Create market data message for QuantLib
                 // Note: QuantLib is the consumer of this data
-                var marketData = new MarketDataMessage(
-                    symbolId,
-                    (double)security.BidPrice,
-                    (double)security.AskPrice, 
-                    (double)bar.Close
-                );
+                var marketData = new MarketDataMessage();
+                marketData.symbol_id = symbolId;
+                marketData.bid = (double)security.BidPrice;
+                marketData.ask = (double)security.AskPrice;
+                marketData.underlying_price = (double)bar.Close;
+                // Set other fields as needed
 
                 // In the integrated system, we don't send market data TO QuantLib
                 // because QuantLib gets its market data from external feeds
