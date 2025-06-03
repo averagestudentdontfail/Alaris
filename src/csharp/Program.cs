@@ -174,6 +174,7 @@ namespace Alaris
                             systemHandlers.Dispose();
                             algorithmHandlers.Dispose();
                         }
+                        }
                         else
                         {
                             job = new LiveNodePacket
