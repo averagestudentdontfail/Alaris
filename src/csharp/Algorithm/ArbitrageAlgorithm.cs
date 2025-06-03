@@ -18,6 +18,7 @@ using QuantConnect.Logging;
 using System.Threading.Tasks;
 using System.Runtime.CompilerServices;
 using Symbol = QuantConnect.Symbol;  // Add explicit alias for Symbol
+using QuantConnect.Configuration;
 
 namespace Alaris.Algorithm
 {
@@ -139,8 +140,8 @@ namespace Alaris.Algorithm
                 // Load configuration from environment
                 _symbol = Environment.GetEnvironmentVariable("ALARIS_SYMBOL") ?? "SPY";
                 var strategyModeStr = Environment.GetEnvironmentVariable("ALARIS_STRATEGY")?.ToLower() ?? "deltaneutral";
-                var frequency = Config.Get("data-resolution", "minute").ToLower();
-                var debug = Config.GetBool("debug-mode", false);
+                var frequency = QuantConnect.Configuration.Config.Get("data-resolution", "minute").ToLower();
+                var debug = QuantConnect.Configuration.Config.GetBool("debug-mode", false);
                 
                 // Set debug logging level
                 if (debug)
