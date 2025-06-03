@@ -38,8 +38,7 @@ namespace Alaris.Algorithm
         private readonly Dictionary<uint, MarketDataMessage> _latestMarketData = new Dictionary<uint, MarketDataMessage>();
 
         // Risk management
-        private decimal _maxPositionSize = 0.05m;
-        private decimal _maxDailyLoss = 0.02m;
+        private decimal _maxDailyLoss = 0.02m; //
         private decimal _startingCash;
         private decimal _dailyStartingValue;
 
@@ -92,21 +91,21 @@ namespace Alaris.Algorithm
 
                 // Initialize shared memory bridge AFTER universe setup
                 Log("Connecting to QuantLib process via shared memory...");
-                _sharedMemory = new SharedMemoryBridge();
+                _sharedMemory = new SharedMemoryBridge(); //
                 
                 // Set up event handlers for data FROM QuantLib
-                _sharedMemory.MarketDataReceived += OnMarketDataFromQuantLib;
-                _sharedMemory.ControlMessageReceived += OnControlMessageFromQuantLib;
+                _sharedMemory.MarketDataReceived += OnMarketDataFromQuantLib; //
+                _sharedMemory.ControlMessageReceived += OnControlMessageFromQuantLib; //
 
                 // Send connection handshake to QuantLib
-                _sharedMemory.SendConnectionHandshake();
+                _sharedMemory.SendConnectionHandshake(); //
                 
                 // Initialize performance monitoring
-                _performanceMonitor = new PerformanceMonitor();
-                _performanceMonitor.Initialize(_symbol, _strategyMode);
+                _performanceMonitor = new PerformanceMonitor(); //
+                _performanceMonitor.Initialize(_symbol, _strategyMode); //
 
                 // Initialize GC optimization
-                _gcOptimizer = new GCOptimizer();
+                _gcOptimizer = new GCOptimizer(); //
 
                 // Schedule regular tasks
                 var updateInterval = frequency switch
@@ -116,12 +115,12 @@ namespace Alaris.Algorithm
                     _ => TimeSpan.FromMinutes(1)
                 };
 
-                Schedule.On(DateRules.EveryDay(), TimeRules.Every(updateInterval), () =>
+                Schedule.On(DateRules.EveryDay(), TimeRules.Every(updateInterval), () => //
                 {
                     if (_isInitialized && _quantlibConnected)
                     {
-                        CheckRiskLimits();
-                        PublishPortfolioUpdate();
+                        CheckRiskLimits(); //
+                        PublishPortfolioUpdate(); //
                     }
                 });
 
@@ -138,7 +137,7 @@ namespace Alaris.Algorithm
 
         private void InitializeUniverse(string frequency)
         {
-            var symbols = new[] { "SPY", "QQQ", "IWM", "EFA", "EEM" };
+            var symbols = new[] { "SPY", "QQQ", "IWM", "EFA", "EEM" }; //
             uint symbolId = 1;
 
             var resolution = frequency switch
@@ -156,7 +155,7 @@ namespace Alaris.Algorithm
                 _idToSymbol[symbolId] = equity.Symbol;
 
                 // Add option chain
-                var option = AddOption(symbol, resolution);
+                var option = AddOption(symbol, resolution); //
                 option.SetFilter(universe => universe.IncludeWeeklys()
                                                    .Strikes(-5, +5)
                                                    .Expiration(TimeSpan.FromDays(0), TimeSpan.FromDays(60)));
@@ -166,7 +165,7 @@ namespace Alaris.Algorithm
         }
 
         // Receive market data FROM QuantLib process
-        private void OnMarketDataFromQuantLib(MarketDataMessage marketData)
+        private void OnMarketDataFromQuantLib(MarketDataMessage marketData) //
         {
             try
             {
@@ -202,35 +201,35 @@ namespace Alaris.Algorithm
         }
 
         // Handle control messages FROM QuantLib process
-        private void OnControlMessageFromQuantLib(ControlMessage message)
+        private void OnControlMessageFromQuantLib(ControlMessage message) //
         {
             try
             {
-                var messageType = (ControlMessageType)message.message_type;
+                var messageType = (ControlMessageType)message.message_type; //
                 
                 switch (messageType)
                 {
-                    case ControlMessageType.START_TRADING:
+                    case ControlMessageType.START_TRADING: //
                         Log("QuantLib process authorized trading to begin");
                         break;
                         
-                    case ControlMessageType.STOP_TRADING:
+                    case ControlMessageType.STOP_TRADING: //
                         Log("QuantLib process requested trading halt");
-                        CloseAllPositions();
+                        CloseAllPositions(); //
                         break;
                         
-                    case ControlMessageType.EMERGENCY_LIQUIDATION:
+                    case ControlMessageType.EMERGENCY_LIQUIDATION: //
                         Log("QuantLib process requested emergency liquidation");
-                        CloseAllPositions();
+                        CloseAllPositions(); //
                         Quit("Emergency liquidation requested by QuantLib");
                         break;
                         
-                    case ControlMessageType.HEARTBEAT:
+                    case ControlMessageType.HEARTBEAT: //
                         // Respond to heartbeat
-                        _sharedMemory?.SendControlMessage(ControlMessageType.HEARTBEAT);
+                        _sharedMemory?.SendControlMessage(ControlMessageType.HEARTBEAT); //
                         break;
                         
-                    case ControlMessageType.SYSTEM_STATUS:
+                    case ControlMessageType.SYSTEM_STATUS: //
                         Debug($"QuantLib system status: {message.value1}");
                         break;
                 }
@@ -267,11 +266,11 @@ namespace Alaris.Algorithm
                 // Generate trading signals based on current strategy
                 // This is where we would normally generate signals, but now
                 // QuantLib generates the signals and we execute them
-                var tradingSignals = GenerateTradingSignalsForQuantLib();
+                var tradingSignals = GenerateTradingSignalsForQuantLib(); //
                 
                 foreach (var signal in tradingSignals)
                 {
-                    if (_sharedMemory?.PublishTradingSignal(signal) == true)
+                    if (_sharedMemory?.PublishTradingSignal(signal) == true) //
                     {
                         _signalsPublished++;
                         Debug($"Published signal to QuantLib: {signal.symbol_id} qty={signal.quantity}");
@@ -279,7 +278,7 @@ namespace Alaris.Algorithm
                 }
 
                 // Update positions based on latest market data
-                UpdatePositions();
+                UpdatePositions(); //
 
                 _performanceMonitor?.EndMeasurement("OnData");
             }
@@ -297,7 +296,7 @@ namespace Alaris.Algorithm
                 
                 // Create market data message for QuantLib
                 // Note: QuantLib is the consumer of this data
-                var marketData = new MarketDataMessage();
+                var marketData = new MarketDataMessage(); //
                 marketData.symbol_id = symbolId;
                 marketData.bid = (double)security.BidPrice;
                 marketData.ask = (double)security.AskPrice;
@@ -329,7 +328,7 @@ namespace Alaris.Algorithm
             }
         }
 
-        private List<TradingSignalMessage> GenerateTradingSignalsForQuantLib()
+        private List<TradingSignalMessage> GenerateTradingSignalsForQuantLib() //
         {
             var signals = new List<TradingSignalMessage>();
 
@@ -343,7 +342,7 @@ namespace Alaris.Algorithm
                 if (Math.Abs(position.Quantity) > 0)
                 {
                     // Create a signal that informs QuantLib of our current position
-                    var signal = _sharedMemory!.CreateTradingSignal(
+                    var signal = _sharedMemory!.CreateTradingSignal( //
                         symbolId: position.SymbolId,
                         theoreticalPrice: position.CurrentPrice,
                         marketPrice: position.CurrentPrice,
@@ -367,7 +366,7 @@ namespace Alaris.Algorithm
         {
             try
             {
-                _performanceMonitor?.ProcessOrderEvent(orderEvent);
+                _performanceMonitor?.ProcessOrderEvent(orderEvent); //
                 
                 if (orderEvent.Status == OrderStatus.Filled)
                 {
@@ -392,7 +391,7 @@ namespace Alaris.Algorithm
                         position.CurrentPrice = (double)orderEvent.FillPrice;
 
                         // Notify QuantLib of the fill
-                        var fillNotification = _sharedMemory!.CreateTradingSignal(
+                        var fillNotification = _sharedMemory!.CreateTradingSignal( //
                             symbolId: symbolId,
                             theoreticalPrice: (double)orderEvent.FillPrice,
                             marketPrice: (double)orderEvent.FillPrice,
@@ -405,7 +404,7 @@ namespace Alaris.Algorithm
                             signalType: 4 // Custom: Fill notification
                         );
 
-                        _sharedMemory?.PublishTradingSignal(fillNotification);
+                        _sharedMemory?.PublishTradingSignal(fillNotification); //
                     }
                 }
                 else if (orderEvent.Status == OrderStatus.Canceled || orderEvent.Status == OrderStatus.Invalid)
@@ -419,7 +418,7 @@ namespace Alaris.Algorithm
             }
         }
 
-        private void UpdatePositions()
+        private void UpdatePositions() //
         {
             foreach (var kvp in _positions.ToList())
             {
@@ -444,27 +443,27 @@ namespace Alaris.Algorithm
             }
         }
 
-        private void CheckRiskLimits()
+        private void CheckRiskLimits() //
         {
             var currentValue = Portfolio.TotalPortfolioValue;
             var dailyPnL = currentValue - _dailyStartingValue;
             
-            if (dailyPnL < -_dailyStartingValue * _maxDailyLoss)
+            if (dailyPnL < -_dailyStartingValue * _maxDailyLoss) //
             {
                 Log($"Daily loss limit exceeded: {dailyPnL:C}");
-                CloseAllPositions();
-                _sharedMemory?.SendControlMessage(ControlMessageType.EMERGENCY_LIQUIDATION);
+                CloseAllPositions(); //
+                _sharedMemory?.SendControlMessage(ControlMessageType.EMERGENCY_LIQUIDATION); //
             }
         }
 
-        private void PublishPortfolioUpdate()
+        private void PublishPortfolioUpdate() //
         {
             // Send portfolio metrics to QuantLib for risk management
             var totalValue = (double)Portfolio.TotalPortfolioValue;
             var totalPnL = (double)(Portfolio.TotalPortfolioValue - _startingCash);
             
-            _sharedMemory?.SendControlMessage(
-                ControlMessageType.SYSTEM_STATUS,
+            _sharedMemory?.SendControlMessage( //
+                ControlMessageType.SYSTEM_STATUS, //
                 param1: (uint)_positions.Count,
                 param2: (uint)_ordersPlaced,
                 value1: totalValue,
@@ -472,7 +471,7 @@ namespace Alaris.Algorithm
             );
         }
 
-        private void CloseAllPositions()
+        private void CloseAllPositions() //
         {
             foreach (var holding in Portfolio.Values.Where(x => x.Invested))
             {
@@ -493,7 +492,7 @@ namespace Alaris.Algorithm
                     $"Signals: {_signalsPublished}, Orders: {_ordersPlaced}");
                 
                 // Send daily summary to QuantLib
-                PublishPortfolioUpdate();
+                PublishPortfolioUpdate(); //
             }
         }
 
@@ -510,12 +509,12 @@ namespace Alaris.Algorithm
                 Log($"Orders Placed: {_ordersPlaced}");
                 
                 // Notify QuantLib of shutdown
-                _sharedMemory?.SendControlMessage(ControlMessageType.STOP_TRADING);
+                _sharedMemory?.SendControlMessage(ControlMessageType.STOP_TRADING); //
                 
                 // Cleanup
-                _sharedMemory?.Dispose();
-                _performanceMonitor?.Dispose();
-                _gcOptimizer?.Dispose();
+                _sharedMemory?.Dispose(); //
+                _performanceMonitor?.Dispose(); //
+                _gcOptimizer?.Dispose(); //
             }
             catch (Exception ex)
             {
