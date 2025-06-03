@@ -158,7 +158,7 @@ namespace Alaris.Monitoring
             metrics.ProcessOrder(orderEvent);
         }
 
-        public void UpdatePortfolioMetrics(IPortfolio portfolio)
+        public void UpdatePortfolioMetrics(SecurityPortfolioManager portfolio)
         {
             if (DateTime.Now - _lastUpdate < _updateInterval) return;
 
