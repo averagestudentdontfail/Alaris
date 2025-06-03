@@ -371,26 +371,35 @@ main() {
     
     # Build the dotnet command for Lean process
     log_step "Starting Lean process (market data & execution engine)..."
-    
-    CMD="dotnet run --project src/csharp/Alaris.Lean.csproj"
+
+    # Use the new output path for Lean launcher
+    local lean_launcher_path="build/lean/release/QuantConnect.Lean.Launcher.dll"
+    if [[ ! -f "$lean_launcher_path" ]]; then
+        log_error "Lean launcher not found at $lean_launcher_path"
+        log_error "You may need to run ./scripts/build.sh first."
+        cleanup
+        exit 1
+    fi
+
+    CMD="dotnet $lean_launcher_path"
     CMD="$CMD --symbol $SYMBOL"
     CMD="$CMD --mode $MODE"
     CMD="$CMD --strategy $STRATEGY"
     CMD="$CMD --frequency $FREQUENCY"
-    
+
     if [[ "$DEBUG" == "true" ]]; then
         CMD="$CMD --debug"
     fi
-    
+
     if [[ "$MODE" == "backtest" ]]; then
         CMD="$CMD --start-date $START_DATE"
         CMD="$CMD --end-date $END_DATE"
     fi
-    
+
     # Execute the Lean process
     log_info "Executing: $CMD"
     echo ""
-    
+
     if eval "$CMD"; then
         log_info "✓ Alaris completed successfully"
     else

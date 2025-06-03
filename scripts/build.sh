@@ -444,6 +444,41 @@ install_project() {
     fi
 }
 
+# Function to build the Lean .NET engine and output to build/lean
+build_lean_engine() {
+    log_info "Building QuantConnect Lean engine (.NET) into $BUILD_DIR/lean/release"
+    local lean_solution_path="$EXTERNAL_DIR/lean/QuantConnect.Lean.sln"
+    local lean_output_dir="$BUILD_DIR/lean/release"
+    mkdir -p "$lean_output_dir"
+    if command -v dotnet &> /dev/null; then
+        # Check dotnet version
+        local required_dotnet_version="9.0.106"
+        local current_dotnet_version
+        current_dotnet_version=$(dotnet --version)
+        if [[ "$current_dotnet_version" != "$required_dotnet_version" ]]; then
+            log_error "Required .NET SDK version $required_dotnet_version, but found $current_dotnet_version. Aborting Lean build."
+            log_error "Please switch to the correct .NET SDK using 'dotnet --list-sdks' and 'global.json' if needed."
+            exit 1
+        fi
+        log_info "Using .NET SDK version: $current_dotnet_version"
+        log_info "Running: dotnet build $lean_solution_path -c Debug -o $lean_output_dir"
+        if dotnet build "$lean_solution_path" -c Debug -o "$lean_output_dir"; then
+            log_info "Lean engine built successfully. Binaries are in $lean_output_dir"
+            if [[ -f "$lean_output_dir/QuantConnect.Lean.Launcher.dll" ]]; then
+                log_info "✓ QuantConnect.Lean.Launcher.dll found in $lean_output_dir"
+            else
+                log_warn "QuantConnect.Lean.Launcher.dll not found in $lean_output_dir after build!"
+            fi
+        else
+            log_error "Failed to build Lean engine. Check dotnet output above."
+            exit 1
+        fi
+    else
+        log_error "dotnet CLI not found. Please install .NET SDK."
+        exit 1
+    fi
+}
+
 # Function to print build summary
 print_summary() {
     log_info "Build Summary"
@@ -513,6 +548,7 @@ main() {
     setup_build_directory
     configure_cmake
     build_project
+    build_lean_engine
     install_project
 
     print_summary

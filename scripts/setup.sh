@@ -67,7 +67,7 @@ cat > lean.json << 'EOF'
   
   "algorithm-type-name": "Alaris.Algorithm.ArbitrageAlgorithm",
   "algorithm-language": "CSharp",
-  "algorithm-location": "Alaris.Lean.dll",
+  "algorithm-location": "build/lean/release/Alaris.Lean.dll",
   
   "data-directory": "./data/",
   "cache-location": "./cache/", 
