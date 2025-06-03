@@ -708,10 +708,11 @@ namespace Alaris.Algorithm
         private decimal CalculateImpliedVolatility()
         {
             var optionSymbol = GetOptionSymbol(_mainEquitySymbol);
-            if (!OptionChains.TryGetValue(optionSymbol, out var chain) || chain == null || !chain.Any())
+            var chain = OptionChains(new[] { optionSymbol });
+            if (!chain.TryGetValue(optionSymbol, out var optionChain) || optionChain == null || !optionChain.Any())
                 return 0;
 
-            var atmOptions = chain
+            var atmOptions = optionChain
                 .Where(x => Math.Abs(x.Strike - Securities[_mainEquitySymbol].Price) < Securities[_mainEquitySymbol].Price * 0.05m)
                 .ToList();
 
@@ -723,11 +724,12 @@ namespace Alaris.Algorithm
         private decimal CalculateVolatilitySkew()
         {
             var optionSymbol = GetOptionSymbol(_mainEquitySymbol);
-            if (!OptionChains.TryGetValue(optionSymbol, out var chain) || chain == null || !chain.Any())
+            var chain = OptionChains(new[] { optionSymbol });
+            if (!chain.TryGetValue(optionSymbol, out var optionChain) || optionChain == null || !optionChain.Any())
                 return 0;
 
-            var calls = chain.Where(x => x.Right == OptionRight.Call).ToList();
-            var puts = chain.Where(x => x.Right == OptionRight.Put).ToList();
+            var calls = optionChain.Where(x => x.Right == OptionRight.Call).ToList();
+            var puts = optionChain.Where(x => x.Right == OptionRight.Put).ToList();
 
             if (!calls.Any() || !puts.Any()) return 0;
 
@@ -741,15 +743,16 @@ namespace Alaris.Algorithm
         private decimal[] CalculateVolatilityTermStructure()
         {
             var optionSymbol = GetOptionSymbol(_mainEquitySymbol);
-            if (!OptionChains.TryGetValue(optionSymbol, out var chain) || chain == null || !chain.Any())
+            var chain = OptionChains(new[] { optionSymbol });
+            if (!chain.TryGetValue(optionSymbol, out var optionChain) || optionChain == null || !optionChain.Any())
                 return Array.Empty<decimal>();
 
-            var expiries = chain.Select(x => x.Expiry).Distinct().OrderBy(x => x).ToList();
+            var expiries = optionChain.Select(x => x.Expiry).Distinct().OrderBy(x => x).ToList();
             var termStructure = new List<decimal>();
 
             foreach (var expiry in expiries)
             {
-                var options = chain.Where(x => x.Expiry == expiry).ToList();
+                var options = optionChain.Where(x => x.Expiry == expiry).ToList();
                 if (!options.Any()) continue;
 
                 var atmOptions = options
@@ -767,7 +770,7 @@ namespace Alaris.Algorithm
 
         private Symbol GetOptionSymbol(Symbol underlyingSymbol)
         {
-            return Symbol.CreateCanonicalOption(underlyingSymbol);
+            return Symbol.CreateOption(underlyingSymbol.Value, Market.USA, OptionStyle.American, OptionRight.Call, 0, DateTime.MinValue);
         }
 
         private decimal CalculatePortfolioDelta()
