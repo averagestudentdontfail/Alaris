@@ -526,16 +526,19 @@ namespace Alaris.Algorithm
 
                 var regimeMessage = new MarketRegimeMessage
                 {
-                    Timestamp = Time,
-                    RealizedVolatility = realizedVol,
-                    ImpliedVolatility = impliedVol,
-                    VolatilitySkew = skew,
-                    TermStructure = termStructure,
-                    MarketRegime = DetermineMarketRegime(realizedVol, impliedVol, skew, termStructure)
+                    Timestamp = (ulong)Time.ToUnixTimeMilliseconds() * 1000000, // Convert to nanoseconds
+                    VolRegime = DetermineMarketRegime(realizedVol, impliedVol, skew, termStructure),
+                    CurrentRealizedVol = realizedVol,
+                    CurrentImpliedVol = impliedVol,
+                    VolRiskPremium = impliedVol - realizedVol,
+                    RegimeConfidence = CalculateRegimeConfidence(),
+                    ExpectedVolNextWeek = CalculateExpectedVolatility(),
+                    VolClusteringStrength = CalculateVolClustering(),
+                    MeanReversionSpeed = CalculateMeanReversion()
                 };
 
                 _sharedMemory?.SendMarketRegime(regimeMessage);
-                _currentRegime = regimeMessage.MarketRegime;
+                _currentRegime = regimeMessage.VolRegime;
                 _lastRegimeUpdate = Time;
 
                 Log.Trace($"Market regime updated: {_currentRegime} at {Time}");
@@ -548,11 +551,10 @@ namespace Alaris.Algorithm
 
         private MarketRegime DetermineMarketRegime(decimal realizedVol, decimal impliedVol, decimal skew, decimal[] termStructure)
         {
-            // Implement sophisticated regime detection logic
             var volRatio = impliedVol / realizedVol;
             var volSpread = impliedVol - realizedVol;
-            var skewChange = skew - _performanceMonitor?.GetHistoricalSkew() ?? 0;
-            var termStructureChange = termStructure[0] - termStructure[^1];
+            var skewChange = skew - (_performanceMonitor?.GetHistoricalSkew() ?? 0);
+            var termStructureChange = termStructure.Length > 1 ? termStructure[0] - termStructure[^1] : 0;
 
             return (volRatio, volSpread, skewChange, termStructureChange) switch
             {
@@ -595,7 +597,7 @@ namespace Alaris.Algorithm
                         break;
                 }
 
-                _performanceMonitor?.UpdateMetrics(Portfolio);
+                _performanceMonitor?.UpdatePortfolioMetrics(Portfolio);
             }
             catch (Exception ex)
             {
@@ -606,9 +608,7 @@ namespace Alaris.Algorithm
         private void RebalanceDeltaNeutral()
         {
             var config = _strategyConfigs[StrategyMode.DeltaNeutral];
-            var portfolioDelta = Portfolio.TotalHoldingsValue > 0
-                ? Portfolio.TotalHoldingsValue * (decimal)Portfolio.TotalHoldingsValue
-                : 0;
+            var portfolioDelta = CalculatePortfolioDelta();
 
             if (Math.Abs(portfolioDelta) > config.DeltaThreshold)
             {
@@ -625,7 +625,6 @@ namespace Alaris.Algorithm
 
             if (Math.Abs(portfolioGamma) > config.GammaThreshold)
             {
-                // Implement gamma scalping logic
                 var underlyingPrice = Securities[_symbol].Price;
                 var targetGamma = config.GammaThreshold * Math.Sign(portfolioGamma);
                 var adjustment = CalculateGammaAdjustment(portfolioGamma, targetGamma, underlyingPrice);
@@ -647,7 +646,6 @@ namespace Alaris.Algorithm
 
             if (volRatio > 1.2m)
             {
-                // High implied vol relative to realized - sell volatility
                 var vegaExposure = CalculatePortfolioVega();
                 if (vegaExposure < -config.VegaThreshold)
                 {
@@ -656,7 +654,6 @@ namespace Alaris.Algorithm
             }
             else if (volRatio < 0.8m)
             {
-                // Low implied vol relative to realized - buy volatility
                 var vegaExposure = CalculatePortfolioVega();
                 if (vegaExposure > config.VegaThreshold)
                 {
@@ -671,10 +668,8 @@ namespace Alaris.Algorithm
             var skew = CalculateVolatilitySkew();
             var termStructure = CalculateVolatilityTermStructure();
 
-            // Implement relative value trading based on skew and term structure
             if (Math.Abs(skew) > config.VolThreshold)
             {
-                // Trade skew
                 var skewTrade = CalculateSkewTrade(skew);
                 if (skewTrade != 0)
                 {
@@ -685,7 +680,6 @@ namespace Alaris.Algorithm
 
             if (termStructure.Length > 1 && Math.Abs(termStructure[0] - termStructure[^1]) > config.VolThreshold)
             {
-                // Trade term structure
                 var termStructureTrade = CalculateTermStructureTrade(termStructure);
                 if (termStructureTrade != 0)
                 {
@@ -695,7 +689,151 @@ namespace Alaris.Algorithm
             }
         }
 
-        // ... (implement helper methods for calculations)
+        // Helper methods for calculations
+        private decimal CalculateRealizedVolatility()
+        {
+            var history = History(_symbol, 20, Resolution.Daily);
+            var returns = history.Select(x => Math.Log((double)x.Close / (double)x.Open)).ToList();
+            return (decimal)returns.StandardDeviation() * (decimal)Math.Sqrt(252);
+        }
+
+        private decimal CalculateImpliedVolatility()
+        {
+            var optionChain = OptionChainProvider.GetOptionChain(_symbol, Time);
+            if (optionChain == null || !optionChain.Any()) return 0;
+
+            var atmOptions = optionChain
+                .Where(x => Math.Abs(x.Strike - Securities[_symbol].Price) < Securities[_symbol].Price * 0.05m)
+                .ToList();
+
+            return atmOptions.Any() 
+                ? (decimal)atmOptions.Average(x => x.ImpliedVolatility)
+                : 0;
+        }
+
+        private decimal CalculateVolatilitySkew()
+        {
+            var optionChain = OptionChainProvider.GetOptionChain(_symbol, Time);
+            if (optionChain == null || !optionChain.Any()) return 0;
+
+            var calls = optionChain.Where(x => x.Right == OptionRight.Call).ToList();
+            var puts = optionChain.Where(x => x.Right == OptionRight.Put).ToList();
+
+            if (!calls.Any() || !puts.Any()) return 0;
+
+            var atmStrike = Securities[_symbol].Price;
+            var callSkew = calls.Where(x => x.Strike > atmStrike).Average(x => x.ImpliedVolatility);
+            var putSkew = puts.Where(x => x.Strike < atmStrike).Average(x => x.ImpliedVolatility);
+
+            return (decimal)(callSkew - putSkew);
+        }
+
+        private decimal[] CalculateVolatilityTermStructure()
+        {
+            var optionChain = OptionChainProvider.GetOptionChain(_symbol, Time);
+            if (optionChain == null || !optionChain.Any()) return Array.Empty<decimal>();
+
+            var expiries = optionChain.Select(x => x.Expiry).Distinct().OrderBy(x => x).ToList();
+            var termStructure = new List<decimal>();
+
+            foreach (var expiry in expiries)
+            {
+                var options = optionChain.Where(x => x.Expiry == expiry).ToList();
+                if (!options.Any()) continue;
+
+                var atmOptions = options
+                    .Where(x => Math.Abs(x.Strike - Securities[_symbol].Price) < Securities[_symbol].Price * 0.05m)
+                    .ToList();
+
+                if (atmOptions.Any())
+                {
+                    termStructure.Add((decimal)atmOptions.Average(x => x.ImpliedVolatility));
+                }
+            }
+
+            return termStructure.ToArray();
+        }
+
+        private decimal CalculatePortfolioDelta()
+        {
+            return Portfolio.TotalHoldingsValue > 0
+                ? Portfolio.TotalHoldingsValue * (decimal)Portfolio.TotalHoldingsValue
+                : 0;
+        }
+
+        private decimal CalculatePortfolioGamma()
+        {
+            // Implement gamma calculation based on option positions
+            return 0; // Placeholder
+        }
+
+        private decimal CalculatePortfolioVega()
+        {
+            // Implement vega calculation based on option positions
+            return 0; // Placeholder
+        }
+
+        private decimal CalculateGammaAdjustment(decimal currentGamma, decimal targetGamma, decimal underlyingPrice)
+        {
+            // Implement gamma adjustment calculation
+            return 0; // Placeholder
+        }
+
+        private void ReduceExposure()
+        {
+            var holdings = Portfolio.Securities.Values.Where(x => x.Holdings.Quantity != 0).ToList();
+            foreach (var holding in holdings)
+            {
+                var order = MarketOrder(holding.Symbol, -holding.Holdings.Quantity);
+                Log.Trace($"Reducing exposure: {holding.Symbol} - {holding.Holdings.Quantity} shares");
+            }
+        }
+
+        private void ReduceVegaExposure()
+        {
+            // Implement vega reduction logic
+        }
+
+        private void IncreaseVegaExposure()
+        {
+            // Implement vega increase logic
+        }
+
+        private decimal CalculateSkewTrade(decimal skew)
+        {
+            // Implement skew trading logic
+            return 0; // Placeholder
+        }
+
+        private decimal CalculateTermStructureTrade(decimal[] termStructure)
+        {
+            // Implement term structure trading logic
+            return 0; // Placeholder
+        }
+
+        private decimal CalculateRegimeConfidence()
+        {
+            // Implement regime confidence calculation
+            return 0.8m; // Placeholder
+        }
+
+        private decimal CalculateExpectedVolatility()
+        {
+            // Implement expected volatility calculation
+            return CalculateRealizedVolatility(); // Placeholder
+        }
+
+        private decimal CalculateVolClustering()
+        {
+            // Implement volatility clustering calculation
+            return 0.5m; // Placeholder
+        }
+
+        private decimal CalculateMeanReversion()
+        {
+            // Implement mean reversion calculation
+            return 0.3m; // Placeholder
+        }
 
         private class PositionInfo
         {

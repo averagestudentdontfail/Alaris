@@ -68,26 +68,40 @@ namespace Alaris
                     ConfigureLean(mode, symbol, strategy, startDate, endDate);
 
                     // Create the algorithm job packet
-                    var job = new LiveNodePacket
-                    {
-                        Type = mode == "backtest" ? PacketType.BacktestNode : PacketType.LiveNode,
-                        Algorithm = System.Text.Encoding.UTF8.GetBytes(typeof(ArbitrageAlgorithm).AssemblyQualifiedName ?? ""),
-                        Channel = "",
-                        UserId = 1,
-                        ProjectId = 1,
-                        DeployId = "",
-                        CompileId = "",
-                        Version = "1.0.0",
-                        Language = QuantConnect.Language.CSharp
-                    };
+                    var job = mode == "backtest" 
+                        ? new BacktestNodePacket
+                        {
+                            Type = PacketType.BacktestNode,
+                            Algorithm = System.Text.Encoding.UTF8.GetBytes(typeof(ArbitrageAlgorithm).AssemblyQualifiedName ?? ""),
+                            Channel = "",
+                            UserId = 1,
+                            ProjectId = 1,
+                            DeployId = "",
+                            CompileId = "",
+                            Version = "1.0.0",
+                            Language = QuantConnect.Language.CSharp
+                        }
+                        : new LiveNodePacket
+                        {
+                            Type = PacketType.LiveNode,
+                            Algorithm = System.Text.Encoding.UTF8.GetBytes(typeof(ArbitrageAlgorithm).AssemblyQualifiedName ?? ""),
+                            Channel = "",
+                            UserId = 1,
+                            ProjectId = 1,
+                            DeployId = "",
+                            CompileId = "",
+                            Version = "1.0.0",
+                            Language = QuantConnect.Language.CSharp
+                        };
 
                     if (mode == "backtest" && !string.IsNullOrEmpty(startDate) && !string.IsNullOrEmpty(endDate))
                     {
                         if (DateTime.TryParse(startDate, out DateTime start) && DateTime.TryParse(endDate, out DateTime end))
                         {
-                            job.BacktestId = Guid.NewGuid().ToString();
-                            job.BacktestStartDate = start;
-                            job.BacktestEndDate = end;
+                            var backtestJob = (BacktestNodePacket)job;
+                            backtestJob.BacktestId = Guid.NewGuid().ToString();
+                            backtestJob.PeriodStart = start;
+                            backtestJob.PeriodFinish = end;
                         }
                     }
 
