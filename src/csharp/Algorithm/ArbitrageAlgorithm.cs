@@ -296,14 +296,14 @@ namespace Alaris.Algorithm
 
                 if (!_idToSymbol.TryGetValue(signal.SymbolId, out Symbol? symbol) || symbol == null)
                 {
-                    Log($"Unknown symbol ID: {signal.SymbolId}");
+                    Debug($"Unknown symbol ID: {signal.SymbolId}");
                     return;
                 }
 
                 // Validate signal
                 if (signal.Confidence < 0.7) // Minimum confidence threshold
                 {
-                    Log($"Signal confidence too low: {signal.Confidence:F3}");
+                    Debug($"Signal confidence too low: {signal.Confidence:F3}");
                     return;
                 }
 
@@ -313,7 +313,7 @@ namespace Alaris.Algorithm
                 
                 if (positionValue > currentValue * _maxPositionSize)
                 {
-                    Log($"Position size too large: {positionValue:C} > {currentValue * _maxPositionSize:C}");
+                    Debug($"Position size too large: {positionValue:C} > {currentValue * _maxPositionSize:C}");
                     return;
                 }
 
@@ -540,15 +540,13 @@ namespace Alaris.Algorithm
                 };
 
                 // Send market regime update using control message
-                var messageData = new byte[]
-                {
-                    BitConverter.GetBytes(regimeMessage.Timestamp),
-                    BitConverter.GetBytes((uint)regimeMessage.VolRegime),
-                    BitConverter.GetBytes(regimeMessage.CurrentRealizedVol),
-                    BitConverter.GetBytes(regimeMessage.CurrentImpliedVol)
-                }.SelectMany(x => x).ToArray();
+                var messageData = new List<byte>();
+                messageData.AddRange(BitConverter.GetBytes(regimeMessage.Timestamp));
+                messageData.AddRange(BitConverter.GetBytes((uint)regimeMessage.VolRegime));
+                messageData.AddRange(BitConverter.GetBytes(regimeMessage.CurrentRealizedVol));
+                messageData.AddRange(BitConverter.GetBytes(regimeMessage.CurrentImpliedVol));
 
-                _sharedMemory?.SendControlMessage(ControlMessageType.SystemStatus, messageData);
+                _sharedMemory?.SendControlMessage(ControlMessageType.SystemStatus, messageData.ToArray());
 
                 _currentRegime = regimeMessage.VolRegime;
                 _lastRegimeUpdate = Time;
@@ -712,10 +710,12 @@ namespace Alaris.Algorithm
         private decimal CalculateImpliedVolatility()
         {
             var optionSymbol = GetOptionSymbol(_symbol);
-            var optionChain = Securities[optionSymbol].OptionChain;
-            if (optionChain == null || !optionChain.Any()) return 0;
+            if (!Securities.ContainsKey(optionSymbol)) return 0;
 
-            var atmOptions = optionChain
+            var option = Securities[optionSymbol] as Option;
+            if (option?.OptionChain == null || !option.OptionChain.Any()) return 0;
+
+            var atmOptions = option.OptionChain
                 .Where(x => Math.Abs(x.Strike - Securities[_symbol].Price) < Securities[_symbol].Price * 0.05m)
                 .ToList();
 
@@ -727,11 +727,13 @@ namespace Alaris.Algorithm
         private decimal CalculateVolatilitySkew()
         {
             var optionSymbol = GetOptionSymbol(_symbol);
-            var optionChain = Securities[optionSymbol].OptionChain;
-            if (optionChain == null || !optionChain.Any()) return 0;
+            if (!Securities.ContainsKey(optionSymbol)) return 0;
 
-            var calls = optionChain.Where(x => x.Right == OptionRight.Call).ToList();
-            var puts = optionChain.Where(x => x.Right == OptionRight.Put).ToList();
+            var option = Securities[optionSymbol] as Option;
+            if (option?.OptionChain == null || !option.OptionChain.Any()) return 0;
+
+            var calls = option.OptionChain.Where(x => x.Right == OptionRight.Call).ToList();
+            var puts = option.OptionChain.Where(x => x.Right == OptionRight.Put).ToList();
 
             if (!calls.Any() || !puts.Any()) return 0;
 
@@ -745,15 +747,17 @@ namespace Alaris.Algorithm
         private decimal[] CalculateVolatilityTermStructure()
         {
             var optionSymbol = GetOptionSymbol(_symbol);
-            var optionChain = Securities[optionSymbol].OptionChain;
-            if (optionChain == null || !optionChain.Any()) return Array.Empty<decimal>();
+            if (!Securities.ContainsKey(optionSymbol)) return Array.Empty<decimal>();
 
-            var expiries = optionChain.Select(x => x.Expiry).Distinct().OrderBy(x => x).ToList();
+            var option = Securities[optionSymbol] as Option;
+            if (option?.OptionChain == null || !option.OptionChain.Any()) return Array.Empty<decimal>();
+
+            var expiries = option.OptionChain.Select(x => x.Expiry).Distinct().OrderBy(x => x).ToList();
             var termStructure = new List<decimal>();
 
             foreach (var expiry in expiries)
             {
-                var options = optionChain.Where(x => x.Expiry == expiry).ToList();
+                var options = option.OptionChain.Where(x => x.Expiry == expiry).ToList();
                 if (!options.Any()) continue;
 
                 var atmOptions = options
@@ -853,7 +857,7 @@ namespace Alaris.Algorithm
         private Symbol GetOptionSymbol(string underlying)
         {
             return QuantConnect.Symbol.CreateOption(
-                underlying,
+                QuantConnect.Symbol.Create(underlying, SecurityType.Equity, Market.USA),
                 Market.USA,
                 OptionStyle.American,
                 OptionRight.Call,
