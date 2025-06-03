@@ -771,7 +771,15 @@ namespace Alaris.Algorithm
 
         private Symbol GetOptionSymbol(Symbol underlyingSymbol)
         {
-            return Symbol.CreateOption(underlyingSymbol.Value, Market.USA, OptionStyle.American, OptionRight.Call, 0, DateTime.MinValue);
+            // Use the base class method to create an option symbol
+            return QuantConnect.Symbol.CreateOption(
+                underlyingSymbol.Value,
+                Market.USA,
+                OptionStyle.American,
+                OptionRight.Call,
+                0,
+                DateTime.MinValue
+            );
         }
 
         private decimal CalculatePortfolioDelta()
