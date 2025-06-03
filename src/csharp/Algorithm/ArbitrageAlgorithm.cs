@@ -546,7 +546,7 @@ namespace Alaris.Algorithm
                 messageData.AddRange(BitConverter.GetBytes(regimeMessage.CurrentRealizedVol));
                 messageData.AddRange(BitConverter.GetBytes(regimeMessage.CurrentImpliedVol));
 
-                _sharedMemory?.SendControlMessage(ControlMessageType.SystemStatus, messageData.ToArray());
+                _sharedMemory?.SendControlMessage(ControlMessageType.SystemStatus, (uint)regimeMessage.VolRegime);
 
                 _currentRegime = regimeMessage.VolRegime;
                 _lastRegimeUpdate = Time;
@@ -713,9 +713,12 @@ namespace Alaris.Algorithm
             if (!Securities.ContainsKey(optionSymbol)) return 0;
 
             var option = Securities[optionSymbol] as Option;
-            if (option?.OptionChain == null || !option.OptionChain.Any()) return 0;
+            if (option == null) return 0;
 
-            var atmOptions = option.OptionChain
+            var chain = OptionChains.GetValueOrDefault(optionSymbol);
+            if (chain == null || !chain.Any()) return 0;
+
+            var atmOptions = chain
                 .Where(x => Math.Abs(x.Strike - Securities[_symbol].Price) < Securities[_symbol].Price * 0.05m)
                 .ToList();
 
@@ -730,10 +733,13 @@ namespace Alaris.Algorithm
             if (!Securities.ContainsKey(optionSymbol)) return 0;
 
             var option = Securities[optionSymbol] as Option;
-            if (option?.OptionChain == null || !option.OptionChain.Any()) return 0;
+            if (option == null) return 0;
 
-            var calls = option.OptionChain.Where(x => x.Right == OptionRight.Call).ToList();
-            var puts = option.OptionChain.Where(x => x.Right == OptionRight.Put).ToList();
+            var chain = OptionChains.GetValueOrDefault(optionSymbol);
+            if (chain == null || !chain.Any()) return 0;
+
+            var calls = chain.Where(x => x.Right == OptionRight.Call).ToList();
+            var puts = chain.Where(x => x.Right == OptionRight.Put).ToList();
 
             if (!calls.Any() || !puts.Any()) return 0;
 
@@ -750,14 +756,17 @@ namespace Alaris.Algorithm
             if (!Securities.ContainsKey(optionSymbol)) return Array.Empty<decimal>();
 
             var option = Securities[optionSymbol] as Option;
-            if (option?.OptionChain == null || !option.OptionChain.Any()) return Array.Empty<decimal>();
+            if (option == null) return Array.Empty<decimal>();
 
-            var expiries = option.OptionChain.Select(x => x.Expiry).Distinct().OrderBy(x => x).ToList();
+            var chain = OptionChains.GetValueOrDefault(optionSymbol);
+            if (chain == null || !chain.Any()) return Array.Empty<decimal>();
+
+            var expiries = chain.Select(x => x.Expiry).Distinct().OrderBy(x => x).ToList();
             var termStructure = new List<decimal>();
 
             foreach (var expiry in expiries)
             {
-                var options = option.OptionChain.Where(x => x.Expiry == expiry).ToList();
+                var options = chain.Where(x => x.Expiry == expiry).ToList();
                 if (!options.Any()) continue;
 
                 var atmOptions = options
@@ -856,8 +865,9 @@ namespace Alaris.Algorithm
 
         private Symbol GetOptionSymbol(string underlying)
         {
+            var equitySymbol = QuantConnect.Symbol.Create(underlying, SecurityType.Equity, Market.USA);
             return QuantConnect.Symbol.CreateOption(
-                QuantConnect.Symbol.Create(underlying, SecurityType.Equity, Market.USA),
+                equitySymbol,
                 Market.USA,
                 OptionStyle.American,
                 OptionRight.Call,
