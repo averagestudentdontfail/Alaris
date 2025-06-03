@@ -1,4 +1,4 @@
-# .cmake/Text/Components.txt
+# .cmake/Components.cmake
 # Component definitions and organization
 
 # Define QuantLib components
@@ -60,6 +60,93 @@ function(create_component_library NAME)
     message(STATUS "${NAME} library configured with sources: ${QUANTLIB_CORE_SOURCES}")
 endfunction()
 
+# Function to configure Lean integration
+function(configure_lean_integration)
+    # Copy lean.json to build directory if it exists
+    if(EXISTS "${CMAKE_SOURCE_DIR}/lean.json")
+        configure_file(
+            "${CMAKE_SOURCE_DIR}/lean.json"
+            "${CMAKE_BINARY_DIR}/lean.json"
+            COPYONLY
+        )
+        message(STATUS "lean.json copied to build directory")
+    else()
+        message(WARNING "lean.json not found - run scripts/setup.sh to create it")
+    endif()
+    
+    # Copy config directory to build directory
+    if(EXISTS "${CMAKE_SOURCE_DIR}/config")
+        file(COPY "${CMAKE_SOURCE_DIR}/config"
+             DESTINATION "${CMAKE_BINARY_DIR}")
+        message(STATUS "Config directory copied to build directory")
+    endif()
+    
+    # Create symbolic links to data and results directories in build dir
+    # This allows the C# process to run from build directory
+    set(BUILD_DATA_DIR "${CMAKE_BINARY_DIR}/data")
+    set(BUILD_RESULTS_DIR "${CMAKE_BINARY_DIR}/results")
+    set(BUILD_CACHE_DIR "${CMAKE_BINARY_DIR}/cache")
+    
+    if(NOT EXISTS "${BUILD_DATA_DIR}")
+        if(UNIX)
+            execute_process(
+                COMMAND ${CMAKE_COMMAND} -E create_symlink
+                "${CMAKE_SOURCE_DIR}/data"
+                "${BUILD_DATA_DIR}"
+                RESULT_VARIABLE symlink_result
+            )
+            if(symlink_result EQUAL 0)
+                message(STATUS "Created symlink: ${BUILD_DATA_DIR} -> ${CMAKE_SOURCE_DIR}/data")
+            else()
+                # Fallback to copying if symlink fails
+                file(COPY "${CMAKE_SOURCE_DIR}/data" DESTINATION "${CMAKE_BINARY_DIR}")
+                message(STATUS "Copied data directory to build (symlink failed)")
+            endif()
+        else()
+            # On Windows, just copy the directory
+            file(COPY "${CMAKE_SOURCE_DIR}/data" DESTINATION "${CMAKE_BINARY_DIR}")
+            message(STATUS "Copied data directory to build directory")
+        endif()
+    endif()
+    
+    # Create results and cache directories in build
+    file(MAKE_DIRECTORY "${BUILD_RESULTS_DIR}")
+    file(MAKE_DIRECTORY "${BUILD_CACHE_DIR}")
+    
+    # Create symbolic links for results and cache (or copy on Windows)
+    if(UNIX)
+        if(NOT EXISTS "${CMAKE_SOURCE_DIR}/results")
+            file(MAKE_DIRECTORY "${CMAKE_SOURCE_DIR}/results")
+        endif()
+        if(NOT EXISTS "${CMAKE_SOURCE_DIR}/cache")
+            file(MAKE_DIRECTORY "${CMAKE_SOURCE_DIR}/cache")
+        endif()
+        
+        # Create symlinks back to source directory so results are preserved
+        execute_process(
+            COMMAND ${CMAKE_COMMAND} -E create_symlink
+            "${CMAKE_SOURCE_DIR}/results"
+            "${BUILD_RESULTS_DIR}"
+            RESULT_VARIABLE results_symlink_result
+        )
+        execute_process(
+            COMMAND ${CMAKE_COMMAND} -E create_symlink
+            "${CMAKE_SOURCE_DIR}/cache"
+            "${BUILD_CACHE_DIR}"
+            RESULT_VARIABLE cache_symlink_result
+        )
+        
+        if(results_symlink_result EQUAL 0)
+            message(STATUS "Created symlink: ${BUILD_RESULTS_DIR} -> ${CMAKE_SOURCE_DIR}/results")
+        endif()
+        if(cache_symlink_result EQUAL 0)
+            message(STATUS "Created symlink: ${BUILD_CACHE_DIR} -> ${CMAKE_SOURCE_DIR}/cache")
+        endif()
+    endif()
+    
+    message(STATUS "Lean integration configured")
+endfunction()
+
 # Function to configure all C++ components (libraries and executables)
 function(configure_all_components)
     # Create the main quantlib library
@@ -99,4 +186,9 @@ function(configure_all_components)
     )
     target_link_libraries(alaris-system PRIVATE quantlib) 
     message(STATUS "alaris-system executable configured.")
+
+    # Configure Lean integration at the end
+    configure_lean_integration()
+    
+    message(STATUS "All components configured successfully")
 endfunction()

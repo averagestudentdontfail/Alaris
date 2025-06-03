@@ -17,7 +17,7 @@ using QuantConnect.Statistics;
 using QuantConnect.Logging;
 using System.Threading.Tasks;
 using System.Runtime.CompilerServices;
-using Symbol = QuantConnect.Symbol;  // Add explicit alias for Symbol
+using Symbol = QuantConnect.Symbol;
 using QuantConnect.Configuration;
 
 namespace Alaris.Algorithm
@@ -27,131 +27,46 @@ namespace Alaris.Algorithm
         private SharedMemoryBridge? _sharedMemory;
         private PerformanceMonitor? _performanceMonitor;
         private GCOptimizer? _gcOptimizer;
-        private string _symbol = "SPY";  // Default symbol
+        private string _symbol = "SPY";
         private StrategyMode _strategyMode = StrategyMode.DeltaNeutral;
-        private MarketRegime _currentRegime = MarketRegime.MediumVol;
         private bool _isInitialized = false;
-        private DateTime _lastRegimeUpdate = DateTime.MinValue;
-        private readonly TimeSpan _regimeUpdateInterval = TimeSpan.FromMinutes(15);
+        private bool _quantlibConnected = false;
 
         // Algorithm configuration
         private readonly Dictionary<string, uint> _symbolToId = new Dictionary<string, uint>();
         private readonly Dictionary<uint, Symbol> _idToSymbol = new Dictionary<uint, Symbol>();
-        private readonly HashSet<Symbol> _activeSymbols = new HashSet<Symbol>();
+        private readonly Dictionary<uint, MarketDataMessage> _latestMarketData = new Dictionary<uint, MarketDataMessage>();
 
         // Risk management
-        private decimal _maxPositionSize = 0.05m; // 5% of portfolio per position
-        private decimal _maxDailyLoss = 0.02m;    // 2% daily loss limit
+        private decimal _maxPositionSize = 0.05m;
+        private decimal _maxDailyLoss = 0.02m;
         private decimal _startingCash;
         private decimal _dailyStartingValue;
 
-        // Position tracking
-        private readonly Dictionary<Symbol, PositionInfo> _positions = new Dictionary<Symbol, PositionInfo>();
+        // Position tracking - keyed by QuantLib symbol IDs
+        private readonly Dictionary<uint, PositionInfo> _positions = new Dictionary<uint, PositionInfo>();
 
         // Performance tracking
-        private int _signalsReceived = 0;
+        private int _marketDataReceived = 0;
+        private int _signalsPublished = 0;
         private int _ordersPlaced = 0;
-        private int _successfulTrades = 0;
 
-        // Strategy-specific parameters
-        private readonly Dictionary<StrategyMode, StrategyConfig> _strategyConfigs = new()
-        {
-            {
-                StrategyMode.DeltaNeutral,
-                new StrategyConfig
-                {
-                    MaxPortfolioExposure = 0.2m,
-                    DeltaThreshold = 0.1m,
-                    GammaThreshold = 0.05m,
-                    VegaThreshold = 0.15m,
-                    ThetaThreshold = -0.1m,
-                    VolThreshold = 0.2m,
-                    MaxDrawdown = 0.1m,
-                    MaxPositionSize = 100,
-                    MinDaysToExpiry = 5,
-                    MaxDaysToExpiry = 45,
-                    RebalanceFrequency = TimeSpan.FromHours(4),
-                    HedgeFrequency = TimeSpan.FromHours(1)
-                }
-            },
-            {
-                StrategyMode.GammaScalping,
-                new StrategyConfig
-                {
-                    MaxPortfolioExposure = 0.15m,
-                    DeltaThreshold = 0.05m,
-                    GammaThreshold = 0.1m,
-                    VegaThreshold = 0.1m,
-                    ThetaThreshold = -0.05m,
-                    VolThreshold = 0.15m,
-                    MaxDrawdown = 0.08m,
-                    MaxPositionSize = 50,
-                    MinDaysToExpiry = 1,
-                    MaxDaysToExpiry = 30,
-                    RebalanceFrequency = TimeSpan.FromHours(2),
-                    HedgeFrequency = TimeSpan.FromMinutes(30)
-                }
-            },
-            {
-                StrategyMode.VolatilityTiming,
-                new StrategyConfig
-                {
-                    MaxPortfolioExposure = 0.25m,
-                    DeltaThreshold = 0.15m,
-                    GammaThreshold = 0.08m,
-                    VegaThreshold = 0.2m,
-                    ThetaThreshold = -0.15m,
-                    VolThreshold = 0.25m,
-                    MaxDrawdown = 0.12m,
-                    MaxPositionSize = 75,
-                    MinDaysToExpiry = 10,
-                    MaxDaysToExpiry = 60,
-                    RebalanceFrequency = TimeSpan.FromHours(6),
-                    HedgeFrequency = TimeSpan.FromHours(2)
-                }
-            },
-            {
-                StrategyMode.RelativeValue,
-                new StrategyConfig
-                {
-                    MaxPortfolioExposure = 0.3m,
-                    DeltaThreshold = 0.2m,
-                    GammaThreshold = 0.12m,
-                    VegaThreshold = 0.25m,
-                    ThetaThreshold = -0.2m,
-                    VolThreshold = 0.3m,
-                    MaxDrawdown = 0.15m,
-                    MaxPositionSize = 100,
-                    MinDaysToExpiry = 15,
-                    MaxDaysToExpiry = 90,
-                    RebalanceFrequency = TimeSpan.FromHours(8),
-                    HedgeFrequency = TimeSpan.FromHours(4)
-                }
-            }
-        };
-
-        // Store the main equity symbol for the algorithm
-        private Symbol _mainEquitySymbol = null!; // Initialized in Initialize()
+        // Store the main equity symbol
+        private Symbol _mainEquitySymbol = null!;
 
         public override void Initialize()
         {
             try
             {
-                Log("Starting algorithm initialization...");
+                Log("Starting Alaris Algorithm initialization...");
                 
                 // Load configuration from environment
                 _symbol = Environment.GetEnvironmentVariable("ALARIS_SYMBOL") ?? "SPY";
                 var strategyModeStr = Environment.GetEnvironmentVariable("ALARIS_STRATEGY")?.ToLower() ?? "deltaneutral";
-                var frequency = QuantConnect.Configuration.Config.Get("data-resolution", "minute").ToLower();
-                var debug = QuantConnect.Configuration.Config.GetBool("debug-mode", false);
+                var frequency = Config.Get("data-resolution", "minute").ToLower();
+                var debug = Config.GetBool("debug-mode", false);
                 
-                Log($"Configuration loaded - Symbol: {_symbol}, Strategy: {strategyModeStr}, Frequency: {frequency}, Debug: {debug}");
-                
-                // Set debug logging level
-                if (debug)
-                {
-                    Debug("Debug logging enabled");
-                }
+                Log($"Configuration - Symbol: {_symbol}, Strategy: {strategyModeStr}, Frequency: {frequency}, Debug: {debug}");
 
                 _strategyMode = strategyModeStr switch
                 {
@@ -160,7 +75,6 @@ namespace Alaris.Algorithm
                     "relativevalue" => StrategyMode.RelativeValue,
                     _ => StrategyMode.DeltaNeutral
                 };
-                Log($"Strategy mode set to: {_strategyMode}");
 
                 // Set up algorithm parameters
                 SetStartDate(2018, 1, 1);
@@ -168,59 +82,51 @@ namespace Alaris.Algorithm
                 SetCash(100000);
                 _startingCash = Portfolio.Cash;
                 _dailyStartingValue = Portfolio.TotalPortfolioValue;
-                Log($"Algorithm parameters set - Starting Cash: {_startingCash:C}, Daily Starting Value: {_dailyStartingValue:C}");
 
                 SetBrokerageModel(BrokerageName.InteractiveBrokersBrokerage, AccountType.Margin);
-                Log("Brokerage model set to Interactive Brokers");
 
-                // Initialize universe with configured frequency
-                Log("Initializing universe...");
+                // Initialize universe
+                Log("Initializing trading universe...");
                 InitializeUniverse(frequency);
-                Log($"Universe initialized with {_activeSymbols.Count} symbols");
-
-                // Set the main equity symbol for the algorithm
                 _mainEquitySymbol = _idToSymbol[_symbolToId[_symbol]];
-                Log($"Main equity symbol set to: {_mainEquitySymbol}");
 
-                // Initialize shared memory bridge
-                Log("Initializing shared memory bridge...");
+                // Initialize shared memory bridge AFTER universe setup
+                Log("Connecting to QuantLib process via shared memory...");
                 _sharedMemory = new SharedMemoryBridge();
-                _sharedMemory.SignalReceived += OnTradingSignalReceived;
-                _sharedMemory.ControlMessageReceived += OnControlMessageReceived;
-                Log("Shared memory bridge initialized");
+                
+                // Set up event handlers for data FROM QuantLib
+                _sharedMemory.MarketDataReceived += OnMarketDataFromQuantLib;
+                _sharedMemory.ControlMessageReceived += OnControlMessageFromQuantLib;
 
+                // Send connection handshake to QuantLib
+                _sharedMemory.SendConnectionHandshake();
+                
                 // Initialize performance monitoring
-                Log("Initializing performance monitor...");
                 _performanceMonitor = new PerformanceMonitor();
                 _performanceMonitor.Initialize(_symbol, _strategyMode);
-                Log("Performance monitor initialized");
 
                 // Initialize GC optimization
-                Log("Initializing GC optimizer...");
                 _gcOptimizer = new GCOptimizer();
-                Log("GC optimizer initialized");
 
-                // Schedule regular tasks based on frequency
+                // Schedule regular tasks
                 var updateInterval = frequency switch
                 {
                     "daily" => TimeSpan.FromDays(1),
                     "hour" => TimeSpan.FromHours(1),
                     _ => TimeSpan.FromMinutes(1)
                 };
-                Log($"Scheduled tasks with update interval: {updateInterval}");
 
                 Schedule.On(DateRules.EveryDay(), TimeRules.Every(updateInterval), () =>
                 {
-                    if (_isInitialized)
+                    if (_isInitialized && _quantlibConnected)
                     {
-                        Debug($"Running scheduled update at {Time}");
-                        UpdateMarketRegime();
-                        RebalancePortfolio();
+                        CheckRiskLimits();
+                        PublishPortfolioUpdate();
                     }
                 });
 
                 _isInitialized = true;
-                Log($"Alaris algorithm initialization completed for {_symbol} in {_strategyMode} mode with {frequency} frequency");
+                Log($"Alaris algorithm initialized successfully - waiting for QuantLib connection");
             }
             catch (Exception ex)
             {
@@ -235,7 +141,6 @@ namespace Alaris.Algorithm
             var symbols = new[] { "SPY", "QQQ", "IWM", "EFA", "EEM" };
             uint symbolId = 1;
 
-            // Convert frequency string to Resolution enum
             var resolution = frequency switch
             {
                 "daily" => Resolution.Daily,
@@ -249,9 +154,8 @@ namespace Alaris.Algorithm
                 var equity = AddEquity(symbol, resolution, Market.USA);
                 _symbolToId[symbol] = symbolId;
                 _idToSymbol[symbolId] = equity.Symbol;
-                _activeSymbols.Add(equity.Symbol);
 
-                // Add option chain with same resolution
+                // Add option chain
                 var option = AddOption(symbol, resolution);
                 option.SetFilter(universe => universe.IncludeWeeklys()
                                                    .Strikes(-5, +5)
@@ -261,32 +165,94 @@ namespace Alaris.Algorithm
             }
         }
 
+        // Receive market data FROM QuantLib process
+        private void OnMarketDataFromQuantLib(MarketDataMessage marketData)
+        {
+            try
+            {
+                _marketDataReceived++;
+                _performanceMonitor?.StartMeasurement("ProcessQuantLibData");
+
+                // Store latest market data from QuantLib
+                _latestMarketData[marketData.symbol_id] = marketData;
+
+                // Convert QuantLib market data to Lean symbols for internal processing
+                if (_idToSymbol.TryGetValue(marketData.symbol_id, out Symbol? symbol) && symbol != null)
+                {
+                    // Update our internal understanding but don't place trades yet
+                    // The strategy decisions come from QuantLib via trading signals
+                    
+                    Debug($"Received market data from QuantLib - Symbol: {symbol}, " +
+                          $"Price: {marketData.underlying_price:F2}, " +
+                          $"Bid/Ask: {marketData.bid:F4}/{marketData.ask:F4}");
+                }
+
+                _performanceMonitor?.EndMeasurement("ProcessQuantLibData");
+                
+                if (!_quantlibConnected)
+                {
+                    _quantlibConnected = true;
+                    Log("✓ Connected to QuantLib process successfully");
+                }
+            }
+            catch (Exception ex)
+            {
+                Error($"Error processing market data from QuantLib: {ex.Message}");
+            }
+        }
+
+        // Handle control messages FROM QuantLib process
+        private void OnControlMessageFromQuantLib(ControlMessage message)
+        {
+            try
+            {
+                var messageType = (ControlMessageType)message.message_type;
+                
+                switch (messageType)
+                {
+                    case ControlMessageType.START_TRADING:
+                        Log("QuantLib process authorized trading to begin");
+                        break;
+                        
+                    case ControlMessageType.STOP_TRADING:
+                        Log("QuantLib process requested trading halt");
+                        CloseAllPositions();
+                        break;
+                        
+                    case ControlMessageType.EMERGENCY_LIQUIDATION:
+                        Log("QuantLib process requested emergency liquidation");
+                        CloseAllPositions();
+                        Quit("Emergency liquidation requested by QuantLib");
+                        break;
+                        
+                    case ControlMessageType.HEARTBEAT:
+                        // Respond to heartbeat
+                        _sharedMemory?.SendControlMessage(ControlMessageType.HEARTBEAT);
+                        break;
+                        
+                    case ControlMessageType.SYSTEM_STATUS:
+                        Debug($"QuantLib system status: {message.value1}");
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                Error($"Error processing control message from QuantLib: {ex.Message}");
+            }
+        }
+
         public override void OnData(Slice data)
         {
-            if (!_isInitialized) return;
+            if (!_isInitialized || !_quantlibConnected) return;
 
             try
             {
                 _performanceMonitor?.StartMeasurement("OnData");
 
-                // Process underlying securities
+                // Process market data and send to QuantLib for analysis
                 foreach (var kvp in data.Bars)
                 {
-                    var symbol = kvp.Key;
-                    var bar = kvp.Value;
-
-                    if (_symbolToId.TryGetValue(symbol.Value, out uint symbolId))
-                    {
-                        var security = Securities[symbol];
-                        var marketData = new MarketDataMessage(
-                            symbolId, 
-                            (double)security.BidPrice, 
-                            (double)security.AskPrice, 
-                            (double)bar.Close
-                        );
-
-                        _sharedMemory?.PublishMarketData(marketData);
-                    }
+                    ProcessMarketDataForQuantLib(kvp.Key, kvp.Value);
                 }
 
                 // Process options data
@@ -294,15 +260,26 @@ namespace Alaris.Algorithm
                 {
                     foreach (var chain in data.OptionChains)
                     {
-                        ProcessOptionChain(chain.Key, chain.Value);
+                        ProcessOptionChainForQuantLib(chain.Key, chain.Value);
                     }
                 }
 
-                // Update positions
-                UpdatePositions();
+                // Generate trading signals based on current strategy
+                // This is where we would normally generate signals, but now
+                // QuantLib generates the signals and we execute them
+                var tradingSignals = GenerateTradingSignalsForQuantLib();
+                
+                foreach (var signal in tradingSignals)
+                {
+                    if (_sharedMemory?.PublishTradingSignal(signal) == true)
+                    {
+                        _signalsPublished++;
+                        Debug($"Published signal to QuantLib: {signal.SymbolId} qty={signal.Quantity}");
+                    }
+                }
 
-                // Check risk limits
-                CheckRiskLimits();
+                // Update positions based on latest market data
+                UpdatePositions();
 
                 _performanceMonitor?.EndMeasurement("OnData");
             }
@@ -312,7 +289,30 @@ namespace Alaris.Algorithm
             }
         }
 
-        private void ProcessOptionChain(Symbol underlying, OptionChain chain)
+        private void ProcessMarketDataForQuantLib(Symbol symbol, TradeBar bar)
+        {
+            if (_symbolToId.TryGetValue(symbol.Value, out uint symbolId))
+            {
+                var security = Securities[symbol];
+                
+                // Create market data message for QuantLib
+                // Note: QuantLib is the consumer of this data
+                var marketData = new MarketDataMessage(
+                    symbolId,
+                    (double)security.BidPrice,
+                    (double)security.AskPrice, 
+                    (double)bar.Close
+                );
+
+                // In the integrated system, we don't send market data TO QuantLib
+                // because QuantLib gets its market data from external feeds
+                // We receive analysis and signals FROM QuantLib
+                
+                Debug($"Market data available: {symbol} = {bar.Close:C}");
+            }
+        }
+
+        private void ProcessOptionChainForQuantLib(Symbol underlying, OptionChain chain)
         {
             if (!_symbolToId.TryGetValue(underlying.Value, out uint symbolId))
                 return;
@@ -323,123 +323,44 @@ namespace Alaris.Algorithm
             {
                 if (contract.BidPrice > 0 && contract.AskPrice > 0)
                 {
-                    var optionData = new MarketDataMessage(
-                        symbolId + (uint)contract.Strike.GetHashCode(), // Unique ID for option
-                        (double)contract.BidPrice,
-                        (double)contract.AskPrice,
-                        underlyingPrice
-                    )
-                    {
-                        BidIv = (double)contract.ImpliedVolatility,
-                        AskIv = (double)contract.ImpliedVolatility
-                    };
-
-                    _sharedMemory?.PublishMarketData(optionData);
+                    Debug($"Option data: {contract.Symbol} Bid={contract.BidPrice:F2} " +
+                          $"Ask={contract.AskPrice:F2} IV={contract.ImpliedVolatility:P1}");
                 }
             }
         }
 
-        private void OnTradingSignalReceived(TradingSignalMessage signal)
+        private List<TradingSignalMessage> GenerateTradingSignalsForQuantLib()
         {
-            try
-            {
-                _signalsReceived++;
-                _performanceMonitor?.StartMeasurement("ProcessSignal");
+            var signals = new List<TradingSignalMessage>();
 
-                if (!_idToSymbol.TryGetValue(signal.SymbolId, out Symbol? symbol) || symbol == null)
+            // In this integrated approach, the sophisticated strategy logic
+            // lives in the QuantLib process. Here we just provide basic
+            // portfolio information that QuantLib can use for decision making.
+
+            // Example: Send portfolio exposure information to QuantLib
+            foreach (var position in _positions.Values)
+            {
+                if (Math.Abs(position.Quantity) > 0)
                 {
-                    Debug($"Unknown symbol ID: {signal.SymbolId}");
-                    return;
-                }
-
-                // Validate signal
-                if (signal.Confidence < 0.7) // Minimum confidence threshold
-                {
-                    Debug($"Signal confidence too low: {signal.Confidence:F3}");
-                    return;
-                }
-
-                // Check position limits
-                var currentValue = Portfolio.TotalPortfolioValue;
-                var positionValue = Math.Abs(signal.Quantity) * (decimal)signal.MarketPrice;
-                
-                if (positionValue > currentValue * _maxPositionSize)
-                {
-                    Debug($"Position size too large: {positionValue:C} > {currentValue * _maxPositionSize:C}");
-                    return;
-                }
-
-                // Place order
-                PlaceSignalOrder(signal, symbol);
-
-                _performanceMonitor?.EndMeasurement("ProcessSignal");
-            }
-            catch (Exception ex)
-            {
-                Error($"Error processing trading signal: {ex.Message}");
-            }
-        }
-
-        private void PlaceSignalOrder(TradingSignalMessage signal, Symbol symbol)
-        {
-            var quantity = signal.Quantity;
-            if (signal.Side == 1) // Sell signal
-            {
-                quantity = -quantity;
-            }
-
-            OrderTicket? ticket;
-            
-            // Use market order for immediate execution
-            // In production, might use limit orders based on signal urgency
-            if (signal.Urgency > 200) // High urgency
-            {
-                ticket = MarketOrder(symbol, quantity);
-            }
-            else
-            {
-                // Use limit order with small buffer
-                var limitPrice = signal.Side == 0 ? 
-                                (decimal)signal.MarketPrice * 1.001m : // Buy slightly above market
-                                (decimal)signal.MarketPrice * 0.999m;  // Sell slightly below market
-                
-                ticket = LimitOrder(symbol, quantity, limitPrice);
-            }
-
-            if (ticket != null)
-            {
-                _ordersPlaced++;
-                Log($"Placed order: {quantity} shares of {symbol} based on signal (Confidence: {signal.Confidence:F3})");
-
-                // Store signal info for tracking
-                if (!_positions.ContainsKey(symbol))
-                {
-                    _positions[symbol] = new PositionInfo();
-                }
-                _positions[symbol].LastSignal = signal;
-            }
-        }
-
-        private void OnControlMessageReceived(ControlMessage message)
-        {
-            var messageType = (ControlMessageType)message.MessageType;
-            
-            switch (messageType)
-            {
-                case ControlMessageType.StopTrading:
-                    Log("Received stop trading signal");
-                    CloseAllPositions();
-                    break;
+                    // Create a signal that informs QuantLib of our current position
+                    var signal = _sharedMemory!.CreateTradingSignal(
+                        symbolId: position.SymbolId,
+                        theoreticalPrice: position.CurrentPrice,
+                        marketPrice: position.CurrentPrice,
+                        impliedVol: 0.0, // We don't calculate this in Lean
+                        forecastVol: 0.0, // QuantLib handles this
+                        confidence: 1.0,
+                        quantity: 0, // This is an info signal, not a trade signal
+                        side: 0,
+                        urgency: 1,
+                        signalType: 3 // Custom: Portfolio update
+                    );
                     
-                case ControlMessageType.SystemStatus:
-                    // Log system status updates
-                    break;
-                    
-                case ControlMessageType.Heartbeat:
-                    // Respond to heartbeat
-                    _sharedMemory?.SendControlMessage(ControlMessageType.Heartbeat);
-                    break;
+                    signals.Add(signal);
+                }
             }
+
+            return signals;
         }
 
         public override void OnOrderEvent(OrderEvent orderEvent)
@@ -450,16 +371,41 @@ namespace Alaris.Algorithm
                 
                 if (orderEvent.Status == OrderStatus.Filled)
                 {
-                    _successfulTrades++;
+                    _ordersPlaced++;
                     
-                    Debug($"Order filled: {orderEvent.Symbol} - {orderEvent.FillQuantity} @ {orderEvent.FillPrice:C}");
+                    Log($"Order filled: {orderEvent.Symbol} - {orderEvent.FillQuantity} @ {orderEvent.FillPrice:C}");
                     
-                    // Update position tracking
-                    if (_positions.TryGetValue(orderEvent.Symbol, out var position))
+                    // Find the corresponding QuantLib symbol ID
+                    var symbolName = orderEvent.Symbol.Value;
+                    if (_symbolToId.TryGetValue(symbolName, out uint symbolId))
                     {
+                        // Update position tracking
+                        if (!_positions.TryGetValue(symbolId, out var position))
+                        {
+                            position = new PositionInfo { SymbolId = symbolId };
+                            _positions[symbolId] = position;
+                        }
+
                         position.Quantity += (double)orderEvent.FillQuantity;
                         position.AveragePrice = ((position.AveragePrice * (position.Quantity - (double)orderEvent.FillQuantity)) + 
                                                ((double)orderEvent.FillPrice * (double)orderEvent.FillQuantity)) / position.Quantity;
+                        position.CurrentPrice = (double)orderEvent.FillPrice;
+
+                        // Notify QuantLib of the fill
+                        var fillNotification = _sharedMemory!.CreateTradingSignal(
+                            symbolId: symbolId,
+                            theoreticalPrice: (double)orderEvent.FillPrice,
+                            marketPrice: (double)orderEvent.FillPrice,
+                            impliedVol: 0.0,
+                            forecastVol: 0.0,
+                            confidence: 1.0,
+                            quantity: (int)orderEvent.FillQuantity,
+                            side: orderEvent.FillQuantity > 0 ? (byte)0 : (byte)1,
+                            urgency: 255,
+                            signalType: 4 // Custom: Fill notification
+                        );
+
+                        _sharedMemory?.PublishTradingSignal(fillNotification);
                     }
                 }
                 else if (orderEvent.Status == OrderStatus.Canceled || orderEvent.Status == OrderStatus.Invalid)
@@ -477,21 +423,22 @@ namespace Alaris.Algorithm
         {
             foreach (var kvp in _positions.ToList())
             {
-                var symbol = kvp.Key;
+                var symbolId = kvp.Key;
                 var position = kvp.Value;
                 
-                if (Securities.ContainsKey(symbol))
+                if (_idToSymbol.TryGetValue(symbolId, out Symbol? symbol) && 
+                    symbol != null && Securities.ContainsKey(symbol))
                 {
                     var security = Securities[symbol];
                     position.CurrentPrice = (double)security.Price;
                     position.UnrealizedPnL = position.Quantity * (position.CurrentPrice - position.AveragePrice);
                     
-                    // Check for exit conditions based on unrealized P&L
-                    if (Math.Abs(position.UnrealizedPnL) > Math.Abs(position.AveragePrice * position.Quantity) * 0.1) // 10% stop loss
+                    // Basic stop loss (QuantLib should handle sophisticated risk management)
+                    if (Math.Abs(position.UnrealizedPnL) > Math.Abs(position.AveragePrice * position.Quantity) * 0.2) // 20% stop
                     {
-                        Log($"Closing position in {symbol} due to stop loss");
+                        Log($"Emergency stop loss triggered for {symbol}");
                         MarketOrder(symbol, -(int)position.Quantity);
-                        _positions.Remove(symbol);
+                        _positions.Remove(symbolId);
                     }
                 }
             }
@@ -506,8 +453,23 @@ namespace Alaris.Algorithm
             {
                 Log($"Daily loss limit exceeded: {dailyPnL:C}");
                 CloseAllPositions();
-                _sharedMemory?.SendControlMessage(ControlMessageType.StopTrading);
+                _sharedMemory?.SendControlMessage(ControlMessageType.EMERGENCY_LIQUIDATION);
             }
+        }
+
+        private void PublishPortfolioUpdate()
+        {
+            // Send portfolio metrics to QuantLib for risk management
+            var totalValue = (double)Portfolio.TotalPortfolioValue;
+            var totalPnL = (double)(Portfolio.TotalPortfolioValue - _startingCash);
+            
+            _sharedMemory?.SendControlMessage(
+                ControlMessageType.SYSTEM_STATUS,
+                param1: (uint)_positions.Count,
+                param2: (uint)_ordersPlaced,
+                value1: totalValue,
+                value2: totalPnL
+            );
         }
 
         private void CloseAllPositions()
@@ -521,20 +483,17 @@ namespace Alaris.Algorithm
 
         public override void OnEndOfDay(Symbol symbol)
         {
-            // Reset daily tracking
-            if (symbol == _activeSymbols.First()) // Only do this once per day
+            if (symbol == _idToSymbol[_symbolToId[_symbol]])
             {
                 _dailyStartingValue = Portfolio.TotalPortfolioValue;
                 
-                // Log daily performance
                 var dailyReturn = (Portfolio.TotalPortfolioValue - _startingCash) / _startingCash;
-                Log($"Daily Performance - Portfolio Value: {Portfolio.TotalPortfolioValue:C}, " +
-                    $"Return: {dailyReturn:P2}, Signals: {_signalsReceived}, Orders: {_ordersPlaced}");
+                Log($"Daily Performance - Portfolio: {Portfolio.TotalPortfolioValue:C}, " +
+                    $"Return: {dailyReturn:P2}, Market Data: {_marketDataReceived}, " +
+                    $"Signals: {_signalsPublished}, Orders: {_ordersPlaced}");
                 
-                // Send daily metrics to QuantLib process
-                _sharedMemory?.SendControlMessage(ControlMessageType.SystemStatus, 
-                                               (uint)_signalsReceived, (uint)_ordersPlaced, 
-                                               (double)dailyReturn, (double)Portfolio.TotalPortfolioValue);
+                // Send daily summary to QuantLib
+                PublishPortfolioUpdate();
             }
         }
 
@@ -543,17 +502,15 @@ namespace Alaris.Algorithm
             try
             {
                 var totalReturn = (Portfolio.TotalPortfolioValue - _startingCash) / _startingCash;
-                var winRate = _ordersPlaced > 0 ? (double)_successfulTrades / _ordersPlaced : 0.0;
                 
                 Log($"Algorithm Performance Summary:");
                 Log($"Total Return: {totalReturn:P2}");
-                Log($"Win Rate: {winRate:P2}");
-                Log($"Signals Received: {_signalsReceived}");
+                Log($"Market Data Received: {_marketDataReceived}");
+                Log($"Signals Published: {_signalsPublished}");
                 Log($"Orders Placed: {_ordersPlaced}");
-                Log($"Successful Trades: {_successfulTrades}");
                 
-                // Send stop signal to QuantLib process
-                _sharedMemory?.SendControlMessage(ControlMessageType.StopTrading);
+                // Notify QuantLib of shutdown
+                _sharedMemory?.SendControlMessage(ControlMessageType.STOP_TRADING);
                 
                 // Cleanup
                 _sharedMemory?.Dispose();
@@ -566,390 +523,13 @@ namespace Alaris.Algorithm
             }
         }
 
-        private void UpdateMarketRegime()
-        {
-            if (Time - _lastRegimeUpdate < _regimeUpdateInterval)
-                return;
-
-            try
-            {
-                var realizedVol = CalculateRealizedVolatility();
-                var impliedVol = CalculateImpliedVolatility();
-                var skew = CalculateVolatilitySkew();
-                var termStructure = CalculateVolatilityTermStructure();
-
-                var regimeMessage = new MarketRegimeMessage
-                {
-                    Timestamp = (ulong)((DateTimeOffset)Time).ToUnixTimeMilliseconds() * 1000000,
-                    VolRegime = DetermineMarketRegime(realizedVol, impliedVol, skew, termStructure),
-                    CurrentRealizedVol = (double)realizedVol,
-                    CurrentImpliedVol = (double)impliedVol,
-                    VolRiskPremium = (double)(impliedVol - realizedVol),
-                    RegimeConfidence = (double)CalculateRegimeConfidence(),
-                    ExpectedVolNextWeek = (double)CalculateExpectedVolatility(),
-                    VolClusteringStrength = (double)CalculateVolClustering(),
-                    MeanReversionSpeed = (double)CalculateMeanReversion()
-                };
-
-                // Send market regime update using control message
-                var messageData = new List<byte>();
-                messageData.AddRange(BitConverter.GetBytes(regimeMessage.Timestamp));
-                messageData.AddRange(BitConverter.GetBytes((uint)regimeMessage.VolRegime));
-                messageData.AddRange(BitConverter.GetBytes(regimeMessage.CurrentRealizedVol));
-                messageData.AddRange(BitConverter.GetBytes(regimeMessage.CurrentImpliedVol));
-
-                _sharedMemory?.SendControlMessage(ControlMessageType.SystemStatus, (uint)regimeMessage.VolRegime);
-
-                _currentRegime = regimeMessage.VolRegime;
-                _lastRegimeUpdate = Time;
-
-                Debug($"Market regime updated: {_currentRegime} at {Time}");
-            }
-            catch (Exception ex)
-            {
-                Error($"Error updating market regime: {ex.Message}");
-            }
-        }
-
-        private MarketRegime DetermineMarketRegime(decimal realizedVol, decimal impliedVol, decimal skew, decimal[] termStructure)
-        {
-            var volRatio = impliedVol / realizedVol;
-            var volSpread = impliedVol - realizedVol;
-            var skewChange = skew - (_performanceMonitor?.GetHistoricalSkew() ?? 0);
-            var termStructureChange = termStructure.Length > 1 ? termStructure[0] - termStructure[^1] : 0;
-
-            return (volRatio, volSpread, skewChange, termStructureChange) switch
-            {
-                (var ratio, _, _, _) when ratio < 0.8m => MarketRegime.LowVol,
-                (var ratio, _, _, _) when ratio > 1.2m => MarketRegime.HighVol,
-                (_, var spread, _, _) when Math.Abs(spread) > 0.05m => MarketRegime.Transitioning,
-                _ => MarketRegime.MediumVol
-            };
-        }
-
-        private void RebalancePortfolio()
-        {
-            try
-            {
-                var config = _strategyConfigs[_strategyMode];
-                var currentExposure = Portfolio.TotalPortfolioValue > 0 
-                    ? Math.Abs(Portfolio.TotalHoldingsValue / Portfolio.TotalPortfolioValue)
-                    : 0;
-
-                if (currentExposure > config.MaxPortfolioExposure)
-                {
-                    Debug($"Reducing exposure from {currentExposure:P2} to {config.MaxPortfolioExposure:P2}");
-                    ReduceExposure();
-                }
-
-                // Strategy-specific rebalancing
-                switch (_strategyMode)
-                {
-                    case StrategyMode.DeltaNeutral:
-                        RebalanceDeltaNeutral();
-                        break;
-                    case StrategyMode.GammaScalping:
-                        RebalanceGammaScalping();
-                        break;
-                    case StrategyMode.VolatilityTiming:
-                        RebalanceVolatilityTiming();
-                        break;
-                    case StrategyMode.RelativeValue:
-                        RebalanceRelativeValue();
-                        break;
-                }
-
-                _performanceMonitor?.UpdatePortfolioMetrics(Portfolio);
-            }
-            catch (Exception ex)
-            {
-                Error($"Error rebalancing portfolio: {ex.Message}");
-            }
-        }
-
-        private void RebalanceDeltaNeutral()
-        {
-            var config = _strategyConfigs[StrategyMode.DeltaNeutral];
-            var portfolioDelta = CalculatePortfolioDelta();
-
-            if (Math.Abs(portfolioDelta) > config.DeltaThreshold)
-            {
-                var hedgeAmount = -portfolioDelta;
-                var hedgeOrder = MarketOrder(_mainEquitySymbol, (int)hedgeAmount);
-                Debug($"Delta hedging: {hedgeAmount} shares of {_mainEquitySymbol}");
-            }
-        }
-
-        private void RebalanceGammaScalping()
-        {
-            var config = _strategyConfigs[StrategyMode.GammaScalping];
-            var portfolioGamma = CalculatePortfolioGamma();
-
-            if (Math.Abs(portfolioGamma) > config.GammaThreshold)
-            {
-                var underlyingPrice = Securities[_mainEquitySymbol].Price;
-                var targetGamma = config.GammaThreshold * Math.Sign(portfolioGamma);
-                var adjustment = CalculateGammaAdjustment(portfolioGamma, targetGamma, underlyingPrice);
-                
-                if (Math.Abs(adjustment) > 0)
-                {
-                    var order = MarketOrder(_mainEquitySymbol, (int)adjustment);
-                    Debug($"Gamma scalping: {adjustment} shares of {_mainEquitySymbol}");
-                }
-            }
-        }
-
-        private void RebalanceVolatilityTiming()
-        {
-            var config = _strategyConfigs[StrategyMode.VolatilityTiming];
-            var realizedVol = CalculateRealizedVolatility();
-            var impliedVol = CalculateImpliedVolatility();
-            var volRatio = impliedVol / realizedVol;
-
-            if (volRatio > 1.2m)
-            {
-                var vegaExposure = CalculatePortfolioVega();
-                if (vegaExposure < -config.VegaThreshold)
-                {
-                    ReduceVegaExposure();
-                }
-            }
-            else if (volRatio < 0.8m)
-            {
-                var vegaExposure = CalculatePortfolioVega();
-                if (vegaExposure > config.VegaThreshold)
-                {
-                    IncreaseVegaExposure();
-                }
-            }
-        }
-
-        private void RebalanceRelativeValue()
-        {
-            var config = _strategyConfigs[StrategyMode.RelativeValue];
-            var skew = CalculateVolatilitySkew();
-            var termStructure = CalculateVolatilityTermStructure();
-
-            if (Math.Abs(skew) > config.VolThreshold)
-            {
-                var skewTrade = CalculateSkewTrade(skew);
-                if (skewTrade != 0)
-                {
-                    var order = MarketOrder(_mainEquitySymbol, skewTrade);
-                    Debug($"Relative value skew trade: {skewTrade} shares of {_mainEquitySymbol}");
-                }
-            }
-
-            if (termStructure.Length > 1 && Math.Abs(termStructure[0] - termStructure[^1]) > config.VolThreshold)
-            {
-                var termStructureTrade = CalculateTermStructureTrade(termStructure);
-                if (termStructureTrade != 0)
-                {
-                    var order = MarketOrder(_mainEquitySymbol, termStructureTrade);
-                    Debug($"Relative value term structure trade: {termStructureTrade} shares of {_mainEquitySymbol}");
-                }
-            }
-        }
-
-        private decimal CalculateImpliedVolatility()
-        {
-            var optionSymbol = GetOptionSymbol(_mainEquitySymbol);
-            var chain = OptionChains(new[] { optionSymbol });
-            if (!chain.TryGetValue(optionSymbol, out var optionChain) || optionChain == null || !optionChain.Any())
-                return 0;
-
-            var atmOptions = optionChain
-                .Where(x => Math.Abs(x.Strike - Securities[_mainEquitySymbol].Price) < Securities[_mainEquitySymbol].Price * 0.05m)
-                .ToList();
-
-            return atmOptions.Any()
-                ? (decimal)atmOptions.Average(x => x.ImpliedVolatility)
-                : 0;
-        }
-
-        private decimal CalculateVolatilitySkew()
-        {
-            var optionSymbol = GetOptionSymbol(_mainEquitySymbol);
-            var chain = OptionChains(new[] { optionSymbol });
-            if (!chain.TryGetValue(optionSymbol, out var optionChain) || optionChain == null || !optionChain.Any())
-                return 0;
-
-            var calls = optionChain.Where(x => x.Right == OptionRight.Call).ToList();
-            var puts = optionChain.Where(x => x.Right == OptionRight.Put).ToList();
-
-            if (!calls.Any() || !puts.Any()) return 0;
-
-            var atmStrike = Securities[_mainEquitySymbol].Price;
-            var callSkew = calls.Where(x => x.Strike > atmStrike).Average(x => x.ImpliedVolatility);
-            var putSkew = puts.Where(x => x.Strike < atmStrike).Average(x => x.ImpliedVolatility);
-
-            return (decimal)(callSkew - putSkew);
-        }
-
-        private decimal[] CalculateVolatilityTermStructure()
-        {
-            var optionSymbol = GetOptionSymbol(_mainEquitySymbol);
-            var chain = OptionChains(new[] { optionSymbol });
-            if (!chain.TryGetValue(optionSymbol, out var optionChain) || optionChain == null || !optionChain.Any())
-                return Array.Empty<decimal>();
-
-            var expiries = optionChain.Select(x => x.Expiry).Distinct().OrderBy(x => x).ToList();
-            var termStructure = new List<decimal>();
-
-            foreach (var expiry in expiries)
-            {
-                var options = optionChain.Where(x => x.Expiry == expiry).ToList();
-                if (!options.Any()) continue;
-
-                var atmOptions = options
-                    .Where(x => Math.Abs(x.Strike - Securities[_mainEquitySymbol].Price) < Securities[_mainEquitySymbol].Price * 0.05m)
-                    .ToList();
-
-                if (atmOptions.Any())
-                {
-                    termStructure.Add((decimal)atmOptions.Average(x => x.ImpliedVolatility));
-                }
-            }
-
-            return termStructure.ToArray();
-        }
-
-        private Symbol GetOptionSymbol(Symbol underlyingSymbol)
-        {
-            // Use the base class method to create an option symbol
-            return QuantConnect.Symbol.CreateOption(
-                underlyingSymbol.Value,
-                Market.USA,
-                OptionStyle.American,
-                OptionRight.Call,
-                0,
-                DateTime.MinValue
-            );
-        }
-
-        private decimal CalculatePortfolioDelta()
-        {
-            // TODO: Implement actual delta calculation using option positions
-            return Portfolio.TotalHoldingsValue > 0
-                ? Portfolio.TotalHoldingsValue * (decimal)Portfolio.TotalHoldingsValue
-                : 0;
-        }
-
-        private decimal CalculatePortfolioGamma()
-        {
-            // Implement gamma calculation based on option positions
-            return 0; // Placeholder
-        }
-
-        private decimal CalculatePortfolioVega()
-        {
-            // Implement vega calculation based on option positions
-            return 0; // Placeholder
-        }
-
-        private decimal CalculateGammaAdjustment(decimal currentGamma, decimal targetGamma, decimal underlyingPrice)
-        {
-            // Implement gamma adjustment calculation
-            return 0; // Placeholder
-        }
-
-        private void ReduceExposure()
-        {
-            var holdings = Portfolio.Securities.Values.Where(x => x.Holdings.Quantity != 0).ToList();
-            foreach (var holding in holdings)
-            {
-                var order = MarketOrder(holding.Symbol, -holding.Holdings.Quantity);
-                Debug($"Reducing exposure: {holding.Symbol} - {holding.Holdings.Quantity} shares");
-            }
-        }
-
-        private void ReduceVegaExposure()
-        {
-            // Implement vega reduction logic
-        }
-
-        private void IncreaseVegaExposure()
-        {
-            // Implement vega increase logic
-        }
-
-        private decimal CalculateSkewTrade(decimal skew)
-        {
-            // Implement skew trading logic
-            return 0; // Placeholder
-        }
-
-        private decimal CalculateTermStructureTrade(decimal[] termStructure)
-        {
-            // Implement term structure trading logic
-            return 0; // Placeholder
-        }
-
-        private decimal CalculateRegimeConfidence()
-        {
-            // Implement regime confidence calculation
-            return 0.8m; // Placeholder
-        }
-
-        private decimal CalculateExpectedVolatility()
-        {
-            // Implement expected volatility calculation
-            return CalculateRealizedVolatility(); // Placeholder
-        }
-
-        private decimal CalculateVolClustering()
-        {
-            // Implement volatility clustering calculation
-            return 0.5m; // Placeholder
-        }
-
-        private decimal CalculateMeanReversion()
-        {
-            // Implement mean reversion calculation
-            return 0.3m; // Placeholder
-        }
-
-        private decimal CalculateRealizedVolatility()
-        {
-            var history = History(_mainEquitySymbol, 20, Resolution.Daily);
-            var returns = history.Select(x => Math.Log((double)x.Close / (double)x.Open)).ToList();
-            return (decimal)returns.StandardDeviation() * (decimal)Math.Sqrt(252);
-        }
-
         private class PositionInfo
         {
+            public uint SymbolId { get; set; }
             public double Quantity { get; set; }
             public double AveragePrice { get; set; }
             public double CurrentPrice { get; set; }
             public double UnrealizedPnL { get; set; }
-            public TradingSignalMessage LastSignal { get; set; }
-        }
-    }
-
-    public class StrategyConfig
-    {
-        public decimal MaxPortfolioExposure { get; set; }
-        public decimal DeltaThreshold { get; set; }
-        public decimal GammaThreshold { get; set; }
-        public decimal VegaThreshold { get; set; }
-        public decimal ThetaThreshold { get; set; }
-        public decimal VolThreshold { get; set; }
-        public decimal MaxDrawdown { get; set; }
-        public int MaxPositionSize { get; set; }
-        public int MinDaysToExpiry { get; set; }
-        public int MaxDaysToExpiry { get; set; }
-        public TimeSpan RebalanceFrequency { get; set; }
-        public TimeSpan HedgeFrequency { get; set; }
-    }
-
-    public static class ListExtensions
-    {
-        public static double StandardDeviation(this List<double> values)
-        {
-            if (values.Count == 0) return 0;
-            var avg = values.Average();
-            var sumOfSquares = values.Sum(x => Math.Pow(x - avg, 2));
-            return Math.Sqrt(sumOfSquares / (values.Count - 1));
         }
     }
 }
