@@ -128,6 +128,9 @@ namespace Alaris.Algorithm
             }
         };
 
+        // Store the main equity symbol for the algorithm
+        private Symbol _mainEquitySymbol;
+
         public override void Initialize()
         {
             try
@@ -153,6 +156,9 @@ namespace Alaris.Algorithm
 
                 // Initialize universe
                 InitializeUniverse();
+
+                // Set the main equity symbol for the algorithm
+                _mainEquitySymbol = _idToSymbol[_symbolToId[_symbol]];
 
                 // Initialize shared memory bridge
                 _sharedMemory = new SharedMemoryBridge();
@@ -623,8 +629,8 @@ namespace Alaris.Algorithm
             if (Math.Abs(portfolioDelta) > config.DeltaThreshold)
             {
                 var hedgeAmount = -portfolioDelta;
-                var hedgeOrder = MarketOrder(_symbol, (int)hedgeAmount);
-                Debug($"Delta hedging: {hedgeAmount} shares of {_symbol}");
+                var hedgeOrder = MarketOrder(_mainEquitySymbol, (int)hedgeAmount);
+                Debug($"Delta hedging: {hedgeAmount} shares of {_mainEquitySymbol}");
             }
         }
 
@@ -635,14 +641,14 @@ namespace Alaris.Algorithm
 
             if (Math.Abs(portfolioGamma) > config.GammaThreshold)
             {
-                var underlyingPrice = Securities[_symbol].Price;
+                var underlyingPrice = Securities[_mainEquitySymbol].Price;
                 var targetGamma = config.GammaThreshold * Math.Sign(portfolioGamma);
                 var adjustment = CalculateGammaAdjustment(portfolioGamma, targetGamma, underlyingPrice);
                 
                 if (Math.Abs(adjustment) > 0)
                 {
-                    var order = MarketOrder(_symbol, (int)adjustment);
-                    Debug($"Gamma scalping: {adjustment} shares of {_symbol}");
+                    var order = MarketOrder(_mainEquitySymbol, (int)adjustment);
+                    Debug($"Gamma scalping: {adjustment} shares of {_mainEquitySymbol}");
                 }
             }
         }
@@ -683,8 +689,8 @@ namespace Alaris.Algorithm
                 var skewTrade = CalculateSkewTrade(skew);
                 if (skewTrade != 0)
                 {
-                    var order = MarketOrder(_symbol, skewTrade);
-                    Debug($"Relative value skew trade: {skewTrade} shares of {_symbol}");
+                    var order = MarketOrder(_mainEquitySymbol, skewTrade);
+                    Debug($"Relative value skew trade: {skewTrade} shares of {_mainEquitySymbol}");
                 }
             }
 
@@ -693,15 +699,15 @@ namespace Alaris.Algorithm
                 var termStructureTrade = CalculateTermStructureTrade(termStructure);
                 if (termStructureTrade != 0)
                 {
-                    var order = MarketOrder(_symbol, termStructureTrade);
-                    Debug($"Relative value term structure trade: {termStructureTrade} shares of {_symbol}");
+                    var order = MarketOrder(_mainEquitySymbol, termStructureTrade);
+                    Debug($"Relative value term structure trade: {termStructureTrade} shares of {_mainEquitySymbol}");
                 }
             }
         }
 
         private decimal CalculateImpliedVolatility()
         {
-            var optionSymbol = GetOptionSymbol(_symbol);
+            var optionSymbol = GetOptionSymbol(_mainEquitySymbol);
             if (!Securities.ContainsKey(optionSymbol)) return 0;
 
             var option = Securities[optionSymbol] as Option;
@@ -712,7 +718,7 @@ namespace Alaris.Algorithm
                 return 0;
 
             var atmOptions = chain
-                .Where(x => Math.Abs(x.Strike - Securities[_symbol].Price) < Securities[_symbol].Price * 0.05m)
+                .Where(x => Math.Abs(x.Strike - Securities[_mainEquitySymbol].Price) < Securities[_mainEquitySymbol].Price * 0.05m)
                 .ToList();
 
             return atmOptions.Any() 
@@ -722,7 +728,7 @@ namespace Alaris.Algorithm
 
         private decimal CalculateVolatilitySkew()
         {
-            var optionSymbol = GetOptionSymbol(_symbol);
+            var optionSymbol = GetOptionSymbol(_mainEquitySymbol);
             if (!Securities.ContainsKey(optionSymbol)) return 0;
 
             var option = Securities[optionSymbol] as Option;
@@ -737,7 +743,7 @@ namespace Alaris.Algorithm
 
             if (!calls.Any() || !puts.Any()) return 0;
 
-            var atmStrike = Securities[_symbol].Price;
+            var atmStrike = Securities[_mainEquitySymbol].Price;
             var callSkew = calls.Where(x => x.Strike > atmStrike).Average(x => x.ImpliedVolatility);
             var putSkew = puts.Where(x => x.Strike < atmStrike).Average(x => x.ImpliedVolatility);
 
@@ -746,7 +752,7 @@ namespace Alaris.Algorithm
 
         private decimal[] CalculateVolatilityTermStructure()
         {
-            var optionSymbol = GetOptionSymbol(_symbol);
+            var optionSymbol = GetOptionSymbol(_mainEquitySymbol);
             if (!Securities.ContainsKey(optionSymbol)) return Array.Empty<decimal>();
 
             var option = Securities[optionSymbol] as Option;
@@ -765,7 +771,7 @@ namespace Alaris.Algorithm
                 if (!options.Any()) continue;
 
                 var atmOptions = options
-                    .Where(x => Math.Abs(x.Strike - Securities[_symbol].Price) < Securities[_symbol].Price * 0.05m)
+                    .Where(x => Math.Abs(x.Strike - Securities[_mainEquitySymbol].Price) < Securities[_mainEquitySymbol].Price * 0.05m)
                     .ToList();
 
                 if (atmOptions.Any())
@@ -777,21 +783,14 @@ namespace Alaris.Algorithm
             return termStructure.ToArray();
         }
 
-        private Symbol GetOptionSymbol(string underlying)
+        private Symbol GetOptionSymbol(Symbol underlyingSymbol)
         {
-            var equitySymbol = Symbol.Create(underlying, SecurityType.Equity, Market.USA);
-            return Symbol.CreateOption(
-                equitySymbol,
-                Market.USA,
-                OptionStyle.American,
-                OptionRight.Call,
-                0,  // Strike will be filtered later
-                DateTime.Now.AddDays(30)  // Expiry will be filtered later
-            );
+            return Symbol.CreateCanonicalOption(underlyingSymbol);
         }
 
         private decimal CalculatePortfolioDelta()
         {
+            // TODO: Implement actual delta calculation using option positions
             return Portfolio.TotalHoldingsValue > 0
                 ? Portfolio.TotalHoldingsValue * (decimal)Portfolio.TotalHoldingsValue
                 : 0;
@@ -873,7 +872,7 @@ namespace Alaris.Algorithm
 
         private decimal CalculateRealizedVolatility()
         {
-            var history = History(_symbol, 20, Resolution.Daily);
+            var history = History(_mainEquitySymbol, 20, Resolution.Daily);
             var returns = history.Select(x => Math.Log((double)x.Close / (double)x.Open)).ToList();
             return (decimal)returns.StandardDeviation() * (decimal)Math.Sqrt(252);
         }
