@@ -239,169 +239,160 @@ namespace Alaris
 
         private static void ConfigureLean(string mode, string? symbol, string strategy, string? startDate, string? endDate, string frequency, bool debug)
         {
-            try
+            // Ensure directories exist
+            var baseDir = Directory.GetCurrentDirectory();
+            var dataDir = Path.Combine(baseDir, "data");
+            var resultsDir = Path.Combine(baseDir, "results");
+            var cacheDir = Path.Combine(baseDir, "Cache");
+
+            // Create directories if they don't exist
+            Directory.CreateDirectory(dataDir);
+            Directory.CreateDirectory(resultsDir);
+            Directory.CreateDirectory(cacheDir);
+            Directory.CreateDirectory(Path.Combine(dataDir, "market-hours"));
+            Directory.CreateDirectory(Path.Combine(dataDir, "symbol-properties"));
+            Directory.CreateDirectory(Path.Combine(dataDir, "equity"));
+
+            Console.WriteLine($"Base directory: {baseDir}");
+            Console.WriteLine($"Data directory: {dataDir}");
+            Console.WriteLine($"Results directory: {resultsDir}");
+            Console.WriteLine($"Cache directory: {cacheDir}");
+
+            // Verify required files exist
+            var marketHoursFile = Path.Combine(dataDir, "market-hours", "market-hours-database.json");
+            var symbolPropsFile = Path.Combine(dataDir, "symbol-properties", "symbol-properties-database.csv");
+            
+            if (!File.Exists(marketHoursFile))
             {
-                // Ensure directories exist
-                var baseDir = Directory.GetCurrentDirectory();
-                var dataDir = Path.Combine(baseDir, "data");
-                var resultsDir = Path.Combine(baseDir, "results");
-                var cacheDir = Path.Combine(baseDir, "Cache");
-
-                // Create directories if they don't exist
-                Directory.CreateDirectory(dataDir);
-                Directory.CreateDirectory(resultsDir);
-                Directory.CreateDirectory(cacheDir);
-                Directory.CreateDirectory(Path.Combine(dataDir, "market-hours"));
-                Directory.CreateDirectory(Path.Combine(dataDir, "symbol-properties"));
-                Directory.CreateDirectory(Path.Combine(dataDir, "equity"));
-
-                Console.WriteLine($"Base directory: {baseDir}");
-                Console.WriteLine($"Data directory: {dataDir}");
-                Console.WriteLine($"Results directory: {resultsDir}");
-                Console.WriteLine($"Cache directory: {cacheDir}");
-
-                // Verify required files exist
-                var marketHoursFile = Path.Combine(dataDir, "market-hours", "market-hours-database.json");
-                var symbolPropsFile = Path.Combine(dataDir, "symbol-properties", "symbol-properties-database.csv");
-                
-                if (!File.Exists(marketHoursFile))
-                {
-                    Console.WriteLine($"Warning: Market hours database not found at {marketHoursFile}");
-                }
-                else
-                {
-                    Console.WriteLine($"✓ Market hours database found");
-                }
-                
-                if (!File.Exists(symbolPropsFile))
-                {
-                    Console.WriteLine($"Warning: Symbol properties database not found at {symbolPropsFile}");
-                }
-                else
-                {
-                    Console.WriteLine($"✓ Symbol properties database found");
-                }
-
-                // Set up basic configuration with absolute paths
-                Config.Set("data-directory", dataDir);
-                Config.Set("cache-location", cacheDir);
-                Config.Set("results-destination-folder", resultsDir);
-                
-                // Core Lean configuration
-                Config.Set("environment", "backtesting");
-                Config.Set("algorithm-type-name", "Alaris.Algorithm.ArbitrageAlgorithm");
-                Config.Set("algorithm-language", "CSharp");
-                
-                // Configure trading mode
-                Config.Set("live-mode", mode == "live" ? "true" : "false");
-                
-                // Configure data frequency
-                Config.Set("data-resolution", frequency);
-                
-                // Configure logging
-                Config.Set("log-handler", "QuantConnect.Logging.CompositeLogHandler");
-                Config.Set("job-user-id", "1");
-                Config.Set("api-access-token", "");
-                Config.Set("job-project-id", "1");
-                Config.Set("job-organization-id", "");
-                
-                // Set debug configuration
-                if (debug)
-                {
-                    Config.Set("debug-mode", "true");
-                    Config.Set("log-level", "Debug");
-                }
-                else
-                {
-                    Config.Set("debug-mode", "false");
-                    Config.Set("log-level", "Trace"); // Use Trace for detailed output
-                }
-
-                // Backtest specific configuration
-                if (mode == "backtest")
-                {
-                    // Core handlers for backtesting
-                    Config.Set("data-feed-handler", "QuantConnect.Lean.Engine.DataFeeds.FileSystemDataFeed");
-                    Config.Set("result-handler", "QuantConnect.Lean.Engine.Results.BacktestingResultHandler");
-                    Config.Set("setup-handler", "QuantConnect.Lean.Engine.Setup.ConsoleSetupHandler");
-                    Config.Set("real-time-handler", "QuantConnect.Lean.Engine.RealTime.BacktestingRealTimeHandler");
-                    Config.Set("transaction-handler", "QuantConnect.Lean.Engine.TransactionHandlers.BacktestingTransactionHandler");
-                    Config.Set("history-provider", "QuantConnect.Lean.Engine.HistoryProvider.SubscriptionDataReaderHistoryProvider");
-                    
-                    // Data provider settings
-                    Config.Set("data-provider", "QuantConnect.Lean.Engine.DataFeeds.DefaultDataProvider");
-                    Config.Set("map-file-provider", "QuantConnect.Lean.Engine.DataFeeds.LocalDiskMapFileProvider");
-                    Config.Set("factor-file-provider", "QuantConnect.Lean.Engine.DataFeeds.LocalDiskFactorFileProvider");
-                    Config.Set("data-permission-manager", "QuantConnect.Data.Auxiliary.DataPermissionManager");
-                    
-                    // Object store and caching
-                    Config.Set("object-store", "QuantConnect.Lean.Engine.Storage.LocalObjectStore");
-                    Config.Set("data-cache-provider", "QuantConnect.Lean.Engine.DataFeeds.SingleEntryDataCacheProvider");
-                    
-                    // Remove problematic lean-manager-type - let MEF auto-discover
-                    
-                    // Algorithm settings
-                    Config.Set("algorithm-location", "QuantConnect.Algorithm.CSharp.dll");
-                    
-                    // Market settings
-                    Config.Set("force-exchange-always-open", "true");
-                    Config.Set("show-missing-data-logs", "false");
-                    
-                    // Performance settings
-                    Config.Set("enable-automatic-indicator-warm-up", "false");
-                    Config.Set("regression-update-statistics", "false");
-                }
-                else if (mode == "live" || mode == "paper")
-                {
-                    // Configure for live/paper trading with Interactive Brokers
-                    Config.Set("live-mode-brokerage", "InteractiveBrokersBrokerage");
-                    Config.Set("data-feed-handler", "InteractiveBrokersBrokerage");
-                    
-                    // Interactive Brokers configuration
-                    Config.Set("ib-host", "127.0.0.1");
-                    Config.Set("ib-port", "4001"); // TWS/IB Gateway port
-                    Config.Set("ib-account", "DU123456");
-                    Config.Set("ib-user-name", "");
-                    Config.Set("ib-password", "");
-                    Config.Set("ib-agent-description", "Individual");
-                }
-                
-                // Risk management and performance optimization
-                Config.Set("maximum-data-points-per-chart-series", "1000000");
-                Config.Set("maximum-chart-series", "30");
-                Config.Set("maximum-runtime-minutes", "0"); // No timeout
-                Config.Set("maximum-orders", "0"); // No limit
-                
-                // Store custom configuration in environment variables for algorithm access
-                Environment.SetEnvironmentVariable("ALARIS_SYMBOL", symbol ?? "SPY");
-                Environment.SetEnvironmentVariable("ALARIS_MODE", mode);
-                Environment.SetEnvironmentVariable("ALARIS_STRATEGY", strategy);
-                Environment.SetEnvironmentVariable("ALARIS_FREQUENCY", frequency);
-                Environment.SetEnvironmentVariable("ALARIS_DEBUG", debug.ToString());
-
-                // Log configuration summary
-                Console.WriteLine($"Starting Alaris algorithm with configuration:");
-                Console.WriteLine($"Mode: {mode}");
-                Console.WriteLine($"Symbol: {symbol ?? "SPY"}");
-                Console.WriteLine($"Strategy: {strategy}");
-                Console.WriteLine($"Frequency: {frequency}");
-                Console.WriteLine($"Debug Mode: {debug}");
-                if (mode == "backtest")
-                {
-                    Console.WriteLine($"Start Date: {startDate}");
-                    Console.WriteLine($"End Date: {endDate}");
-                }
-                Console.WriteLine($"Data Directory: {dataDir}");
-                Console.WriteLine($"Results Directory: {resultsDir}");
-                Console.WriteLine($"Log Level: {Config.Get("log-level")}");
-                Console.WriteLine("Lean configuration completed");
+                Console.WriteLine($"Warning: Market hours database not found at {marketHoursFile}");
             }
-            catch (Exception ex)
+            else
             {
-                Console.WriteLine($"Error configuring Lean: {ex.Message}");
-                Console.WriteLine($"Stack trace: {ex.StackTrace}");
-                throw;
+                Console.WriteLine($"✓ Market hours database found");
             }
+            
+            if (!File.Exists(symbolPropsFile))
+            {
+                Console.WriteLine($"Warning: Symbol properties database not found at {symbolPropsFile}");
+            }
+            else
+            {
+                Console.WriteLine($"✓ Symbol properties database found");
+            }
+
+            // Set up basic configuration with absolute paths
+            Config.Set("data-directory", dataDir);
+            Config.Set("cache-location", cacheDir);
+            Config.Set("results-destination-folder", resultsDir);
+            
+            // Core Lean configuration
+            Config.Set("environment", "backtesting");
+            Config.Set("algorithm-type-name", "Alaris.Algorithm.ArbitrageAlgorithm");
+            Config.Set("algorithm-language", "CSharp");
+            
+            // Configure trading mode
+            Config.Set("live-mode", mode == "live" ? "true" : "false");
+            
+            // Configure data frequency
+            Config.Set("data-resolution", frequency);
+            
+            // Configure logging
+            Config.Set("log-handler", "QuantConnect.Logging.CompositeLogHandler");
+            Config.Set("job-user-id", "1");
+            Config.Set("api-access-token", "");
+            Config.Set("job-project-id", "1");
+            Config.Set("job-organization-id", "");
+            
+            // Set debug configuration
+            if (debug)
+            {
+                Config.Set("debug-mode", "true");
+                Config.Set("log-level", "Debug");
+            }
+            else
+            {
+                Config.Set("debug-mode", "false");
+                Config.Set("log-level", "Trace"); // Use Trace for detailed output
+            }
+
+            // Backtest specific configuration
+            if (mode == "backtest")
+            {
+                // Core handlers for backtesting
+                Config.Set("data-feed-handler", "QuantConnect.Lean.Engine.DataFeeds.FileSystemDataFeed");
+                Config.Set("result-handler", "QuantConnect.Lean.Engine.Results.BacktestingResultHandler");
+                Config.Set("setup-handler", "QuantConnect.Lean.Engine.Setup.ConsoleSetupHandler");
+                Config.Set("real-time-handler", "QuantConnect.Lean.Engine.RealTime.BacktestingRealTimeHandler");
+                Config.Set("transaction-handler", "QuantConnect.Lean.Engine.TransactionHandlers.BacktestingTransactionHandler");
+                Config.Set("history-provider", "QuantConnect.Lean.Engine.HistoryProvider.SubscriptionDataReaderHistoryProvider");
+                
+                // Data provider settings
+                Config.Set("data-provider", "QuantConnect.Lean.Engine.DataFeeds.DefaultDataProvider");
+                Config.Set("map-file-provider", "QuantConnect.Lean.Engine.DataFeeds.LocalDiskMapFileProvider");
+                Config.Set("factor-file-provider", "QuantConnect.Lean.Engine.DataFeeds.LocalDiskFactorFileProvider");
+                Config.Set("data-permission-manager", "QuantConnect.Data.Auxiliary.DataPermissionManager");
+                
+                // Object store and caching
+                Config.Set("object-store", "QuantConnect.Lean.Engine.Storage.LocalObjectStore");
+                Config.Set("data-cache-provider", "QuantConnect.Lean.Engine.DataFeeds.SingleEntryDataCacheProvider");
+                
+                // Remove problematic lean-manager-type - let MEF auto-discover
+                
+                // Algorithm settings
+                Config.Set("algorithm-location", "QuantConnect.Algorithm.CSharp.dll");
+                
+                // Market settings
+                Config.Set("force-exchange-always-open", "true");
+                Config.Set("show-missing-data-logs", "false");
+                
+                // Performance settings
+                Config.Set("enable-automatic-indicator-warm-up", "false");
+                Config.Set("regression-update-statistics", "false");
+            }
+            else if (mode == "live" || mode == "paper")
+            {
+                // Configure for live/paper trading with Interactive Brokers
+                Config.Set("live-mode-brokerage", "InteractiveBrokersBrokerage");
+                Config.Set("data-feed-handler", "InteractiveBrokersBrokerage");
+                
+                // Interactive Brokers configuration
+                Config.Set("ib-host", "127.0.0.1");
+                Config.Set("ib-port", "4001"); // TWS/IB Gateway port
+                Config.Set("ib-account", "DU123456");
+                Config.Set("ib-user-name", "");
+                Config.Set("ib-password", "");
+                Config.Set("ib-agent-description", "Individual");
+            }
+            
+            // Risk management and performance optimization
+            Config.Set("maximum-data-points-per-chart-series", "1000000");
+            Config.Set("maximum-chart-series", "30");
+            Config.Set("maximum-runtime-minutes", "0"); // No timeout
+            Config.Set("maximum-orders", "0"); // No limit
+            
+            // Store custom configuration in environment variables for algorithm access
+            Environment.SetEnvironmentVariable("ALARIS_SYMBOL", symbol ?? "SPY");
+            Environment.SetEnvironmentVariable("ALARIS_MODE", mode);
+            Environment.SetEnvironmentVariable("ALARIS_STRATEGY", strategy);
+            Environment.SetEnvironmentVariable("ALARIS_FREQUENCY", frequency);
+            Environment.SetEnvironmentVariable("ALARIS_DEBUG", debug.ToString());
+
+            // Log configuration summary
+            Console.WriteLine($"Starting Alaris algorithm with configuration:");
+            Console.WriteLine($"Mode: {mode}");
+            Console.WriteLine($"Symbol: {symbol ?? "SPY"}");
+            Console.WriteLine($"Strategy: {strategy}");
+            Console.WriteLine($"Frequency: {frequency}");
+            Console.WriteLine($"Debug Mode: {debug}");
+            if (mode == "backtest")
+            {
+                Console.WriteLine($"Start Date: {startDate}");
+                Console.WriteLine($"End Date: {endDate}");
+            }
+            Console.WriteLine($"Data Directory: {dataDir}");
+            Console.WriteLine($"Results Directory: {resultsDir}");
+            Console.WriteLine($"Log Level: {Config.Get("log-level")}");
+            Console.WriteLine("Lean configuration completed");
         }
     }
 }
