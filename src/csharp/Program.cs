@@ -107,6 +107,66 @@ namespace Alaris
                                 backtestJob.PeriodFinish = end;
                             }
                         }
+
+                        // Store configuration in environment for algorithm access
+                        Environment.SetEnvironmentVariable("ALARIS_SYMBOL", symbol);
+                        Environment.SetEnvironmentVariable("ALARIS_MODE", mode);
+                        Environment.SetEnvironmentVariable("ALARIS_STRATEGY", strategy);
+
+                        Console.WriteLine($"Starting backtest for {symbol} from {startDate} to {endDate}");
+                        
+                        // Initialize and run the backtest engine
+                        var engine = new LeanEngineSystemHandlers();
+                        var results = new BacktestingResultHandler();
+                        var transactions = new BacktestingTransactionHandler();
+                        var realtime = new BacktestingRealTimeHandler();
+                        var dataFeed = new FileSystemDataFeed();
+                        var setup = new BacktestingSetupHandler();
+                        var mapFileProvider = new LocalDiskMapFileProvider();
+                        var factorFileProvider = new LocalDiskFactorFileProvider();
+                        var dataProvider = new DefaultDataProvider();
+
+                        // Initialize the engine
+                        var engineInitialized = engine.Initialize(
+                            job,
+                            mapFileProvider,
+                            factorFileProvider,
+                            dataProvider,
+                            results,
+                            transactions,
+                            realtime,
+                            dataFeed,
+                            setup,
+                            null,
+                            null
+                        );
+
+                        if (!engineInitialized)
+                        {
+                            Console.WriteLine("Failed to initialize backtest engine");
+                            return 1;
+                        }
+
+                        // Run the backtest
+                        var algorithmManager = new AlgorithmManager(false);
+                        var status = await algorithmManager.Run(job, engine, results, transactions, realtime, dataFeed, setup);
+                        
+                        if (status == AlgorithmStatus.Running)
+                        {
+                            Console.WriteLine("Backtest completed successfully");
+                        }
+                        else
+                        {
+                            Console.WriteLine($"Backtest failed with status: {status}");
+                        }
+
+                        // Cleanup
+                        engine.Dispose();
+                        results.Dispose();
+                        transactions.Dispose();
+                        realtime.Dispose();
+                        dataFeed.Dispose();
+                        setup.Dispose();
                     }
                     else
                     {
@@ -122,32 +182,32 @@ namespace Alaris
                             Version = "1.0.0",
                             Language = QuantConnect.Language.CSharp
                         };
+
+                        // Store configuration in environment for algorithm access
+                        Environment.SetEnvironmentVariable("ALARIS_SYMBOL", symbol);
+                        Environment.SetEnvironmentVariable("ALARIS_MODE", mode);
+                        Environment.SetEnvironmentVariable("ALARIS_STRATEGY", strategy);
+
+                        Console.WriteLine($"Alaris algorithm configured for {mode} trading");
+                        if (!string.IsNullOrEmpty(symbol))
+                        {
+                            Console.WriteLine($"Trading symbol: {symbol}");
+                        }
+                        Console.WriteLine($"Strategy mode: {strategy}");
+                        
+                        Console.WriteLine("Alaris Lean Process started successfully");
+                        Console.WriteLine("Press Ctrl+C to stop...");
+
+                        // Keep the process running
+                        var tcs = new TaskCompletionSource<bool>();
+                        Console.CancelKeyPress += (sender, e) =>
+                        {
+                            e.Cancel = true;
+                            tcs.SetResult(true);
+                        };
+
+                        await tcs.Task;
                     }
-
-                    // Store configuration in environment for algorithm access
-                    Environment.SetEnvironmentVariable("ALARIS_SYMBOL", symbol);
-                    Environment.SetEnvironmentVariable("ALARIS_MODE", mode);
-                    Environment.SetEnvironmentVariable("ALARIS_STRATEGY", strategy);
-
-                    Console.WriteLine($"Alaris algorithm configured for {mode} trading");
-                    if (!string.IsNullOrEmpty(symbol))
-                    {
-                        Console.WriteLine($"Trading symbol: {symbol}");
-                    }
-                    Console.WriteLine($"Strategy mode: {strategy}");
-                    
-                    Console.WriteLine("Alaris Lean Process started successfully");
-                    Console.WriteLine("Press Ctrl+C to stop...");
-
-                    // Keep the process running
-                    var tcs = new TaskCompletionSource<bool>();
-                    Console.CancelKeyPress += (sender, e) =>
-                    {
-                        e.Cancel = true;
-                        tcs.SetResult(true);
-                    };
-
-                    await tcs.Task;
                 });
 
                 return await rootCommand.InvokeAsync(args);
