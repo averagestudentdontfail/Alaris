@@ -7,20 +7,20 @@ namespace Alaris.IPC
     // These structures MUST match the C++ IPC message types exactly
     
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    public struct MarketDataMessage
+    public unsafe struct MarketDataMessage
     {
-        public ulong timestamp_ns;           // Match C++ snake_case naming
-        public uint symbol_id;
-        public double bid;
-        public double ask;
-        public double underlying_price;
-        public double bid_iv;
-        public double ask_iv;
-        public uint bid_size;
-        public uint ask_size;
-        
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 8)]
-        public byte[] padding;
+        public ulong timestamp_ns;      // 8 bytes
+        public uint symbol_id;          // 4 bytes
+        public double bid;              // 8 bytes
+        public double ask;              // 8 bytes
+        public double underlying_price; // 8 bytes
+        public double bid_iv;           // 8 bytes
+        public double ask_iv;           // 8 bytes
+        public uint bid_size;           // 4 bytes
+        public uint ask_size;           // 4 bytes
+        public uint processing_sequence;// 4 bytes
+        public uint source_process_id;  // 4 bytes
+        public fixed byte padding[4];   // 4 bytes
 
         public MarketDataMessage(uint symbolId, double bidPrice, double askPrice, double underlying)
         {
@@ -33,7 +33,9 @@ namespace Alaris.IPC
             ask_iv = 0.0;
             bid_size = 0;
             ask_size = 0;
-            padding = new byte[8];
+            processing_sequence = 0;
+            source_process_id = 0;
+            padding = new byte[4];
         }
         
         // Properties for C# compatibility while maintaining C++ field names
@@ -47,24 +49,26 @@ namespace Alaris.IPC
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    public struct TradingSignalMessage
+    public unsafe struct TradingSignalMessage
     {
-        public ulong timestamp_ns;
-        public uint symbol_id;
-        public double theoretical_price;
-        public double market_price;
-        public double implied_volatility;
-        public double forecast_volatility;
-        public double confidence;
-        public int quantity;
-        public byte side; // 0=buy, 1=sell
-        public byte urgency; // 0-255
-        public byte signal_type; // 0=entry, 1=exit, 2=adjustment
-        public byte reserved;
-        
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 24)]
-        public byte[] padding;
-        
+        public ulong timestamp_ns;           // 8 bytes
+        public ulong expiry_timestamp_ns;    // 8 bytes
+        public uint symbol_id;               // 4 bytes
+        public double theoretical_price;     // 8 bytes
+        public double market_price;          // 8 bytes
+        public double implied_volatility;    // 8 bytes
+        public double forecast_volatility;   // 8 bytes
+        public double confidence;            // 8 bytes
+        public double expected_profit;       // 8 bytes
+        public int quantity;                 // 4 bytes
+        public byte side;                    // 1 byte
+        public byte urgency;                 // 1 byte
+        public byte signal_type;             // 1 byte
+        public byte model_source;            // 1 byte
+        public uint sequence_number;         // 4 bytes
+        public uint processing_deadline_us;  // 4 bytes
+        public fixed byte padding[4];        // 4 bytes
+
         // Properties for C# compatibility
         public ulong Timestamp => timestamp_ns;
         public uint SymbolId => symbol_id;
@@ -80,19 +84,19 @@ namespace Alaris.IPC
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    public struct ControlMessage
+    public unsafe struct ControlMessage
     {
-        public ulong timestamp_ns;
-        public uint message_type;
-        public uint sequence_number;        // Added to match your C++ usage
-        public uint source_process_id;      // Added to match your C++ usage  
-        public uint target_process_id;      // Added to match your C++ usage
-        public uint priority;               // Added to match your C++ usage
-        public double value1;
-        public double value2;
-        
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 24)]
-        public byte[] data;
+        public ulong timestamp_ns;       // 8 bytes
+        public ulong sequence_number;    // 8 bytes
+        public uint message_type;        // 4 bytes
+        public uint source_process_id;   // 4 bytes
+        public uint target_process_id;   // 4 bytes
+        public uint priority;            // 4 bytes
+        public double value1;            // 8 bytes
+        public double value2;            // 8 bytes
+        public ulong parameter1;         // 8 bytes
+        public ulong parameter2;         // 8 bytes
+        public fixed byte data[8];       // 8 bytes
 
         public ControlMessage(uint messageType)
         {
@@ -104,7 +108,9 @@ namespace Alaris.IPC
             priority = 0;
             value1 = 0.0;
             value2 = 0.0;
-            data = new byte[24];
+            parameter1 = 0;
+            parameter2 = 0;
+            data = new byte[8];
         }
         
         // Properties for C# compatibility

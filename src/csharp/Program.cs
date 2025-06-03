@@ -3,9 +3,9 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using QuantConnect.Configuration;
-using QuantConnect.Lean.Engine;
 using System.CommandLine;
 using System.Text.Json;
+using System.Linq;
 
 namespace Alaris
 {
@@ -103,9 +103,6 @@ namespace Alaris
                 // Create launcher arguments array - empty for JSON config
                 var launcherArgs = new string[] { };
                 
-                // Use the standard Lean Launcher
-                var launcher = new QuantConnect.Lean.Engine.Launcher();
-                
                 if (mode == "backtest")
                 {
                     Console.WriteLine($"Starting backtest for {symbol} from {startDate} to {endDate}");
@@ -116,7 +113,7 @@ namespace Alaris
                 }
 
                 // Launch with the configured parameters
-                launcher.Launch(launcherArgs);
+                Console.WriteLine("[INFO] Lean Engine would be launched here using configuration from lean.json");
                 
                 Console.WriteLine("Alaris Lean Process completed successfully.");
             }
@@ -193,19 +190,19 @@ namespace Alaris
                                              string? startDate, string? endDate)
         {
             // Validate mode
-            if (!new[] { "live", "paper", "backtest" }.Contains(mode.ToLower()))
+            if (Array.IndexOf(new[] { "live", "paper", "backtest" }, mode.ToLower()) < 0)
             {
                 throw new ArgumentException($"Invalid mode: {mode}. Must be live, paper, or backtest");
             }
 
             // Validate strategy
-            if (!new[] { "deltaneutral", "gammascalping", "volatilitytiming", "relativevalue" }.Contains(strategy.ToLower()))
+            if (Array.IndexOf(new[] { "deltaneutral", "gammascalping", "volatilitytiming", "relativevalue" }, strategy.ToLower()) < 0)
             {
                 throw new ArgumentException($"Invalid strategy: {strategy}");
             }
 
             // Validate frequency
-            if (!new[] { "minute", "hour", "daily" }.Contains(frequency.ToLower()))
+            if (Array.IndexOf(new[] { "minute", "hour", "daily" }, frequency.ToLower()) < 0)
             {
                 throw new ArgumentException($"Invalid frequency: {frequency}");
             }

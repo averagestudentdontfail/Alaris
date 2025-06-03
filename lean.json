@@ -71,9 +71,9 @@
     "quantlib-process": {
       "enabled": true,
       "shared-memory-prefix": "alaris",
-      "market-data-buffer-size": 4096,
-      "signal-buffer-size": 1024,
-      "control-buffer-size": 256
+      "market-data-buffer-size": 1024,
+      "signal-buffer-size": 512,
+      "control-buffer-size": 128
     },
     "strategy": {
       "default-mode": "deltaneutral",
