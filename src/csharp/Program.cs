@@ -50,11 +50,23 @@ namespace Alaris
                     "Backtest end date (YYYY-MM-DD)");
                 endDateOption.AddAlias("-ed");
 
+                var frequencyOption = new Option<string>(
+                    "--frequency",
+                    "Data frequency: minute, hour, or daily");
+                frequencyOption.AddAlias("-f");
+                
+                var debugOption = new Option<bool>(
+                    "--debug",
+                    "Enable debug logging");
+                debugOption.AddAlias("-d");
+
                 rootCommand.AddOption(symbolOption);
                 rootCommand.AddOption(modeOption);
                 rootCommand.AddOption(strategyOption);
                 rootCommand.AddOption(startDateOption);
                 rootCommand.AddOption(endDateOption);
+                rootCommand.AddOption(frequencyOption);
+                rootCommand.AddOption(debugOption);
 
                 rootCommand.SetHandler(async (context) =>
                 {
@@ -63,9 +75,11 @@ namespace Alaris
                     var strategy = context.ParseResult.GetValueForOption(strategyOption)?.ToLower() ?? "deltaneutral";
                     var startDate = context.ParseResult.GetValueForOption(startDateOption);
                     var endDate = context.ParseResult.GetValueForOption(endDateOption);
+                    var frequency = context.ParseResult.GetValueForOption(frequencyOption)?.ToLower() ?? "minute";
+                    var debug = context.ParseResult.GetValueForOption(debugOption);
 
                     // Configure Lean based on mode
-                    ConfigureLean(mode, symbol, strategy, startDate, endDate);
+                    ConfigureLean(mode, symbol, strategy, startDate, endDate, frequency, debug);
 
                     // Create the algorithm job packet
                     AlgorithmNodePacket job;
@@ -146,7 +160,7 @@ namespace Alaris
             }
         }
 
-        private static void ConfigureLean(string mode, string? symbol, string strategy, string? startDate, string? endDate)
+        private static void ConfigureLean(string mode, string? symbol, string strategy, string? startDate, string? endDate, string frequency, bool debug)
         {
             // Set up basic configuration
             Config.Set("data-directory", "./Data");
@@ -156,6 +170,17 @@ namespace Alaris
             // Configure trading mode
             Config.Set("live-mode", mode == "live" ? "true" : "false");
             Config.Set("paper-trading", mode == "paper" ? "true" : "false");
+            
+            // Configure data frequency
+            Config.Set("data-resolution", frequency);
+            
+            // Configure debug logging
+            Config.Set("debug-mode", debug ? "true" : "false");
+            if (debug)
+            {
+                Config.Set("log-handler", "QuantConnect.Logging.CompositeLogHandler");
+                Config.Set("log-level", "Debug");
+            }
             
             if (mode == "live" || mode == "paper")
             {

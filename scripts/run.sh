@@ -25,6 +25,8 @@ MODE="paper"
 STRATEGY="deltaneutral"
 START_DATE=""
 END_DATE=""
+FREQUENCY="minute"  # Default to minute frequency
+DEBUG="false"      # Default to no debug logging
 
 # Help message
 show_help() {
@@ -35,6 +37,8 @@ show_help() {
     echo "  -t, --strategy STRAT    Strategy mode: deltaneutral, gammascalping, volatilitytiming, or relativevalue (default: deltaneutral)"
     echo "  -sd, --start-date DATE  Backtest start date (YYYY-MM-DD)"
     echo "  -ed, --end-date DATE    Backtest end date (YYYY-MM-DD)"
+    echo "  -f, --frequency FREQ    Data frequency: minute, hour, or daily (default: minute)"
+    echo "  -d, --debug            Enable debug logging"
     echo "  -h, --help              Show this help message"
     exit 0
 }
@@ -61,6 +65,14 @@ while [[ $# -gt 0 ]]; do
         -ed|--end-date)
             END_DATE="$2"
             shift 2
+            ;;
+        -f|--frequency)
+            FREQUENCY="$2"
+            shift 2
+            ;;
+        -d|--debug)
+            DEBUG="true"
+            shift
             ;;
         -h|--help)
             show_help
@@ -99,11 +111,19 @@ if [[ "$MODE" == "backtest" ]]; then
     fi
 fi
 
+# Validate frequency
+if [[ ! "$FREQUENCY" =~ ^(minute|hour|daily)$ ]]; then
+    echo "Error: Invalid frequency. Must be one of: minute, hour, daily"
+    exit 1
+fi
+
 # Print configuration
 echo "Starting Alaris with configuration:"
 echo "Symbol: $SYMBOL"
 echo "Mode: $MODE"
 echo "Strategy: $STRATEGY"
+echo "Frequency: $FREQUENCY"
+echo "Debug: $DEBUG"
 if [[ "$MODE" == "backtest" ]]; then
     echo "Start date: $START_DATE"
     echo "End date: $END_DATE"
@@ -182,6 +202,10 @@ CMD="dotnet run --project src/csharp/Alaris.Lean.csproj"
 CMD="$CMD --symbol $SYMBOL"
 CMD="$CMD --mode $MODE"
 CMD="$CMD --strategy $STRATEGY"
+CMD="$CMD --frequency $FREQUENCY"
+if [[ "$DEBUG" == "true" ]]; then
+    CMD="$CMD --debug"
+fi
 
 if [[ "$MODE" == "backtest" ]]; then
     CMD="$CMD --start-date $START_DATE"

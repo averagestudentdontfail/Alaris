@@ -139,6 +139,15 @@ namespace Alaris.Algorithm
                 // Load configuration from environment
                 _symbol = Environment.GetEnvironmentVariable("ALARIS_SYMBOL") ?? "SPY";
                 var strategyModeStr = Environment.GetEnvironmentVariable("ALARIS_STRATEGY")?.ToLower() ?? "deltaneutral";
+                var frequency = Config.Get("data-resolution", "minute").ToLower();
+                var debug = Config.GetBool("debug-mode", false);
+                
+                // Set debug logging level
+                if (debug)
+                {
+                    Debug("Debug logging enabled");
+                }
+
                 _strategyMode = strategyModeStr switch
                 {
                     "gammascalping" => StrategyMode.GammaScalping,
@@ -155,8 +164,8 @@ namespace Alaris.Algorithm
                 _dailyStartingValue = Portfolio.TotalPortfolioValue;
                 SetBrokerageModel(BrokerageName.InteractiveBrokersBrokerage, AccountType.Margin);
 
-                // Initialize universe
-                InitializeUniverse();
+                // Initialize universe with configured frequency
+                InitializeUniverse(frequency);
 
                 // Set the main equity symbol for the algorithm
                 _mainEquitySymbol = _idToSymbol[_symbolToId[_symbol]];
@@ -173,8 +182,15 @@ namespace Alaris.Algorithm
                 // Initialize GC optimization
                 _gcOptimizer = new GCOptimizer();
 
-                // Schedule regular tasks
-                Schedule.On(DateRules.EveryDay(), TimeRules.Every(TimeSpan.FromMinutes(1)), () =>
+                // Schedule regular tasks based on frequency
+                var updateInterval = frequency switch
+                {
+                    "daily" => TimeSpan.FromDays(1),
+                    "hour" => TimeSpan.FromHours(1),
+                    _ => TimeSpan.FromMinutes(1)
+                };
+
+                Schedule.On(DateRules.EveryDay(), TimeRules.Every(updateInterval), () =>
                 {
                     if (_isInitialized)
                     {
@@ -184,7 +200,7 @@ namespace Alaris.Algorithm
                 });
 
                 _isInitialized = true;
-                Debug($"Alaris algorithm initialized for {_symbol} in {_strategyMode} mode");
+                Debug($"Alaris algorithm initialized for {_symbol} in {_strategyMode} mode with {frequency} frequency");
             }
             catch (Exception ex)
             {
@@ -193,21 +209,29 @@ namespace Alaris.Algorithm
             }
         }
 
-        private void InitializeUniverse()
+        private void InitializeUniverse(string frequency)
         {
             var symbols = new[] { "SPY", "QQQ", "IWM", "EFA", "EEM" };
             uint symbolId = 1;
 
+            // Convert frequency string to Resolution enum
+            var resolution = frequency switch
+            {
+                "daily" => Resolution.Daily,
+                "hour" => Resolution.Hour,
+                _ => Resolution.Minute
+            };
+
             foreach (var symbol in symbols)
             {
                 // Add underlying equity
-                var equity = AddEquity(symbol, Resolution.Minute, Market.USA);
+                var equity = AddEquity(symbol, resolution, Market.USA);
                 _symbolToId[symbol] = symbolId;
                 _idToSymbol[symbolId] = equity.Symbol;
                 _activeSymbols.Add(equity.Symbol);
 
-                // Add option chain
-                var option = AddOption(symbol, Resolution.Minute);
+                // Add option chain with same resolution
+                var option = AddOption(symbol, resolution);
                 option.SetFilter(universe => universe.IncludeWeeklys()
                                                    .Strikes(-5, +5)
                                                    .Expiration(TimeSpan.FromDays(0), TimeSpan.FromDays(60)));
