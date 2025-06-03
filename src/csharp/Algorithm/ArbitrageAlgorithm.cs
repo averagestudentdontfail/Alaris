@@ -129,7 +129,7 @@ namespace Alaris.Algorithm
         };
 
         // Store the main equity symbol for the algorithm
-        private Symbol _mainEquitySymbol;
+        private Symbol _mainEquitySymbol = null!; // Initialized in Initialize()
 
         public override void Initialize()
         {
@@ -708,20 +708,14 @@ namespace Alaris.Algorithm
         private decimal CalculateImpliedVolatility()
         {
             var optionSymbol = GetOptionSymbol(_mainEquitySymbol);
-            if (!Securities.ContainsKey(optionSymbol)) return 0;
-
-            var option = Securities[optionSymbol] as Option;
-            if (option == null) return 0;
-
-            OptionChain? chain;
-            if (!OptionChains.TryGetValue(optionSymbol, out chain) || chain == null || !chain.Any()) 
+            if (!OptionChains.TryGetValue(optionSymbol, out var chain) || chain == null || !chain.Any())
                 return 0;
 
             var atmOptions = chain
                 .Where(x => Math.Abs(x.Strike - Securities[_mainEquitySymbol].Price) < Securities[_mainEquitySymbol].Price * 0.05m)
                 .ToList();
 
-            return atmOptions.Any() 
+            return atmOptions.Any()
                 ? (decimal)atmOptions.Average(x => x.ImpliedVolatility)
                 : 0;
         }
@@ -729,13 +723,7 @@ namespace Alaris.Algorithm
         private decimal CalculateVolatilitySkew()
         {
             var optionSymbol = GetOptionSymbol(_mainEquitySymbol);
-            if (!Securities.ContainsKey(optionSymbol)) return 0;
-
-            var option = Securities[optionSymbol] as Option;
-            if (option == null) return 0;
-
-            OptionChain? chain;
-            if (!OptionChains.TryGetValue(optionSymbol, out chain) || chain == null || !chain.Any()) 
+            if (!OptionChains.TryGetValue(optionSymbol, out var chain) || chain == null || !chain.Any())
                 return 0;
 
             var calls = chain.Where(x => x.Right == OptionRight.Call).ToList();
@@ -753,13 +741,7 @@ namespace Alaris.Algorithm
         private decimal[] CalculateVolatilityTermStructure()
         {
             var optionSymbol = GetOptionSymbol(_mainEquitySymbol);
-            if (!Securities.ContainsKey(optionSymbol)) return Array.Empty<decimal>();
-
-            var option = Securities[optionSymbol] as Option;
-            if (option == null) return Array.Empty<decimal>();
-
-            OptionChain? chain;
-            if (!OptionChains.TryGetValue(optionSymbol, out chain) || chain == null || !chain.Any()) 
+            if (!OptionChains.TryGetValue(optionSymbol, out var chain) || chain == null || !chain.Any())
                 return Array.Empty<decimal>();
 
             var expiries = chain.Select(x => x.Expiry).Distinct().OrderBy(x => x).ToList();
