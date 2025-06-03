@@ -6,6 +6,9 @@ using QuantConnect.Configuration;
 using System.CommandLine;
 using System.Text.Json;
 using System.Linq;
+// Add this using statement for the Lean Engine
+using QuantConnect.Lean.Engine;
+
 
 namespace Alaris
 {
@@ -74,8 +77,8 @@ namespace Alaris
             try
             {
                 // Validate and setup
-                ValidateAndSetupDirectories();
-                ValidateParameters(mode, strategy, frequency, startDate, endDate);
+                ValidateAndSetupDirectories(); //
+                ValidateParameters(mode, strategy, frequency, startDate, endDate); //
                 
                 // Display configuration
                 Console.WriteLine($"Starting Alaris with configuration:");
@@ -92,16 +95,16 @@ namespace Alaris
                 Console.WriteLine();
 
                 // Set environment variables for algorithm access
-                SetEnvironmentVariables(symbol, mode, strategy, startDate, endDate, frequency, debug);
+                SetEnvironmentVariables(symbol, mode, strategy, startDate, endDate, frequency, debug); //
 
                 // Load and customize lean.json configuration
-                await CustomizeLeanConfiguration(mode, debug, startDate, endDate);
+                await CustomizeLeanConfiguration(mode, debug, startDate, endDate); //
 
                 // Use standard Lean launcher
                 Console.WriteLine("Starting Lean Engine using standard launcher...");
                 
                 // Create launcher arguments array - empty for JSON config
-                var launcherArgs = new string[] { };
+                var launcherArgs = new string[] { }; //
                 
                 if (mode == "backtest")
                 {
@@ -112,8 +115,50 @@ namespace Alaris
                     Console.WriteLine($"Starting {mode} trading for {symbol}");
                 }
 
-                // Launch with the configured parameters
-                Console.WriteLine("[INFO] Lean Engine would be launched here using configuration from lean.json");
+                // --- MODIFICATION START ---
+                // Actually launch the Lean Engine
+                // Ensure all configurations (like algorithm-type-name, algorithm-location) 
+                // are correctly set in lean.json or via Config.Set()
+                
+                // Option 1: Using Lean.Launcher.Program.Main (Recommended for simplicity if it fits)
+                // This will use the lean.json configuration by default.
+                Console.WriteLine("Invoking QuantConnect.Lean.Launcher.Program.Main...");
+                QuantConnect.Lean.Launcher.Program.Main(launcherArgs);
+
+                // Option 2: More direct Engine control (if more customization during launch is needed)
+                /*
+                Console.WriteLine("Setting up Lean Engine components...");
+                var systemHandlers = LeanEngineSystemHandlers.FromConfiguration(Composer.Instance);
+                var algorithmHandlers = LeanEngineAlgorithmHandlers.FromConfiguration(Composer.Instance);
+                var algorithmPath = Config.Get("algorithm-location", "Alaris.Lean.dll"); // Ensure this points to your DLL
+
+                Console.WriteLine($"Attempting to launch algorithm: {Config.Get("algorithm-type-name")} from {algorithmPath}");
+
+                Engine.Run(new AlgorithmNodePacket(PacketType.AlgorithmNode)
+                {
+                    AlgorithmId = Config.Get("algorithm-type-name"), // Use a consistent ID
+                    ProjectId = Config.GetInt("job-project-id", 0),
+                    DeploymentId = Config.Get("job-deployment-id", Config.Get("algorithm-type-name")),
+                    CompileId = Config.Get("job-compile-id", Config.Get("algorithm-type-name")),
+                    RamAllocation = int.MaxValue, // Or get from config
+                    Language = AlgorithmLanguage.CSharp, // From config
+                    Parameters = Config.GetAlgorithmParameters(), // From config
+                    Controls = new Controls
+                    {
+                        MinuteLimit = Config.GetInt("maximum-runtime-minutes", 0),
+                        SecondLimit = 0, // Or from config
+                        TickLimit = 0 // Or from config
+                    },
+                    UserId = Config.GetInt("job-user-id", 0), // from config
+                    Channel = Config.Get("job-channel", ""), // from config
+                    Version = Globals.GetVersionId(), // from config or const
+                    AlgorithmLocation = algorithmPath, // from config
+                },
+                systemHandlers,
+                algorithmHandlers,
+                new LeanTerminationTimer(systemHandlers.Notify));
+                */
+                // --- MODIFICATION END ---
                 
                 Console.WriteLine("Alaris Lean Process completed successfully.");
             }
@@ -122,12 +167,12 @@ namespace Alaris
                 Console.WriteLine($"Error running Alaris: {ex.Message}");
                 Console.WriteLine($"Stack trace: {ex.StackTrace}");
                 
-                PrintTroubleshootingTips();
+                PrintTroubleshootingTips(); //
                 throw;
             }
         }
 
-        private static void ValidateAndSetupDirectories()
+        private static void ValidateAndSetupDirectories() //
         {
             var baseDir = Directory.GetCurrentDirectory();
             var dataDir = Path.Combine(baseDir, "data");
@@ -138,10 +183,10 @@ namespace Alaris
             Directory.CreateDirectory(dataDir);
             Directory.CreateDirectory(resultsDir);
             Directory.CreateDirectory(cacheDir);
-            Directory.CreateDirectory(Path.Combine(dataDir, "market-hours"));
-            Directory.CreateDirectory(Path.Combine(dataDir, "symbol-properties"));
-            Directory.CreateDirectory(Path.Combine(dataDir, "equity", "usa", "map_files"));
-            Directory.CreateDirectory(Path.Combine(dataDir, "equity", "usa", "factor_files"));
+            Directory.CreateDirectory(Path.Combine(dataDir, "market-hours")); //
+            Directory.CreateDirectory(Path.Combine(dataDir, "symbol-properties")); //
+            Directory.CreateDirectory(Path.Combine(dataDir, "equity", "usa", "map_files")); //
+            Directory.CreateDirectory(Path.Combine(dataDir, "equity", "usa", "factor_files")); //
 
             Console.WriteLine($"Base directory: {baseDir}");
             Console.WriteLine($"Data directory: {dataDir}");
@@ -149,8 +194,8 @@ namespace Alaris
             Console.WriteLine($"Cache directory: {cacheDir}");
 
             // Verify required files exist
-            var marketHoursFile = Path.Combine(dataDir, "market-hours", "market-hours-database.json");
-            var symbolPropsFile = Path.Combine(dataDir, "symbol-properties", "symbol-properties-database.csv");
+            var marketHoursFile = Path.Combine(dataDir, "market-hours", "market-hours-database.json"); //
+            var symbolPropsFile = Path.Combine(dataDir, "symbol-properties", "symbol-properties-database.csv"); //
             
             if (!File.Exists(marketHoursFile))
             {
@@ -173,7 +218,7 @@ namespace Alaris
             }
 
             // Check for lean.json
-            var leanConfigFile = Path.Combine(baseDir, "lean.json");
+            var leanConfigFile = Path.Combine(baseDir, "lean.json"); //
             if (!File.Exists(leanConfigFile))
             {
                 Console.WriteLine($"✗ lean.json configuration file not found at {leanConfigFile}");
@@ -187,28 +232,28 @@ namespace Alaris
         }
 
         private static void ValidateParameters(string mode, string strategy, string frequency, 
-                                             string? startDate, string? endDate)
+                                             string? startDate, string? endDate) //
         {
             // Validate mode
-            if (Array.IndexOf(new[] { "live", "paper", "backtest" }, mode.ToLower()) < 0)
+            if (Array.IndexOf(new[] { "live", "paper", "backtest" }, mode.ToLower()) < 0) //
             {
                 throw new ArgumentException($"Invalid mode: {mode}. Must be live, paper, or backtest");
             }
 
             // Validate strategy
-            if (Array.IndexOf(new[] { "deltaneutral", "gammascalping", "volatilitytiming", "relativevalue" }, strategy.ToLower()) < 0)
+            if (Array.IndexOf(new[] { "deltaneutral", "gammascalping", "volatilitytiming", "relativevalue" }, strategy.ToLower()) < 0) //
             {
                 throw new ArgumentException($"Invalid strategy: {strategy}");
             }
 
             // Validate frequency
-            if (Array.IndexOf(new[] { "minute", "hour", "daily" }, frequency.ToLower()) < 0)
+            if (Array.IndexOf(new[] { "minute", "hour", "daily" }, frequency.ToLower()) < 0) //
             {
                 throw new ArgumentException($"Invalid frequency: {frequency}");
             }
 
             // Validate dates for backtest
-            if (mode.ToLower() == "backtest")
+            if (mode.ToLower() == "backtest") //
             {
                 if (string.IsNullOrEmpty(startDate) || string.IsNullOrEmpty(endDate))
                 {
@@ -223,24 +268,24 @@ namespace Alaris
         }
 
         private static void SetEnvironmentVariables(string symbol, string mode, string strategy,
-                                                   string? startDate, string? endDate, string frequency, bool debug)
+                                                   string? startDate, string? endDate, string frequency, bool debug) //
         {
-            Environment.SetEnvironmentVariable("ALARIS_SYMBOL", symbol);
-            Environment.SetEnvironmentVariable("ALARIS_MODE", mode.ToLower());
-            Environment.SetEnvironmentVariable("ALARIS_STRATEGY", strategy.ToLower());
-            Environment.SetEnvironmentVariable("ALARIS_FREQUENCY", frequency.ToLower());
-            Environment.SetEnvironmentVariable("ALARIS_DEBUG", debug.ToString());
+            Environment.SetEnvironmentVariable("ALARIS_SYMBOL", symbol); //
+            Environment.SetEnvironmentVariable("ALARIS_MODE", mode.ToLower()); //
+            Environment.SetEnvironmentVariable("ALARIS_STRATEGY", strategy.ToLower()); //
+            Environment.SetEnvironmentVariable("ALARIS_FREQUENCY", frequency.ToLower()); //
+            Environment.SetEnvironmentVariable("ALARIS_DEBUG", debug.ToString()); //
             
             if (!string.IsNullOrEmpty(startDate))
-                Environment.SetEnvironmentVariable("ALARIS_START_DATE", startDate);
+                Environment.SetEnvironmentVariable("ALARIS_START_DATE", startDate); //
             if (!string.IsNullOrEmpty(endDate))
-                Environment.SetEnvironmentVariable("ALARIS_END_DATE", endDate);
+                Environment.SetEnvironmentVariable("ALARIS_END_DATE", endDate); //
         }
 
         private static async Task CustomizeLeanConfiguration(string mode, bool debug, 
-                                                           string? startDate, string? endDate)
+                                                           string? startDate, string? endDate) //
         {
-            var leanConfigPath = "lean.json";
+            var leanConfigPath = "lean.json"; //
             
             if (!File.Exists(leanConfigPath))
             {
@@ -255,38 +300,38 @@ namespace Alaris
             // These will override the lean.json settings at runtime
             
             // Set environment-specific settings
-            if (mode.ToLower() == "backtest")
+            if (mode.ToLower() == "backtest") //
             {
-                Config.Set("environment", "backtesting");
-                Config.Set("live-mode", "false");
+                Config.Set("environment", "backtesting"); //
+                Config.Set("live-mode", "false"); //
                 
                 if (!string.IsNullOrEmpty(startDate) && DateTime.TryParse(startDate, out var start))
                 {
-                    Config.Set("start-date", start.ToString("yyyy-MM-dd"));
+                    Config.Set("start-date", start.ToString("yyyy-MM-dd")); //
                 }
                 if (!string.IsNullOrEmpty(endDate) && DateTime.TryParse(endDate, out var end))
                 {
-                    Config.Set("end-date", end.ToString("yyyy-MM-dd"));
+                    Config.Set("end-date", end.ToString("yyyy-MM-dd")); //
                 }
             }
             else
             {
-                Config.Set("environment", "live-trading");
-                Config.Set("live-mode", "true");
+                Config.Set("environment", "live-trading"); //
+                Config.Set("live-mode", "true"); //
             }
 
             // Set debug configuration
-            Config.Set("debug-mode", debug.ToString().ToLower());
-            Config.Set("log-level", debug ? "Debug" : "Trace");
+            Config.Set("debug-mode", debug.ToString().ToLower()); //
+            Config.Set("log-level", debug ? "Debug" : "Trace"); //
 
             // Ensure algorithm type is set
-            Config.Set("algorithm-type-name", "Alaris.Algorithm.ArbitrageAlgorithm");
-            Config.Set("algorithm-language", "CSharp");
+            Config.Set("algorithm-type-name", "Alaris.Algorithm.ArbitrageAlgorithm"); //
+            Config.Set("algorithm-language", "CSharp"); //
             
             Console.WriteLine("Lean configuration completed");
         }
 
-        private static void PrintTroubleshootingTips()
+        private static void PrintTroubleshootingTips() //
         {
             Console.WriteLine();
             Console.WriteLine("Troubleshooting:");
