@@ -76,10 +76,10 @@ namespace Alaris
                             Channel = "",
                             UserId = 1,
                             ProjectId = 1,
-                            DeployId = "",
                             CompileId = "",
                             Version = "1.0.0",
-                            Language = QuantConnect.Language.CSharp
+                            Language = QuantConnect.Language.CSharp,
+                            BacktestId = Guid.NewGuid().ToString()
                         }
                         : new LiveNodePacket
                         {
@@ -99,7 +99,6 @@ namespace Alaris
                         if (DateTime.TryParse(startDate, out DateTime start) && DateTime.TryParse(endDate, out DateTime end))
                         {
                             var backtestJob = (BacktestNodePacket)job;
-                            backtestJob.BacktestId = Guid.NewGuid().ToString();
                             backtestJob.PeriodStart = start;
                             backtestJob.PeriodFinish = end;
                         }

@@ -16,6 +16,7 @@ using QuantConnect.Indicators;
 using QuantConnect.Statistics;
 using QuantConnect.Logging;
 using System.Threading.Tasks;
+using System.Runtime.CompilerServices;
 
 namespace Alaris.Algorithm
 {
@@ -159,7 +160,8 @@ namespace Alaris.Algorithm
                 _sharedMemory.ControlMessageReceived += OnControlMessageReceived;
 
                 // Initialize performance monitoring
-                _performanceMonitor = new PerformanceMonitor(_symbol, _strategyMode);
+                _performanceMonitor = new PerformanceMonitor();
+                _performanceMonitor.Initialize(_symbol, _strategyMode);
 
                 // Initialize GC optimization
                 _gcOptimizer = new GCOptimizer();
@@ -175,7 +177,7 @@ namespace Alaris.Algorithm
                 });
 
                 _isInitialized = true;
-                Log.Trace($"Alaris algorithm initialized for {_symbol} in {_strategyMode} mode");
+                Debug($"Alaris algorithm initialized for {_symbol} in {_strategyMode} mode");
             }
             catch (Exception ex)
             {
@@ -392,13 +394,13 @@ namespace Alaris.Algorithm
         {
             try
             {
-                _performanceMonitor?.OnOrderEvent(orderEvent);
+                _performanceMonitor?.ProcessOrderEvent(orderEvent);
                 
                 if (orderEvent.Status == OrderStatus.Filled)
                 {
                     _successfulTrades++;
                     
-                    Log($"Order filled: {orderEvent.Symbol} - {orderEvent.FillQuantity} @ {orderEvent.FillPrice:C}");
+                    Debug($"Order filled: {orderEvent.Symbol} - {orderEvent.FillQuantity} @ {orderEvent.FillPrice:C}");
                     
                     // Update position tracking
                     if (_positions.TryGetValue(orderEvent.Symbol, out var position))
@@ -410,7 +412,7 @@ namespace Alaris.Algorithm
                 }
                 else if (orderEvent.Status == OrderStatus.Canceled || orderEvent.Status == OrderStatus.Invalid)
                 {
-                    Log($"Order failed: {orderEvent.Symbol} - {orderEvent.Message}");
+                    Debug($"Order failed: {orderEvent.Symbol} - {orderEvent.Message}");
                 }
             }
             catch (Exception ex)
@@ -526,26 +528,31 @@ namespace Alaris.Algorithm
 
                 var regimeMessage = new MarketRegimeMessage
                 {
-                    Timestamp = (ulong)Time.ToUnixTimeMilliseconds() * 1000000, // Convert to nanoseconds
+                    Timestamp = (ulong)((DateTimeOffset)Time).ToUnixTimeMilliseconds() * 1000000, // Convert to nanoseconds
                     VolRegime = DetermineMarketRegime(realizedVol, impliedVol, skew, termStructure),
-                    CurrentRealizedVol = realizedVol,
-                    CurrentImpliedVol = impliedVol,
-                    VolRiskPremium = impliedVol - realizedVol,
-                    RegimeConfidence = CalculateRegimeConfidence(),
-                    ExpectedVolNextWeek = CalculateExpectedVolatility(),
-                    VolClusteringStrength = CalculateVolClustering(),
-                    MeanReversionSpeed = CalculateMeanReversion()
+                    CurrentRealizedVol = (double)realizedVol,
+                    CurrentImpliedVol = (double)impliedVol,
+                    VolRiskPremium = (double)(impliedVol - realizedVol),
+                    RegimeConfidence = (double)CalculateRegimeConfidence(),
+                    ExpectedVolNextWeek = (double)CalculateExpectedVolatility(),
+                    VolClusteringStrength = (double)CalculateVolClustering(),
+                    MeanReversionSpeed = (double)CalculateMeanReversion()
                 };
 
-                _sharedMemory?.SendMarketRegime(regimeMessage);
+                _sharedMemory?.SendControlMessage(ControlMessageType.MarketRegime, 
+                    BitConverter.GetBytes(regimeMessage.Timestamp),
+                    BitConverter.GetBytes((uint)regimeMessage.VolRegime),
+                    BitConverter.GetBytes(regimeMessage.CurrentRealizedVol),
+                    BitConverter.GetBytes(regimeMessage.CurrentImpliedVol));
+
                 _currentRegime = regimeMessage.VolRegime;
                 _lastRegimeUpdate = Time;
 
-                Log.Trace($"Market regime updated: {_currentRegime} at {Time}");
+                Debug($"Market regime updated: {_currentRegime} at {Time}");
             }
             catch (Exception ex)
             {
-                Log.Error($"Error updating market regime: {ex.Message}");
+                Error($"Error updating market regime: {ex.Message}");
             }
         }
 
@@ -699,7 +706,7 @@ namespace Alaris.Algorithm
 
         private decimal CalculateImpliedVolatility()
         {
-            var optionChain = OptionChainProvider.GetOptionChain(_symbol, Time);
+            var optionChain = OptionChains.GetValueOrDefault(Symbol.Create(_symbol, SecurityType.Option, Market.USA));
             if (optionChain == null || !optionChain.Any()) return 0;
 
             var atmOptions = optionChain
@@ -713,7 +720,7 @@ namespace Alaris.Algorithm
 
         private decimal CalculateVolatilitySkew()
         {
-            var optionChain = OptionChainProvider.GetOptionChain(_symbol, Time);
+            var optionChain = OptionChains.GetValueOrDefault(Symbol.Create(_symbol, SecurityType.Option, Market.USA));
             if (optionChain == null || !optionChain.Any()) return 0;
 
             var calls = optionChain.Where(x => x.Right == OptionRight.Call).ToList();
@@ -730,7 +737,7 @@ namespace Alaris.Algorithm
 
         private decimal[] CalculateVolatilityTermStructure()
         {
-            var optionChain = OptionChainProvider.GetOptionChain(_symbol, Time);
+            var optionChain = OptionChains.GetValueOrDefault(Symbol.Create(_symbol, SecurityType.Option, Market.USA));
             if (optionChain == null || !optionChain.Any()) return Array.Empty<decimal>();
 
             var expiries = optionChain.Select(x => x.Expiry).Distinct().OrderBy(x => x).ToList();
@@ -859,5 +866,16 @@ namespace Alaris.Algorithm
         public int MaxDaysToExpiry { get; set; }
         public TimeSpan RebalanceFrequency { get; set; }
         public TimeSpan HedgeFrequency { get; set; }
+    }
+
+    public static class ListExtensions
+    {
+        public static double StandardDeviation(this List<double> values)
+        {
+            if (values.Count == 0) return 0;
+            var avg = values.Average();
+            var sumOfSquares = values.Sum(x => Math.Pow(x - avg, 2));
+            return Math.Sqrt(sumOfSquares / (values.Count - 1));
+        }
     }
 }
