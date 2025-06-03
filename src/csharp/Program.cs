@@ -1,24 +1,24 @@
-// src/csharp/Program.cs - Simplified Direct Algorithm Execution
+// src/csharp/Program.cs
 using System;
 using System.IO;
 using System.Threading.Tasks;
 using QuantConnect.Configuration;
-using QuantConnect.Algorithm;
-using QuantConnect.Data;
+using QuantConnect.Util; // For Composer and WorkerThread
+using QuantConnect.Interfaces;
 using QuantConnect.Lean.Engine;
 using QuantConnect.Lean.Engine.Results;
-using QuantConnect.Lean.Engine.Setup;
+using QuantConnect.Packets;
+using QuantConnect.AlgorithmFactory;
+using Alaris.Algorithm;
+using System.CommandLine;
+using System.CommandLine.Invocation;
 using QuantConnect.Lean.Engine.TransactionHandlers;
 using QuantConnect.Lean.Engine.RealTime;
 using QuantConnect.Lean.Engine.DataFeeds;
+using QuantConnect.Lean.Engine.Setup;
 using QuantConnect.Lean.Engine.Storage;
-using QuantConnect.Packets;
-using Alaris.Algorithm;
-using System.CommandLine;
-using QuantConnect.Interfaces;
-using QuantConnect.Securities;
-using QuantConnect.Orders;
-using QuantConnect.Statistics;
+using QuantConnect.Lean.Engine.HistoryProvider;
+using QuantConnect.Data.Auxiliary;
 
 namespace Alaris
 {
@@ -99,15 +99,96 @@ namespace Alaris
                         // Configure Lean based on mode
                         ConfigureLean(mode, symbol, strategy, startDate, endDate, frequency, debug);
 
+                        // Create the algorithm job packet
+                        AlgorithmNodePacket job;
                         if (mode == "backtest")
                         {
+                            job = new BacktestNodePacket
+                            {
+                                Type = PacketType.BacktestNode,
+                                Algorithm = System.Text.Encoding.UTF8.GetBytes(typeof(ArbitrageAlgorithm).AssemblyQualifiedName ?? ""),
+                                Channel = "",
+                                UserId = 1,
+                                ProjectId = 1,
+                                CompileId = "",
+                                Version = "1.0.0",
+                                Language = QuantConnect.Language.CSharp,
+                                BacktestId = Guid.NewGuid().ToString()
+                            };
+
+                            if (!string.IsNullOrEmpty(startDate) && !string.IsNullOrEmpty(endDate))
+                            {
+                                if (DateTime.TryParse(startDate, out DateTime start) && DateTime.TryParse(endDate, out DateTime end))
+                                {
+                                    var backtestJob = (BacktestNodePacket)job;
+                                    backtestJob.PeriodStart = start;
+                                    backtestJob.PeriodFinish = end;
+                                }
+                                else
+                                {
+                                    Console.WriteLine($"Warning: Could not parse dates. Using default date range.");
+                                }
+                            }
+
                             Console.WriteLine($"Starting backtest for {symbol ?? "default portfolio"} from {startDate} to {endDate}");
+
+                            try
+                            {
+                                // Use standard Lean engine initialization but with corrected configuration
+                                var composer = QuantConnect.Util.Composer.Instance;
+                                Console.WriteLine("Composer instance obtained");
+                                
+                                // Try to get system handlers using FromConfiguration
+                                Console.WriteLine("Creating system handlers...");
+                                var systemHandlers = QuantConnect.Lean.Engine.LeanEngineSystemHandlers.FromConfiguration(composer);
+                                Console.WriteLine("System handlers created successfully");
+                                
+                                Console.WriteLine("Creating algorithm handlers...");
+                                var algorithmHandlers = QuantConnect.Lean.Engine.LeanEngineAlgorithmHandlers.FromConfiguration(composer);
+                                Console.WriteLine("Algorithm handlers created successfully");
+
+                                // Initialize the engine
+                                var engine = new QuantConnect.Lean.Engine.Engine(systemHandlers, algorithmHandlers, false);
+
+                            // Get the path to the algorithm assembly (usually the current assembly)
+                            var assemblyPath = System.Reflection.Assembly.GetExecutingAssembly().Location;
+                            Console.WriteLine($"Algorithm assembly path: {assemblyPath}");
                             
-                            // Run simplified backtest
-                            await RunSimplifiedBacktest(symbol, strategy, startDate, endDate, frequency, debug);
+                            // Use the default worker thread
+                            var workerThread = QuantConnect.Util.WorkerThread.Instance;
+                            
+                            // Create the algorithm manager
+                            var algorithmManager = new QuantConnect.Lean.Engine.AlgorithmManager(false, job);
+                            
+                            // Initialize the Lean manager
+                            systemHandlers.LeanManager.Initialize(systemHandlers, algorithmHandlers, job, algorithmManager);
+
+                            Console.WriteLine("Starting Lean Engine...");
+                            
+                            // Run the backtest using the correct Lean Engine signature
+                            engine.Run(job, algorithmManager, assemblyPath, workerThread);
+
+                            Console.WriteLine("Backtest completed.");
+
+                            // Cleanup
+                            systemHandlers.Dispose();
+                            algorithmHandlers.Dispose();
                         }
                         else
                         {
+                            job = new LiveNodePacket
+                            {
+                                Type = PacketType.LiveNode,
+                                Algorithm = System.Text.Encoding.UTF8.GetBytes(typeof(ArbitrageAlgorithm).AssemblyQualifiedName ?? ""),
+                                Channel = "",
+                                UserId = 1,
+                                ProjectId = 1,
+                                DeployId = "",
+                                CompileId = "",
+                                Version = "1.0.0",
+                                Language = QuantConnect.Language.CSharp
+                            };
+
                             Console.WriteLine($"Alaris algorithm configured for {mode} trading");
                             if (!string.IsNullOrEmpty(symbol))
                             {
@@ -139,7 +220,7 @@ namespace Alaris
                         Console.WriteLine("1. Ensure data directories exist and contain required files");
                         Console.WriteLine("2. Check that results directory has write permissions");
                         Console.WriteLine("3. Verify algorithm assembly was built successfully");
-                        Console.WriteLine("4. For backtests, ensure start and end dates are valid");
+                        Console.WriteLine("4. Check log files in the results directory for more details");
                         
                         throw;
                     }
@@ -153,137 +234,6 @@ namespace Alaris
                 Console.WriteLine($"Stack trace: {ex.StackTrace}");
                 return 1;
             }
-        }
-
-        private static async Task RunSimplifiedBacktest(string? symbol, string strategy, string? startDate, string? endDate, string frequency, bool debug)
-        {
-            try
-            {
-                Console.WriteLine("Initializing simplified backtest...");
-                
-                // Create and configure the algorithm instance directly
-                var algorithm = new ArbitrageAlgorithm();
-                
-                // Set up algorithm configuration before initialization
-                Environment.SetEnvironmentVariable("ALARIS_SYMBOL", symbol ?? "SPY");
-                Environment.SetEnvironmentVariable("ALARIS_STRATEGY", strategy);
-                Environment.SetEnvironmentVariable("ALARIS_MODE", "backtest");
-                Environment.SetEnvironmentVariable("ALARIS_FREQUENCY", frequency);
-                Environment.SetEnvironmentVariable("ALARIS_DEBUG", debug.ToString());
-                
-                // Parse dates
-                DateTime start = DateTime.Parse(startDate ?? "2023-01-01");
-                DateTime end = DateTime.Parse(endDate ?? "2023-01-02");
-                
-                Console.WriteLine($"Backtest period: {start:yyyy-MM-dd} to {end:yyyy-MM-dd}");
-                Console.WriteLine($"Strategy: {strategy}");
-                Console.WriteLine($"Symbol: {symbol ?? "SPY"}");
-                Console.WriteLine($"Frequency: {frequency}");
-                
-                // Set algorithm properties
-                algorithm.SetStartDate(start);
-                algorithm.SetEndDate(end);
-                algorithm.SetCash(100000);
-                
-                Console.WriteLine("Algorithm configuration complete");
-                
-                // Initialize the algorithm
-                Console.WriteLine("Initializing algorithm...");
-                algorithm.Initialize();
-                Console.WriteLine("Algorithm initialized successfully");
-                
-                // Simulate some basic data for demonstration
-                await SimulateBasicData(algorithm, start, end, symbol ?? "SPY", frequency);
-                
-                // Generate final results
-                Console.WriteLine("\n=== Backtest Results ===");
-                Console.WriteLine($"Start Date: {start:yyyy-MM-dd}");
-                Console.WriteLine($"End Date: {end:yyyy-MM-dd}");
-                Console.WriteLine($"Strategy: {strategy}");
-                Console.WriteLine($"Symbol: {symbol ?? "SPY"}");
-                Console.WriteLine($"Final Portfolio Value: {algorithm.Portfolio.TotalPortfolioValue:C}");
-                Console.WriteLine($"Total Return: {(algorithm.Portfolio.TotalPortfolioValue - 100000) / 100000:P2}");
-                Console.WriteLine("======================");
-                
-                // Save results to file
-                var resultsFile = Path.Combine("results", $"backtest_{DateTime.Now:yyyyMMdd_HHmmss}.txt");
-                await File.WriteAllTextAsync(resultsFile, $"Backtest Results\n" +
-                    $"Start: {start:yyyy-MM-dd}\n" +
-                    $"End: {end:yyyy-MM-dd}\n" +
-                    $"Strategy: {strategy}\n" +
-                    $"Symbol: {symbol ?? "SPY"}\n" +
-                    $"Final Value: {algorithm.Portfolio.TotalPortfolioValue:C}\n" +
-                    $"Return: {(algorithm.Portfolio.TotalPortfolioValue - 100000) / 100000:P2}\n");
-                
-                Console.WriteLine($"Results saved to: {resultsFile}");
-                Console.WriteLine("Backtest completed successfully");
-                
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in simplified backtest: {ex.Message}");
-                Console.WriteLine($"Stack trace: {ex.StackTrace}");
-                throw;
-            }
-        }
-        
-        private static async Task SimulateBasicData(ArbitrageAlgorithm algorithm, DateTime start, DateTime end, string symbol, string frequency)
-        {
-            Console.WriteLine("Simulating market data...");
-            
-            var current = start;
-            var price = 100.0m; // Starting price
-            var random = new Random(42); // Seed for reproducible results
-            
-            int dataPoints = 0;
-            
-            while (current <= end)
-            {
-                try
-                {
-                    // Simulate price movement
-                    var change = (decimal)(random.NextDouble() - 0.5) * 0.02m; // ±1% movement
-                    price = Math.Max(price * (1 + change), 1.0m); // Ensure price stays positive
-                    
-                    // Create mock market data (this is simplified for demonstration)
-                    // In a real implementation, this would come from the data feed
-                    
-                    if (debug)
-                    {
-                        Console.WriteLine($"Date: {current:yyyy-MM-dd}, Price: {price:F2}");
-                    }
-                    
-                    dataPoints++;
-                    
-                    // Advance time based on frequency
-                    current = frequency switch
-                    {
-                        "daily" => current.AddDays(1),
-                        "hour" => current.AddHours(1),
-                        "minute" => current.AddMinutes(1),
-                        _ => current.AddDays(1)
-                    };
-                    
-                    // Skip weekends for daily data
-                    if (frequency == "daily" && (current.DayOfWeek == DayOfWeek.Saturday || current.DayOfWeek == DayOfWeek.Sunday))
-                    {
-                        current = current.AddDays(current.DayOfWeek == DayOfWeek.Saturday ? 2 : 1);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error simulating data point at {current}: {ex.Message}");
-                    break;
-                }
-                
-                // Add small delay to prevent overwhelming output
-                if (dataPoints % 100 == 0)
-                {
-                    await Task.Delay(1);
-                }
-            }
-            
-            Console.WriteLine($"Simulated {dataPoints} data points");
         }
 
         private static void ConfigureLean(string mode, string? symbol, string strategy, string? startDate, string? endDate, string frequency, bool debug)
@@ -331,11 +281,95 @@ namespace Alaris
                     Console.WriteLine($"✓ Symbol properties database found");
                 }
 
-                // Set up basic configuration
+                // Set up basic configuration with absolute paths
                 Config.Set("data-directory", dataDir);
                 Config.Set("cache-location", cacheDir);
                 Config.Set("results-destination-folder", resultsDir);
+                
+                // Core Lean configuration
                 Config.Set("environment", "backtesting");
+                Config.Set("algorithm-type-name", "Alaris.Algorithm.ArbitrageAlgorithm");
+                Config.Set("algorithm-language", "CSharp");
+                
+                // Configure trading mode
+                Config.Set("live-mode", mode == "live" ? "true" : "false");
+                
+                // Configure data frequency
+                Config.Set("data-resolution", frequency);
+                
+                // Configure logging
+                Config.Set("log-handler", "QuantConnect.Logging.CompositeLogHandler");
+                Config.Set("job-user-id", "1");
+                Config.Set("api-access-token", "");
+                Config.Set("job-project-id", "1");
+                Config.Set("job-organization-id", "");
+                
+                // Set debug configuration
+                if (debug)
+                {
+                    Config.Set("debug-mode", "true");
+                    Config.Set("log-level", "Debug");
+                }
+                else
+                {
+                    Config.Set("debug-mode", "false");
+                    Config.Set("log-level", "Trace"); // Use Trace for detailed output
+                }
+
+                // Backtest specific configuration
+                if (mode == "backtest")
+                {
+                    // Core handlers for backtesting
+                    Config.Set("data-feed-handler", "QuantConnect.Lean.Engine.DataFeeds.FileSystemDataFeed");
+                    Config.Set("result-handler", "QuantConnect.Lean.Engine.Results.BacktestingResultHandler");
+                    Config.Set("setup-handler", "QuantConnect.Lean.Engine.Setup.ConsoleSetupHandler");
+                    Config.Set("real-time-handler", "QuantConnect.Lean.Engine.RealTime.BacktestingRealTimeHandler");
+                    Config.Set("transaction-handler", "QuantConnect.Lean.Engine.TransactionHandlers.BacktestingTransactionHandler");
+                    Config.Set("history-provider", "QuantConnect.Lean.Engine.HistoryProvider.SubscriptionDataReaderHistoryProvider");
+                    
+                    // Data provider settings
+                    Config.Set("data-provider", "QuantConnect.Lean.Engine.DataFeeds.DefaultDataProvider");
+                    Config.Set("map-file-provider", "QuantConnect.Lean.Engine.DataFeeds.LocalDiskMapFileProvider");
+                    Config.Set("factor-file-provider", "QuantConnect.Lean.Engine.DataFeeds.LocalDiskFactorFileProvider");
+                    Config.Set("data-permission-manager", "QuantConnect.Data.Auxiliary.DataPermissionManager");
+                    
+                    // Object store and caching
+                    Config.Set("object-store", "QuantConnect.Lean.Engine.Storage.LocalObjectStore");
+                    Config.Set("data-cache-provider", "QuantConnect.Lean.Engine.DataFeeds.SingleEntryDataCacheProvider");
+                    
+                    // Remove problematic lean-manager-type - let MEF auto-discover
+                    
+                    // Algorithm settings
+                    Config.Set("algorithm-location", "QuantConnect.Algorithm.CSharp.dll");
+                    
+                    // Market settings
+                    Config.Set("force-exchange-always-open", "true");
+                    Config.Set("show-missing-data-logs", "false");
+                    
+                    // Performance settings
+                    Config.Set("enable-automatic-indicator-warm-up", "false");
+                    Config.Set("regression-update-statistics", "false");
+                }
+                else if (mode == "live" || mode == "paper")
+                {
+                    // Configure for live/paper trading with Interactive Brokers
+                    Config.Set("live-mode-brokerage", "InteractiveBrokersBrokerage");
+                    Config.Set("data-feed-handler", "InteractiveBrokersBrokerage");
+                    
+                    // Interactive Brokers configuration
+                    Config.Set("ib-host", "127.0.0.1");
+                    Config.Set("ib-port", "4001"); // TWS/IB Gateway port
+                    Config.Set("ib-account", "DU123456");
+                    Config.Set("ib-user-name", "");
+                    Config.Set("ib-password", "");
+                    Config.Set("ib-agent-description", "Individual");
+                }
+                
+                // Risk management and performance optimization
+                Config.Set("maximum-data-points-per-chart-series", "1000000");
+                Config.Set("maximum-chart-series", "30");
+                Config.Set("maximum-runtime-minutes", "0"); // No timeout
+                Config.Set("maximum-orders", "0"); // No limit
                 
                 // Store custom configuration in environment variables for algorithm access
                 Environment.SetEnvironmentVariable("ALARIS_SYMBOL", symbol ?? "SPY");
@@ -358,6 +392,7 @@ namespace Alaris
                 }
                 Console.WriteLine($"Data Directory: {dataDir}");
                 Console.WriteLine($"Results Directory: {resultsDir}");
+                Console.WriteLine($"Log Level: {Config.Get("log-level")}");
                 
                 Console.WriteLine("Lean configuration completed");
             }
