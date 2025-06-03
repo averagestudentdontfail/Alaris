@@ -143,15 +143,14 @@ namespace Alaris.IPC
 
             try
             {
-                var message = new ControlMessage((uint)messageType)
-                {
-                    sequence_number = Interlocked.Increment(ref _sequenceNumber),
-                    source_process_id = 2, // Lean process ID
-                    target_process_id = 1, // QuantLib process ID
-                    priority = (uint)TTAPriority.MEDIUM,
-                    value1 = value1,
-                    value2 = value2
-                };
+                var message = new ControlMessage();
+                message.message_type = (uint)messageType;
+                message.sequence_number = Interlocked.Increment(ref _sequenceNumber);
+                message.source_process_id = 2; // Lean process ID
+                message.target_process_id = 1; // QuantLib process ID
+                message.priority = (uint)TTAPriority.MEDIUM;
+                message.value1 = value1;
+                message.value2 = value2;
 
                 return _controlBuffer.TryWrite(message);
             }

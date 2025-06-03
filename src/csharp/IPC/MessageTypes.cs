@@ -21,31 +21,6 @@ namespace Alaris.IPC
         public uint processing_sequence;// 4 bytes
         public uint source_process_id;  // 4 bytes
         public fixed byte padding[4];   // 4 bytes
-
-        public MarketDataMessage(uint symbolId, double bidPrice, double askPrice, double underlying)
-        {
-            timestamp_ns = (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() * 1000000; // Convert to nanoseconds
-            symbol_id = symbolId;
-            bid = bidPrice;
-            ask = askPrice;
-            underlying_price = underlying;
-            bid_iv = 0.0;
-            ask_iv = 0.0;
-            bid_size = 0;
-            ask_size = 0;
-            processing_sequence = 0;
-            source_process_id = 0;
-            padding = new byte[4];
-        }
-        
-        // Properties for C# compatibility while maintaining C++ field names
-        public ulong Timestamp => timestamp_ns;
-        public uint SymbolId => symbol_id;
-        public double Bid => bid;
-        public double Ask => ask;
-        public double UnderlyingPrice => underlying_price;
-        public double BidIv => bid_iv;
-        public double AskIv => ask_iv;
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -68,19 +43,6 @@ namespace Alaris.IPC
         public uint sequence_number;         // 4 bytes
         public uint processing_deadline_us;  // 4 bytes
         public fixed byte padding[4];        // 4 bytes
-
-        // Properties for C# compatibility
-        public ulong Timestamp => timestamp_ns;
-        public uint SymbolId => symbol_id;
-        public double TheoreticalPrice => theoretical_price;
-        public double MarketPrice => market_price;
-        public double ImpliedVolatility => implied_volatility;
-        public double ForecastVolatility => forecast_volatility;
-        public double Confidence => confidence;
-        public int Quantity => quantity;
-        public byte Side => side;
-        public byte Urgency => urgency;
-        public byte SignalType => signal_type;
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -97,29 +59,6 @@ namespace Alaris.IPC
         public ulong parameter1;         // 8 bytes
         public ulong parameter2;         // 8 bytes
         public fixed byte data[8];       // 8 bytes
-
-        public ControlMessage(uint messageType)
-        {
-            timestamp_ns = (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() * 1000000;
-            message_type = messageType;
-            sequence_number = 0;
-            source_process_id = 0;
-            target_process_id = 0; 
-            priority = 0;
-            value1 = 0.0;
-            value2 = 0.0;
-            parameter1 = 0;
-            parameter2 = 0;
-            data = new byte[8];
-        }
-        
-        // Properties for C# compatibility
-        public ulong Timestamp => timestamp_ns;
-        public uint MessageType => message_type;
-        public uint SequenceNumber => sequence_number;
-        public uint SourceProcessId => source_process_id;
-        public uint TargetProcessId => target_process_id;
-        public uint Priority => priority;
     }
 
     // Enums to match your C++ definitions
