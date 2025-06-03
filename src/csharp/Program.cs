@@ -17,7 +17,7 @@ namespace Alaris
             {
                 Console.WriteLine("Starting Alaris Lean Process...");
 
-                // Define command line options (keep your existing interface)
+                // Define command line options
                 var rootCommand = new RootCommand("Alaris Trading System - Lean Integration");
                 
                 var symbolOption = new Option<string>("--symbol", "Trading symbol (e.g., SPY)");
