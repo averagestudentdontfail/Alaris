@@ -586,7 +586,7 @@ namespace Alaris.Algorithm
 
                 if (currentExposure > config.MaxPortfolioExposure)
                 {
-                    Log.Trace($"Reducing exposure from {currentExposure:P2} to {config.MaxPortfolioExposure:P2}");
+                    Debug($"Reducing exposure from {currentExposure:P2} to {config.MaxPortfolioExposure:P2}");
                     ReduceExposure();
                 }
 
@@ -611,7 +611,7 @@ namespace Alaris.Algorithm
             }
             catch (Exception ex)
             {
-                Log.Error($"Error rebalancing portfolio: {ex.Message}");
+                Error($"Error rebalancing portfolio: {ex.Message}");
             }
         }
 
@@ -624,7 +624,7 @@ namespace Alaris.Algorithm
             {
                 var hedgeAmount = -portfolioDelta;
                 var hedgeOrder = MarketOrder(_symbol, (int)hedgeAmount);
-                Log.Trace($"Delta hedging: {hedgeAmount} shares of {_symbol}");
+                Debug($"Delta hedging: {hedgeAmount} shares of {_symbol}");
             }
         }
 
@@ -642,7 +642,7 @@ namespace Alaris.Algorithm
                 if (Math.Abs(adjustment) > 0)
                 {
                     var order = MarketOrder(_symbol, (int)adjustment);
-                    Log.Trace($"Gamma scalping: {adjustment} shares of {_symbol}");
+                    Debug($"Gamma scalping: {adjustment} shares of {_symbol}");
                 }
             }
         }
@@ -684,7 +684,7 @@ namespace Alaris.Algorithm
                 if (skewTrade != 0)
                 {
                     var order = MarketOrder(_symbol, skewTrade);
-                    Log.Trace($"Relative value skew trade: {skewTrade} shares of {_symbol}");
+                    Debug($"Relative value skew trade: {skewTrade} shares of {_symbol}");
                 }
             }
 
@@ -694,17 +694,9 @@ namespace Alaris.Algorithm
                 if (termStructureTrade != 0)
                 {
                     var order = MarketOrder(_symbol, termStructureTrade);
-                    Log.Trace($"Relative value term structure trade: {termStructureTrade} shares of {_symbol}");
+                    Debug($"Relative value term structure trade: {termStructureTrade} shares of {_symbol}");
                 }
             }
-        }
-
-        // Helper methods for calculations
-        private decimal CalculateRealizedVolatility()
-        {
-            var history = History(_symbol, 20, Resolution.Daily);
-            var returns = history.Select(x => Math.Log((double)x.Close / (double)x.Open)).ToList();
-            return (decimal)returns.StandardDeviation() * (decimal)Math.Sqrt(252);
         }
 
         private decimal CalculateImpliedVolatility()
@@ -715,8 +707,9 @@ namespace Alaris.Algorithm
             var option = Securities[optionSymbol] as Option;
             if (option == null) return 0;
 
-            var chain = OptionChains.GetValueOrDefault(optionSymbol);
-            if (chain == null || !chain.Any()) return 0;
+            OptionChain? chain;
+            if (!OptionChains.TryGetValue(optionSymbol, out chain) || chain == null || !chain.Any()) 
+                return 0;
 
             var atmOptions = chain
                 .Where(x => Math.Abs(x.Strike - Securities[_symbol].Price) < Securities[_symbol].Price * 0.05m)
@@ -735,8 +728,9 @@ namespace Alaris.Algorithm
             var option = Securities[optionSymbol] as Option;
             if (option == null) return 0;
 
-            var chain = OptionChains.GetValueOrDefault(optionSymbol);
-            if (chain == null || !chain.Any()) return 0;
+            OptionChain? chain;
+            if (!OptionChains.TryGetValue(optionSymbol, out chain) || chain == null || !chain.Any()) 
+                return 0;
 
             var calls = chain.Where(x => x.Right == OptionRight.Call).ToList();
             var puts = chain.Where(x => x.Right == OptionRight.Put).ToList();
@@ -758,8 +752,9 @@ namespace Alaris.Algorithm
             var option = Securities[optionSymbol] as Option;
             if (option == null) return Array.Empty<decimal>();
 
-            var chain = OptionChains.GetValueOrDefault(optionSymbol);
-            if (chain == null || !chain.Any()) return Array.Empty<decimal>();
+            OptionChain? chain;
+            if (!OptionChains.TryGetValue(optionSymbol, out chain) || chain == null || !chain.Any()) 
+                return Array.Empty<decimal>();
 
             var expiries = chain.Select(x => x.Expiry).Distinct().OrderBy(x => x).ToList();
             var termStructure = new List<decimal>();
@@ -780,6 +775,19 @@ namespace Alaris.Algorithm
             }
 
             return termStructure.ToArray();
+        }
+
+        private Symbol GetOptionSymbol(string underlying)
+        {
+            var equitySymbol = Symbol.Create(underlying, SecurityType.Equity, Market.USA);
+            return Symbol.CreateOption(
+                equitySymbol,
+                Market.USA,
+                OptionStyle.American,
+                OptionRight.Call,
+                0,  // Strike will be filtered later
+                DateTime.Now.AddDays(30)  // Expiry will be filtered later
+            );
         }
 
         private decimal CalculatePortfolioDelta()
@@ -813,7 +821,7 @@ namespace Alaris.Algorithm
             foreach (var holding in holdings)
             {
                 var order = MarketOrder(holding.Symbol, -holding.Holdings.Quantity);
-                Log.Trace($"Reducing exposure: {holding.Symbol} - {holding.Holdings.Quantity} shares");
+                Debug($"Reducing exposure: {holding.Symbol} - {holding.Holdings.Quantity} shares");
             }
         }
 
@@ -863,17 +871,11 @@ namespace Alaris.Algorithm
             return 0.3m; // Placeholder
         }
 
-        private Symbol GetOptionSymbol(string underlying)
+        private decimal CalculateRealizedVolatility()
         {
-            var equitySymbol = QuantConnect.Symbol.Create(underlying, SecurityType.Equity, Market.USA);
-            return QuantConnect.Symbol.CreateOption(
-                equitySymbol,
-                Market.USA,
-                OptionStyle.American,
-                OptionRight.Call,
-                0,  // Strike will be filtered later
-                DateTime.Now.AddDays(30)  // Expiry will be filtered later
-            );
+            var history = History(_symbol, 20, Resolution.Daily);
+            var returns = history.Select(x => Math.Log((double)x.Close / (double)x.Open)).ToList();
+            return (decimal)returns.StandardDeviation() * (decimal)Math.Sqrt(252);
         }
 
         private class PositionInfo
