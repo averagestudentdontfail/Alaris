@@ -122,8 +122,8 @@ namespace Alaris
                 
                 // Option 1: Using Lean.Launcher.Program.Main (Recommended for simplicity if it fits)
                 // This will use the lean.json configuration by default.
-                Console.WriteLine("Invoking QuantConnect.Lean.Launcher.Program.Main...");
-                QuantConnect.Lean.Launcher.Program.Main(launcherArgs);
+                Console.WriteLine("Invoking global::QuantConnect.Lean.Launcher.Program.Main...");
+                global::QuantConnect.Lean.Launcher.Program.Main(launcherArgs); // Added global::
 
                 // Option 2: More direct Engine control (if more customization during launch is needed)
                 /*
