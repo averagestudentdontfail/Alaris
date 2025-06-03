@@ -1,6 +1,5 @@
 // src/quantlib/main.cpp
 #include "pricing/alo_engine.h"
-#include "volatility/garch_wrapper.h"
 #include "strategy/vol_arb.h"
 #include "core/memory_pool.h"
 #include "core/task_scheduler.h"

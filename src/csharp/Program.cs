@@ -102,64 +102,33 @@ namespace Alaris
 
                 // Use standard Lean launcher
                 Console.WriteLine("Starting Lean Engine using standard launcher...");
-                
-                // Create launcher arguments array - empty for JSON config
-                var launcherArgs = new string[] { }; //
-                
-                if (mode == "backtest")
+
+                // Launch Lean as a subprocess using the lean.json config
+                var leanExe = "dotnet";
+                var leanDll = "QuantConnect.Lean.Launcher.dll";
+                var leanPath = Path.Combine("external", "lean", "Launcher", "bin", "Debug", "net6.0", leanDll);
+
+                if (!File.Exists(leanPath))
                 {
-                    Console.WriteLine($"Starting backtest for {symbol} from {startDate} to {endDate}");
+                    Console.WriteLine($"Lean launcher not found at {leanPath}");
+                    throw new FileNotFoundException($"Lean launcher not found: {leanPath}");
                 }
-                else
-                {
-                    Console.WriteLine($"Starting {mode} trading for {symbol}");
-                }
 
-                // --- MODIFICATION START ---
-                // Actually launch the Lean Engine
-                // Ensure all configurations (like algorithm-type-name, algorithm-location) 
-                // are correctly set in lean.json or via Config.Set()
-                
-                // Option 1: Using Lean.Launcher.Program.Main (Recommended for simplicity if it fits)
-                // This will use the lean.json configuration by default.
-                Console.WriteLine("Invoking global::QuantConnect.Lean.Launcher.Program.Main...");
-                global::QuantConnect.Lean.Launcher.Program.Main(launcherArgs); // Added global::
+                var process = new System.Diagnostics.Process();
+                process.StartInfo.FileName = leanExe;
+                process.StartInfo.Arguments = $"\"{leanPath}\"";
+                process.StartInfo.UseShellExecute = false;
+                process.StartInfo.RedirectStandardOutput = true;
+                process.StartInfo.RedirectStandardError = true;
 
-                // Option 2: More direct Engine control (if more customization during launch is needed)
-                /*
-                Console.WriteLine("Setting up Lean Engine components...");
-                var systemHandlers = LeanEngineSystemHandlers.FromConfiguration(Composer.Instance);
-                var algorithmHandlers = LeanEngineAlgorithmHandlers.FromConfiguration(Composer.Instance);
-                var algorithmPath = Config.Get("algorithm-location", "Alaris.Lean.dll"); // Ensure this points to your DLL
+                process.OutputDataReceived += (sender, e) => { if (e.Data != null) Console.WriteLine(e.Data); };
+                process.ErrorDataReceived += (sender, e) => { if (e.Data != null) Console.Error.WriteLine(e.Data); };
 
-                Console.WriteLine($"Attempting to launch algorithm: {Config.Get("algorithm-type-name")} from {algorithmPath}");
+                process.Start();
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
+                process.WaitForExit();
 
-                Engine.Run(new AlgorithmNodePacket(PacketType.AlgorithmNode)
-                {
-                    AlgorithmId = Config.Get("algorithm-type-name"), // Use a consistent ID
-                    ProjectId = Config.GetInt("job-project-id", 0),
-                    DeploymentId = Config.Get("job-deployment-id", Config.Get("algorithm-type-name")),
-                    CompileId = Config.Get("job-compile-id", Config.Get("algorithm-type-name")),
-                    RamAllocation = int.MaxValue, // Or get from config
-                    Language = AlgorithmLanguage.CSharp, // From config
-                    Parameters = Config.GetAlgorithmParameters(), // From config
-                    Controls = new Controls
-                    {
-                        MinuteLimit = Config.GetInt("maximum-runtime-minutes", 0),
-                        SecondLimit = 0, // Or from config
-                        TickLimit = 0 // Or from config
-                    },
-                    UserId = Config.GetInt("job-user-id", 0), // from config
-                    Channel = Config.Get("job-channel", ""), // from config
-                    Version = Globals.GetVersionId(), // from config or const
-                    AlgorithmLocation = algorithmPath, // from config
-                },
-                systemHandlers,
-                algorithmHandlers,
-                new LeanTerminationTimer(systemHandlers.Notify));
-                */
-                // --- MODIFICATION END ---
-                
                 Console.WriteLine("Alaris Lean Process completed successfully.");
             }
             catch (Exception ex)
