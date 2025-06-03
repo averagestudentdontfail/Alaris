@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using QuantConnect.Statistics;
 using QuantConnect.Orders;
 using QuantConnect.Securities;
+using QuantConnect.Interfaces;
 using Alaris.IPC;
 
 namespace Alaris.Monitoring
