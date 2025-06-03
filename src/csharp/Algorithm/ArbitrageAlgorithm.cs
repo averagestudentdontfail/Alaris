@@ -137,11 +137,15 @@ namespace Alaris.Algorithm
         {
             try
             {
+                Log("Starting algorithm initialization...");
+                
                 // Load configuration from environment
                 _symbol = Environment.GetEnvironmentVariable("ALARIS_SYMBOL") ?? "SPY";
                 var strategyModeStr = Environment.GetEnvironmentVariable("ALARIS_STRATEGY")?.ToLower() ?? "deltaneutral";
                 var frequency = QuantConnect.Configuration.Config.Get("data-resolution", "minute").ToLower();
                 var debug = QuantConnect.Configuration.Config.GetBool("debug-mode", false);
+                
+                Log($"Configuration loaded - Symbol: {_symbol}, Strategy: {strategyModeStr}, Frequency: {frequency}, Debug: {debug}");
                 
                 // Set debug logging level
                 if (debug)
@@ -156,6 +160,7 @@ namespace Alaris.Algorithm
                     "relativevalue" => StrategyMode.RelativeValue,
                     _ => StrategyMode.DeltaNeutral
                 };
+                Log($"Strategy mode set to: {_strategyMode}");
 
                 // Set up algorithm parameters
                 SetStartDate(2018, 1, 1);
@@ -163,25 +168,37 @@ namespace Alaris.Algorithm
                 SetCash(100000);
                 _startingCash = Portfolio.Cash;
                 _dailyStartingValue = Portfolio.TotalPortfolioValue;
+                Log($"Algorithm parameters set - Starting Cash: {_startingCash:C}, Daily Starting Value: {_dailyStartingValue:C}");
+
                 SetBrokerageModel(BrokerageName.InteractiveBrokersBrokerage, AccountType.Margin);
+                Log("Brokerage model set to Interactive Brokers");
 
                 // Initialize universe with configured frequency
+                Log("Initializing universe...");
                 InitializeUniverse(frequency);
+                Log($"Universe initialized with {_activeSymbols.Count} symbols");
 
                 // Set the main equity symbol for the algorithm
                 _mainEquitySymbol = _idToSymbol[_symbolToId[_symbol]];
+                Log($"Main equity symbol set to: {_mainEquitySymbol}");
 
                 // Initialize shared memory bridge
+                Log("Initializing shared memory bridge...");
                 _sharedMemory = new SharedMemoryBridge();
                 _sharedMemory.SignalReceived += OnTradingSignalReceived;
                 _sharedMemory.ControlMessageReceived += OnControlMessageReceived;
+                Log("Shared memory bridge initialized");
 
                 // Initialize performance monitoring
+                Log("Initializing performance monitor...");
                 _performanceMonitor = new PerformanceMonitor();
                 _performanceMonitor.Initialize(_symbol, _strategyMode);
+                Log("Performance monitor initialized");
 
                 // Initialize GC optimization
+                Log("Initializing GC optimizer...");
                 _gcOptimizer = new GCOptimizer();
+                Log("GC optimizer initialized");
 
                 // Schedule regular tasks based on frequency
                 var updateInterval = frequency switch
@@ -190,22 +207,25 @@ namespace Alaris.Algorithm
                     "hour" => TimeSpan.FromHours(1),
                     _ => TimeSpan.FromMinutes(1)
                 };
+                Log($"Scheduled tasks with update interval: {updateInterval}");
 
                 Schedule.On(DateRules.EveryDay(), TimeRules.Every(updateInterval), () =>
                 {
                     if (_isInitialized)
                     {
+                        Debug($"Running scheduled update at {Time}");
                         UpdateMarketRegime();
                         RebalancePortfolio();
                     }
                 });
 
                 _isInitialized = true;
-                Debug($"Alaris algorithm initialized for {_symbol} in {_strategyMode} mode with {frequency} frequency");
+                Log($"Alaris algorithm initialization completed for {_symbol} in {_strategyMode} mode with {frequency} frequency");
             }
             catch (Exception ex)
             {
                 Error($"Failed to initialize algorithm: {ex.Message}");
+                Error($"Stack trace: {ex.StackTrace}");
                 Quit($"Initialization failed: {ex.Message}");
             }
         }

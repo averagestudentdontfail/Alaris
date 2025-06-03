@@ -174,13 +174,27 @@ namespace Alaris
             // Configure data frequency
             Config.Set("data-resolution", frequency);
             
-            // Configure debug logging
+            // Configure logging - always enable console logging
+            Config.Set("log-handler", "QuantConnect.Logging.CompositeLogHandler");
+            Config.Set("log-level", debug ? "Debug" : "Info");
             Config.Set("debug-mode", debug ? "true" : "false");
-            if (debug)
-            {
-                Config.Set("log-handler", "QuantConnect.Logging.CompositeLogHandler");
-                Config.Set("log-level", "Debug");
-            }
+            
+            // Force console output
+            Config.Set("console-write", "true");
+            Config.Set("console-write-level", debug ? "Debug" : "Info");
+            
+            // Add more detailed logging
+            Console.WriteLine($"Starting Alaris algorithm with configuration:");
+            Console.WriteLine($"Mode: {mode}");
+            Console.WriteLine($"Symbol: {symbol}");
+            Console.WriteLine($"Strategy: {strategy}");
+            Console.WriteLine($"Frequency: {frequency}");
+            Console.WriteLine($"Debug Mode: {debug}");
+            Console.WriteLine($"Start Date: {startDate}");
+            Console.WriteLine($"End Date: {endDate}");
+            Console.WriteLine($"Data Directory: {Config.Get("data-directory")}");
+            Console.WriteLine($"Results Directory: {Config.Get("results-destination-folder")}");
+            Console.WriteLine($"Log Level: {Config.Get("log-level")}");
             
             if (mode == "live" || mode == "paper")
             {
