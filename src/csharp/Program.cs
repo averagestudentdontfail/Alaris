@@ -68,8 +68,10 @@ namespace Alaris
                     ConfigureLean(mode, symbol, strategy, startDate, endDate);
 
                     // Create the algorithm job packet
-                    var job = mode == "backtest" 
-                        ? new BacktestNodePacket
+                    AlgorithmNodePacket job;
+                    if (mode == "backtest")
+                    {
+                        job = new BacktestNodePacket
                         {
                             Type = PacketType.BacktestNode,
                             Algorithm = System.Text.Encoding.UTF8.GetBytes(typeof(ArbitrageAlgorithm).AssemblyQualifiedName ?? ""),
@@ -80,8 +82,21 @@ namespace Alaris
                             Version = "1.0.0",
                             Language = QuantConnect.Language.CSharp,
                             BacktestId = Guid.NewGuid().ToString()
+                        };
+
+                        if (!string.IsNullOrEmpty(startDate) && !string.IsNullOrEmpty(endDate))
+                        {
+                            if (DateTime.TryParse(startDate, out DateTime start) && DateTime.TryParse(endDate, out DateTime end))
+                            {
+                                var backtestJob = (BacktestNodePacket)job;
+                                backtestJob.PeriodStart = start;
+                                backtestJob.PeriodFinish = end;
+                            }
                         }
-                        : new LiveNodePacket
+                    }
+                    else
+                    {
+                        job = new LiveNodePacket
                         {
                             Type = PacketType.LiveNode,
                             Algorithm = System.Text.Encoding.UTF8.GetBytes(typeof(ArbitrageAlgorithm).AssemblyQualifiedName ?? ""),
@@ -93,15 +108,6 @@ namespace Alaris
                             Version = "1.0.0",
                             Language = QuantConnect.Language.CSharp
                         };
-
-                    if (mode == "backtest" && !string.IsNullOrEmpty(startDate) && !string.IsNullOrEmpty(endDate))
-                    {
-                        if (DateTime.TryParse(startDate, out DateTime start) && DateTime.TryParse(endDate, out DateTime end))
-                        {
-                            var backtestJob = (BacktestNodePacket)job;
-                            backtestJob.PeriodStart = start;
-                            backtestJob.PeriodFinish = end;
-                        }
                     }
 
                     // Store configuration in environment for algorithm access

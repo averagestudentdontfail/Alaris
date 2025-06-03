@@ -528,7 +528,7 @@ namespace Alaris.Algorithm
 
                 var regimeMessage = new MarketRegimeMessage
                 {
-                    Timestamp = (ulong)((DateTimeOffset)Time).ToUnixTimeMilliseconds() * 1000000, // Convert to nanoseconds
+                    Timestamp = (ulong)((DateTimeOffset)Time).ToUnixTimeMilliseconds() * 1000000,
                     VolRegime = DetermineMarketRegime(realizedVol, impliedVol, skew, termStructure),
                     CurrentRealizedVol = (double)realizedVol,
                     CurrentImpliedVol = (double)impliedVol,
@@ -539,11 +539,16 @@ namespace Alaris.Algorithm
                     MeanReversionSpeed = (double)CalculateMeanReversion()
                 };
 
-                _sharedMemory?.SendControlMessage(ControlMessageType.MarketRegime, 
+                // Send market regime update using control message
+                var messageData = new byte[]
+                {
                     BitConverter.GetBytes(regimeMessage.Timestamp),
                     BitConverter.GetBytes((uint)regimeMessage.VolRegime),
                     BitConverter.GetBytes(regimeMessage.CurrentRealizedVol),
-                    BitConverter.GetBytes(regimeMessage.CurrentImpliedVol));
+                    BitConverter.GetBytes(regimeMessage.CurrentImpliedVol)
+                }.SelectMany(x => x).ToArray();
+
+                _sharedMemory?.SendControlMessage(ControlMessageType.SystemStatus, messageData);
 
                 _currentRegime = regimeMessage.VolRegime;
                 _lastRegimeUpdate = Time;
@@ -706,7 +711,8 @@ namespace Alaris.Algorithm
 
         private decimal CalculateImpliedVolatility()
         {
-            var optionChain = OptionChains.GetValueOrDefault(Symbol.Create(_symbol, SecurityType.Option, Market.USA));
+            var optionSymbol = GetOptionSymbol(_symbol);
+            var optionChain = Securities[optionSymbol].OptionChain;
             if (optionChain == null || !optionChain.Any()) return 0;
 
             var atmOptions = optionChain
@@ -720,7 +726,8 @@ namespace Alaris.Algorithm
 
         private decimal CalculateVolatilitySkew()
         {
-            var optionChain = OptionChains.GetValueOrDefault(Symbol.Create(_symbol, SecurityType.Option, Market.USA));
+            var optionSymbol = GetOptionSymbol(_symbol);
+            var optionChain = Securities[optionSymbol].OptionChain;
             if (optionChain == null || !optionChain.Any()) return 0;
 
             var calls = optionChain.Where(x => x.Right == OptionRight.Call).ToList();
@@ -737,7 +744,8 @@ namespace Alaris.Algorithm
 
         private decimal[] CalculateVolatilityTermStructure()
         {
-            var optionChain = OptionChains.GetValueOrDefault(Symbol.Create(_symbol, SecurityType.Option, Market.USA));
+            var optionSymbol = GetOptionSymbol(_symbol);
+            var optionChain = Securities[optionSymbol].OptionChain;
             if (optionChain == null || !optionChain.Any()) return Array.Empty<decimal>();
 
             var expiries = optionChain.Select(x => x.Expiry).Distinct().OrderBy(x => x).ToList();
@@ -840,6 +848,18 @@ namespace Alaris.Algorithm
         {
             // Implement mean reversion calculation
             return 0.3m; // Placeholder
+        }
+
+        private Symbol GetOptionSymbol(string underlying)
+        {
+            return QuantConnect.Symbol.CreateOption(
+                underlying,
+                Market.USA,
+                OptionStyle.American,
+                OptionRight.Call,
+                0,  // Strike will be filtered later
+                DateTime.Now.AddDays(30)  // Expiry will be filtered later
+            );
         }
 
         private class PositionInfo

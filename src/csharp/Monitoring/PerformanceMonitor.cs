@@ -170,7 +170,7 @@ namespace Alaris.Monitoring
                 }
 
                 var metrics = _positionMetrics[holding.Symbol.Value];
-                metrics.UpdateMetrics(holding);
+                metrics.UpdateMetrics(holding.Holdings);
             }
 
             _historicalPnL.Add(portfolio.TotalProfit);
