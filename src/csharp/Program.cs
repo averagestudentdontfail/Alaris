@@ -138,7 +138,7 @@ namespace Alaris
                 var algorithmManager = new AlgorithmManager(liveMode, null);
                 
                 // Initialize the Lean manager with correct arguments
-                systemHandlers.LeanManager.Initialize(systemHandlers, algorithmHandlers, new BacktestNodePacket());
+                systemHandlers.LeanManager.Initialize(systemHandlers, algorithmHandlers, new BacktestNodePacket(), algorithmManager);
                 
                 var engine = new Engine(systemHandlers, algorithmHandlers, liveMode);
                 engine.Run(new BacktestNodePacket(), algorithmManager, assemblyPath, WorkerThread.Instance);
