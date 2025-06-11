@@ -148,7 +148,7 @@ check_requirements() {
     log_info "Checking build requirements"
 
     # Check for required tools
-    local required_tools=("git" "cmake")
+    local required_tools=("git" "cmake" "dotnet")
 
     if [[ $USE_NINJA == true ]]; then
         required_tools+=("ninja")
@@ -159,35 +159,6 @@ check_requirements() {
     for tool in "${required_tools[@]}"; do
         if ! command -v "$tool" &> /dev/null; then
             log_error "$tool is required but not installed"
-
-            # Provide installation hints
-            case $tool in
-                cmake)
-                    log_error "Install with:"
-                    log_error "  Ubuntu/Debian: sudo apt-get install cmake"
-                    log_error "  CentOS/RHEL:   sudo yum install cmake"
-                    log_error "  macOS:         brew install cmake"
-                    log_error "  Windows:       Download from https://cmake.org"
-                    ;;
-                make)
-                    log_error "Install with:"
-                    log_error "  Ubuntu/Debian: sudo apt-get install build-essential"
-                    log_error "  CentOS/RHEL:   sudo yum groupinstall 'Development Tools'"
-                    log_error "  macOS:         xcode-select --install"
-                    ;;
-                ninja)
-                    log_error "Install with:"
-                    log_error "  Ubuntu/Debian: sudo apt-get install ninja-build"
-                    log_error "  CentOS/RHEL:   sudo yum install ninja-build"
-                    log_error "  macOS:         brew install ninja"
-                    ;;
-                git)
-                    log_error "Install with:"
-                    log_error "  Ubuntu/Debian: sudo apt-get install git"
-                    log_error "  CentOS/RHEL:   sudo yum install git"
-                    log_error "  macOS:         brew install git"
-                    ;;
-            esac
             exit 1
         fi
     done
@@ -197,7 +168,6 @@ check_requirements() {
     cmake_version=$(cmake --version | head -n1 | sed 's/cmake version //')
     log_info "CMake version: $cmake_version"
 
-    # Check minimum CMake version (3.20)
     if ! cmake --version | head -n1 | grep -qE 'cmake version ([3-9]\.(2[0-9]|[3-9][0-9])|[4-9]\.[0-9]+|[1-9][0-9]+\.[0-9]+)'; then
         log_error "CMake 3.20 or higher is required, found $cmake_version"
         exit 1
@@ -208,13 +178,6 @@ check_requirements() {
         local gcc_version
         gcc_version=$(g++ --version | head -n1)
         log_info "Compiler: $gcc_version"
-
-        # Check for C++20 support (GCC 10+)
-        local gcc_major
-        gcc_major=$(g++ -dumpversion | cut -d. -f1)
-        if [[ $gcc_major -lt 10 ]]; then
-            log_warn "GCC 10+ recommended for full C++20 support, found GCC $gcc_major"
-        fi
     elif command -v clang++ &> /dev/null; then
         local clang_version
         clang_version=$(clang++ --version | head -n1)
@@ -231,16 +194,6 @@ check_requirements() {
         log_warn "ccache not found - builds will be slower"
         USE_CCACHE=false
     fi
-
-    # Check for Boost libraries
-    if [[ $PLATFORM == "Linux" ]]; then
-        if ! ldconfig -p | grep -q libboost_system; then
-            log_warn "Boost libraries may not be installed or not in ldconfig cache."
-            log_warn "Install with: sudo apt-get install libboost-all-dev  # Ubuntu/Debian"
-            log_warn "              or: sudo yum install boost-devel       # CentOS/RHEL"
-            log_warn "After installation, you might need to run 'sudo ldconfig'."
-        fi
-    fi
 }
 
 # Function to update git submodules
@@ -250,8 +203,6 @@ update_submodules() {
         cd "$PROJECT_ROOT"
 
         git submodule update --init --recursive
-
-        # Update to latest versions
         git submodule update --recursive --remote
 
         log_info "Submodules updated successfully"
@@ -281,136 +232,68 @@ configure_cmake() {
         "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
     )
 
-    # Generator selection
     if [[ $USE_NINJA == true ]]; then
         cmake_args+=("-G" "Ninja")
     fi
 
-    # CCache configuration
     if [[ $USE_CCACHE == true ]] && command -v ccache &> /dev/null; then
         cmake_args+=("-DCMAKE_CXX_COMPILER_LAUNCHER=ccache")
     fi
 
-    # Debug build options
     if [[ $BUILD_TYPE == "Debug" ]]; then
         if [[ $ENABLE_SANITIZERS == true ]]; then
             cmake_args+=("-DENABLE_SANITIZERS=ON")
-            log_info "Sanitizers enabled for Debug build."
         fi
-
         if [[ $ENABLE_COVERAGE == true ]]; then
             cmake_args+=("-DENABLE_COVERAGE=ON")
-            log_info "Code coverage enabled for Debug build."
         fi
-    elif [[ $ENABLE_SANITIZERS == true || $ENABLE_COVERAGE == true ]]; then
-        log_warn "Sanitizers and Code Coverage are typically used with Debug builds. Current build type: $BUILD_TYPE"
     fi
 
-    # Verbose configuration
-    if [[ $VERBOSE == true ]]; then
-        cmake_args+=("-DCMAKE_VERBOSE_MAKEFILE=ON")
-    fi
-
-    # Platform-specific configuration
-    case $PLATFORM in
-        Mac)
-            cmake_args+=("-DCMAKE_OSX_DEPLOYMENT_TARGET=10.15")
-            ;;
-        Windows)
-            cmake_args+=("-DCMAKE_WINDOWS_EXPORT_ALL_SYMBOLS=ON")
-            ;;
-    esac
-
-    log_info "CMake configuration arguments:"
-    for arg in "${cmake_args[@]}"; do
-        log_info "  $arg"
-    done
-
-    # Run CMake
     cmake "${cmake_args[@]}" "$PROJECT_ROOT"
-
-    if [[ $? -eq 0 ]]; then
-        log_info "CMake configuration successful"
-    else
-        log_error "CMake configuration failed"
-        exit 1
-    fi
 }
 
 # Function to build the project
 build_project() {
     log_info "Building project with $JOBS parallel jobs"
 
-    local build_args=()
-    mkdir -p "$BUILD_DIR"
-    local output_file="${BUILD_DIR}/compilation_output_$(date +%Y%m%d_%H%M%S).txt"
+    cmake --build . -- -j"$JOBS"
+}
 
-    if [[ $USE_NINJA == true ]]; then
-        build_args+=("ninja")
-        if [[ $VERBOSE == true ]]; then
-            build_args+=("-v")
-        fi
+# Function to build the Lean .NET engine (submodule)
+build_lean_engine() {
+    log_info "Building QuantConnect Lean engine submodule (.NET)"
+    local lean_solution_path="$EXTERNAL_DIR/lean/QuantConnect.Lean.sln"
+    local lean_output_dir="$BUILD_DIR/external/lean/release"
+    mkdir -p "$lean_output_dir"
+
+    log_info "Running: dotnet build \"$lean_solution_path\" -c $BUILD_TYPE -o \"$lean_output_dir\""
+    if dotnet build "$lean_solution_path" -c "$BUILD_TYPE" -o "$lean_output_dir"; then
+        log_info "Lean engine submodule built successfully."
     else
-        build_args+=("make" "-j$JOBS")
-        if [[ $VERBOSE == true ]]; then
-            build_args+=("VERBOSE=1")
-        fi
-    fi
-
-    log_info "Compilation output will be saved to: $output_file"
-
-    local start_time
-    start_time=$(date +%s)
-
-    local cmd_to_run=("${build_args[@]}")
-    
-    if eval "${cmd_to_run[*]}" 2>&1 | tee "$output_file"; then
-        local build_status=${PIPESTATUS[0]}
-    else
-        local build_status=${PIPESTATUS[0]}
-    fi
-
-    local end_time
-    end_time=$(date +%s)
-    local build_duration=$((end_time - start_time))
-
-    if [[ $build_status -eq 0 ]]; then
-        log_info "Build completed successfully in ${build_duration}s"
-        show_build_artifacts
-    else
-        log_error "Build failed after ${build_duration}s (Exit code: $build_status)"
-        log_error "Check the output above and in '$output_file' for error details"
+        log_error "Failed to build Lean engine submodule."
         exit 1
     fi
 }
 
-# Function to show built artifacts
-show_build_artifacts() {
-    log_info "Built artifacts (relative to $BUILD_DIR):"
+# ADDED: Function to build the custom Alaris Lean process
+build_alaris_lean_process() {
+    log_info "Building Alaris Lean process (.NET)"
+    local alaris_project_path="${PROJECT_ROOT}/src/csharp/Alaris.Lean.csproj"
+    local alaris_output_dir="${BUILD_DIR}/csharp"
+    mkdir -p "$alaris_output_dir"
 
-    local current_dir_artifacts=$(pwd)
-    if [[ "$current_dir_artifacts" != "$BUILD_DIR" ]]; then
-        log_warn "Not in BUILD_DIR ($BUILD_DIR), artifact paths might be incorrect if relative."
+    if [[ ! -f "$alaris_project_path" ]]; then
+        log_error "Alaris C# project not found at: $alaris_project_path"
+        exit 1
     fi
 
-    local artifacts=(
-        "bin/quantlib-process"
-    )
-
-    for artifact_rel_path in "${artifacts[@]}"; do
-        local artifact_full_path="${BUILD_DIR}/${artifact_rel_path}"
-        if [[ -f "$artifact_full_path" ]]; then
-            echo -e "  ${GREEN}✓${NC} ${artifact_rel_path}"
-            ls -lh "$artifact_full_path" | awk '{print "      Size: " $5 ", Modified: " $6 " " $7 " " $8}'
-        else
-            if [[ -f "$artifact_rel_path" ]]; then
-                echo -e "  ${GREEN}✓${NC} ${artifact_rel_path} (found at PWD)"
-                ls -lh "$artifact_rel_path" | awk '{print "      Size: " $5 ", Modified: " $6 " " $7 " " $8}'
-            else
-                echo -e "  ${RED}✗${NC} ${artifact_rel_path} (not found at $artifact_full_path or PWD)"
-            fi
-        fi
-    done
+    log_info "Running: dotnet build \"$alaris_project_path\" -c $BUILD_TYPE -o \"$alaris_output_dir\""
+    if dotnet build "$alaris_project_path" -c "$BUILD_TYPE" -o "$alaris_output_dir"; then
+        log_info "Alaris Lean process built successfully. Binaries are in $alaris_output_dir"
+    else
+        log_error "Failed to build Alaris Lean process."
+        exit 1
+    fi
 }
 
 # Function to install
@@ -418,121 +301,14 @@ install_project() {
     if [[ $INSTALL == true ]]; then
         log_info "Installing project"
         cd "$BUILD_DIR"
-
-        if [[ $USE_NINJA == true ]]; then
-            if command -v ninja &> /dev/null; then
-                ninja install
-            else
-                log_error "Ninja not found, cannot install with Ninja."
-                exit 1
-            fi
-        else
-            if command -v make &> /dev/null; then
-                make install
-            else
-                log_error "Make not found, cannot install with Make."
-                exit 1
-            fi
-        fi
-
-        if [[ $? -eq 0 ]]; then
-            log_info "Installation completed successfully"
-        else
-            log_error "Installation failed"
-            exit 1
-        fi
+        cmake --install .
     fi
-}
-
-# Function to build the Lean .NET engine and output to build/external/lean/release
-build_lean_engine() {
-    log_info "Building QuantConnect Lean engine (.NET) into $BUILD_DIR/external/lean/release"
-    local lean_solution_path="$EXTERNAL_DIR/lean/QuantConnect.Lean.sln"
-    local lean_output_dir="$BUILD_DIR/external/lean/release"
-    mkdir -p "$lean_output_dir"
-    if command -v dotnet &> /dev/null; then
-        # Check dotnet version
-        local required_dotnet_version="9.0.106"
-        local current_dotnet_version
-        current_dotnet_version=$(dotnet --version)
-        if [[ "$current_dotnet_version" != "$required_dotnet_version" ]]; then
-            log_error "Required .NET SDK version $required_dotnet_version, but found $current_dotnet_version. Aborting Lean build."
-            log_error "Please switch to the correct .NET SDK using 'dotnet --list-sdks' and 'global.json' if needed."
-            exit 1
-        fi
-        log_info "Using .NET SDK version: $current_dotnet_version"
-        log_info "Running: dotnet build $lean_solution_path -c Debug -o $lean_output_dir /p:WarningLevel=0"
-        if dotnet build "$lean_solution_path" -c Debug -o "$lean_output_dir" /p:WarningLevel=0; then
-            log_info "Lean engine built successfully. Binaries are in $lean_output_dir"
-            if [[ -f "$lean_output_dir/QuantConnect.Lean.Launcher.dll" ]]; then
-                log_info "✓ QuantConnect.Lean.Launcher.dll found in $lean_output_dir"
-            else
-                log_warn "QuantConnect.Lean.Launcher.dll not found in $lean_output_dir after build!"
-            fi
-        else
-            log_error "Failed to build Lean engine. Check dotnet output above."
-            exit 1
-        fi
-    else
-        log_error "dotnet CLI not found. Please install .NET SDK."
-        exit 1
-    fi
-}
-
-# Function to print build summary
-print_summary() {
-    log_info "Build Summary"
-
-    echo -e "${CYAN}Project:${NC}          Alaris Trading System"
-    echo -e "${CYAN}Build Type:${NC}       $BUILD_TYPE"
-    echo -e "${CYAN}Platform:${NC}         $PLATFORM"
-    echo -e "${CYAN}Jobs:${NC}             $JOBS"
-    echo -e "${CYAN}Generator:${NC}        $(if [[ $USE_NINJA == true ]]; then echo "Ninja"; else echo "Make"; fi)"
-    echo -e "${CYAN}CCache:${NC}           $(if [[ $USE_CCACHE == true ]] && command -v ccache &> /dev/null; then echo "Enabled"; else echo "Disabled"; fi)"
-    if [[ $BUILD_TYPE == "Debug" ]]; then
-        echo -e "${CYAN}Sanitizers:${NC}       $(if [[ $ENABLE_SANITIZERS == true ]]; then echo "Enabled"; else echo "Disabled"; fi)"
-        echo -e "${CYAN}Coverage:${NC}         $(if [[ $ENABLE_COVERAGE == true ]]; then echo "Enabled"; else echo "Disabled"; fi)"
-    fi
-    echo -e "${CYAN}Build Directory:${NC}  $BUILD_DIR"
-
-    echo ""
-    echo -e "${CYAN}Next steps:${NC}"
-    if [[ -f "${BUILD_DIR}/src/quantlib/quantlib_process" ]]; then
-        echo -e "  ${GREEN}•${NC} To run the QuantLib process:"
-        echo -e "    cd \"$BUILD_DIR\" && ./src/quantlib/quantlib_process"
-    fi
-
-    echo ""
-    echo -e "  ${GREEN}•${NC} To clean and rebuild:"
-    echo -e "    $0 --clean"
-    echo ""
-    echo -e "  ${GREEN}•${NC} Available build tool targets (from $BUILD_DIR):"
-    if [[ $USE_NINJA == true ]]; then
-        echo -e "    ninja -t list              # List all explicit targets"
-        echo -e "    ninja -t targets           # List all targets including internal ones"
-    else
-        echo -e "    make help                  # Usually lists available targets"
-    fi
-    echo ""
-    echo -e "  ${GREEN}•${NC} Compilation output log:"
-    echo -e "    Check files like ${BUILD_DIR}/compilation_output_YYYYMMDD_HHMMSS.txt"
 }
 
 # Function to handle errors
 handle_error() {
-    local exit_code=$?
-    if [[ $exit_code -ne 0 ]]; then
-        log_error "Build script failed with exit code $exit_code on line $BASH_LINENO"
-        echo ""
-        echo -e "${YELLOW}Troubleshooting tips:${NC}"
-        echo "1. Check that all dependencies are installed (run script with no options for initial checks)."
-        echo "2. Try cleaning and rebuilding: $0 --clean"
-        echo "3. Check the CMake configuration output in the scrollback for errors."
-        echo "4. Examine any compilation log files in the build directory (e.g., compilation_output_*.txt)."
-        echo "5. Ensure you have sufficient disk space and memory."
-        echo "6. Run with --verbose for more detailed output: $0 --verbose [other_options]"
-    fi
-    exit $exit_code
+    log_error "Build script failed on line $1"
+    exit 1
 }
 
 # Main function
@@ -540,7 +316,6 @@ main() {
     trap 'handle_error $LINENO' ERR
 
     log_info "Alaris Trading System Build Script"
-
     parse_arguments "$@"
     detect_platform
     check_requirements
@@ -548,13 +323,203 @@ main() {
     setup_build_directory
     configure_cmake
     build_project
+    
+    # ADDED: Build both C# projects
     build_lean_engine
+    build_alaris_lean_process
+
     install_project
-
-    print_summary
-
     log_info "Build script completed successfully!"
 }
 
-# Run main function with all arguments
 main "$@"
+```
+
+And here is the corresponding `run.sh` script, which now executes your custom launcher.
+
+
+```bash
+#!/bin/bash
+
+# Configuration
+WINDOWS_HOST=$(cat /etc/resolv.conf 2>/dev/null | grep nameserver | awk '{print $2}' || echo "192.168.1.1")
+WSL_IP=$(ip addr show eth0 2>/dev/null | grep "inet\b" | awk '{print $2}' | cut -d/ -f1 || echo "127.0.0.1")
+IB_GATEWAY_HOSTS=("host.docker.internal" "localhost" "127.0.0.1" "$WINDOWS_HOST")  
+IB_GATEWAY_PORT="4002"
+QUANTLIB_CONFIG_FILE="config/quantlib_process.yaml"
+
+# Colors for output
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
+
+# Helper functions
+log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
+log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
+log_step() { echo -e "${BLUE}[STEP]${NC} $1"; }
+
+# Default values
+SYMBOL="SPY"
+MODE="backtest"
+STRATEGY="deltaneutral"
+START_DATE="2023-01-01"
+END_DATE="2023-01-02"
+FREQUENCY="minute"
+DEBUG="false"
+QUANTLIB_PROCESS_PID=""
+
+# Help message
+show_help() {
+    echo "Usage: $0 [options]"
+    echo ""
+    echo "Alaris Integrated Trading System (QuantLib + Lean)"
+    echo ""
+    echo "Options:"
+    echo "  -s, --symbol SYMBOL     Trading symbol (default: SPY)"
+    echo "  -m, --mode MODE         Trading mode: live, paper, or backtest (default: backtest)"
+    echo "  -t, --strategy STRAT    Strategy mode (default: deltaneutral)"
+    echo "  -sd, --start-date DATE  Backtest start date (YYYY-MM-DD, default: 2023-01-01)"
+    echo "  -ed, --end-date DATE    Backtest end date (YYYY-MM-DD, default: 2023-01-02)"
+    echo "  -f, --frequency FREQ    Data frequency: minute, hour, or daily (default: minute)"
+    echo "  -d, --debug            Enable debug logging"
+    echo "  -h, --help              Show this help message"
+    exit 0
+}
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -s|--symbol) SYMBOL="$2"; shift 2;;
+        -m|--mode) MODE="$2"; shift 2;;
+        -t|--strategy) STRATEGY="$2"; shift 2;;
+        -sd|--start-date) START_DATE="$2"; shift 2;;
+        -ed|--end-date) END_DATE="$2"; shift 2;;
+        -f|--frequency) FREQUENCY="$2"; shift 2;;
+        -d|--debug) DEBUG="true"; shift;;
+        -h|--help) show_help;;
+        *) echo "Unknown option: $1"; show_help; exit 1;;
+    esac
+done
+
+# Validate inputs
+validate_inputs() {
+    if [[ ! "$MODE" =~ ^(live|paper|backtest)$ ]]; then
+        log_error "Invalid mode: $MODE. Must be one of: live, paper, backtest"
+        exit 1
+    fi
+}
+
+# Check prerequisites
+check_prerequisites() {
+    log_step "Checking prerequisites..."
+    if [[ ! -f "build/bin/quantlib-process" ]]; then
+        log_error "QuantLib process not found. Run: ./scripts/build.sh first"
+        exit 1
+    fi
+    # UPDATED: Check for your custom C# launcher
+    if [[ ! -f "build/csharp/Alaris.Lean.dll" ]]; then
+        log_error "Alaris Lean launcher not found. Run: ./scripts/build.sh first"
+        exit 1
+    fi
+    log_info "✓ Prerequisites check passed"
+}
+
+# Start QuantLib process
+start_quantlib_process() {
+    log_step "Starting QuantLib process (pricing & strategy engine)..."
+    build/bin/quantlib-process "$QUANTLIB_CONFIG_FILE" &
+    QUANTLIB_PROCESS_PID=$!
+    log_info "Waiting for QuantLib process to initialize shared memory..."
+    sleep 5
+    if ! kill -0 $QUANTLIB_PROCESS_PID 2>/dev/null; then
+        log_error "QuantLib process failed to start - check logs"
+        exit 1
+    fi
+    log_info "✓ QuantLib process started successfully (PID: $QUANTLIB_PROCESS_PID)"
+}
+
+# Cleanup function
+cleanup() {
+    echo ""
+    log_step "Shutting down Alaris system..."
+    if [[ -n "$QUANTLIB_PROCESS_PID" ]]; then
+        log_info "Stopping QuantLib process (PID: $QUANTLIB_PROCESS_PID)"
+        kill -TERM "$QUANTLIB_PROCESS_PID" 2>/dev/null || true
+        wait "$QUANTLIB_PROCESS_PID" 2>/dev/null
+        log_info "✓ QuantLib process stopped"
+    fi
+    if [[ -d "/dev/shm" ]]; then
+        rm -f /dev/shm/alaris_* 2>/dev/null || true
+    fi
+    log_info "Alaris system shutdown complete"
+    exit 0
+}
+
+trap cleanup INT TERM
+
+# Main execution
+main() {
+    echo "========================================"
+    echo "    Alaris Integrated Trading System"
+    echo "========================================"
+    echo ""
+    
+    validate_inputs
+    check_prerequisites
+    
+    # Print configuration
+    log_step "Starting Alaris with configuration:"
+    echo "  Symbol: $SYMBOL, Mode: $MODE, Strategy: $STRATEGY"
+    if [[ "$MODE" == "backtest" ]]; then
+        echo "  Period: $START_DATE to $END_DATE, Frequency: $FREQUENCY"
+    fi
+    echo ""
+    
+    start_quantlib_process
+    
+    log_step "Starting Lean process (market data & execution engine)..."
+
+    # --- CORRECTED LAUNCHER PATH ---
+    # Point to your custom Alaris Lean executable, not the generic QuantConnect one
+    local lean_launcher_path="build/csharp/Alaris.Lean.dll"
+
+    CMD="dotnet $lean_launcher_path"
+    CMD="$CMD --symbol $SYMBOL"
+    CMD="$CMD --mode $MODE"
+    CMD="$CMD --strategy $STRATEGY"
+    CMD="$CMD --frequency $FREQUENCY"
+
+    if [[ "$DEBUG" == "true" ]]; then
+        CMD="$CMD --debug"
+    fi
+
+    if [[ "$MODE" == "backtest" ]]; then
+        CMD="$CMD --start-date $START_DATE"
+        CMD="$CMD --end-date $END_DATE"
+    fi
+
+    log_info "Executing: $CMD"
+    echo ""
+
+    # Execute the Lean process
+    if eval "$CMD"; then
+        log_info "✓ Alaris completed successfully"
+    else
+        log_error "Alaris execution failed"
+        cleanup
+        exit 1
+    fi
+    
+    if [[ "$MODE" == "live" || "$MODE" == "paper" ]]; then
+        log_info "Live/Paper trading mode is active. Press Ctrl+C to stop."
+        wait "$QUANTLIB_PROCESS_PID"
+    fi
+    
+    cleanup
+}
+
+main
