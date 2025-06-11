@@ -1,14 +1,13 @@
 cmake_minimum_required(VERSION 3.20)
 project(Alaris VERSION 1.0.0 LANGUAGES CXX)
 
-# Include all build system modules
+# Include all build system modules (but NOT Deployment yet)
 include(.cmake/BuildSystem.cmake)
 include(.cmake/External.cmake)
 include(.cmake/Config.cmake)
 include(.cmake/Data.cmake)
 include(.cmake/Components.cmake)
 include(.cmake/GitInfo.cmake)
-include(.cmake/Deployment.cmake)
 
 # Check git submodules
 check_submodules()
@@ -20,6 +19,19 @@ create_build_info_file("${CMAKE_BINARY_DIR}/alaris_build_info.txt")
 if(EXISTS "${CMAKE_SOURCE_DIR}/.git")
     setup_git_hooks()
 endif()
+
+# IMPORTANT: Configure all components BEFORE deployment
+configure_all_components()
+
+# Add C# project if .NET SDK is available
+if(DOTNET_EXECUTABLE AND EXISTS "${CMAKE_SOURCE_DIR}/src/csharp/Alaris.Lean.csproj")
+    add_dotnet_project(lean-process "${CMAKE_SOURCE_DIR}/src/csharp/Alaris.Lean.csproj")
+elseif(DOTNET_EXECUTABLE AND EXISTS "${CMAKE_SOURCE_DIR}/src/csharp/Alaris.sln")
+    add_dotnet_project(lean-process "${CMAKE_SOURCE_DIR}/src/csharp/Alaris.sln")
+endif()
+
+# NOW include deployment (after targets are created)
+include(.cmake/Deployment.cmake)
 
 # Print configuration summary
 message(STATUS "")
@@ -62,16 +74,6 @@ endif()
 
 message(STATUS "===================================")
 message(STATUS "")
-
-# Configure all components
-configure_all_components()
-
-# Add C# project if .NET SDK is available
-if(DOTNET_EXECUTABLE AND EXISTS "${CMAKE_SOURCE_DIR}/src/csharp/Alaris.Lean.csproj")
-    add_dotnet_project(lean-process "${CMAKE_SOURCE_DIR}/src/csharp/Alaris.Lean.csproj")
-elseif(DOTNET_EXECUTABLE AND EXISTS "${CMAKE_SOURCE_DIR}/src/csharp/Alaris.sln")
-    add_dotnet_project(lean-process "${CMAKE_SOURCE_DIR}/src/csharp/Alaris.sln")
-endif()
 
 # Print build targets summary
 message(STATUS "")
