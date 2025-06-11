@@ -53,7 +53,10 @@ if(Boost_FOUND)
     message(STATUS "Configured Boost from find_package: ${Boost_VERSION}")
 endif()
 
-# Build configuration options
+# PRODUCTION-FIRST BUILD CONFIGURATION
+# Alaris defaults to production-ready configuration for real trading
+
+# Core build options
 set(ALARIS_BUILD_OPTIONS
     BUILD_DOCS
     ENABLE_SANITIZERS
@@ -61,6 +64,7 @@ set(ALARIS_BUILD_OPTIONS
     ALARIS_INSTALL_DEVELOPMENT
     ALARIS_SET_CAPABILITIES
     ALARIS_AUTO_SET_CAPABILITIES
+    ALARIS_DEVELOPMENT_MODE
 )
 
 # Set default values for build options
@@ -69,10 +73,19 @@ option(ENABLE_SANITIZERS "Enable sanitizers (for Debug builds)" OFF)
 option(ENABLE_COVERAGE "Enable code coverage (for Debug builds)" OFF)
 option(ALARIS_INSTALL_DEVELOPMENT "Install development files (headers, etc.)" ON)
 
+# NEW: Development mode option (defaults to OFF for production-first approach)
+option(ALARIS_DEVELOPMENT_MODE "Enable development mode with synthetic data and testing defaults" OFF)
+
 # Real-time capabilities configuration (Linux only)
 if(UNIX AND NOT APPLE)
     option(ALARIS_SET_CAPABILITIES "Set Linux capabilities for real-time performance" ON)
-    option(ALARIS_AUTO_SET_CAPABILITIES "Automatically set capabilities after build (requires sudo)" OFF)
+    
+    # Development mode influences auto-capabilities default
+    if(ALARIS_DEVELOPMENT_MODE)
+        option(ALARIS_AUTO_SET_CAPABILITIES "Automatically set capabilities after build (requires sudo)" ON)
+    else()
+        option(ALARIS_AUTO_SET_CAPABILITIES "Automatically set capabilities after build (requires sudo)" OFF)
+    endif()
     
     # Find required tools
     find_program(SETCAP_EXECUTABLE setcap)
@@ -102,19 +115,23 @@ else()
     set(ALARIS_CAPABILITIES_AVAILABLE FALSE)
 endif()
 
-# Compiler configuration - FIXED: Use string concatenation instead of list operations
+# Compiler configuration - Development vs Production optimizations
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     # Common flags as a single string
     set(ALARIS_COMMON_FLAGS_STR 
         "-Wall -Wextra -Wpedantic -Werror=return-type -Werror=non-virtual-dtor -Werror=address -Werror=sequence-point -Werror=format-security -Werror=missing-braces -Werror=reorder -Werror=switch -Werror=uninitialized -Wno-unused-parameter -Wno-unused-variable -Wno-unused-function")
 
-    # Debug flags
-    set(ALARIS_DEBUG_FLAGS_STR "-g -O0 -fno-omit-frame-pointer -fno-inline -fno-inline-functions")
+    # Development mode flags (more forgiving for rapid iteration)
+    if(ALARIS_DEVELOPMENT_MODE)
+        set(ALARIS_DEBUG_FLAGS_STR "-g -O0 -fno-omit-frame-pointer -fno-inline -fno-inline-functions")
+        set(ALARIS_RELEASE_FLAGS_STR "-O2 -DNDEBUG")  # Less aggressive optimization for faster builds
+    else()
+        # Production mode flags (maximum optimization)
+        set(ALARIS_DEBUG_FLAGS_STR "-g -O0 -fno-omit-frame-pointer -fno-inline -fno-inline-functions")
+        set(ALARIS_RELEASE_FLAGS_STR "-O3 -DNDEBUG -flto -fno-fat-lto-objects -march=native")  # Maximum optimization
+    endif()
 
-    # Release flags
-    set(ALARIS_RELEASE_FLAGS_STR "-O3 -DNDEBUG -flto -fno-fat-lto-objects")
-
-    # Apply flags based on build type - FIXED: Use string concatenation
+    # Apply flags based on build type
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ALARIS_COMMON_FLAGS_STR} ${ALARIS_DEBUG_FLAGS_STR}")
     else() # Release, RelWithDebInfo etc.
@@ -122,10 +139,17 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     endif()
 endif()
 
-# Sanitizer configuration
+# Sanitizer configuration (more permissive in development mode)
 if(ENABLE_SANITIZERS AND CMAKE_BUILD_TYPE STREQUAL "Debug")
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-        set(ALARIS_SANITIZER_FLAGS_STR "-fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer")
+        if(ALARIS_DEVELOPMENT_MODE)
+            # Development mode: use basic sanitizers for faster iteration
+            set(ALARIS_SANITIZER_FLAGS_STR "-fsanitize=address -fno-omit-frame-pointer")
+        else()
+            # Production mode: comprehensive sanitizers for thorough testing
+            set(ALARIS_SANITIZER_FLAGS_STR "-fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer")
+        endif()
+        
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ALARIS_SANITIZER_FLAGS_STR}")
         set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${ALARIS_SANITIZER_FLAGS_STR}")
         set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${ALARIS_SANITIZER_FLAGS_STR}")
@@ -266,6 +290,24 @@ endif()
 
 message(STATUS "Config.cmake: Configuration applied successfully")
 
+# Print configuration summary with mode-specific information
+message(STATUS "")
+message(STATUS "=== Configuration Summary ===")
+if(ALARIS_DEVELOPMENT_MODE)
+    message(STATUS "  Mode: DEVELOPMENT")
+    message(STATUS "  Purpose: Algorithm development and testing")
+    message(STATUS "  Data: Synthetic data for safe testing")
+    message(STATUS "  Optimizations: Development-friendly (faster builds)")
+    message(STATUS "  ⚠️  Not for production trading!")
+else()
+    message(STATUS "  Mode: PRODUCTION")
+    message(STATUS "  Purpose: Live trading system")
+    message(STATUS "  Data: Real market data sources required")
+    message(STATUS "  Optimizations: Maximum performance")
+    message(STATUS "  ✓ Production-ready configuration")
+endif()
+message(STATUS "===============================")
+
 # Print capabilities configuration summary
 if(UNIX AND NOT APPLE)
     message(STATUS "")
@@ -286,4 +328,33 @@ if(UNIX AND NOT APPLE)
         message(STATUS "  Install: sudo apt install libcap2-bin")
     endif()
     message(STATUS "============================================")
+endif()
+
+# Print development mode configuration help
+if(ALARIS_DEVELOPMENT_MODE)
+    message(STATUS "")
+    message(STATUS "=== Development Mode Active ===")
+    message(STATUS "  Benefits:")
+    message(STATUS "  • Synthetic data for safe testing")
+    message(STATUS "  • Faster builds for rapid iteration")
+    message(STATUS "  • Development-friendly defaults")
+    message(STATUS "")
+    message(STATUS "  To switch to production mode:")
+    message(STATUS "    cmake -DALARIS_DEVELOPMENT_MODE=OFF ..")
+    message(STATUS "  Or use target:")
+    message(STATUS "    cmake --build . --target disable-dev-mode")
+    message(STATUS "===============================")
+else()
+    message(STATUS "")
+    message(STATUS "=== Production Mode Active ===")
+    message(STATUS "  Features:")
+    message(STATUS "  • Maximum performance optimizations")
+    message(STATUS "  • Real data source configuration")
+    message(STATUS "  • Production-ready defaults")
+    message(STATUS "")
+    message(STATUS "  To enable development mode for testing:")
+    message(STATUS "    cmake -DALARIS_DEVELOPMENT_MODE=ON ..")
+    message(STATUS "  Or use target:")
+    message(STATUS "    cmake --build . --target enable-dev-mode")
+    message(STATUS "===============================")
 endif()

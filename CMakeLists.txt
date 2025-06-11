@@ -36,11 +36,30 @@ message(STATUS "  yaml-cpp: ${YAML_CPP_TARGET}")
 if(DOTNET_EXECUTABLE)
     message(STATUS "  .NET SDK: ${CMAKE_DOTNET_VERSION}")
 endif()
-if(ALARIS_MINIMAL_DATA)
-    message(STATUS "  Data Mode: Minimal (5 symbols)")
+
+# NEW: Clear data mode messaging
+if(ALARIS_DEVELOPMENT_MODE)
+    message(STATUS "  Mode: DEVELOPMENT (with synthetic data)")
+    if(ALARIS_MINIMAL_DATA)
+        list(LENGTH ESSENTIAL_SYMBOLS symbol_count)
+        message(STATUS "  Data: Minimal synthetic (${symbol_count} symbols)")
+    else()
+        list(LENGTH PRODUCTION_SYMBOLS symbol_count)
+        message(STATUS "  Data: Full synthetic (${symbol_count} symbols)")
+    endif()
+    message(STATUS "  ⚠️  WARNING: Development mode uses synthetic data!")
 else()
-    message(STATUS "  Data Mode: Full (23 symbols)")
+    message(STATUS "  Mode: PRODUCTION (real data sources)")
+    if(ALARIS_MINIMAL_DATA)
+        list(LENGTH ESSENTIAL_SYMBOLS symbol_count)
+        message(STATUS "  Data: Minimal production (${symbol_count} symbols)")
+    else()
+        list(LENGTH PRODUCTION_SYMBOLS symbol_count)
+        message(STATUS "  Data: Full production (${symbol_count} symbols)")
+    endif()
+    message(STATUS "  ✓ Production-ready configuration")
 endif()
+
 message(STATUS "===================================")
 message(STATUS "")
 
@@ -69,7 +88,7 @@ endif()
 message(STATUS "")
 message(STATUS "  Development Targets:")
 message(STATUS "    dev              - Build all development executables")
-message(STATUS "    ready            - Build + setup data (ready for development)")
+message(STATUS "    ready            - Build + setup data")
 message(STATUS "    ready-env        - Build + data + environment verification")
 message(STATUS "    ready-prod       - Production-ready setup with full validation")
 if(ALARIS_SET_CAPABILITIES AND ALARIS_CAPABILITIES_AVAILABLE)
@@ -77,11 +96,15 @@ if(ALARIS_SET_CAPABILITIES AND ALARIS_CAPABILITIES_AVAILABLE)
 endif()
 message(STATUS "")
 message(STATUS "  Data Management:")
-message(STATUS "    setup-data       - Set up essential market data and sample files")
+message(STATUS "    setup-data       - Set up data environment")
 message(STATUS "    clean-data       - Clean all data directories")
 message(STATUS "    validate-data    - Validate data setup")
 message(STATUS "    refresh-data     - Clean and rebuild all data")
 message(STATUS "    verify-lean-data - Verify data for Lean FileSystemDataFeed")
+message(STATUS "")
+message(STATUS "  Mode Management:")
+message(STATUS "    enable-dev-mode  - Switch to development mode (synthetic data)")
+message(STATUS "    disable-dev-mode - Switch to production mode (real data)")
 message(STATUS "")
 message(STATUS "  Environment:")
 message(STATUS "    verify-environment - Check both data and capabilities")
@@ -93,17 +116,33 @@ endif()
 message(STATUS "======================")
 message(STATUS "")
 
-# Print useful build commands
+# Print configuration-specific quick start commands
 message(STATUS "=== Quick Start Commands ===")
-message(STATUS "  Fresh setup:")
-message(STATUS "    mkdir build && cd build")
-message(STATUS "    cmake ..")
-if(ALARIS_SET_CAPABILITIES AND ALARIS_CAPABILITIES_AVAILABLE AND NOT ALARIS_AUTO_SET_CAPABILITIES)
-    message(STATUS "    cmake --build . --target ready-rt  # Build + data + capabilities")
+if(ALARIS_DEVELOPMENT_MODE)
+    message(STATUS "  Development Mode Setup:")
+    message(STATUS "    mkdir build && cd build")
+    message(STATUS "    cmake -DALARIS_DEVELOPMENT_MODE=ON ..")
+    if(ALARIS_SET_CAPABILITIES AND ALARIS_CAPABILITIES_AVAILABLE AND NOT ALARIS_AUTO_SET_CAPABILITIES)
+        message(STATUS "    cmake --build . --target ready-rt  # Build + synthetic data + capabilities")
+    else()
+        message(STATUS "    cmake --build . --target ready     # Build + synthetic data")
+    endif()
+    message(STATUS "    ./start-alaris.sh                   # Start with synthetic data")
+    message(STATUS "")
+    message(STATUS "  ⚠️  Development mode uses SYNTHETIC data for testing only!")
 else()
-    message(STATUS "    cmake --build . --target ready     # Build + setup data")
+    message(STATUS "  Production Mode Setup:")
+    message(STATUS "    mkdir build && cd build")
+    message(STATUS "    cmake ..                            # Production defaults")
+    message(STATUS "    cmake --build . --target ready-env # Build + verify environment")
+    message(STATUS "    # Configure real data sources (IB, etc.)")
+    message(STATUS "    ./start-alaris.sh                   # Start with real data")
+    message(STATUS "")
+    message(STATUS "  To switch to development mode for testing:")
+    message(STATUS "    cmake -DALARIS_DEVELOPMENT_MODE=ON ..")
+    message(STATUS "    cmake --build . --target setup-data")
 endif()
-message(STATUS "    ./start-alaris.sh                   # Start the system")
+
 message(STATUS "")
 message(STATUS "  Individual builds:")
 message(STATUS "    cmake --build . --target alaris")
@@ -111,16 +150,44 @@ message(STATUS "    cmake --build . --target quantlib-process")
 if(ALARIS_SET_CAPABILITIES AND ALARIS_CAPABILITIES_AVAILABLE)
     message(STATUS "    cmake --build . --target set-capabilities")
 endif()
-message(STATUS "")
-message(STATUS "  Development workflow:")
-message(STATUS "    cmake --build . --target dev        # Build all executables")
-message(STATUS "    cmake --build . --target setup-data # Set up market data")
-if(ALARIS_SET_CAPABILITIES AND ALARIS_CAPABILITIES_AVAILABLE)
-    message(STATUS "    cmake --build . --target set-capabilities # Enable real-time")
-endif()
-message(STATUS "    ./start-alaris.sh                   # Run the system")
+
 message(STATUS "=============================")
 message(STATUS "")
+
+# Print data configuration warnings and instructions
+if(ALARIS_DEVELOPMENT_MODE OR ALARIS_CREATE_SAMPLE_DATA)
+    message(STATUS "=== DEVELOPMENT MODE ACTIVE ===")
+    message(STATUS "  ⚠️  WARNING: Using synthetic data for development!")
+    message(STATUS "  ⚠️  Do NOT use for production trading!")
+    message(STATUS "")
+    message(STATUS "  This mode creates fake historical data for:")
+    message(STATUS "  • Algorithm development and testing")
+    message(STATUS "  • Backtesting strategies safely")
+    message(STATUS "  • System integration testing")
+    message(STATUS "")
+    message(STATUS "  To switch to production mode:")
+    message(STATUS "    cmake --build . --target disable-dev-mode")
+    message(STATUS "    cmake ..")
+    message(STATUS "================================")
+    message(STATUS "")
+else()
+    message(STATUS "=== PRODUCTION MODE ACTIVE ===")
+    message(STATUS "  ✓ Production-ready configuration")
+    message(STATUS "  ✓ No synthetic data generation")
+    message(STATUS "  ✓ Real data source configuration required")
+    message(STATUS "")
+    message(STATUS "  Next steps for production:")
+    message(STATUS "  1. Configure your data provider (Interactive Brokers, etc.)")
+    message(STATUS "  2. Set up real market data feeds")
+    message(STATUS "  3. Configure live trading credentials")
+    message(STATUS "  4. Test with paper trading first")
+    message(STATUS "")
+    message(STATUS "  For development/testing, enable development mode:")
+    message(STATUS "    cmake --build . --target enable-dev-mode")
+    message(STATUS "    cmake ..")
+    message(STATUS "===============================")
+    message(STATUS "")
+endif()
 
 # Print real-time performance instructions
 if(ALARIS_SET_CAPABILITIES AND ALARIS_CAPABILITIES_AVAILABLE)
@@ -174,10 +241,19 @@ message(STATUS "")
 message(STATUS "  2. Shared memory permission denied:")
 message(STATUS "     Solution: Don't run with sudo, use same user for both processes")
 message(STATUS "")
-message(STATUS "  3. Lean FileSystemDataFeed fails / algorithm exits immediately:")
-message(STATUS "     Problem: No historical data found in ${ALARIS_DATA_DIR}")
-message(STATUS "     Solution: cmake --build . --target setup-data")
-message(STATUS "     Verify: cmake --build . --target verify-lean-data")
+
+if(ALARIS_DEVELOPMENT_MODE OR ALARIS_CREATE_SAMPLE_DATA)
+    message(STATUS "  3. Development Mode - Synthetic Data Issues:")
+    message(STATUS "     Problem: Synthetic data generation failed")
+    message(STATUS "     Solution: cmake --build . --target refresh-data")
+    message(STATUS "     Verify: cmake --build . --target verify-lean-data")
+else()
+    message(STATUS "  3. Production Mode - Real Data Issues:")
+    message(STATUS "     Problem: No real market data available")
+    message(STATUS "     Solution: Configure data provider (IB Gateway, etc.)")
+    message(STATUS "     Or test with: cmake --build . --target enable-dev-mode")
+endif()
+
 message(STATUS "")
 message(STATUS "  4. QuantLib not found:")
 message(STATUS "     Solution: sudo apt install libquantlib0-dev")
@@ -187,9 +263,19 @@ message(STATUS "  5. yaml-cpp not found:")
 message(STATUS "     Solution: sudo apt install libyaml-cpp-dev")
 message(STATUS "     Or: git submodule add https://github.com/jbeder/yaml-cpp.git external/yaml-cpp")
 message(STATUS "")
-message(STATUS "  6. Data validation errors:")
-message(STATUS "     Solution: cmake --build . --target refresh-data")
-message(STATUS "     Check: ls -la ${ALARIS_DATA_DIR}/equity/usa/daily/")
+
+if(ALARIS_DEVELOPMENT_MODE OR ALARIS_CREATE_SAMPLE_DATA)
+    message(STATUS "  6. Lean algorithm exits immediately (Development Mode):")
+    message(STATUS "     Problem: Synthetic data generation failed")
+    message(STATUS "     Solution: cmake --build . --target refresh-data")
+    message(STATUS "     Check: ls -la ${ALARIS_DATA_DIR}/equity/usa/daily/")
+else()
+    message(STATUS "  6. Lean algorithm exits immediately (Production Mode):")
+    message(STATUS "     Problem: Real data provider not configured")
+    message(STATUS "     Solution: Configure IB Gateway or other data source")
+    message(STATUS "     Test: cmake --build . --target enable-dev-mode")
+endif()
+
 message(STATUS "")
 message(STATUS "  Build logs: Check for warnings and errors above")
 message(STATUS "  Runtime logs: journalctl -f (if using systemd services)")
@@ -197,18 +283,29 @@ message(STATUS "  Environment check: cmake --build . --target verify-environment
 message(STATUS "========================")
 message(STATUS "")
 
-# Print final summary
+# Print final summary with mode-specific messaging
 message(STATUS "=== Build Summary ===")
 message(STATUS "  Configuration: Complete ✓")
 message(STATUS "  Dependencies: Resolved ✓")
-if(ALARIS_AUTO_SETUP_DATA)
-    message(STATUS "  Data setup: Auto-configured at ${ALARIS_DATA_DIR}")
-    if(ALARIS_CREATE_SAMPLE_DATA)
-        message(STATUS "  Sample data: Available for backtesting ✓")
+
+if(ALARIS_DEVELOPMENT_MODE)
+    message(STATUS "  Mode: DEVELOPMENT with synthetic data")
+    message(STATUS "  ⚠️  Using synthetic data for development/testing only!")
+    if(ALARIS_AUTO_SETUP_DATA)
+        message(STATUS "  Data setup: Auto-configured synthetic data at ${ALARIS_DATA_DIR}")
+    else()
+        message(STATUS "  Data setup: Manual (run 'cmake --build . --target setup-data')")
     endif()
 else()
-    message(STATUS "  Data setup: Manual (run 'cmake --build . --target setup-data')")
+    message(STATUS "  Mode: PRODUCTION ready for real data")
+    message(STATUS "  ✓ No synthetic data - production configuration")
+    if(ALARIS_AUTO_SETUP_DATA)
+        message(STATUS "  Data setup: Auto-configured production environment")
+    else()
+        message(STATUS "  Data setup: Manual production setup required")
+    endif()
 endif()
+
 if(ALARIS_SET_CAPABILITIES AND ALARIS_CAPABILITIES_AVAILABLE)
     if(ALARIS_AUTO_SET_CAPABILITIES)
         message(STATUS "  Capabilities: Auto-enabled ✓")
@@ -216,31 +313,60 @@ if(ALARIS_SET_CAPABILITIES AND ALARIS_CAPABILITIES_AVAILABLE)
         message(STATUS "  Capabilities: Available (manual setup required)")
     endif()
 endif()
+
 message(STATUS "")
 message(STATUS "  Ready to build! Run:")
-if(ALARIS_AUTO_SETUP_DATA)
+
+if(ALARIS_DEVELOPMENT_MODE)
     if(ALARIS_SET_CAPABILITIES AND ALARIS_CAPABILITIES_AVAILABLE AND NOT ALARIS_AUTO_SET_CAPABILITIES)
-        message(STATUS "    cmake --build . --target ready-rt    # Complete setup")
+        message(STATUS "    cmake --build . --target ready-rt    # Complete development setup")
     else()
-        message(STATUS "    cmake --build . --target ready-env   # Build + verify environment")
+        message(STATUS "    cmake --build . --target ready-env   # Build + synthetic data + verify")
     endif()
+    message(STATUS "    ./start-alaris.sh                     # Start with synthetic data")
+    message(STATUS "")
+    message(STATUS "  Remember: Development mode uses synthetic data for testing only!")
 else()
-    message(STATUS "    cmake --build . --target ready-env   # Build + setup data + verify")
+    message(STATUS "    cmake --build . --target ready-env   # Build + production setup + verify")
+    message(STATUS "    # Configure real data sources")
+    message(STATUS "    ./start-alaris.sh                     # Start with real data")
+    message(STATUS "")
+    message(STATUS "  For testing: cmake --build . --target enable-dev-mode")
 endif()
-message(STATUS "    ./start-alaris.sh                     # Start the system")
+
 message(STATUS "======================")
 message(STATUS "")
 
-# Create a helpful build script for new users
-# Build the script content using CMake conditionals
+# Create a mode-aware build script for new users
+if(ALARIS_DEVELOPMENT_MODE)
+    set(MODE_DESCRIPTION "Development Mode (Synthetic Data)")
+    set(MODE_WARNING "echo \"⚠️  WARNING: Using synthetic data for development/testing only!\"
+echo \"⚠️  Do NOT use this configuration for real trading!\"
+echo")
+    set(MODE_SETUP "echo \"Setting up synthetic data for development...\"
+cmake --build . --target setup-data
+check_status \$? \"Synthetic data setup\"")
+else()
+    set(MODE_DESCRIPTION "Production Mode (Real Data)")
+    set(MODE_WARNING "echo \"✓ Production configuration - ready for real data sources\"
+echo")
+    set(MODE_SETUP "echo \"Verifying production environment...\"
+cmake --build . --target verify-environment
+check_status \$? \"Production environment verification\"")
+endif()
+
+# Build the script content
 set(BUILD_SCRIPT_CONTENT "#!/bin/bash
-# Alaris Quick Build Script
+# Alaris Quick Build Script - ${MODE_DESCRIPTION}
 # Generated automatically by CMake
 
 set -e  # Exit on any error
 
 echo \"Alaris Trading System - Quick Build\"
+echo \"Mode: ${MODE_DESCRIPTION}\"
 echo \"===================================\"
+
+${MODE_WARNING}
 
 # Check if we're in the build directory
 if [[ ! -f \"CMakeCache.txt\" ]]; then
@@ -263,9 +389,7 @@ echo \"Building Alaris components...\"
 cmake --build . --target dev
 check_status \$? \"Component build\"
 
-echo \"Setting up market data environment...\"
-cmake --build . --target setup-data
-check_status \$? \"Data setup\"
+${MODE_SETUP}
 
 echo \"Verifying data for Lean FileSystemDataFeed...\"
 cmake --build . --target verify-lean-data
@@ -292,9 +416,21 @@ echo \"Build completed successfully!\"
 echo \"============================\"
 echo
 echo \"Environment Summary:\"
+echo \"  Mode: ${MODE_DESCRIPTION}\"
 echo \"  Data directory: ${ALARIS_DATA_DIR}\"
-echo \"  Historical data available for backtesting\"
-echo \"  lean.json configuration ready\"
+")
+
+if(ALARIS_DEVELOPMENT_MODE OR ALARIS_CREATE_SAMPLE_DATA)
+    string(APPEND BUILD_SCRIPT_CONTENT "echo \"  Synthetic data available for development/testing\"
+echo \"  ⚠️  WARNING: Do not use for real trading!\"
+")
+else()
+    string(APPEND BUILD_SCRIPT_CONTENT "echo \"  Production configuration ready\"
+echo \"  Real data sources required for trading\"
+")
+endif()
+
+string(APPEND BUILD_SCRIPT_CONTENT "echo \"  lean.json configuration ready\"
 ")
 
 # Add capabilities info if available
@@ -308,11 +444,24 @@ string(APPEND BUILD_SCRIPT_CONTENT "echo
 echo \"To start the system:\"
 echo \"  ./start-alaris.sh\"
 echo
-echo \"To check environment:\"
-echo \"  cmake --build . --target verify-environment\"
+")
+
+if(ALARIS_DEVELOPMENT_MODE)
+    string(APPEND BUILD_SCRIPT_CONTENT "echo \"To switch to production mode:\"
+echo \"  cmake --build . --target disable-dev-mode\"
+echo \"  cmake ..\"
 echo
-echo \"To verify data specifically:\"
-echo \"  cmake --build . --target verify-lean-data\"
+")
+else()
+    string(APPEND BUILD_SCRIPT_CONTENT "echo \"To enable development mode for testing:\"
+echo \"  cmake --build . --target enable-dev-mode\"
+echo \"  cmake ..\"
+echo
+")
+endif()
+
+string(APPEND BUILD_SCRIPT_CONTENT "echo \"To check environment:\"
+echo \"  cmake --build . --target verify-environment\"
 echo
 ")
 
@@ -323,4 +472,4 @@ execute_process(
     ERROR_QUIET
 )
 
-message(STATUS "Created build script: ${CMAKE_BINARY_DIR}/build-alaris.sh")
+message(STATUS "Created mode-aware build script: ${CMAKE_BINARY_DIR}/build-alaris.sh")
