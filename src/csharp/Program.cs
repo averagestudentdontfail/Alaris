@@ -7,6 +7,13 @@ using System.CommandLine;
 using QuantConnect.Lean.Engine;
 using QuantConnect.Logging;
 using QuantConnect.Util;
+using QuantConnect.Packets;
+using QuantConnect.Lean.Engine.Alphas;
+using QuantConnect.Lean.Engine.DataFeeds;
+using QuantConnect.Lean.Engine.Setup;
+using QuantConnect.Lean.Engine.RealTime;
+using QuantConnect.Lean.Engine.TransactionHandlers;
+using QuantConnect.Lean.Engine.Results;
 
 namespace Alaris
 {
@@ -74,7 +81,7 @@ namespace Alaris
             try
             {
                 // Display configuration
-                Console.WriteLine("\nStarting Alaris with configuration:");
+                Console.WriteLine($"\nStarting Alaris with configuration:");
                 Console.WriteLine($"  Symbol: {symbol}");
                 Console.WriteLine($"  Mode: {mode}");
                 Console.WriteLine($"  Strategy: {strategy}");
@@ -96,9 +103,10 @@ namespace Alaris
                 Config.Set("environment", liveMode ? "live-trading" : "backtesting");
                 Config.Set("live-mode", liveMode.ToString().ToLower());
                 
-                // Set the algorithm class and location
+                // Set the algorithm class and location.
                 Config.Set("algorithm-type-name", "Alaris.Algorithm.ArbitrageAlgorithm");
-                Config.Set("algorithm-location", "Alaris.Lean.dll"); 
+                // Use reflection to get the location of the currently executing assembly.
+                Config.Set("algorithm-location", typeof(Program).Assembly.Location);
                 
                 // Set data resolution from command line
                 Config.Set("resolution", frequency);
@@ -115,23 +123,26 @@ namespace Alaris
                         Config.Set("end-date", end.ToString("yyyyMMdd"));
                      }
                 }
-                else // For live/paper trading, set brokerage
+                else 
                 {
                     Config.Set("live-mode-brokerage", "InteractiveBrokersBrokerage");
                 }
                 
-                // Set debug mode
                 Config.Set("debug-mode", debug.ToString().ToLower());
                 Log.DebuggingEnabled = debug;
 
-                
+                // --- CORRECTED ENGINE LAUNCH ---
                 Console.WriteLine("Initializing and running Lean engine in-process...");
                 
                 var systemHandlers = LeanEngineSystemHandlers.FromConfiguration(Composer.Instance);
                 systemHandlers.Initialize();
-
-                var engine = new Engine(systemHandlers, Composer.Instance, false);
-                engine.Run();
+                
+                string assemblyPath = Config.Get("algorithm-location");
+                var algorithmManager = new AlgorithmManager(liveMode, null);
+                systemHandlers.LeanManager.Initialize(systemHandlers, algorithmManager, new BacktestNodePacket(), systemHandlers.JobQueue, systemHandlers.Api);
+                
+                var engine = new Engine(systemHandlers, algorithmManager, liveMode);
+                engine.Run(new BacktestNodePacket(), algorithmManager, assemblyPath, WorkerThread.Instance);
 
                 Console.WriteLine("\nAlaris Lean Process completed successfully.");
             }
