@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using QuantConnect.Configuration; // Assuming access to Lean's config
 
 namespace Alaris.IPC
 {
@@ -26,15 +27,20 @@ namespace Alaris.IPC
         {
             try
             {
-                // Connect to existing shared memory buffers created by QuantLib process
-                // Use exact same names and sizes as QuantLib process
-                _marketDataBuffer = new SharedRingBuffer<MarketDataMessage>("alaris_market_data", 4096, false);
-                _signalBuffer = new SharedRingBuffer<TradingSignalMessage>("alaris_signals", 1024, false);
-                _controlBuffer = new SharedRingBuffer<ControlMessage>("alaris_control", 256, false);
+                // Fetch shared memory names from configuration instead of hardcoding
+                // This makes the system more maintainable.
+                // NOTE: QuantConnect's Config handler is used as an example.
+                var marketDataName = Config.Get("alaris-market-data-buffer", "/alaris_market_data");
+                var signalName = Config.Get("alaris-signal-buffer", "/alaris_signals");
+                var controlName = Config.Get("alaris-control-buffer", "/alaris_control");
+
+                // Connect to existing shared memory buffers, which we expect the C++ process to create.
+                _marketDataBuffer = new SharedRingBuffer<MarketDataMessage>(marketDataName, 4096, false);
+                _signalBuffer = new SharedRingBuffer<TradingSignalMessage>(signalName, 1024, false);
+                _controlBuffer = new SharedRingBuffer<ControlMessage>(controlName, 256, false);
 
                 _cancellationTokenSource = new CancellationTokenSource();
 
-                // Start background tasks for processing incoming data from QuantLib
                 _marketDataProcessingTask = Task.Run(() => ProcessMarketData(_cancellationTokenSource.Token));
                 _controlProcessingTask = Task.Run(() => ProcessControlMessages(_cancellationTokenSource.Token));
 
@@ -151,6 +157,9 @@ namespace Alaris.IPC
                 message.priority = (uint)TTAPriority.MEDIUM;
                 message.value1 = value1;
                 message.value2 = value2;
+                message.parameter1 = param1;
+                message.parameter2 = param2;
+                message.timestamp_ns = (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() * 1000000;
 
                 return _controlBuffer.TryWrite(message);
             }
