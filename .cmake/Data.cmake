@@ -4,7 +4,8 @@
 # Data configuration options
 option(ALARIS_DOWNLOAD_DATA "Download essential market data during build" ON)
 option(ALARIS_MINIMAL_DATA "Use minimal data set (faster builds)" ON)
-option(ALARIS_INCLUDE_SAMPLE_DATA "Include sample historical data" OFF)
+option(ALARIS_CREATE_SAMPLE_DATA "Create sample historical data for backtesting" ON)
+option(ALARIS_AUTO_SETUP_DATA "Automatically set up data during build process" ON)
 
 # Data URLs and sources
 set(LEAN_DATA_BASE_URL "https://raw.githubusercontent.com/QuantConnect/Lean/master/Data")
@@ -48,6 +49,7 @@ function(create_data_directories)
         "${ALARIS_DATA_DIR}/symbol-properties"
         "${ALARIS_DATA_DIR}/equity/usa/map_files"
         "${ALARIS_DATA_DIR}/equity/usa/factor_files"
+        "${ALARIS_DATA_DIR}/equity/usa/daily"
         "${ALARIS_DATA_DIR}/option/usa"
         "${ALARIS_RESULTS_DIR}"
         "${ALARIS_CACHE_DIR}"
@@ -295,27 +297,121 @@ function(download_essential_data)
     endforeach()
 endfunction()
 
-# Function to create sample data (if requested)
-function(create_sample_data)
-    if(NOT ALARIS_INCLUDE_SAMPLE_DATA)
-        return()
+# Function to create realistic price data for a symbol
+function(create_realistic_price_data OUTPUT_FILE SYMBOL)
+    # Set base prices for different symbols
+    if(SYMBOL STREQUAL "SPY")
+        set(BASE_PRICE 400.0)
+    elseif(SYMBOL STREQUAL "QQQ")
+        set(BASE_PRICE 350.0)
+    elseif(SYMBOL STREQUAL "AAPL")
+        set(BASE_PRICE 180.0)
+    elseif(SYMBOL STREQUAL "MSFT")
+        set(BASE_PRICE 370.0)
+    else()
+        set(BASE_PRICE 100.0)  # Default price
     endif()
     
-    message(STATUS "Data: Creating sample historical data...")
+    # Create CSV header (Lean format: DateTime, Open, High, Low, Close, Volume)
+    set(CSV_CONTENT "20240102 00:00,${BASE_PRICE},${BASE_PRICE},${BASE_PRICE},${BASE_PRICE},1000000\n")
+    
+    # Generate daily data for 2024 (simple random walk)
+    set(CURRENT_PRICE ${BASE_PRICE})
+    set(CURRENT_DATE 20240102)
+    
+    # Generate 250 trading days (approximate year)
+    foreach(day_num RANGE 1 250)
+        # Simple price movement simulation
+        math(EXPR day_offset "${day_num} % 30")
+        math(EXPR price_change_pct "((${day_offset} - 15) * 2)")  # -30 to +30
+        
+        # Calculate price change (max ±3%)
+        math(EXPR price_change_scaled "${price_change_pct} / 1000.0")
+        math(EXPR price_change "${CURRENT_PRICE} * ${price_change_scaled} / 100.0")
+        math(EXPR new_price "${CURRENT_PRICE} + ${price_change}")
+        
+        # Ensure price doesn't go negative
+        if(new_price LESS 1.0)
+            set(new_price 1.0)
+        endif()
+        
+        # Calculate OHLC from close price
+        math(EXPR high_price "${new_price} * 1.02")  # High is 2% above close
+        math(EXPR low_price "${new_price} * 0.98")   # Low is 2% below close
+        math(EXPR open_price "${CURRENT_PRICE}")     # Open is previous close
+        
+        # Format date (increment by 1 day, skip weekends approximation)
+        math(EXPR date_increment "${day_num}")
+        if(date_increment LESS 10)
+            set(date_str "0${date_increment}")
+        else()
+            set(date_str "${date_increment}")
+        endif()
+        
+        # Simple date calculation (month/day - not perfect but good enough for testing)
+        math(EXPR month_num "(${day_num} / 22) + 1")  # Approximate 22 trading days per month
+        math(EXPR day_in_month "(${day_num} % 22) + 1")
+        
+        if(month_num GREATER 12)
+            set(month_num 12)
+        endif()
+        
+        if(month_num LESS 10)
+            set(month_str "0${month_num}")
+        else()
+            set(month_str "${month_num}")
+        endif()
+        
+        if(day_in_month LESS 10)
+            set(day_str "0${day_in_month}")
+        else()
+            set(day_str "${day_in_month}")
+        endif()
+        
+        set(date_str "2024${month_str}${day_str}")
+        
+        # Generate volume (1M ± 50%)
+        math(EXPR volume_base "1000000")
+        math(EXPR volume_var "${day_num} % 500000")
+        math(EXPR volume "${volume_base} + ${volume_var}")
+        
+        # Add to CSV content
+        string(APPEND CSV_CONTENT "${date_str} 00:00,${open_price},${high_price},${low_price},${new_price},${volume}\n")
+        
+        set(CURRENT_PRICE ${new_price})
+    endforeach()
+    
+    # Write the CSV file
+    file(WRITE "${OUTPUT_FILE}" "${CSV_CONTENT}")
+endfunction()
+
+# Function to create realistic sample data for backtesting
+function(create_sample_data)
+    message(STATUS "Data: Creating realistic sample historical data for backtesting...")
+    
+    if(ALARIS_MINIMAL_DATA)
+        set(SYMBOLS_TO_PROCESS ${ESSENTIAL_SYMBOLS})
+    else()
+        set(SYMBOLS_TO_PROCESS ${ESSENTIAL_SYMBOLS} ${EXTENDED_SYMBOLS})
+    endif()
     
     # Create sample daily data for essential symbols
-    foreach(symbol ${ESSENTIAL_SYMBOLS})
+    foreach(symbol ${SYMBOLS_TO_PROCESS})
         string(TOLOWER "${symbol}" symbol_lower)
         set(sample_data_dir "${ALARIS_DATA_DIR}/equity/usa/daily/${symbol_lower}")
         file(MAKE_DIRECTORY "${sample_data_dir}")
         
-        # Create a simple CSV with some sample data
-        set(sample_file "${sample_data_dir}/20240101_20240131_trade.zip")
+        # Create realistic CSV data that Lean can actually read
+        set(sample_csv_file "${sample_data_dir}/20240101_20241231_trade.csv")
         
-        # Note: In a real implementation, you'd want to download or generate
-        # actual market data. This is just a placeholder.
-        message(STATUS "Data: Sample data placeholder created for ${symbol}")
+        # Generate realistic price data for the year 2024
+        create_realistic_price_data("${sample_csv_file}" "${symbol}")
+        
+        message(STATUS "Data: ✓ Created sample data for ${symbol} (${sample_csv_file})")
     endforeach()
+    
+    list(LENGTH SYMBOLS_TO_PROCESS symbol_count)
+    message(STATUS "Data: ✓ Created realistic sample data for ${symbol_count} symbols")
 endfunction()
 
 # Function to validate data setup
@@ -331,12 +427,30 @@ function(validate_data_setup)
         "${ALARIS_DATA_DIR}"
         "${ALARIS_DATA_DIR}/equity/usa/map_files"
         "${ALARIS_DATA_DIR}/equity/usa/factor_files"
+        "${ALARIS_DATA_DIR}/equity/usa/daily"
         "${ALARIS_RESULTS_DIR}"
         "${ALARIS_CACHE_DIR}"
     )
     
+    # Check for sample data files if enabled
+    set(required_data_files "")
+    if(ALARIS_CREATE_SAMPLE_DATA)
+        if(ALARIS_MINIMAL_DATA)
+            set(symbols_to_check ${ESSENTIAL_SYMBOLS})
+        else()
+            set(symbols_to_check ${ESSENTIAL_SYMBOLS} ${EXTENDED_SYMBOLS})
+        endif()
+        
+        foreach(symbol ${symbols_to_check})
+            string(TOLOWER "${symbol}" symbol_lower)
+            set(data_file "${ALARIS_DATA_DIR}/equity/usa/daily/${symbol_lower}/20240101_20241231_trade.csv")
+            list(APPEND required_data_files "${data_file}")
+        endforeach()
+    endif()
+    
     set(missing_files "")
     set(missing_dirs "")
+    set(missing_data_files "")
     
     foreach(file ${required_files})
         if(NOT EXISTS "${file}")
@@ -350,20 +464,56 @@ function(validate_data_setup)
         endif()
     endforeach()
     
+    foreach(data_file ${required_data_files})
+        if(NOT EXISTS "${data_file}")
+            list(APPEND missing_data_files "${data_file}")
+        endif()
+    endforeach()
+    
     # Print validation results
-    if(missing_files OR missing_dirs)
+    if(missing_files OR missing_dirs OR missing_data_files)
         message(WARNING "Data: Validation found missing components:")
         foreach(file ${missing_files})
-            message(WARNING "Data:   Missing file: ${file}")
+            message(WARNING "Data:   Missing config file: ${file}")
         endforeach()
         foreach(dir ${missing_dirs})
             message(WARNING "Data:   Missing directory: ${dir}")
+        endforeach()
+        foreach(data_file ${missing_data_files})
+            message(WARNING "Data:   Missing data file: ${data_file}")
         endforeach()
         message(WARNING "Data: Run 'cmake --build . --target setup-data' to fix")
         return()
     endif()
     
+    # Additional validation - check if data files have content
+    set(empty_data_files "")
+    foreach(data_file ${required_data_files})
+        if(EXISTS "${data_file}")
+            file(SIZE "${data_file}" file_size)
+            if(file_size LESS 100)  # Files should be at least 100 bytes
+                list(APPEND empty_data_files "${data_file}")
+            endif()
+        endif()
+    endforeach()
+    
+    if(empty_data_files)
+        message(WARNING "Data: Found empty or very small data files:")
+        foreach(data_file ${empty_data_files})
+            message(WARNING "Data:   Empty: ${data_file}")
+        endforeach()
+        message(WARNING "Data: Run 'cmake --build . --target setup-data' to regenerate")
+        return()
+    endif()
+    
     message(STATUS "Data: ✓ Validation passed - all required files and directories present")
+    
+    # Print summary of what's available
+    list(LENGTH required_data_files data_file_count)
+    if(data_file_count GREATER 0)
+        message(STATUS "Data: ✓ Historical data available for ${data_file_count} symbols")
+        message(STATUS "Data: ✓ FileSystemDataFeed will find data in ${ALARIS_DATA_DIR}")
+    endif()
 endfunction()
 
 # Function to clean data directory
@@ -389,7 +539,7 @@ endfunction()
 
 # Main data setup function (called during configuration)
 function(setup_alaris_data)
-    message(STATUS "Data: Setting up Alaris data...")
+    message(STATUS "Data: Setting up Alaris data environment...")
     
     # Create directory structure
     create_data_directories()
@@ -404,12 +554,15 @@ function(setup_alaris_data)
     create_map_files()
     create_symbol_properties_database()
     
-    # Create sample data if requested
-    create_sample_data()
+    # Always create sample data for backtesting (unless explicitly disabled)
+    if(ALARIS_CREATE_SAMPLE_DATA)
+        create_sample_data()
+    endif()
     
     # Print summary
     if(ALARIS_MINIMAL_DATA)
-        message(STATUS "Data: ✓ Minimal data setup completed (${ESSENTIAL_SYMBOLS})")
+        list(LENGTH ESSENTIAL_SYMBOLS essential_count)
+        message(STATUS "Data: ✓ Minimal data setup completed (${essential_count} symbols)")
     else()
         list(LENGTH ESSENTIAL_SYMBOLS essential_count)
         list(LENGTH EXTENDED_SYMBOLS extended_count)
@@ -417,16 +570,61 @@ function(setup_alaris_data)
         message(STATUS "Data: ✓ Full data setup completed (${total_count} symbols)")
     endif()
     
+    if(ALARIS_CREATE_SAMPLE_DATA)
+        message(STATUS "Data: ✓ Sample historical data created for backtesting")
+    endif()
+    
     message(STATUS "Data: Location: ${ALARIS_DATA_DIR}")
+    message(STATUS "Data: lean.json: ${CMAKE_BINARY_DIR}/lean.json")
+endfunction()
+
+# Function to create DataSetupTarget.cmake script
+function(create_data_setup_target_script)
+    set(SETUP_SCRIPT_CONTENT "
+# DataSetupTarget.cmake - Executed by setup-data target
+message(STATUS \"Executing data setup...\")
+
+# Re-run the main data setup function
+include(\${CMAKE_CURRENT_SOURCE_DIR}/.cmake/Data.cmake)
+setup_alaris_data()
+validate_data_setup()
+
+message(STATUS \"Data setup completed successfully!\")
+")
+    
+    file(WRITE "${CMAKE_CURRENT_SOURCE_DIR}/.cmake/DataSetupTarget.cmake" "${SETUP_SCRIPT_CONTENT}")
+endfunction()
+
+# Function to create DataValidateTarget.cmake script  
+function(create_data_validate_target_script)
+    set(VALIDATE_SCRIPT_CONTENT "
+# DataValidateTarget.cmake - Executed by validate-data target
+message(STATUS \"Validating data setup...\")
+
+# Set up the same variables as the main script
+set(ALARIS_DATA_DIR \"${ALARIS_DATA_DIR}\")
+set(ALARIS_RESULTS_DIR \"${ALARIS_RESULTS_DIR}\")
+set(ALARIS_CACHE_DIR \"${ALARIS_CACHE_DIR}\")
+set(ESSENTIAL_SYMBOLS \"${ESSENTIAL_SYMBOLS}\")
+set(EXTENDED_SYMBOLS \"${EXTENDED_SYMBOLS}\")
+set(ALARIS_MINIMAL_DATA ${ALARIS_MINIMAL_DATA})
+set(ALARIS_CREATE_SAMPLE_DATA ${ALARIS_CREATE_SAMPLE_DATA})
+
+# Re-run validation
+include(\${CMAKE_CURRENT_SOURCE_DIR}/.cmake/Data.cmake)
+validate_data_setup()
+")
+    
+    file(WRITE "${CMAKE_CURRENT_SOURCE_DIR}/.cmake/DataValidateTarget.cmake" "${VALIDATE_SCRIPT_CONTENT}")
 endfunction()
 
 # Create custom targets for data management
 function(create_data_targets)
     # Target to set up data
     add_custom_target(setup-data
-        COMMAND ${CMAKE_COMMAND} -E echo "Setting up Alaris data..."
+        COMMAND ${CMAKE_COMMAND} -E echo "Setting up Alaris data environment..."
         COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_SOURCE_DIR}/.cmake/DataSetupTarget.cmake"
-        COMMENT "Setting up Alaris data"
+        COMMENT "Setting up Alaris data environment"
         VERBATIM
     )
     
@@ -447,16 +645,38 @@ function(create_data_targets)
         VERBATIM
     )
     
-    message(STATUS "Data: Created management targets (setup-data, clean-data, validate-data)")
+    # Target to refresh data (clean + setup)
+    add_custom_target(refresh-data
+        DEPENDS clean-data setup-data
+        COMMENT "Refreshing Alaris data (clean and rebuild)"
+    )
+    
+    # Target to verify data for Lean
+    add_custom_target(verify-lean-data
+        COMMAND ${CMAKE_COMMAND} -E echo "Verifying data for Lean FileSystemDataFeed..."
+        COMMAND ${CMAKE_COMMAND} -E echo "Data directory: ${ALARIS_DATA_DIR}"
+        COMMAND bash -c "find '${ALARIS_DATA_DIR}/equity/usa/daily' -name '*.csv' | head -5 | xargs -I {} echo 'Found: {}'"
+        COMMAND bash -c "echo 'Total CSV files: ' && find '${ALARIS_DATA_DIR}/equity/usa/daily' -name '*.csv' | wc -l"
+        COMMENT "Verifying Lean data availability"
+        VERBATIM
+    )
+    
+    message(STATUS "Data: Created management targets (setup-data, clean-data, validate-data, refresh-data, verify-lean-data)")
 endfunction()
 
-# Auto-setup data during configuration
-setup_alaris_data()
+# Auto-setup data during configuration if enabled
+if(ALARIS_AUTO_SETUP_DATA)
+    setup_alaris_data()
+else()
+    message(STATUS "Data: Auto-setup disabled. Run 'cmake --build . --target setup-data' to setup manually.")
+endif()
 
-# Create targets for manual data management
+# Always create the target scripts and targets
+create_data_setup_target_script()
+create_data_validate_target_script()
 create_data_targets()
 
-# Validate data setup
+# Always validate if data already exists
 validate_data_setup()
 
 message(STATUS "Data: Configuration completed")

@@ -59,6 +59,8 @@ set(ALARIS_BUILD_OPTIONS
     ENABLE_SANITIZERS
     ENABLE_COVERAGE
     ALARIS_INSTALL_DEVELOPMENT
+    ALARIS_SET_CAPABILITIES
+    ALARIS_AUTO_SET_CAPABILITIES
 )
 
 # Set default values for build options
@@ -66,6 +68,39 @@ option(BUILD_DOCS "Build documentation" OFF)
 option(ENABLE_SANITIZERS "Enable sanitizers (for Debug builds)" OFF)
 option(ENABLE_COVERAGE "Enable code coverage (for Debug builds)" OFF)
 option(ALARIS_INSTALL_DEVELOPMENT "Install development files (headers, etc.)" ON)
+
+# Real-time capabilities configuration (Linux only)
+if(UNIX AND NOT APPLE)
+    option(ALARIS_SET_CAPABILITIES "Set Linux capabilities for real-time performance" ON)
+    option(ALARIS_AUTO_SET_CAPABILITIES "Automatically set capabilities after build (requires sudo)" OFF)
+    
+    # Find required tools
+    find_program(SETCAP_EXECUTABLE setcap)
+    find_program(GETCAP_EXECUTABLE getcap)
+    
+    if(SETCAP_EXECUTABLE AND GETCAP_EXECUTABLE)
+        set(ALARIS_CAPABILITIES_AVAILABLE TRUE)
+        message(STATUS "Linux capabilities tools found: setcap, getcap")
+    else()
+        set(ALARIS_CAPABILITIES_AVAILABLE FALSE)
+        if(ALARIS_SET_CAPABILITIES)
+            message(WARNING "setcap/getcap tools not found. Install with: sudo apt install libcap2-bin")
+        endif()
+    endif()
+    
+    # Define required capabilities for different executables
+    set(ALARIS_REALTIME_CAPABILITIES "cap_sys_nice+ep")  # For real-time scheduling
+    set(ALARIS_NETWORK_CAPABILITIES "cap_net_raw+ep")    # For raw network access (if needed)
+    set(ALARIS_MEMORY_CAPABILITIES "cap_ipc_lock+ep")    # For memory locking
+    
+    # Combined capabilities for QuantLib process
+    set(ALARIS_QUANTLIB_CAPABILITIES "cap_sys_nice,cap_ipc_lock+ep")
+    
+else()
+    set(ALARIS_SET_CAPABILITIES OFF)
+    set(ALARIS_AUTO_SET_CAPABILITIES OFF)
+    set(ALARIS_CAPABILITIES_AVAILABLE FALSE)
+endif()
 
 # Compiler configuration - FIXED: Use string concatenation instead of list operations
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
@@ -107,7 +142,148 @@ if(ENABLE_COVERAGE AND CMAKE_BUILD_TYPE STREQUAL "Debug")
     endif()
 endif()
 
+# Function to create capability setting script
+function(create_capability_script)
+    if(NOT ALARIS_CAPABILITIES_AVAILABLE)
+        return()
+    endif()
+    
+    set(SCRIPT_CONTENT "#!/bin/bash
+# Alaris Capabilities Setup Script
+# Generated automatically by CMake
+
+set -e  # Exit on any error
+
+SCRIPT_DIR=\"\$(cd \"\$(dirname \"\${BASH_SOURCE[0]}\")\"; pwd)\"
+BUILD_DIR=\"${CMAKE_BINARY_DIR}\"
+BIN_DIR=\"\${BUILD_DIR}/bin\"
+
+echo \"Setting up Linux capabilities for Alaris...\"
+
+# Check if running as root
+if [[ \$EUID -eq 0 ]]; then
+    echo \"Error: Do not run this script as root. Use sudo when prompted.\"
+    exit 1
+fi
+
+# Function to set capabilities for an executable
+set_caps() {
+    local exe=\"\$1\"
+    local caps=\"\$2\"
+    local description=\"\$3\"
+    
+    if [[ ! -f \"\$exe\" ]]; then
+        echo \"Warning: \$exe not found, skipping...\"
+        return 0
+    fi
+    
+    echo \"Setting capabilities for \$description...\"
+    echo \"  Executable: \$exe\"
+    echo \"  Capabilities: \$caps\"
+    
+    # Remove existing capabilities first
+    sudo setcap -r \"\$exe\" 2>/dev/null || true
+    
+    # Set new capabilities
+    if sudo setcap \"\$caps\" \"\$exe\"; then
+        echo \"  ✓ Success\"
+        
+        # Verify capabilities were set
+        local current_caps=\$(getcap \"\$exe\" 2>/dev/null || echo \"none\")
+        echo \"  Verified: \$current_caps\"
+    else
+        echo \"  ✗ Failed to set capabilities\"
+        return 1
+    fi
+    
+    echo
+}
+
+# Set capabilities for QuantLib process (real-time scheduling + memory locking)
+set_caps \"\${BIN_DIR}/quantlib-process\" \"${ALARIS_QUANTLIB_CAPABILITIES}\" \"QuantLib Process\"
+
+# Set capabilities for main alaris executable if it exists
+set_caps \"\${BIN_DIR}/alaris\" \"${ALARIS_QUANTLIB_CAPABILITIES}\" \"Main Alaris Process\"
+
+echo \"Capabilities setup completed successfully!\"
+echo
+echo \"You can now run the processes as a regular user:\"
+echo \"  \${BIN_DIR}/quantlib-process config/quantlib_process.yaml\"
+echo \"  dotnet \${BIN_DIR}/Alaris.Lean.dll\"
+echo
+echo \"To verify capabilities: getcap \${BIN_DIR}/quantlib-process\"
+echo \"To remove capabilities: sudo setcap -r \${BIN_DIR}/quantlib-process\"
+")
+    
+    set(SCRIPT_PATH "${CMAKE_BINARY_DIR}/set-capabilities.sh")
+    file(WRITE "${SCRIPT_PATH}" "${SCRIPT_CONTENT}")
+    
+    # Make script executable
+    execute_process(
+        COMMAND chmod +x "${SCRIPT_PATH}"
+        ERROR_QUIET
+    )
+    
+    message(STATUS "Created capability setup script: ${SCRIPT_PATH}")
+    
+    # Set script path in parent scope for use by other functions
+    set(ALARIS_CAPABILITY_SCRIPT "${SCRIPT_PATH}" PARENT_SCOPE)
+endfunction()
+
+# Function to check current capabilities
+function(check_executable_capabilities EXECUTABLE_PATH)
+    if(NOT ALARIS_CAPABILITIES_AVAILABLE)
+        return()
+    endif()
+    
+    if(NOT EXISTS "${EXECUTABLE_PATH}")
+        return()
+    endif()
+    
+    execute_process(
+        COMMAND ${GETCAP_EXECUTABLE} "${EXECUTABLE_PATH}"
+        OUTPUT_VARIABLE CURRENT_CAPS
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+    
+    if(CURRENT_CAPS)
+        message(STATUS "Current capabilities for ${EXECUTABLE_PATH}: ${CURRENT_CAPS}")
+        set(HAS_CAPABILITIES TRUE PARENT_SCOPE)
+    else()
+        message(STATUS "No capabilities set for ${EXECUTABLE_PATH}")
+        set(HAS_CAPABILITIES FALSE PARENT_SCOPE)
+    endif()
+endfunction()
+
 # Export configuration
 set(ALARIS_CONFIGURED TRUE CACHE INTERNAL "Alaris configuration complete" FORCE)
 
+# Create capability script if needed
+if(ALARIS_SET_CAPABILITIES AND ALARIS_CAPABILITIES_AVAILABLE)
+    create_capability_script()
+endif()
+
 message(STATUS "Config.cmake: Configuration applied successfully")
+
+# Print capabilities configuration summary
+if(UNIX AND NOT APPLE)
+    message(STATUS "")
+    message(STATUS "=== Real-time Capabilities Configuration ===")
+    if(ALARIS_CAPABILITIES_AVAILABLE)
+        message(STATUS "  Status: Available")
+        message(STATUS "  setcap: ${SETCAP_EXECUTABLE}")
+        message(STATUS "  getcap: ${GETCAP_EXECUTABLE}")
+        if(ALARIS_SET_CAPABILITIES)
+            message(STATUS "  Setup: Enabled")
+            message(STATUS "  Auto-set: ${ALARIS_AUTO_SET_CAPABILITIES}")
+            message(STATUS "  Required capabilities: ${ALARIS_QUANTLIB_CAPABILITIES}")
+        else()
+            message(STATUS "  Setup: Disabled (enable with -DALARIS_SET_CAPABILITIES=ON)")
+        endif()
+    else()
+        message(STATUS "  Status: Tools not found")
+        message(STATUS "  Install: sudo apt install libcap2-bin")
+    endif()
+    message(STATUS "============================================")
+endif()
