@@ -78,7 +78,7 @@ strategy:
     regime_lookback_days: 21      # Lookback period for regime detection
 
 logging:
-  level: "INFO"                 # DEBUG|INFO|WARN|ERROR
-  file: "log/quantlib.log"      # Log to a local directory
-  binary_mode: false            # Use text mode to reduce memory overhead
-  enable_performance_log: true  # Log detailed performance metrics
+  level: "INFO"              
+  file: "/home/send2/.projects/Alaris/logs/quantlib.log"
+  binary_mode: false            
+  enable_performance_log: true  
