@@ -16,10 +16,10 @@ SharedMemoryManager::SharedMemoryManager(bool is_producer_role, uint32_t process
     std::string initialization_errors;
     bool all_buffers_initialized = true;
 
-    // TTA-optimized buffer initialization with error aggregation
+    // TTA-optimized buffer initialization with error aggregation using POSIX-compliant syntax
     try {
         market_data_buffer_ = std::make_unique<SharedRingBuffer<MarketDataMessage, 4096>>(
-            "alaris_market_data", is_producer_);
+            "/alaris_market_data", is_producer_);
     } catch (const std::exception& e) {
         initialization_errors += "Market data buffer initialization failed: " + std::string(e.what()) + "\n";
         all_buffers_initialized = false;
@@ -27,7 +27,7 @@ SharedMemoryManager::SharedMemoryManager(bool is_producer_role, uint32_t process
     
     try {
         signal_buffer_ = std::make_unique<SharedRingBuffer<TradingSignalMessage, 1024>>(
-            "alaris_signals", is_producer_);
+            "/alaris_signals", is_producer_);
     } catch (const std::exception& e) {
         initialization_errors += "Signal buffer initialization failed: " + std::string(e.what()) + "\n";
         all_buffers_initialized = false;
@@ -35,7 +35,7 @@ SharedMemoryManager::SharedMemoryManager(bool is_producer_role, uint32_t process
     
     try {
         control_buffer_ = std::make_unique<SharedRingBuffer<ControlMessage, 256>>(
-            "alaris_control", is_producer_);
+            "/alaris_control", is_producer_);
     } catch (const std::exception& e) {
         initialization_errors += "Control buffer initialization failed: " + std::string(e.what()) + "\n";
         all_buffers_initialized = false;

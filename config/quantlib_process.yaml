@@ -1,84 +1,72 @@
 # QuantLib Process Configuration
 process:
   name: "QuantLib"
-  priority: 80                   # Real-time priority (0-99) 
-  cpu_affinity: [2, 3]           # Isolated CPU cores
-  memory_lock: false             # DISABLED to avoid memory pressure 
-  huge_pages: false              # DISABLED to reduce memory requirements
-  start_trading_enabled: false   # Start with trading disabled for safety
+  priority: 80
+  cpu_affinity: [2, 3]
+  memory_lock: false
+  huge_pages: false
+  start_trading_enabled: false
 
 quantlib:
-  threading: "single"            # Single-threaded for deterministic execution
-  date_format: "ISO"             # ISO date format
-  calendar: "UnitedStates"       # US calendar for option pricing
-  enable_debug: false            # Disable debug for performance
+  threading: "single"
+  date_format: "ISO"
+  calendar: "UnitedStates"
+  enable_debug: false
 
+# UPDATED: POSIX-compliant shared memory names
 shared_memory:
-  market_data_buffer: "alaris_market_data"
-  signal_buffer: "alaris_signals" 
-  control_buffer: "alaris_control"
+  market_data_buffer: "/alaris_market_data"
+  signal_buffer: "/alaris_signals"
+  control_buffer: "/alaris_control"
   buffer_sizes:
-    market_data: 1024           # REDUCED from 4096 for memory efficiency
-    signals: 512                # REDUCED from 1024
-    control: 128                # REDUCED from 256
+    market_data: 4096
+    signals: 1024
+    control: 256
 
 memory:
-  pool_size_mb: 8               # REDUCED from 32MB to 8MB to fix allocation failure
+  pool_size_mb: 8
 
 pricing:
   alo_engine:
-    scheme: "fast"              # Use fast scheme to reduce memory usage
-    fixed_point_equation: "Auto" # Auto|FP_A|FP_B
+    scheme: "fast"
+    fixed_point_equation: "Auto"
 
 volatility:
-  garch:                        # Standard GARCH model 
-    max_iterations: 500         # REDUCED from 1000 to save memory
+  garch:
+    max_iterations: 500
     tolerance: 1e-6
-    mode: "BestOfTwo"           # MomentMatchingGuess|GammaGuess|BestOfTwo|DoubleOptimization
-    max_history_length: 126     # REDUCED from 252 (half year of trading days)
-  update_frequency_ms: 10       # Update frequency (multiple of basic time unit)
+    mode: "BestOfTwo"
+    max_history_length: 126
+  update_frequency_ms: 10
 
 strategy:
   vol_arbitrage:
-    # Core thresholds
-    entry_threshold: 0.05        # 5% volatility difference for entry
-    exit_threshold: 0.02         # 2% volatility difference for exit
-    confidence_threshold: 0.7    # Minimum confidence for signals
-    
-    # Risk management  
-    max_portfolio_delta: 0.10    # Maximum portfolio delta exposure
-    max_portfolio_gamma: 0.05    # Maximum portfolio gamma exposure
-    max_portfolio_vega: 2.0      # Maximum portfolio vega exposure
-    max_position_size: 0.05      # Maximum position size (5% of portfolio)
-    max_correlation_exposure: 0.30 # Maximum exposure to correlated positions
-    
-    # Position sizing
-    kelly_fraction: 0.05         # Kelly criterion fraction
-    max_kelly_position: 0.20     # Maximum Kelly-based position size
-    min_edge_ratio: 2.0          # Minimum edge ratio for trade
-    
-    # Stop loss and profit taking
-    stop_loss_percent: 0.15      # 15% stop loss
-    profit_target_percent: 0.30  # 30% profit target
-    trailing_stop_percent: 0.10  # 10% trailing stop
-    
-    # Strategy configuration
-    strategy_mode: "DELTA_NEUTRAL" # DELTA_NEUTRAL|GAMMA_SCALPING|VOLATILITY_TIMING|RELATIVE_VALUE
-    model_selection: "garch_direct" # garch_direct|ensemble_garch_historical
-    
-    # Hedging
-    hedge_threshold_delta: 0.10   # Delta threshold for hedging
-    hedge_threshold_gamma: 0.05   # Gamma threshold for hedging  
-    auto_hedge_enabled: true      # Enable automatic hedging
-    hedge_frequency_minutes: 15   # Hedging frequency
-    
-    # Market regime detection
-    low_vol_threshold: 0.15       # Low volatility threshold
-    high_vol_threshold: 0.40      # High volatility threshold
-    regime_lookback_days: 21      # Lookback period for regime detection
+    entry_threshold: 0.05
+    exit_threshold: 0.02
+    confidence_threshold: 0.7
+    max_portfolio_delta: 0.10
+    max_portfolio_gamma: 0.05
+    max_portfolio_vega: 2.0
+    max_position_size: 0.05
+    max_correlation_exposure: 0.30
+    kelly_fraction: 0.05
+    max_kelly_position: 0.20
+    min_edge_ratio: 2.0
+    stop_loss_percent: 0.15
+    profit_target_percent: 0.30
+    trailing_stop_percent: 0.10
+    strategy_mode: "DELTA_NEUTRAL"
+    model_selection: "garch_direct"
+    hedge_threshold_delta: 0.10
+    hedge_threshold_gamma: 0.05
+    auto_hedge_enabled: true
+    hedge_frequency_minutes: 15
+    low_vol_threshold: 0.15
+    high_vol_threshold: 0.40
+    regime_lookback_days: 21
 
 logging:
-  level: "INFO"              
+  level: "INFO"
   file: "/home/send2/.projects/Alaris/logs/quantlib.log"
-  binary_mode: false            
+  binary_mode: false
   enable_performance_log: true

@@ -7,47 +7,43 @@ algorithm:
 
 brokerage:
   type: "InteractiveBrokers"
-  gateway_host: "host.docker.internal"  # WSL2 special DNS name for Windows host
-  gateway_port: 4002  # Paper trading port
+  gateway_host: "host.docker.internal"
+  gateway_port: 4002
   account: "DUE407919"
 
 data:
   provider: "InteractiveBrokers"
   resolution: "Minute"
-  
+
+# UPDATED: Consistent and POSIX-compliant shared memory names
 shared_memory:
+  market_data_buffer: "/alaris_market_data"
   signal_buffer: "/alaris_signals"
   control_buffer: "/alaris_control"
-  
+
+# Add these configurations for the C# Config.Get calls
+alaris-market-data-buffer: "/alaris_market_data"
+alaris-signal-buffer: "/alaris_signals"
+alaris-control-buffer: "/alaris_control"
+
 risk_management:
   max_position_size: 0.05
   max_daily_loss: 0.02
-  
+
 universe:
   symbols: ["SPY", "QQQ", "IWM", "EFA", "EEM"]
   option_chains: true
-  
+
 logging:
   level: "INFO"
   file: "/var/log/alaris/lean.log"
 
-# Interactive Brokers specific settings
 ib_settings:
-  # Connection timeout in seconds
   connection_timeout: 30
-  
-  # Enable/disable market data subscriptions
   enable_market_data: true
-  
-  # Order management settings
   order_timeout_seconds: 60
-  
-  # Paper trading specific settings
   paper_trading:
     enabled: true
     starting_cash: 1000000
-    
-  # Live trading settings (only used when gateway_port is 4001)
   live_trading:
     enabled: false
-    # Additional live trading safeguards can be configured here
