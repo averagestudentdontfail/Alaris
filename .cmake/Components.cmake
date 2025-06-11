@@ -100,14 +100,20 @@ function(create_component_library NAME)
         ${QUANTLIB_CORE_SOURCES} # Only .cpp files
     )
 
-    target_include_directories(${NAME} PUBLIC
-        ${CMAKE_SOURCE_DIR}/src # This allows includes like "quantlib/pricing/alo_engine.h" from within the library
-        ${CMAKE_SOURCE_DIR}/external/quant # For QuantLib headers from submodule
+    # FIXED: Use PRIVATE for source directory paths to avoid export issues
+    # Use BUILD_INTERFACE generator expression for build-time includes
+    target_include_directories(${NAME} 
+        PRIVATE 
+            ${CMAKE_SOURCE_DIR}/src # This allows includes like "quantlib/pricing/alo_engine.h" from within the library
+        PUBLIC
+            # Use generator expressions to handle build vs install directories
+            $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/external/quant> # For QuantLib headers from submodule during build
+            $<INSTALL_INTERFACE:include> # For installed headers
     )
 
     target_link_libraries(${NAME} PUBLIC
         ${QUANTLIB_TARGET} # Use the variable holding the correct QuantLib target name
-        yaml-cpp           # From external/yaml-cpp
+        ${YAML_CPP_TARGET} # Use the variable holding the correct yaml-cpp target name
         Threads::Threads
     )
     message(STATUS "Components: ${NAME} library configured with sources: ${QUANTLIB_CORE_SOURCES}")
@@ -247,7 +253,7 @@ function(configure_all_components)
         ${CMAKE_SOURCE_DIR}/src
         ${CMAKE_SOURCE_DIR}/external/yaml-cpp/include # If yaml-cpp headers are needed directly
     )
-    target_link_libraries(alaris-config PRIVATE quantlib yaml-cpp)
+    target_link_libraries(alaris-config PRIVATE quantlib ${YAML_CPP_TARGET})
     message(STATUS "Components: alaris-config executable configured")
 
     add_executable(alaris-system ${CMAKE_SOURCE_DIR}/src/quantlib/tools/system.cpp)
