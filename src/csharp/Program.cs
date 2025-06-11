@@ -93,6 +93,49 @@ namespace Alaris
                 }
                 Console.WriteLine();
                 
+                // --- CRITICAL FIX: Correct Data Path Resolution ---
+                
+                // Get the current working directory (should be project root)
+                string currentDirectory = Directory.GetCurrentDirectory();
+                Console.WriteLine($"[DEBUG] Current directory: {currentDirectory}");
+                
+                // Look for build directory in current directory or parent directories
+                string? buildDirectory = FindBuildDirectory(currentDirectory);
+                
+                if (buildDirectory == null)
+                {
+                    throw new DirectoryNotFoundException(
+                        "Could not find build directory. Please run from project root or ensure build directory exists.");
+                }
+                
+                string dataFolderPath = Path.Combine(buildDirectory, "data");
+                string cacheFolderPath = Path.Combine(buildDirectory, "cache");
+                string resultsFolderPath = Path.Combine(buildDirectory, "results");
+                
+                Console.WriteLine($"[INFO] Build directory: {buildDirectory}");
+                Console.WriteLine($"[INFO] Data folder: {dataFolderPath}");
+                Console.WriteLine($"[INFO] Cache folder: {cacheFolderPath}");
+                Console.WriteLine($"[INFO] Results folder: {resultsFolderPath}");
+                
+                // Validate that data directory exists
+                if (!Directory.Exists(dataFolderPath))
+                {
+                    throw new DirectoryNotFoundException(
+                        $"Data directory not found at: {dataFolderPath}\n" +
+                        "Please run 'cmake --build . --target setup-data' to set up data.");
+                }
+                
+                // Validate essential data files exist
+                string marketHoursFile = Path.Combine(dataFolderPath, "market-hours", "market-hours-database.json");
+                if (!File.Exists(marketHoursFile))
+                {
+                    throw new FileNotFoundException(
+                        $"Required data file not found: {marketHoursFile}\n" +
+                        "Please run 'cmake --build . --target setup-data' to download required data files.");
+                }
+                
+                Console.WriteLine($"[INFO] ✓ Data validation passed");
+                
                 // Set environment variables for the algorithm to access
                 Environment.SetEnvironmentVariable("ALARIS_SYMBOL", symbol);
                 Environment.SetEnvironmentVariable("ALARIS_STRATEGY", strategy);
@@ -104,6 +147,11 @@ namespace Alaris
                 
                 Config.Set("algorithm-type-name", "Alaris.Algorithm.ArbitrageAlgorithm");
                 Config.Set("algorithm-location", typeof(Program).Assembly.Location);
+                
+                // --- CRITICAL: Set correct data paths ---
+                Config.Set("data-folder", dataFolderPath);
+                Config.Set("cache-location", cacheFolderPath);
+                Config.Set("results-destination-folder", resultsFolderPath);
                 
                 Config.Set("resolution", frequency);
                 
@@ -126,8 +174,6 @@ namespace Alaris
                 Config.Set("debug-mode", debug.ToString().ToLower());
                 Log.DebuggingEnabled = debug;
 
-
-                // --- CORRECTED ENGINE LAUNCH ---
                 Console.WriteLine("Initializing and running Lean engine in-process...");
                 
                 var systemHandlers = LeanEngineSystemHandlers.FromConfiguration(Composer.Instance);
@@ -152,6 +198,40 @@ namespace Alaris
             }
             
             return Task.CompletedTask;
+        }
+        
+        /// <summary>
+        /// Find the build directory by searching current directory and parent directories
+        /// </summary>
+        private static string? FindBuildDirectory(string startDirectory)
+        {
+            string currentDir = startDirectory;
+            
+            // Search up to 5 levels up
+            for (int i = 0; i < 5; i++)
+            {
+                // Check for build directory in current directory
+                string buildDir = Path.Combine(currentDir, "build");
+                if (Directory.Exists(buildDir))
+                {
+                    // Verify it's a valid build directory by checking for data subdirectory
+                    string dataDir = Path.Combine(buildDir, "data");
+                    if (Directory.Exists(dataDir))
+                    {
+                        return buildDir;
+                    }
+                }
+                
+                // Move up one directory
+                string parentDir = Directory.GetParent(currentDir)?.FullName;
+                if (parentDir == null || parentDir == currentDir)
+                {
+                    break; // Reached root
+                }
+                currentDir = parentDir;
+            }
+            
+            return null;
         }
     }
 }

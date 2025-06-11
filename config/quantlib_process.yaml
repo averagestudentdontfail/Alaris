@@ -79,6 +79,6 @@ strategy:
 
 logging:
   level: "INFO"                 # DEBUG|INFO|WARN|ERROR
-  file: "/tmp/alaris_quantlib.log"  # Use /tmp to avoid permission issues
+  file: "log/quantlib.log"      # Log to a local directory
   binary_mode: false            # Use text mode to reduce memory overhead
   enable_performance_log: true  # Log detailed performance metrics
