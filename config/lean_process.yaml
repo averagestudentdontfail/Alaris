@@ -7,7 +7,7 @@ algorithm:
 
 brokerage:
   type: "InteractiveBrokers"
-  gateway_host: "host.docker.internal"
+  gateway_host: "127.0.0.1"
   gateway_port: 4002
   account: "DUE407919"
 
