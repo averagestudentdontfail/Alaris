@@ -298,57 +298,92 @@ function(download_essential_data)
 endfunction()
 
 # Function to create realistic price data for a symbol
+# Function to create realistic price data for a symbol
 function(create_realistic_price_data OUTPUT_FILE SYMBOL)
-    # Set base prices for different symbols
+    # Set base prices for different symbols (using integers, will scale later)
     if(SYMBOL STREQUAL "SPY")
-        set(BASE_PRICE 400.0)
+        set(BASE_PRICE_INT 40000)  # Represents $400.00
     elseif(SYMBOL STREQUAL "QQQ")
-        set(BASE_PRICE 350.0)
+        set(BASE_PRICE_INT 35000)  # Represents $350.00
     elseif(SYMBOL STREQUAL "AAPL")
-        set(BASE_PRICE 180.0)
+        set(BASE_PRICE_INT 18000)  # Represents $180.00
     elseif(SYMBOL STREQUAL "MSFT")
-        set(BASE_PRICE 370.0)
+        set(BASE_PRICE_INT 37000)  # Represents $370.00
     else()
-        set(BASE_PRICE 100.0)  # Default price
+        set(BASE_PRICE_INT 10000)  # Represents $100.00
+    endif()
+    
+    # Convert to floating point for CSV output
+    math(EXPR BASE_PRICE_MAJOR "${BASE_PRICE_INT} / 100")
+    math(EXPR BASE_PRICE_MINOR "${BASE_PRICE_INT} % 100")
+    if(BASE_PRICE_MINOR LESS 10)
+        set(BASE_PRICE "${BASE_PRICE_MAJOR}.0${BASE_PRICE_MINOR}")
+    else()
+        set(BASE_PRICE "${BASE_PRICE_MAJOR}.${BASE_PRICE_MINOR}")
     endif()
     
     # Create CSV header (Lean format: DateTime, Open, High, Low, Close, Volume)
     set(CSV_CONTENT "20240102 00:00,${BASE_PRICE},${BASE_PRICE},${BASE_PRICE},${BASE_PRICE},1000000\n")
     
-    # Generate daily data for 2024 (simple random walk)
-    set(CURRENT_PRICE ${BASE_PRICE})
-    set(CURRENT_DATE 20240102)
+    # Generate daily data for 2024 (simple random walk using integer math)
+    set(CURRENT_PRICE_INT ${BASE_PRICE_INT})
     
     # Generate 250 trading days (approximate year)
     foreach(day_num RANGE 1 250)
-        # Simple price movement simulation
+        # Simple price movement simulation using integer math
         math(EXPR day_offset "${day_num} % 30")
-        math(EXPR price_change_pct "((${day_offset} - 15) * 2)")  # -30 to +30
+        math(EXPR price_change_basis_points "((${day_offset} - 15) * 10)")  # -150 to +150 basis points
         
-        # Calculate price change (max ±3%)
-        math(EXPR price_change_scaled "${price_change_pct} / 1000.0")
-        math(EXPR price_change "${CURRENT_PRICE} * ${price_change_scaled} / 100.0")
-        math(EXPR new_price "${CURRENT_PRICE} + ${price_change}")
+        # Calculate price change (max ±1.5%)
+        # Using integer math: price_change = current_price * basis_points / 10000
+        math(EXPR price_change_numerator "${CURRENT_PRICE_INT} * ${price_change_basis_points}")
+        math(EXPR price_change "${price_change_numerator} / 10000")
+        math(EXPR new_price_int "${CURRENT_PRICE_INT} + ${price_change}")
         
-        # Ensure price doesn't go negative
-        if(new_price LESS 1.0)
-            set(new_price 1.0)
+        # Ensure price doesn't go below $1.00 (100 cents)
+        if(new_price_int LESS 100)
+            set(new_price_int 100)
         endif()
         
-        # Calculate OHLC from close price
-        math(EXPR high_price "${new_price} * 1.02")  # High is 2% above close
-        math(EXPR low_price "${new_price} * 0.98")   # Low is 2% below close
-        math(EXPR open_price "${CURRENT_PRICE}")     # Open is previous close
+        # Calculate OHLC from close price using integer math
+        math(EXPR high_price_int "${new_price_int} * 102 / 100")  # High is 2% above close
+        math(EXPR low_price_int "${new_price_int} * 98 / 100")    # Low is 2% below close
+        set(open_price_int ${CURRENT_PRICE_INT})                   # Open is previous close
         
-        # Format date (increment by 1 day, skip weekends approximation)
-        math(EXPR date_increment "${day_num}")
-        if(date_increment LESS 10)
-            set(date_str "0${date_increment}")
+        # Convert all prices to floating point for CSV
+        math(EXPR open_major "${open_price_int} / 100")
+        math(EXPR open_minor "${open_price_int} % 100")
+        if(open_minor LESS 10)
+            set(open_price "${open_major}.0${open_minor}")
         else()
-            set(date_str "${date_increment}")
+            set(open_price "${open_major}.${open_minor}")
         endif()
         
-        # Simple date calculation (month/day - not perfect but good enough for testing)
+        math(EXPR high_major "${high_price_int} / 100")
+        math(EXPR high_minor "${high_price_int} % 100")
+        if(high_minor LESS 10)
+            set(high_price "${high_major}.0${high_minor}")
+        else()
+            set(high_price "${high_major}.${high_minor}")
+        endif()
+        
+        math(EXPR low_major "${low_price_int} / 100")
+        math(EXPR low_minor "${low_price_int} % 100")
+        if(low_minor LESS 10)
+            set(low_price "${low_major}.0${low_minor}")
+        else()
+            set(low_price "${low_major}.${low_minor}")
+        endif()
+        
+        math(EXPR close_major "${new_price_int} / 100")
+        math(EXPR close_minor "${new_price_int} % 100")
+        if(close_minor LESS 10)
+            set(close_price "${close_major}.0${close_minor}")
+        else()
+            set(close_price "${close_major}.${close_minor}")
+        endif()
+        
+        # Format date (month/day calculation using integer math)
         math(EXPR month_num "(${day_num} / 22) + 1")  # Approximate 22 trading days per month
         math(EXPR day_in_month "(${day_num} % 22) + 1")
         
@@ -370,15 +405,15 @@ function(create_realistic_price_data OUTPUT_FILE SYMBOL)
         
         set(date_str "2024${month_str}${day_str}")
         
-        # Generate volume (1M ± 50%)
+        # Generate volume (1M ± 50% using integer math)
         math(EXPR volume_base "1000000")
         math(EXPR volume_var "${day_num} % 500000")
         math(EXPR volume "${volume_base} + ${volume_var}")
         
         # Add to CSV content
-        string(APPEND CSV_CONTENT "${date_str} 00:00,${open_price},${high_price},${low_price},${new_price},${volume}\n")
+        string(APPEND CSV_CONTENT "${date_str} 00:00,${open_price},${high_price},${low_price},${close_price},${volume}\n")
         
-        set(CURRENT_PRICE ${new_price})
+        set(CURRENT_PRICE_INT ${new_price_int})
     endforeach()
     
     # Write the CSV file
