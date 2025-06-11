@@ -137,11 +137,11 @@ namespace Alaris
                 string assemblyPath = Config.Get("algorithm-location");
                 var algorithmManager = new AlgorithmManager(liveMode, null);
                 
-                // RESTORED: This initialization is required and now uses the correct arguments
-                systemHandlers.LeanManager.Initialize(systemHandlers, algorithmHandlers, new BacktestNodePacket(), WorkerThread.Instance);
+                // Initialize the Lean manager with correct arguments
+                systemHandlers.LeanManager.Initialize(systemHandlers, algorithmHandlers, new BacktestNodePacket());
                 
                 var engine = new Engine(systemHandlers, algorithmHandlers, liveMode);
-                engine.Run(new BacktestNodePacket(), assemblyPath, WorkerThread.Instance, algorithmManager);
+                engine.Run(new BacktestNodePacket(), algorithmManager, assemblyPath, WorkerThread.Instance);
 
                 Console.WriteLine("\nAlaris Lean Process completed successfully.");
             }
