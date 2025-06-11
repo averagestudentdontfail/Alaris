@@ -232,6 +232,7 @@ message(STATUS "======================")
 message(STATUS "")
 
 # Create a helpful build script for new users
+# Build the script content using CMake conditionals
 set(BUILD_SCRIPT_CONTENT "#!/bin/bash
 # Alaris Quick Build Script
 # Generated automatically by CMake
@@ -269,13 +270,19 @@ check_status \$? \"Data setup\"
 echo \"Verifying data for Lean FileSystemDataFeed...\"
 cmake --build . --target verify-lean-data
 check_status \$? \"Lean data verification\"
+")
 
-$(if [[ "${ALARIS_SET_CAPABILITIES}" == "ON" && "${ALARIS_CAPABILITIES_AVAILABLE}" == "TRUE" && "${ALARIS_AUTO_SET_CAPABILITIES}" != "ON" ]]; then
-echo \"echo \"Setting up real-time capabilities...\"
+# Add capabilities setup if available and not auto-enabled
+if(ALARIS_SET_CAPABILITIES AND ALARIS_CAPABILITIES_AVAILABLE AND NOT ALARIS_AUTO_SET_CAPABILITIES)
+    string(APPEND BUILD_SCRIPT_CONTENT "
+echo \"Setting up real-time capabilities...\"
 cmake --build . --target set-capabilities
-check_status \$? \"Capabilities setup\""
-fi)
+check_status \$? \"Capabilities setup\"
+")
+endif()
 
+# Continue building the script content
+string(APPEND BUILD_SCRIPT_CONTENT "
 echo \"Running final environment verification...\"
 cmake --build . --target verify-environment
 check_status \$? \"Environment verification\"
@@ -288,10 +295,16 @@ echo \"Environment Summary:\"
 echo \"  Data directory: ${ALARIS_DATA_DIR}\"
 echo \"  Historical data available for backtesting\"
 echo \"  lean.json configuration ready\"
-$(if [[ "${ALARIS_SET_CAPABILITIES}" == "ON" && "${ALARIS_CAPABILITIES_AVAILABLE}" == "TRUE" ]]; then
-echo \"echo \"  Real-time capabilities configured\""
-fi)
-echo
+")
+
+# Add capabilities info if available
+if(ALARIS_SET_CAPABILITIES AND ALARIS_CAPABILITIES_AVAILABLE)
+    string(APPEND BUILD_SCRIPT_CONTENT "echo \"  Real-time capabilities configured\"
+")
+endif()
+
+# Finish the script content
+string(APPEND BUILD_SCRIPT_CONTENT "echo
 echo \"To start the system:\"
 echo \"  ./start-alaris.sh\"
 echo
@@ -303,10 +316,11 @@ echo \"  cmake --build . --target verify-lean-data\"
 echo
 ")
 
+# Write the build script
 file(WRITE "${CMAKE_BINARY_DIR}/build-alaris.sh" "${BUILD_SCRIPT_CONTENT}")
 execute_process(
     COMMAND chmod +x "${CMAKE_BINARY_DIR}/build-alaris.sh"
     ERROR_QUIET
 )
 
-message(STATUS "Created enhanced quick build script: ${CMAKE_BINARY_DIR}/build-alaris.sh")
+message(STATUS "Created build script: ${CMAKE_BINARY_DIR}/build-alaris.sh")
