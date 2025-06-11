@@ -131,12 +131,16 @@ namespace Alaris
                 Console.WriteLine("Initializing and running Lean engine in-process...");
                 
                 var systemHandlers = LeanEngineSystemHandlers.FromConfiguration(Composer.Instance);
+                // Create the correct AlgorithmHandlers object
+                var algorithmHandlers = LeanEngineAlgorithmHandlers.FromConfiguration(Composer.Instance);
                 systemHandlers.Initialize();
                 
                 string assemblyPath = Config.Get("algorithm-location");
                 var algorithmManager = new AlgorithmManager(liveMode, null);
                 
-                var engine = new Engine(systemHandlers, algorithmManager, liveMode);
+                // Pass the correct handlers to the Engine constructor
+                var engine = new Engine(systemHandlers, algorithmHandlers, liveMode);
+                // The Run method takes the job packet, algorithm manager, assembly path and worker thread
                 engine.Run(new BacktestNodePacket(), algorithmManager, assemblyPath, WorkerThread.Instance);
 
                 Console.WriteLine("\nAlaris Lean Process completed successfully.");
