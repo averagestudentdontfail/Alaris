@@ -7,70 +7,126 @@ using System.Threading;
 
 namespace Alaris.IPC
 {
+    #region Platform-Specific Abstractions
+
     /// <summary>
-    /// Platform-agnostic P/Invoke wrapper for POSIX shared memory functions (shm_open, mmap, etc.).
-    /// This is necessary because MemoryMappedFile on .NET for Unix-like systems maps regular files,
-    /// not POSIX shared memory objects, which is what the C++ component creates.
+    /// Defines a common interface for accessing a region of memory, whether it's a
+    /// .NET MemoryMappedViewAccessor on Windows or a raw pointer from mmap on Linux.
+    /// </summary>
+    internal interface IMemoryAccessor : IDisposable
+    {
+        void Write<T>(long position, ref T structure) where T : struct;
+        void Read<T>(long position, out T structure) where T : struct;
+        long ReadInt64(long position);
+        void Write(long position, long value);
+    }
+
+    /// <summary>
+    /// A wrapper around the standard MemoryMappedViewAccessor to conform to the IMemoryAccessor interface.
+    /// Used on Windows.
+    /// </summary>
+    internal class WindowsMemoryAccessor : IMemoryAccessor
+    {
+        private readonly MemoryMappedViewAccessor _accessor;
+        public WindowsMemoryAccessor(MemoryMappedViewAccessor accessor) { _accessor = accessor; }
+        public void Dispose() => _accessor.Dispose();
+        public void Read<T>(long position, out T structure) where T : struct => _accessor.Read(position, out structure);
+        public long ReadInt64(long position) => _accessor.ReadInt64(position);
+        public void Write<T>(long position, ref T structure) where T : struct => _accessor.Write(position, ref structure);
+        public void Write(long position, long value) => _accessor.Write(position, value);
+    }
+
+    /// <summary>
+    /// An accessor that operates on a raw memory pointer obtained from mmap on POSIX systems.
+    /// </summary>
+    internal unsafe class PosixMemoryAccessor : IMemoryAccessor
+    {
+        private readonly byte* _pointer;
+        private readonly long _size;
+
+        public PosixMemoryAccessor(IntPtr pointer, long size)
+        {
+            if (pointer == IntPtr.Zero) throw new ArgumentNullException(nameof(pointer));
+            _pointer = (byte*)pointer.ToPointer();
+            _size = size;
+        }
+
+        public void Read<T>(long position, out T structure) where T : struct
+        {
+            if (position < 0 || position + Marshal.SizeOf<T>() > _size) throw new ArgumentOutOfRangeException(nameof(position));
+            structure = Marshal.PtrToStructure<T>(new IntPtr(_pointer + position));
+        }
+
+        public long ReadInt64(long position)
+        {
+            if (position < 0 || position + 8 > _size) throw new ArgumentOutOfRangeException(nameof(position));
+            return *(long*)(_pointer + position);
+        }
+
+        public void Write<T>(long position, ref T structure) where T : struct
+        {
+            if (position < 0 || position + Marshal.SizeOf<T>() > _size) throw new ArgumentOutOfRangeException(nameof(position));
+            Marshal.StructureToPtr(structure, new IntPtr(_pointer + position), false);
+        }
+
+        public void Write(long position, long value)
+        {
+            if (position < 0 || position + 8 > _size) throw new ArgumentOutOfRangeException(nameof(position));
+            *(long*)(_pointer + position) = value;
+        }
+
+        // The owner (SharedRingBuffer) is responsible for calling munmap, so this is a no-op.
+        public void Dispose() { }
+    }
+
+    /// <summary>
+    /// P/Invoke wrapper for POSIX shared memory functions.
     /// </summary>
     internal static class PosixSharedMemory
     {
         [DllImport("libc", SetLastError = true)]
         internal static extern int shm_open(string name, int oflag, int mode);
-
         [DllImport("libc", SetLastError = true)]
         internal static extern int shm_unlink(string name);
-
         [DllImport("libc", SetLastError = true)]
         internal static extern IntPtr mmap(IntPtr addr, long length, int prot, int flags, int fd, long offset);
-
         [DllImport("libc", SetLastError = true)]
         internal static extern int munmap(IntPtr addr, long length);
-
         [DllImport("libc", SetLastError = true)]
         internal static extern int ftruncate(int fd, long length);
-
         [DllImport("libc", SetLastError = true)]
         internal static extern int close(int fd);
 
-        // Constants for shm_open flags
-        internal const int O_CREAT = 0x40;  // 64 in decimal
+        internal const int O_CREAT = 64;
         internal const int O_RDWR = 2;
-
-        // Constants for mmap protection
         internal const int PROT_READ = 1;
         internal const int PROT_WRITE = 2;
-
-        // Constants for mmap flags
         internal const int MAP_SHARED = 1;
     }
+
+    #endregion
 
     public class SharedRingBuffer<T> : IDisposable where T : struct
     {
         private readonly int _elementSize;
         private readonly int _bufferSize;
+        private readonly long _totalSize;
         private readonly string _name;
         private bool _disposed = false;
 
         // Platform-specific handles
-        private MemoryMappedFile? _mmf;
-        private MemoryMappedViewAccessor? _accessor;
+        private MemoryMappedFile? _mmf; // Windows only
+        private IMemoryAccessor _accessor;
+        
+        // POSIX-specific handles
         private int _posixShmFd = -1;
         private IntPtr _posixMmapPtr = IntPtr.Zero;
-        private long _totalSize;
 
-        private const int HEADER_SIZE = 16; // Two 64-bit atomic counters
+        private const int HEADER_SIZE = 16; // Two 64-bit atomic counters (read/write indices)
 
         public SharedRingBuffer(string name, int bufferSize, bool create = false)
         {
-            // POSIX shared memory names must start with a slash
-            if (!name.StartsWith("/"))
-            {
-                _name = "/" + name;
-            }
-            else
-            {
-                _name = name;
-            }
+            if (!name.StartsWith("/")) { _name = "/" + name; } else { _name = name; }
 
             _bufferSize = bufferSize;
             _elementSize = Marshal.SizeOf<T>();
@@ -103,88 +159,59 @@ namespace Alaris.IPC
             {
                 _mmf = MemoryMappedFile.OpenExisting(_name, MemoryMappedFileRights.ReadWrite);
             }
-            _accessor = _mmf.CreateViewAccessor(0, totalSize, MemoryMappedFileAccess.ReadWrite);
+            _accessor = new WindowsMemoryAccessor(_mmf.CreateViewAccessor(0, totalSize, MemoryMappedFileAccess.ReadWrite));
         }
 
-        private unsafe void InitializePosix(long totalSize, bool create)
+        private void InitializePosix(long totalSize, bool create)
         {
-            const int mode = 0x1B0; // 0660 in octal - Read/write permissions for owner and group
-            
+            const int mode = 0x1B0; // 0660 octal
             if (create)
             {
-                // Create the POSIX shared memory object
                 _posixShmFd = PosixSharedMemory.shm_open(_name, PosixSharedMemory.O_CREAT | PosixSharedMemory.O_RDWR, mode);
-                if (_posixShmFd == -1)
-                {
-                    var errno = Marshal.GetLastWin32Error();
-                    throw new IOException($"shm_open failed for '{_name}'. Error code: {errno}");
-                }
-                
-                // Set the size of the shared memory object
+                if (_posixShmFd == -1) throw new IOException($"shm_open create failed for '{_name}'. Errno: {Marshal.GetLastWin32Error()}");
                 if (PosixSharedMemory.ftruncate(_posixShmFd, totalSize) == -1)
                 {
-                    var errno = Marshal.GetLastWin32Error();
                     PosixSharedMemory.close(_posixShmFd);
                     PosixSharedMemory.shm_unlink(_name);
-                    throw new IOException($"ftruncate failed for '{_name}'. Error code: {errno}");
+                    throw new IOException($"ftruncate failed for '{_name}'. Errno: {Marshal.GetLastWin32Error()}");
                 }
             }
             else
             {
-                // Open an existing POSIX shared memory object
                 _posixShmFd = PosixSharedMemory.shm_open(_name, PosixSharedMemory.O_RDWR, mode);
-                if (_posixShmFd == -1)
-                {
-                    var errno = Marshal.GetLastWin32Error();
-                    throw new IOException($"shm_open (existing) failed for '{_name}'. Error code: {errno}. Ensure the producer process is running.");
-                }
+                if (_posixShmFd == -1) throw new IOException($"shm_open existing failed for '{_name}'. Errno: {Marshal.GetLastWin32Error()}. Ensure producer is running.");
             }
 
-            // Map the shared memory object into the process's address space
-            _posixMmapPtr = PosixSharedMemory.mmap(
-                IntPtr.Zero, 
-                totalSize, 
-                PosixSharedMemory.PROT_READ | PosixSharedMemory.PROT_WRITE, 
-                PosixSharedMemory.MAP_SHARED, 
-                _posixShmFd, 
-                0);
-                
+            _posixMmapPtr = PosixSharedMemory.mmap(IntPtr.Zero, totalSize, PosixSharedMemory.PROT_READ | PosixSharedMemory.PROT_WRITE, PosixSharedMemory.MAP_SHARED, _posixShmFd, 0);
             if (_posixMmapPtr == new IntPtr(-1))
             {
-                var errno = Marshal.GetLastWin32Error();
                 PosixSharedMemory.close(_posixShmFd);
-                if (create)
-                {
-                    PosixSharedMemory.shm_unlink(_name);
-                }
-                throw new IOException($"mmap failed for '{_name}'. Error code: {errno}");
+                if (create) PosixSharedMemory.shm_unlink(_name);
+                throw new IOException($"mmap failed for '{_name}'. Errno: {Marshal.GetLastWin32Error()}");
             }
-
-            // Create an unmanaged memory stream over the mapped memory
-            var unmanagedStream = new UnmanagedMemoryAccessor(_posixMmapPtr, totalSize, MemoryMappedFileAccess.ReadWrite);
-            _accessor = unmanagedStream;
+            
+            _accessor = new PosixMemoryAccessor(_posixMmapPtr, totalSize);
         }
 
         public bool TryWrite(T item)
         {
-            if (_disposed || _accessor == null) return false;
+            if (_disposed) return false;
 
-            long writeIndex = _accessor.ReadInt64(0);
-            long readIndex = _accessor.ReadInt64(8);
+            long currentWrite = _accessor.ReadInt64(0);
+            long currentRead = _accessor.ReadInt64(8);
 
-            if (writeIndex - readIndex >= _bufferSize)
-            {
-                return false; // Buffer is full
-            }
+            if (currentWrite - currentRead >= _bufferSize) return false;
 
-            int position = (int)(writeIndex % _bufferSize);
-            int offset = HEADER_SIZE + (position * _elementSize);
+            var position = (int)(currentWrite % _bufferSize);
+            var offset = HEADER_SIZE + (position * _elementSize);
 
             _accessor.Write(offset, ref item);
             
-            // Atomic increment
-            Interlocked.Increment(ref writeIndex);
-            _accessor.Write(0, writeIndex);
+            // This is not a true atomic operation across processes without a lock/semaphore,
+            // but it's the lock-free approach used in the original C++ code.
+            // A memory barrier ensures writes are visible before the index is updated.
+            Thread.MemoryBarrier(); 
+            _accessor.Write(0, currentWrite + 1);
 
             return true;
         }
@@ -192,29 +219,25 @@ namespace Alaris.IPC
         public bool TryRead(out T item)
         {
             item = default;
-            if (_disposed || _accessor == null) return false;
+            if (_disposed) return false;
 
-            long readIndex = _accessor.ReadInt64(8);
-            long writeIndex = _accessor.ReadInt64(0);
+            long currentRead = _accessor.ReadInt64(8);
+            long currentWrite = _accessor.ReadInt64(0);
 
-            if (readIndex == writeIndex)
-            {
-                return false; // Buffer is empty
-            }
+            if (currentRead == currentWrite) return false;
 
-            int position = (int)(readIndex % _bufferSize);
-            int offset = HEADER_SIZE + (position * _elementSize);
-
-            _accessor.Read(offset, out item);
+            var position = (int)(currentRead % _bufferSize);
+            var offset = HEADER_SIZE + (position * _elementSize);
             
-            // Atomic increment
-            Interlocked.Increment(ref readIndex);
-            _accessor.Write(8, readIndex);
+            _accessor.Read(offset, out item);
+
+            Thread.MemoryBarrier();
+            _accessor.Write(8, currentRead + 1);
 
             return true;
         }
 
-        public int Size => _accessor != null ? (int)(_accessor.ReadInt64(0) - _accessor.ReadInt64(8)) : 0;
+        public int Size => (int)(_accessor.ReadInt64(0) - _accessor.ReadInt64(8));
         public bool IsEmpty => Size == 0;
         public bool IsFull => Size >= _bufferSize;
         public double Utilization => _bufferSize > 0 ? (double)Size / _bufferSize : 0.0;
@@ -224,7 +247,7 @@ namespace Alaris.IPC
             if (!_disposed)
             {
                 _accessor?.Dispose();
-                _mmf?.Dispose();
+                _mmf?.Dispose(); // For Windows
 
                 if (!OperatingSystem.IsWindows())
                 {
@@ -239,69 +262,8 @@ namespace Alaris.IPC
                 }
                 
                 _disposed = true;
+                GC.SuppressFinalize(this);
             }
-        }
-    }
-
-    // Helper class for unmanaged memory access
-    internal unsafe class UnmanagedMemoryAccessor : MemoryMappedViewAccessor
-    {
-        private readonly byte* _pointer;
-        private readonly long _size;
-
-        public UnmanagedMemoryAccessor(IntPtr pointer, long size, MemoryMappedFileAccess access)
-        {
-            _pointer = (byte*)pointer.ToPointer();
-            _size = size;
-        }
-
-        public override long Capacity => _size;
-
-        public override void Write<T>(long position, ref T structure)
-        {
-            if (position < 0 || position + Marshal.SizeOf<T>() > _size)
-                throw new ArgumentOutOfRangeException(nameof(position));
-
-            Marshal.StructureToPtr(structure, new IntPtr(_pointer + position), false);
-        }
-
-        public override int ReadArray<T>(long position, T[] array, int offset, int count)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override void Read<T>(long position, out T structure)
-        {
-            if (position < 0 || position + Marshal.SizeOf<T>() > _size)
-                throw new ArgumentOutOfRangeException(nameof(position));
-
-            structure = Marshal.PtrToStructure<T>(new IntPtr(_pointer + position));
-        }
-
-        public override long ReadInt64(long position)
-        {
-            if (position < 0 || position + 8 > _size)
-                throw new ArgumentOutOfRangeException(nameof(position));
-
-            return *(long*)(_pointer + position);
-        }
-
-        public override void Write(long position, long value)
-        {
-            if (position < 0 || position + 8 > _size)
-                throw new ArgumentOutOfRangeException(nameof(position));
-
-            *(long*)(_pointer + position) = value;
-        }
-
-        public override void WriteArray<T>(long position, T[] array, int offset, int count)
-        {
-            throw new NotImplementedException();
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            // No disposal needed as we don't own the memory
         }
     }
 }
