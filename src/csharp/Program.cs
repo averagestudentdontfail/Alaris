@@ -8,7 +8,6 @@ using QuantConnect.Lean.Engine;
 using QuantConnect.Logging;
 using QuantConnect.Util;
 using QuantConnect.Packets;
-// Removed the problematic using statement here
 using QuantConnect.Lean.Engine.DataFeeds;
 using QuantConnect.Lean.Engine.Setup;
 using QuantConnect.Lean.Engine.RealTime;
@@ -103,15 +102,11 @@ namespace Alaris
                 Config.Set("environment", liveMode ? "live-trading" : "backtesting");
                 Config.Set("live-mode", liveMode.ToString().ToLower());
                 
-                // Set the algorithm class and location.
                 Config.Set("algorithm-type-name", "Alaris.Algorithm.ArbitrageAlgorithm");
-                // Use reflection to get the location of the currently executing assembly.
                 Config.Set("algorithm-location", typeof(Program).Assembly.Location);
                 
-                // Set data resolution from command line
                 Config.Set("resolution", frequency);
                 
-                // Set backtesting dates if applicable
                 if (!liveMode)
                 {
                      if (DateTime.TryParse(startDate, out var start))
@@ -140,7 +135,6 @@ namespace Alaris
                 
                 string assemblyPath = Config.Get("algorithm-location");
                 var algorithmManager = new AlgorithmManager(liveMode, null);
-                systemHandlers.LeanManager.Initialize(systemHandlers, algorithmManager, new BacktestNodePacket(), systemHandlers.JobQueue, systemHandlers.Api);
                 
                 var engine = new Engine(systemHandlers, algorithmManager, liveMode);
                 engine.Run(new BacktestNodePacket(), algorithmManager, assemblyPath, WorkerThread.Instance);
