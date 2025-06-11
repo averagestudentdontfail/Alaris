@@ -28,9 +28,9 @@ namespace Alaris.IPC
             {
                 // Connect to existing shared memory buffers created by QuantLib process
                 // Use exact same names and sizes as QuantLib process
-                _marketDataBuffer = new SharedRingBuffer<MarketDataMessage>("/alaris_market_data", 4096, false);
-                _signalBuffer = new SharedRingBuffer<TradingSignalMessage>("/alaris_signals", 1024, false);
-                _controlBuffer = new SharedRingBuffer<ControlMessage>("/alaris_control", 256, false);
+                _marketDataBuffer = new SharedRingBuffer<MarketDataMessage>("alaris_market_data", 4096, false);
+                _signalBuffer = new SharedRingBuffer<TradingSignalMessage>("alaris_signals", 1024, false);
+                _controlBuffer = new SharedRingBuffer<ControlMessage>("alaris_control", 256, false);
 
                 _cancellationTokenSource = new CancellationTokenSource();
 

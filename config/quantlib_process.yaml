@@ -14,9 +14,9 @@ quantlib:
   enable_debug: false            # Disable debug for performance
 
 shared_memory:
-  market_data_buffer: "/alaris_market_data"
-  signal_buffer: "/alaris_signals" 
-  control_buffer: "/alaris_control"
+  market_data_buffer: "alaris_market_data"
+  signal_buffer: "alaris_signals" 
+  control_buffer: "alaris_control"
   buffer_sizes:
     market_data: 1024           # REDUCED from 4096 for memory efficiency
     signals: 512                # REDUCED from 1024
@@ -81,4 +81,4 @@ logging:
   level: "INFO"              
   file: "/home/send2/.projects/Alaris/logs/quantlib.log"
   binary_mode: false            
-  enable_performance_log: true  
+  enable_performance_log: true
