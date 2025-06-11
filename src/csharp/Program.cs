@@ -141,7 +141,7 @@ namespace Alaris
                 systemHandlers.LeanManager.Initialize(systemHandlers, algorithmHandlers, new BacktestNodePacket(), WorkerThread.Instance);
                 
                 var engine = new Engine(systemHandlers, algorithmHandlers, liveMode);
-                engine.Run(new BacktestNodePacket(), algorithmManager, assemblyPath, WorkerThread.Instance);
+                engine.Run(new BacktestNodePacket(), assemblyPath, WorkerThread.Instance, algorithmManager);
 
                 Console.WriteLine("\nAlaris Lean Process completed successfully.");
             }
