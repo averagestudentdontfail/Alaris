@@ -8,7 +8,7 @@ using QuantConnect.Lean.Engine;
 using QuantConnect.Logging;
 using QuantConnect.Util;
 using QuantConnect.Packets;
-using QuantConnect.Lean.Engine.Alphas;
+// Removed the problematic using statement here
 using QuantConnect.Lean.Engine.DataFeeds;
 using QuantConnect.Lean.Engine.Setup;
 using QuantConnect.Lean.Engine.RealTime;
@@ -130,6 +130,7 @@ namespace Alaris
                 
                 Config.Set("debug-mode", debug.ToString().ToLower());
                 Log.DebuggingEnabled = debug;
+
 
                 // --- CORRECTED ENGINE LAUNCH ---
                 Console.WriteLine("Initializing and running Lean engine in-process...");

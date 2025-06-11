@@ -79,7 +79,6 @@ check_prerequisites() {
         log_error "QuantLib process not found. Run: ./scripts/build.sh first"
         exit 1
     fi
-    # UPDATED: Check for your custom C# launcher
     if [[ ! -f "build/csharp/Alaris.Lean.dll" ]]; then
         log_error "Alaris Lean launcher not found. Run: ./scripts/build.sh first"
         exit 1
@@ -142,8 +141,6 @@ main() {
     
     log_step "Starting Lean process (market data & execution engine)..."
 
-    # --- CORRECTED LAUNCHER PATH ---
-    # Point to your custom Alaris Lean executable, not the generic QuantConnect one
     local lean_launcher_path="build/csharp/Alaris.Lean.dll"
 
     CMD="dotnet $lean_launcher_path"
@@ -164,7 +161,6 @@ main() {
     log_info "Executing: $CMD"
     echo ""
 
-    # Execute the Lean process
     if eval "$CMD"; then
         log_info "✓ Alaris completed successfully"
     else
