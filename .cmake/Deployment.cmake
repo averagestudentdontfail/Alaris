@@ -20,7 +20,7 @@ function(install_alaris_executables)
                        GROUP_READ GROUP_EXECUTE
                        WORLD_READ WORLD_EXECUTE)
     
-    # Install the library
+    # FIXED: Only install the library, don't export it to avoid dependency issues
     install(TARGETS quantlib
             ARCHIVE DESTINATION ${ALARIS_INSTALL_LIBDIR}
             LIBRARY DESTINATION ${ALARIS_INSTALL_LIBDIR}
@@ -469,7 +469,7 @@ message(STATUS \"  - Log directory /var/log/alaris\")
     message(STATUS "Uninstall target created")
 endfunction()
 
-# Install development headers if requested
+# FIXED: Install development headers if requested - simplified without CMake export
 function(install_development_files)
     if(NOT ALARIS_INSTALL_DEVELOPMENT)
         return()
@@ -480,41 +480,32 @@ function(install_development_files)
             DESTINATION "${ALARIS_INSTALL_INCLUDEDIR}"
             COMPONENT Development)
     
-    # Install CMake config files for find_package support
-    set(CONFIG_CONTENT "
-# Alaris CMake Configuration File
+    # Create a simple find script instead of CMake config
+    set(FIND_SCRIPT_CONTENT "#!/bin/bash
+# Simple Alaris library finder script
+# Use this instead of find_package(Alaris) due to external dependency complexity
 
-set(Alaris_VERSION ${PROJECT_VERSION})
-set(Alaris_FOUND TRUE)
+ALARIS_INSTALL_PREFIX=\"${CMAKE_INSTALL_PREFIX}\"
+ALARIS_INCLUDE_DIR=\"\${ALARIS_INSTALL_PREFIX}/${ALARIS_INSTALL_INCLUDEDIR}\"
+ALARIS_LIBRARY_DIR=\"\${ALARIS_INSTALL_PREFIX}/${ALARIS_INSTALL_LIBDIR}\"
+ALARIS_LIBRARY=\"\${ALARIS_LIBRARY_DIR}/libquantlib.a\"
 
-# Import targets
-include(\"\${CMAKE_CURRENT_LIST_DIR}/AlarisTargets.cmake\")
-
-# Set convenience variables
-set(Alaris_LIBRARIES Alaris::quantlib)
-set(Alaris_INCLUDE_DIRS \"\${CMAKE_CURRENT_LIST_DIR}/../../../${ALARIS_INSTALL_INCLUDEDIR}\")
+echo \"Alaris Installation Found:\"
+echo \"  Include: \$ALARIS_INCLUDE_DIR\"
+echo \"  Library: \$ALARIS_LIBRARY\"
+echo
+echo \"To use in your CMake project:\"
+echo \"  target_include_directories(your_target PRIVATE \$ALARIS_INCLUDE_DIR)\"
+echo \"  target_link_libraries(your_target PRIVATE \$ALARIS_LIBRARY)\"
+echo \"  # Plus link QuantLib and yaml-cpp as needed\"
 ")
     
-    file(WRITE "${CMAKE_BINARY_DIR}/AlarisConfig.cmake" "${CONFIG_CONTENT}")
+    file(WRITE "${CMAKE_BINARY_DIR}/find-alaris.sh" "${FIND_SCRIPT_CONTENT}")
     
-    install(FILES "${CMAKE_BINARY_DIR}/AlarisConfig.cmake"
-            DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/Alaris"
-            COMPONENT Development)
-    
-    # Export targets
-    install(EXPORT AlarisTargets
-            FILE AlarisTargets.cmake
-            NAMESPACE Alaris::
-            DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/Alaris"
-            COMPONENT Development)
-    
-    # Add targets to export
-    install(TARGETS quantlib
-            EXPORT AlarisTargets
-            ARCHIVE DESTINATION ${ALARIS_INSTALL_LIBDIR}
-            LIBRARY DESTINATION ${ALARIS_INSTALL_LIBDIR}
-            INCLUDES DESTINATION ${ALARIS_INSTALL_INCLUDEDIR}
-            COMPONENT Development)
+    install(PROGRAMS "${CMAKE_BINARY_DIR}/find-alaris.sh"
+            DESTINATION "${ALARIS_INSTALL_BINDIR}"
+            COMPONENT Development
+            RENAME "find-alaris.sh")
     
     message(STATUS "Deployment: Development files configured for installation")
 endfunction()
