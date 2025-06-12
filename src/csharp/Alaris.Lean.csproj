@@ -10,7 +10,6 @@
     <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
     <RetainVMGarbageCollection>true</RetainVMGarbageCollection>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <!-- Add this to ensure the config files are found relative to the source -->
     <BaseOutputPath>bin</BaseOutputPath>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
   </PropertyGroup>
@@ -18,7 +17,7 @@
   <PropertyGroup Condition="'$(Configuration)'=='Release'">
     <Optimize>true</Optimize>
     <DebugType>portable</DebugType>
-    <DebugSymbols>true</DebugSymbols> <!-- Changed to true for better release debugging -->
+    <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Debug'">
@@ -28,19 +27,23 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Existing Lean Packages -->
+    <!-- Lean Packages -->
     <PackageReference Include="QuantConnect.Lean" Version="2.5.16910" />
     <PackageReference Include="QuantConnect.Brokerages.InteractiveBrokers" Version="2.5.16910" />
     
-    <!-- Added Packages for YAML and JSON configuration parsing -->
+    <!-- Packages for YAML and JSON configuration parsing -->
     <PackageReference Include="YamlDotNet" Version="15.1.2" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
 
     <!-- System.CommandLine is used for robust argument parsing -->
     <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
 
-    <!-- This package is implicitly required for MemoryMappedFiles on some platforms -->
-    <PackageReference Include="System.IO.MemoryMappedFiles" Version="8.0.0" />
+    <!-- 
+      REMOVED: The explicit reference to System.IO.MemoryMappedFiles.
+      This functionality is built into the .NET 9 SDK and is no longer needed
+      as a separate package. Keeping it causes the NU1102 version conflict error.
+    -->
+    <!-- <PackageReference Include="System.IO.MemoryMappedFiles" Version="8.0.0" /> -->
   </ItemGroup>
 
   <ItemGroup>
