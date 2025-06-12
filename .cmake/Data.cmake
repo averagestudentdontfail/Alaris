@@ -1,60 +1,396 @@
 # .cmake/Data.cmake
-# Unified data management for Alaris trading system
+# IBKR-Integrated Data Management for Alaris Trading System
 
-# PRODUCTION-FIRST PHILOSOPHY: Default to production-ready configuration
+# PRODUCTION-FIRST PHILOSOPHY: Default to IBKR real data
 # Synthetic data generation exists purely for development and testing workflows
 
-# Data configuration options - UPDATED: Production-first defaults
-option(ALARIS_DOWNLOAD_DATA "Download essential market data during build" ON)
-option(ALARIS_MINIMAL_DATA "Use minimal data set (faster builds)" OFF)  # Changed: Full data by default
-option(ALARIS_CREATE_SAMPLE_DATA "Create sample historical data for backtesting" OFF)  # Changed: No synthetic data by default
-option(ALARIS_AUTO_SETUP_DATA "Automatically set up data during build process" ON)  # CHANGED: Enable by default to avoid warnings
-option(ALARIS_DEVELOPMENT_MODE "Enable development-friendly defaults (synthetic data, etc.)" OFF)  # New option
+# Data configuration options - UPDATED: IBKR-first approach
+option(ALARIS_USE_IBKR_DATA "Use Interactive Brokers for data (production)" ON)
+option(ALARIS_DOWNLOAD_HISTORICAL "Download historical data via IBKR API" ON)
+option(ALARIS_ENABLE_REALTIME "Enable real-time data streaming via IBKR API" ON)
+option(ALARIS_MINIMAL_DATA "Use minimal data set (faster setup)" OFF)
+option(ALARIS_CREATE_SAMPLE_DATA "Create synthetic data for development" OFF)
+option(ALARIS_AUTO_SETUP_DATA "Automatically set up data during build process" ON)
+option(ALARIS_DEVELOPMENT_MODE "Enable development-friendly defaults" OFF)
 
-# Development mode overrides - when enabled, switches to development-friendly defaults
+# Development mode overrides - when enabled, falls back to synthetic data
 if(ALARIS_DEVELOPMENT_MODE)
-    set(ALARIS_MINIMAL_DATA ON CACHE BOOL "Use minimal data set for development" FORCE)
+    set(ALARIS_USE_IBKR_DATA OFF CACHE BOOL "Disable IBKR for development" FORCE)
     set(ALARIS_CREATE_SAMPLE_DATA ON CACHE BOOL "Create sample data for development" FORCE)
     set(ALARIS_AUTO_SETUP_DATA ON CACHE BOOL "Auto-setup for development" FORCE)
-    message(STATUS "Data: Development mode enabled - using development-friendly defaults")
+    message(STATUS "Data: Development mode enabled - using synthetic data instead of IBKR")
 endif()
 
-# Data URLs and sources
-set(LEAN_DATA_BASE_URL "https://raw.githubusercontent.com/QuantConnect/Lean/master/Data")
+# IBKR Configuration
+set(IBKR_GATEWAY_HOST "127.0.0.1")
+set(IBKR_GATEWAY_PORT_PAPER "4002")
+set(IBKR_GATEWAY_PORT_LIVE "4001")
+set(IBKR_CLIENT_ID "999")  # Unique client ID for data operations
 
-# Define essential data files
-set(ESSENTIAL_DATA_FILES
-    "market-hours/market-hours-database.json"
-    "symbol-properties/symbol-properties-database.csv"
+# Data resolution configuration
+set(BACKTEST_RESOLUTION "1 day")
+set(BACKTEST_DURATION "1 Y")           # 1 year for backtesting
+set(FORWARD_TEST_RESOLUTION "1 sec")   # 1 second for forward testing
+set(FORWARD_TEST_DURATION "1 D")       # 1 day buffer for real-time
+
+# UPDATED: Professional symbol universe (25 symbols across sectors)
+set(PRODUCTION_SYMBOLS_ETFS
+    "SPY"   # SPDR S&P 500 ETF Trust
+    "QQQ"   # Invesco QQQ Trust (NASDAQ)
+    "IWM"   # iShares Russell 2000 ETF
+    "EFA"   # iShares MSCI EAFE ETF (International)
+    "VTI"   # Vanguard Total Stock Market ETF
 )
 
-# Define essential symbols for minimal setup (development)
+set(PRODUCTION_SYMBOLS_TECH
+    "AAPL"  # Apple Inc.
+    "MSFT"  # Microsoft Corporation
+    "GOOGL" # Alphabet Inc. Class A
+    "AMZN"  # Amazon.com Inc.
+    "NVDA"  # NVIDIA Corporation
+)
+
+set(PRODUCTION_SYMBOLS_FINANCIAL
+    "JPM"   # JPMorgan Chase & Co.
+    "BAC"   # Bank of America Corp.
+    "WFC"   # Wells Fargo & Company
+    "GS"    # The Goldman Sachs Group
+    "MS"    # Morgan Stanley
+)
+
+set(PRODUCTION_SYMBOLS_ENERGY
+    "XOM"   # Exxon Mobil Corporation
+    "CVX"   # Chevron Corporation
+    "COP"   # ConocoPhillips
+    "EOG"   # EOG Resources Inc.
+    "SLB"   # Schlumberger Limited
+)
+
+set(PRODUCTION_SYMBOLS_HEALTHCARE
+    "JNJ"   # Johnson & Johnson
+    "PFE"   # Pfizer Inc.
+    "UNH"   # UnitedHealth Group Inc.
+    "ABBV"  # AbbVie Inc.
+    "MRK"   # Merck & Co. Inc.
+)
+
+# Combine all production symbols
+set(PRODUCTION_SYMBOLS
+    ${PRODUCTION_SYMBOLS_ETFS}
+    ${PRODUCTION_SYMBOLS_TECH}
+    ${PRODUCTION_SYMBOLS_FINANCIAL}
+    ${PRODUCTION_SYMBOLS_ENERGY}
+    ${PRODUCTION_SYMBOLS_HEALTHCARE}
+)
+
+# Essential symbols for minimal setup (development)
 set(ESSENTIAL_SYMBOLS
     "SPY"   # S&P 500 ETF
     "QQQ"   # NASDAQ ETF
-    "IWM"   # Russell 2000 ETF
-    "AAPL"  # Major individual stock
-    "MSFT"  # Major individual stock
-)
-
-# Production symbol universe (broader coverage)
-set(PRODUCTION_SYMBOLS
-    # Core ETFs
-    "SPY" "QQQ" "IWM" "EFA" "EEM" "TLT" "GLD" "VIX" "IVV" "VOO"
-    # Major Tech
-    "AAPL" "MSFT" "GOOGL" "AMZN" "TSLA" "META" "NVDA" "ORCL"
-    # Major Financial/Industrial
-    "JPM" "JNJ" "V" "PG" "UNH" "HD" "MA" "BAC"
-    # Additional liquid names for options
-    "XLF" "XLE" "XLK" "XLV" "XLI" "XLP" "XLU" "XLRE"
+    "AAPL"  # Major tech stock
+    "JPM"   # Major financial
+    "XOM"   # Major energy
 )
 
 # Global variables for data paths
 set(ALARIS_DATA_DIR "${CMAKE_BINARY_DIR}/data")
 set(ALARIS_RESULTS_DIR "${CMAKE_BINARY_DIR}/results")
 set(ALARIS_CACHE_DIR "${CMAKE_BINARY_DIR}/cache")
+set(ALARIS_IBKR_DATA_DIR "${ALARIS_DATA_DIR}/ibkr")
 
-# Function to create data directory structure
+# Function to create IBKR data fetcher Python script
+function(create_ibkr_data_fetcher)
+    set(IBKR_FETCHER_SCRIPT "${CMAKE_BINARY_DIR}/fetch_ibkr_data.py")
+    
+    set(FETCHER_CONTENT "#!/usr/bin/env python3
+\"\"\"
+Alaris IBKR Data Fetcher
+Automatically downloads historical data and sets up real-time streaming
+\"\"\"
+
+import os
+import sys
+import time
+import logging
+import argparse
+from datetime import datetime, timedelta
+from typing import List, Dict
+import threading
+import queue
+
+try:
+    from ib_insync import IB, Stock, Contract, util
+    import pandas as pd
+except ImportError:
+    print(\"Error: Required packages not installed\")
+    print(\"Install with: pip install ib_insync pandas\")
+    sys.exit(1)
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+class AlarisIBKRDataFetcher:
+    def __init__(self, host='${IBKR_GATEWAY_HOST}', port=${IBKR_GATEWAY_PORT_PAPER}, client_id=${IBKR_CLIENT_ID}):
+        self.ib = IB()
+        self.host = host
+        self.port = port
+        self.client_id = client_id
+        self.data_dir = '${ALARIS_IBKR_DATA_DIR}'
+        self.connected = False
+        
+        # Symbol configuration
+        self.symbols = [
+            # ETFs
+            'SPY', 'QQQ', 'IWM', 'EFA', 'VTI',
+            # Tech
+            'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 
+            # Financial
+            'JPM', 'BAC', 'WFC', 'GS', 'MS',
+            # Energy  
+            'XOM', 'CVX', 'COP', 'EOG', 'SLB',
+            # Healthcare
+            'JNJ', 'PFE', 'UNH', 'ABBV', 'MRK'
+        ]
+        
+        # Create data directories
+        os.makedirs(self.data_dir, exist_ok=True)
+        os.makedirs(f'{self.data_dir}/historical', exist_ok=True)
+        os.makedirs(f'{self.data_dir}/realtime', exist_ok=True)
+        
+    def connect(self) -> bool:
+        \"\"\"Connect to IB Gateway\"\"\"
+        try:
+            self.ib.connect(self.host, self.port, clientId=self.client_id, timeout=30)
+            self.connected = True
+            logger.info(f\"Connected to IB Gateway at {self.host}:{self.port}\")
+            return True
+        except Exception as e:
+            logger.error(f\"Failed to connect to IB Gateway: {e}\")
+            logger.error(\"Make sure IB Gateway is running and configured for API access\")
+            return False
+    
+    def disconnect(self):
+        \"\"\"Disconnect from IB Gateway\"\"\"
+        if self.connected:
+            self.ib.disconnect()
+            self.connected = False
+            logger.info(\"Disconnected from IB Gateway\")
+    
+    def create_contract(self, symbol: str) -> Contract:
+        \"\"\"Create stock contract for symbol\"\"\"
+        return Stock(symbol, 'SMART', 'USD')
+    
+    def fetch_historical_data(self, mode='backtest') -> bool:
+        \"\"\"Fetch historical data for all symbols\"\"\"
+        if not self.connected:
+            logger.error(\"Not connected to IB Gateway\")
+            return False
+        
+        # Configure based on mode
+        if mode == 'backtest':
+            duration = '${BACKTEST_DURATION}'
+            bar_size = '${BACKTEST_RESOLUTION}'
+            what_to_show = 'TRADES'
+        else:  # forward test
+            duration = '${FORWARD_TEST_DURATION}' 
+            bar_size = '${FORWARD_TEST_RESOLUTION}'
+            what_to_show = 'TRADES'
+        
+        logger.info(f\"Fetching historical data ({mode} mode): {duration} of {bar_size} bars\")
+        
+        successful_downloads = 0
+        total_symbols = len(self.symbols)
+        
+        for i, symbol in enumerate(self.symbols, 1):
+            try:
+                logger.info(f\"[{i}/{total_symbols}] Fetching {symbol}...\")
+                
+                contract = self.create_contract(symbol)
+                
+                # Request historical data with rate limiting
+                bars = self.ib.reqHistoricalData(
+                    contract,
+                    endDateTime='',
+                    durationStr=duration,
+                    barSizeSetting=bar_size,
+                    whatToShow=what_to_show,
+                    useRTH=True,
+                    formatDate=1
+                )
+                
+                if bars:
+                    # Convert to DataFrame
+                    df = util.df(bars)
+                    
+                    # Save to CSV in Lean format
+                    filename = f\"{self.data_dir}/historical/{symbol.lower()}_{mode}.csv\"
+                    
+                    # Format for QuantConnect Lean: DateTime,Open,High,Low,Close,Volume
+                    df_lean = df[['date', 'open', 'high', 'low', 'close', 'volume']].copy()
+                    df_lean['date'] = pd.to_datetime(df_lean['date']).dt.strftime('%Y%m%d %H:%M')
+                    
+                    df_lean.to_csv(filename, index=False, header=False)
+                    
+                    logger.info(f\"✓ {symbol}: {len(df)} bars saved to {filename}\")
+                    successful_downloads += 1
+                    
+                    # Rate limiting - IBKR allows max 60 requests per 10 minutes
+                    if i < total_symbols:  # Don't sleep after last symbol
+                        time.sleep(10.5)  # 10.5 seconds between requests = ~57 requests per 10 minutes
+                        
+                else:
+                    logger.warning(f\"✗ {symbol}: No data received\")
+                    
+            except Exception as e:
+                logger.error(f\"✗ {symbol}: Error fetching data - {e}\")
+                continue
+        
+        logger.info(f\"Historical data fetch complete: {successful_downloads}/{total_symbols} symbols\")
+        return successful_downloads > 0
+    
+    def setup_realtime_streaming(self) -> bool:
+        \"\"\"Set up real-time data streaming\"\"\"
+        if not self.connected:
+            logger.error(\"Not connected to IB Gateway\") 
+            return False
+        
+        logger.info(\"Setting up real-time data streaming...\")
+        
+        # Subscribe to real-time data for all symbols
+        contracts = []
+        for symbol in self.symbols:
+            contract = self.create_contract(symbol)
+            contracts.append(contract)
+            
+            # Request market data
+            self.ib.reqMktData(contract, '', False, False)
+            logger.info(f\"✓ Subscribed to real-time data for {symbol}\")
+        
+        # Set up tick data handler
+        def on_tick_data(ticker):
+            \"\"\"Handle incoming tick data\"\"\"
+            try:
+                symbol = ticker.contract.symbol
+                timestamp = datetime.now().strftime('%Y%m%d %H:%M:%S')
+                
+                # Save tick data to CSV
+                tick_file = f\"{self.data_dir}/realtime/{symbol.lower()}_ticks.csv\"
+                
+                with open(tick_file, 'a') as f:
+                    f.write(f\"{timestamp},{ticker.last},{ticker.bid},{ticker.ask},{ticker.volume}\\n\")
+                    
+            except Exception as e:
+                logger.error(f\"Error handling tick data: {e}\")
+        
+        # Register tick handler
+        self.ib.pendingTickersEvent += on_tick_data
+        
+        logger.info(f\"Real-time streaming active for {len(self.symbols)} symbols\")
+        logger.info(\"Tick data will be saved to: {}/realtime/\".format(self.data_dir))
+        
+        return True
+    
+    def create_lean_data_structure(self):
+        \"\"\"Create QuantConnect Lean compatible data structure\"\"\"
+        logger.info(\"Creating Lean-compatible data structure...\")
+        
+        lean_data_dir = '${ALARIS_DATA_DIR}/equity/usa/daily'
+        os.makedirs(lean_data_dir, exist_ok=True)
+        
+        for symbol in self.symbols:
+            symbol_lower = symbol.lower()
+            symbol_dir = f\"{lean_data_dir}/{symbol_lower}\"
+            os.makedirs(symbol_dir, exist_ok=True)
+            
+            # Copy historical data to Lean format
+            historical_file = f\"{self.data_dir}/historical/{symbol_lower}_backtest.csv\"
+            if os.path.exists(historical_file):
+                lean_file = f\"{symbol_dir}/20230101_20241231_trade.csv\"
+                
+                # Read and reformat for Lean
+                df = pd.read_csv(historical_file, header=None, 
+                               names=['date', 'open', 'high', 'low', 'close', 'volume'])
+                
+                # Ensure Lean format: YYYYMMDD HH:MM,O,H,L,C,V
+                df.to_csv(lean_file, index=False, header=False)
+                logger.info(f\"✓ Created Lean data file: {lean_file}\")
+        
+        logger.info(\"Lean data structure created successfully\")
+
+def main():
+    parser = argparse.ArgumentParser(description='Alaris IBKR Data Fetcher')
+    parser.add_argument('--mode', choices=['backtest', 'forward', 'realtime'], 
+                       default='backtest', help='Data fetching mode')
+    parser.add_argument('--host', default='${IBKR_GATEWAY_HOST}', 
+                       help='IB Gateway host')
+    parser.add_argument('--port', type=int, default=${IBKR_GATEWAY_PORT_PAPER}, 
+                       help='IB Gateway port')
+    parser.add_argument('--duration', type=int, default=300, 
+                       help='Real-time streaming duration (seconds)')
+    
+    args = parser.parse_args()
+    
+    fetcher = AlarisIBKRDataFetcher(args.host, args.port)
+    
+    try:
+        if not fetcher.connect():
+            logger.error(\"Failed to connect to IB Gateway\")
+            logger.error(\"Please ensure:\")
+            logger.error(\"1. IB Gateway is running\")
+            logger.error(\"2. API access is enabled\")
+            logger.error(\"3. Port configuration is correct\")
+            return 1
+        
+        if args.mode in ['backtest', 'forward']:
+            # Fetch historical data
+            success = fetcher.fetch_historical_data(args.mode)
+            if success:
+                fetcher.create_lean_data_structure()
+                logger.info(f\"✓ Historical data fetch completed successfully ({args.mode} mode)\")
+            else:
+                logger.error(\"Historical data fetch failed\")
+                return 1
+                
+        elif args.mode == 'realtime':
+            # Set up real-time streaming
+            if fetcher.setup_realtime_streaming():
+                logger.info(f\"Real-time streaming for {args.duration} seconds...\")
+                time.sleep(args.duration)
+                logger.info(\"Real-time streaming completed\")
+            else:
+                logger.error(\"Failed to set up real-time streaming\")
+                return 1
+        
+    except KeyboardInterrupt:
+        logger.info(\"Interrupted by user\")
+    except Exception as e:
+        logger.error(f\"Unexpected error: {e}\")
+        return 1
+    finally:
+        fetcher.disconnect()
+    
+    return 0
+
+if __name__ == '__main__':
+    sys.exit(main())
+")
+    
+    file(WRITE "${IBKR_FETCHER_SCRIPT}" "${FETCHER_CONTENT}")
+    
+    # Make script executable
+    execute_process(
+        COMMAND chmod +x "${IBKR_FETCHER_SCRIPT}"
+        ERROR_QUIET
+    )
+    
+    message(STATUS "Data: Created IBKR data fetcher: ${IBKR_FETCHER_SCRIPT}")
+endfunction()
+
+# Function to create directory structure with IBKR support
 function(create_data_directories)
     set(DATA_DIRS
         "${ALARIS_DATA_DIR}"
@@ -64,6 +400,9 @@ function(create_data_directories)
         "${ALARIS_DATA_DIR}/equity/usa/factor_files"
         "${ALARIS_DATA_DIR}/equity/usa/daily"
         "${ALARIS_DATA_DIR}/option/usa"
+        "${ALARIS_IBKR_DATA_DIR}"
+        "${ALARIS_IBKR_DATA_DIR}/historical"
+        "${ALARIS_IBKR_DATA_DIR}/realtime"
         "${ALARIS_RESULTS_DIR}"
         "${ALARIS_CACHE_DIR}"
     )
@@ -72,58 +411,32 @@ function(create_data_directories)
         file(MAKE_DIRECTORY "${dir}")
     endforeach()
     
-    message(STATUS "Data: Created directory structure")
+    message(STATUS "Data: Created directory structure with IBKR support")
 endfunction()
 
-# Function to download a file with error handling
-function(download_file_safe URL OUTPUT_PATH DESCRIPTION)
-    # Skip if file exists
-    if(EXISTS "${OUTPUT_PATH}")
-        message(STATUS "Data: ${DESCRIPTION} already exists")
-        return()
-    endif()
-    
-    message(STATUS "Data: Downloading ${DESCRIPTION}...")
-    
-    file(DOWNLOAD "${URL}" "${OUTPUT_PATH}"
-         SHOW_PROGRESS
-         STATUS download_status
-         TIMEOUT 30)
-    
-    list(GET download_status 0 status_code)
-    list(GET download_status 1 status_message)
-    
-    if(status_code EQUAL 0)
-        message(STATUS "Data: ✓ ${DESCRIPTION} downloaded successfully")
-    else()
-        message(WARNING "Data: Failed to download ${DESCRIPTION}: ${status_message}")
-        message(STATUS "Data: Manual download URL: ${URL}")
-        # Create a placeholder file so validation doesn't fail
-        file(WRITE "${OUTPUT_PATH}" "# Placeholder - download failed\n# Manual download from: ${URL}\n")
-    endif()
-endfunction()
-
-# Function to create lean.json configuration
+# Function to create enhanced lean.json with IBKR integration
 function(create_lean_config_file)
     set(LEAN_CONFIG_PATH "${CMAKE_BINARY_DIR}/lean.json")
     
-    # Skip if file exists
-    if(EXISTS "${LEAN_CONFIG_PATH}")
+    # Skip if file exists and is not in development mode
+    if(EXISTS "${LEAN_CONFIG_PATH}" AND NOT ALARIS_DEVELOPMENT_MODE)
         message(STATUS "Data: lean.json already exists")
         return()
     endif()
     
-    # Different configurations for development vs production
-    if(ALARIS_DEVELOPMENT_MODE OR ALARIS_CREATE_SAMPLE_DATA)
-        set(CONFIG_COMMENT "Alaris Trading System - Development Configuration")
-        set(DEBUG_MODE "true")
-        set(LOG_LEVEL "Debug")
-        set(SHOW_MISSING_DATA "true")
-    else()
-        set(CONFIG_COMMENT "Alaris Trading System - Production Configuration")
+    # Configuration based on data source
+    if(ALARIS_USE_IBKR_DATA)
+        set(CONFIG_COMMENT "Alaris Trading System - IBKR Production Configuration")
         set(DEBUG_MODE "false")
         set(LOG_LEVEL "Info")
-        set(SHOW_MISSING_DATA "false")
+        set(DATA_FEED_HANDLER "QuantConnect.Brokerages.InteractiveBrokers.InteractiveBrokersDataQueueHandler")
+        set(BROKERAGE_NAME "InteractiveBrokersBrokerage")
+    else()
+        set(CONFIG_COMMENT "Alaris Trading System - Development Configuration")
+        set(DEBUG_MODE "true") 
+        set(LOG_LEVEL "Debug")
+        set(DATA_FEED_HANDLER "QuantConnect.Lean.Engine.DataFeeds.FileSystemDataFeed")
+        set(BROKERAGE_NAME "PaperTradingBrokerage")
     endif()
     
     set(LEAN_CONFIG_CONTENT "{
@@ -134,7 +447,7 @@ function(create_lean_config_file)
   \"algorithm-location\": \"${CMAKE_BINARY_DIR}/csharp/Alaris.Lean.dll\",
   
   \"data-directory\": \"${ALARIS_DATA_DIR}/\",
-  \"cache-location\": \"${ALARIS_CACHE_DIR}/\", 
+  \"cache-location\": \"${ALARIS_CACHE_DIR}/\",
   \"results-destination-folder\": \"${ALARIS_RESULTS_DIR}/\",
   
   \"log-handler\": \"QuantConnect.Logging.CompositeLogHandler\",
@@ -151,21 +464,21 @@ function(create_lean_config_file)
   
   \"debug-mode\": ${DEBUG_MODE},
   \"log-level\": \"${LOG_LEVEL}\",
-  \"show-missing-data-logs\": ${SHOW_MISSING_DATA},
+  \"show-missing-data-logs\": true,
   
   \"maximum-data-points-per-chart-series\": 100000,
   \"maximum-chart-series\": 30,
   \"maximum-runtime-minutes\": 0,
   \"maximum-orders\": 0,
-  \"force-exchange-always-open\": true,
-  \"enable-automatic-indicator-warm-up\": false,
+  \"force-exchange-always-open\": false,
+  \"enable-automatic-indicator-warm-up\": true,
   
   \"environments\": {
     \"backtesting\": {
       \"live-mode\": false,
       \"setup-handler\": \"QuantConnect.Lean.Engine.Setup.ConsoleSetupHandler\",
       \"result-handler\": \"QuantConnect.Lean.Engine.Results.BacktestingResultHandler\",
-      \"data-feed-handler\": \"QuantConnect.Lean.Engine.DataFeeds.FileSystemDataFeed\", 
+      \"data-feed-handler\": \"${DATA_FEED_HANDLER}\",
       \"real-time-handler\": \"QuantConnect.Lean.Engine.RealTime.BacktestingRealTimeHandler\",
       \"history-provider\": \"QuantConnect.Lean.Engine.HistoryProvider.SubscriptionDataReaderHistoryProvider\",
       \"transaction-handler\": \"QuantConnect.Lean.Engine.TransactionHandlers.BacktestingTransactionHandler\"
@@ -176,27 +489,31 @@ function(create_lean_config_file)
       \"setup-handler\": \"QuantConnect.Lean.Engine.Setup.BrokerageSetupHandler\",
       \"result-handler\": \"QuantConnect.Lean.Engine.Results.LiveTradingResultHandler\",
       \"data-feed-handler\": \"QuantConnect.Lean.Engine.DataFeeds.LiveTradingDataFeed\",
-      \"real-time-handler\": \"QuantConnect.Lean.Engine.RealTime.LiveTradingRealTimeHandler\", 
+      \"real-time-handler\": \"QuantConnect.Lean.Engine.RealTime.LiveTradingRealTimeHandler\",
       \"transaction-handler\": \"QuantConnect.Lean.Engine.TransactionHandlers.BrokerageTransactionHandler\",
       
-      \"live-mode-brokerage\": \"InteractiveBrokersBrokerage\",
+      \"live-mode-brokerage\": \"${BROKERAGE_NAME}\",
       \"data-queue-handler\": \"QuantConnect.Brokerages.InteractiveBrokers.InteractiveBrokersDataQueueHandler\",
       \"ib-account\": \"DU123456\",
       \"ib-user-name\": \"\",
       \"ib-password\": \"\",
-      \"ib-host\": \"127.0.0.1\",
-      \"ib-port\": \"4002\", 
+      \"ib-host\": \"${IBKR_GATEWAY_HOST}\",
+      \"ib-port\": \"${IBKR_GATEWAY_PORT_PAPER}\",
       \"ib-agent-description\": \"Individual\"
     }
   },
   
   \"job-user-id\": \"1\",
-  \"job-project-id\": \"1\",
+  \"job-project-id\": \"1\",  
   \"job-organization-id\": \"1\",
   \"api-access-token\": \"\",
   
   \"alaris\": {
-    \"mode\": \"${ALARIS_DEVELOPMENT_MODE}_development\",
+    \"mode\": \"${ALARIS_USE_IBKR_DATA}_production\",
+    \"data-source\": \"${ALARIS_USE_IBKR_DATA}\",
+    \"backtest-resolution\": \"${BACKTEST_RESOLUTION}\",
+    \"forward-test-resolution\": \"${FORWARD_TEST_RESOLUTION}\",
+    \"symbol-universe\": \"professional_25\",
     \"quantlib-process\": {
       \"enabled\": true,
       \"shared-memory-prefix\": \"alaris\",
@@ -212,24 +529,88 @@ function(create_lean_config_file)
         \"max-daily-loss\": 0.02,
         \"max-position-size\": 0.05
       }
+    },
+    \"ibkr\": {
+      \"gateway-host\": \"${IBKR_GATEWAY_HOST}\",
+      \"paper-port\": ${IBKR_GATEWAY_PORT_PAPER},
+      \"live-port\": ${IBKR_GATEWAY_PORT_LIVE},
+      \"client-id\": ${IBKR_CLIENT_ID},
+      \"data-directory\": \"${ALARIS_IBKR_DATA_DIR}\"
     }
   }
 }")
 
     file(WRITE "${LEAN_CONFIG_PATH}" "${LEAN_CONFIG_CONTENT}")
-    message(STATUS "Data: ✓ lean.json configuration created (${CONFIG_COMMENT})")
+    
+    if(ALARIS_USE_IBKR_DATA)
+        message(STATUS "Data: ✓ lean.json configuration created for IBKR production")
+    else()
+        message(STATUS "Data: ✓ lean.json configuration created for development mode")
+    endif()
 endfunction()
 
-# Function to create map files for symbols
-function(create_map_files)
-    # Select symbol set based on configuration
-    if(ALARIS_MINIMAL_DATA)
-        set(SYMBOLS_TO_PROCESS ${ESSENTIAL_SYMBOLS})
-        set(MODE_DESC "minimal")
-    else()
-        set(SYMBOLS_TO_PROCESS ${PRODUCTION_SYMBOLS})
-        set(MODE_DESC "production")
+# Function to create symbol properties with all 25 symbols
+function(create_symbol_properties_database)
+    set(SYMBOL_PROPS_PATH "${ALARIS_DATA_DIR}/symbol-properties/security-database.csv")
+    
+    # Skip if file exists
+    if(EXISTS "${SYMBOL_PROPS_PATH}")
+        message(STATUS "Data: security-database.csv already exists")
+        return()
     endif()
+    
+    set(SYMBOL_PROPS_HEADER "Symbol,Market,SecurityType,Name,LotSize,MinimumPriceVariation,PriceMagnifier")
+    
+    # Enhanced symbol name mappings for all 25 symbols
+    set(SYMBOL_NAMES_SPY "SPDR S&P 500 ETF Trust")
+    set(SYMBOL_NAMES_QQQ "Invesco QQQ Trust")
+    set(SYMBOL_NAMES_IWM "iShares Russell 2000 ETF")
+    set(SYMBOL_NAMES_EFA "iShares MSCI EAFE ETF")
+    set(SYMBOL_NAMES_VTI "Vanguard Total Stock Market ETF")
+    set(SYMBOL_NAMES_AAPL "Apple Inc.")
+    set(SYMBOL_NAMES_MSFT "Microsoft Corporation")
+    set(SYMBOL_NAMES_GOOGL "Alphabet Inc. Class A")
+    set(SYMBOL_NAMES_AMZN "Amazon.com Inc.")
+    set(SYMBOL_NAMES_NVDA "NVIDIA Corporation")
+    set(SYMBOL_NAMES_JPM "JPMorgan Chase & Co.")
+    set(SYMBOL_NAMES_BAC "Bank of America Corp.")
+    set(SYMBOL_NAMES_WFC "Wells Fargo & Company")
+    set(SYMBOL_NAMES_GS "The Goldman Sachs Group")
+    set(SYMBOL_NAMES_MS "Morgan Stanley")
+    set(SYMBOL_NAMES_XOM "Exxon Mobil Corporation")
+    set(SYMBOL_NAMES_CVX "Chevron Corporation")
+    set(SYMBOL_NAMES_COP "ConocoPhillips")
+    set(SYMBOL_NAMES_EOG "EOG Resources Inc.")
+    set(SYMBOL_NAMES_SLB "Schlumberger Limited")
+    set(SYMBOL_NAMES_JNJ "Johnson & Johnson")
+    set(SYMBOL_NAMES_PFE "Pfizer Inc.")
+    set(SYMBOL_NAMES_UNH "UnitedHealth Group Inc.")
+    set(SYMBOL_NAMES_ABBV "AbbVie Inc.")
+    set(SYMBOL_NAMES_MRK "Merck & Co. Inc.")
+    
+    set(SYMBOL_PROPS_CONTENT "${SYMBOL_PROPS_HEADER}\n")
+    
+    foreach(symbol ${PRODUCTION_SYMBOLS})
+        set(symbol_name_var "SYMBOL_NAMES_${symbol}")
+        if(DEFINED ${symbol_name_var})
+            set(symbol_name "${${symbol_name_var}}")
+        else()
+            set(symbol_name "${symbol}")
+        endif()
+        
+        string(APPEND SYMBOL_PROPS_CONTENT "${symbol},usa,Equity,${symbol_name},1,0.01,1\n")
+    endforeach()
+    
+    file(WRITE "${SYMBOL_PROPS_PATH}" "${SYMBOL_PROPS_CONTENT}")
+    
+    list(LENGTH PRODUCTION_SYMBOLS symbol_count)
+    message(STATUS "Data: ✓ Created security database with ${symbol_count} professional symbols")
+endfunction()
+
+# Function to create map files for all symbols
+function(create_map_files)
+    # Use all 25 production symbols
+    set(SYMBOLS_TO_PROCESS ${PRODUCTION_SYMBOLS})
     
     foreach(symbol ${SYMBOLS_TO_PROCESS})
         string(TOLOWER "${symbol}" symbol_lower)
@@ -248,100 +629,45 @@ function(create_map_files)
     endforeach()
     
     list(LENGTH SYMBOLS_TO_PROCESS symbol_count)
-    message(STATUS "Data: ✓ Created map and factor files for ${symbol_count} symbols (${MODE_DESC} mode)")
+    message(STATUS "Data: ✓ Created map and factor files for ${symbol_count} symbols")
 endfunction()
 
-# Function to create minimal symbol properties database
-function(create_symbol_properties_database)
-    set(SYMBOL_PROPS_PATH "${ALARIS_DATA_DIR}/symbol-properties/security-database.csv")
-    
-    # Skip if file exists
-    if(EXISTS "${SYMBOL_PROPS_PATH}")
-        message(STATUS "Data: security-database.csv already exists")
+# Function to create synthetic data for development (fallback only)
+function(create_sample_data)
+    if(NOT ALARIS_CREATE_SAMPLE_DATA)
         return()
     endif()
     
-    set(SYMBOL_PROPS_HEADER "Symbol,Market,SecurityType,Name,LotSize,MinimumPriceVariation,PriceMagnifier")
+    message(STATUS "Data: Creating synthetic historical data for development/testing...")
+    message(STATUS "Data: ⚠️  WARNING: This is synthetic data for development only!")
+    message(STATUS "Data: ⚠️  For production, use IBKR data fetching!")
     
-    # Select symbol set based on configuration
-    if(ALARIS_MINIMAL_DATA)
-        set(SYMBOLS_TO_PROCESS ${ESSENTIAL_SYMBOLS})
-    else()
-        set(SYMBOLS_TO_PROCESS ${PRODUCTION_SYMBOLS})
-    endif()
+    # Use essential symbols for development
+    set(SYMBOLS_TO_PROCESS ${ESSENTIAL_SYMBOLS})
     
-    # Enhanced symbol name mappings for production use
-    set(SYMBOL_NAMES_SPY "SPDR S&P 500 ETF Trust")
-    set(SYMBOL_NAMES_QQQ "Invesco QQQ Trust")
-    set(SYMBOL_NAMES_IWM "iShares Russell 2000 ETF")
-    set(SYMBOL_NAMES_EFA "iShares MSCI EAFE ETF")
-    set(SYMBOL_NAMES_EEM "iShares MSCI Emerging Markets ETF")
-    set(SYMBOL_NAMES_TLT "iShares 20+ Year Treasury Bond ETF")
-    set(SYMBOL_NAMES_GLD "SPDR Gold Trust")
-    set(SYMBOL_NAMES_VIX "CBOE Volatility Index")
-    set(SYMBOL_NAMES_AAPL "Apple Inc.")
-    set(SYMBOL_NAMES_MSFT "Microsoft Corporation")
-    set(SYMBOL_NAMES_GOOGL "Alphabet Inc. Class A")
-    set(SYMBOL_NAMES_AMZN "Amazon.com Inc.")
-    set(SYMBOL_NAMES_TSLA "Tesla Inc.")
-    set(SYMBOL_NAMES_META "Meta Platforms Inc.")
-    set(SYMBOL_NAMES_NVDA "NVIDIA Corporation")
-    set(SYMBOL_NAMES_JPM "JPMorgan Chase & Co.")
-    set(SYMBOL_NAMES_JNJ "Johnson & Johnson")
-    set(SYMBOL_NAMES_V "Visa Inc.")
-    set(SYMBOL_NAMES_PG "Procter & Gamble Co.")
-    set(SYMBOL_NAMES_UNH "UnitedHealth Group Inc.")
-    set(SYMBOL_NAMES_HD "The Home Depot Inc.")
-    set(SYMBOL_NAMES_MA "Mastercard Inc.")
-    set(SYMBOL_NAMES_BAC "Bank of America Corp.")
-    set(SYMBOL_NAMES_XLF "Financial Select Sector SPDR Fund")
-    set(SYMBOL_NAMES_XLE "Energy Select Sector SPDR Fund")
-    set(SYMBOL_NAMES_XLK "Technology Select Sector SPDR Fund")
-    set(SYMBOL_NAMES_XLV "Health Care Select Sector SPDR Fund")
-    set(SYMBOL_NAMES_XLI "Industrial Select Sector SPDR Fund")
-    set(SYMBOL_NAMES_XLP "Consumer Staples Select Sector SPDR Fund")
-    set(SYMBOL_NAMES_XLU "Utilities Select Sector SPDR Fund")
-    set(SYMBOL_NAMES_XLRE "Real Estate Select Sector SPDR Fund")
-    
-    set(SYMBOL_PROPS_CONTENT "${SYMBOL_PROPS_HEADER}\n")
-    
+    # Create sample daily data for symbols
     foreach(symbol ${SYMBOLS_TO_PROCESS})
-        set(symbol_name_var "SYMBOL_NAMES_${symbol}")
-        if(DEFINED ${symbol_name_var})
-            set(symbol_name "${${symbol_name_var}}")
-        else()
-            set(symbol_name "${symbol}")
-        endif()
+        string(TOLOWER "${symbol}" symbol_lower)
+        set(sample_data_dir "${ALARIS_DATA_DIR}/equity/usa/daily/${symbol_lower}")
+        file(MAKE_DIRECTORY "${sample_data_dir}")
         
-        string(APPEND SYMBOL_PROPS_CONTENT "${symbol},usa,Equity,${symbol_name},1,0.01,1\n")
+        # Create realistic CSV data that Lean can read
+        set(sample_csv_file "${sample_data_dir}/20240101_20241231_trade.csv")
+        
+        # Generate realistic price data
+        create_realistic_price_data("${sample_csv_file}" "${symbol}")
+        
+        message(STATUS "Data: ✓ Created synthetic data for ${symbol}")
     endforeach()
-    
-    file(WRITE "${SYMBOL_PROPS_PATH}" "${SYMBOL_PROPS_CONTENT}")
     
     list(LENGTH SYMBOLS_TO_PROCESS symbol_count)
-    message(STATUS "Data: ✓ Created security database with ${symbol_count} symbols")
+    message(STATUS "Data: ✓ Created synthetic data for ${symbol_count} symbols")
+    message(STATUS "Data: ⚠️  Remember: This is development data only!")
 endfunction()
 
-# Function to download essential data files
-function(download_essential_data)
-    if(NOT ALARIS_DOWNLOAD_DATA)
-        message(STATUS "Data: Download disabled, skipping...")
-        return()
-    endif()
-    
-    foreach(data_file ${ESSENTIAL_DATA_FILES})
-        set(url "${LEAN_DATA_BASE_URL}/${data_file}")
-        set(output_path "${ALARIS_DATA_DIR}/${data_file}")
-        
-        get_filename_component(file_name "${data_file}" NAME)
-        download_file_safe("${url}" "${output_path}" "${file_name}")
-    endforeach()
-endfunction()
-
-# IMPROVED: Elegant price data generation without complex CMake math
-# Uses predefined patterns and simple string operations instead of floating-point math
+# Function to create realistic price data (unchanged)
 function(create_realistic_price_data OUTPUT_FILE SYMBOL)
-    # Predefined base prices (as strings to avoid CMake math limitations)
+    # Same implementation as before...
     if(SYMBOL STREQUAL "SPY")
         set(BASE_PRICE "400.00")
         set(VOLATILITY "LOW")
@@ -351,23 +677,21 @@ function(create_realistic_price_data OUTPUT_FILE SYMBOL)
     elseif(SYMBOL STREQUAL "AAPL")
         set(BASE_PRICE "180.00")
         set(VOLATILITY "HIGH")
-    elseif(SYMBOL STREQUAL "MSFT")
-        set(BASE_PRICE "370.00")
+    elseif(SYMBOL STREQUAL "JPM")
+        set(BASE_PRICE "150.00")
         set(VOLATILITY "MEDIUM")
-    elseif(SYMBOL STREQUAL "TSLA")
-        set(BASE_PRICE "250.00")
-        set(VOLATILITY "VERY_HIGH")
+    elseif(SYMBOL STREQUAL "XOM")
+        set(BASE_PRICE "110.00")
+        set(VOLATILITY "HIGH")
     else()
         set(BASE_PRICE "100.00")
         set(VOLATILITY "MEDIUM")
     endif()
     
-    # Create simple CSV with realistic data structure for Lean
     set(CSV_CONTENT "")
     
     # Generate approximately 250 trading days for 2024
     foreach(day_num RANGE 1 250)
-        # Simple date calculation
         math(EXPR month_num "(${day_num} / 22) + 1")
         math(EXPR day_in_month "(${day_num} % 22) + 1")
         
@@ -412,197 +736,21 @@ function(create_realistic_price_data OUTPUT_FILE SYMBOL)
     file(WRITE "${OUTPUT_FILE}" "${CSV_CONTENT}")
 endfunction()
 
-# Function to create realistic sample data for backtesting (DEVELOPMENT ONLY)
-function(create_sample_data)
-    if(NOT ALARIS_CREATE_SAMPLE_DATA)
-        return()
-    endif()
-    
-    message(STATUS "Data: Creating synthetic historical data for development/testing...")
-    message(STATUS "Data: ⚠️  WARNING: This is synthetic data for development only!")
-    message(STATUS "Data: ⚠️  Do NOT use synthetic data for production trading!")
-    
-    # Select symbol set based on configuration
-    if(ALARIS_MINIMAL_DATA)
-        set(SYMBOLS_TO_PROCESS ${ESSENTIAL_SYMBOLS})
-    else()
-        set(SYMBOLS_TO_PROCESS ${PRODUCTION_SYMBOLS})
-    endif()
-    
-    # Create sample daily data for symbols
-    foreach(symbol ${SYMBOLS_TO_PROCESS})
-        string(TOLOWER "${symbol}" symbol_lower)
-        set(sample_data_dir "${ALARIS_DATA_DIR}/equity/usa/daily/${symbol_lower}")
-        file(MAKE_DIRECTORY "${sample_data_dir}")
-        
-        # Create realistic CSV data that Lean can read
-        set(sample_csv_file "${sample_data_dir}/20240101_20241231_trade.csv")
-        
-        # Generate realistic price data
-        create_realistic_price_data("${sample_csv_file}" "${symbol}")
-        
-        message(STATUS "Data: ✓ Created synthetic data for ${symbol}")
-    endforeach()
-    
-    list(LENGTH SYMBOLS_TO_PROCESS symbol_count)
-    message(STATUS "Data: ✓ Created synthetic data for ${symbol_count} symbols")
-    message(STATUS "Data: ⚠️  Remember: This is development data only!")
-endfunction()
-
-# IMPROVED: Function to validate data setup with better error handling
-function(validate_data_setup)
-    set(required_files
-        "${CMAKE_BINARY_DIR}/lean.json"
-    )
-    
-    set(required_dirs
-        "${ALARIS_DATA_DIR}"
-        "${ALARIS_DATA_DIR}/equity/usa/map_files"
-        "${ALARIS_DATA_DIR}/equity/usa/factor_files"
-        "${ALARIS_DATA_DIR}/equity/usa/daily"
-        "${ALARIS_RESULTS_DIR}"
-        "${ALARIS_CACHE_DIR}"
-    )
-    
-    # Essential data files (always required)
-    list(APPEND required_files
-        "${ALARIS_DATA_DIR}/symbol-properties/security-database.csv"
-    )
-    
-    # Optional data files that we try to download but don't fail on
-    set(optional_files
-        "${ALARIS_DATA_DIR}/market-hours/market-hours-database.json"
-        "${ALARIS_DATA_DIR}/symbol-properties/symbol-properties-database.csv"
-    )
-    
-    # Check for sample data files if enabled
-    set(required_data_files "")
-    if(ALARIS_CREATE_SAMPLE_DATA)
-        if(ALARIS_MINIMAL_DATA)
-            set(symbols_to_check ${ESSENTIAL_SYMBOLS})
-        else()
-            set(symbols_to_check ${PRODUCTION_SYMBOLS})
-        endif()
-        
-        foreach(symbol ${symbols_to_check})
-            string(TOLOWER "${symbol}" symbol_lower)
-            set(data_file "${ALARIS_DATA_DIR}/equity/usa/daily/${symbol_lower}/20240101_20241231_trade.csv")
-            list(APPEND required_data_files "${data_file}")
-        endforeach()
-    endif()
-    
-    set(missing_files "")
-    set(missing_dirs "")
-    set(missing_data_files "")
-    set(missing_optional_files "")
-    
-    # Check required files
-    foreach(file ${required_files})
-        if(NOT EXISTS "${file}")
-            list(APPEND missing_files "${file}")
-        endif()
-    endforeach()
-    
-    # Check optional files (don't fail, just warn)
-    foreach(file ${optional_files})
-        if(NOT EXISTS "${file}")
-            list(APPEND missing_optional_files "${file}")
-        endif()
-    endforeach()
-    
-    # Check directories
-    foreach(dir ${required_dirs})
-        if(NOT IS_DIRECTORY "${dir}")
-            list(APPEND missing_dirs "${dir}")
-        endif()
-    endforeach()
-    
-    # Check data files
-    foreach(data_file ${required_data_files})
-        if(NOT EXISTS "${data_file}")
-            list(APPEND missing_data_files "${data_file}")
-        endif()
-    endforeach()
-    
-    # Print validation results
-    if(missing_files OR missing_dirs OR missing_data_files)
-        message(WARNING "Data: Validation found missing required components:")
-        foreach(file ${missing_files})
-            message(WARNING "Data:   Missing config file: ${file}")
-        endforeach()
-        foreach(dir ${missing_dirs})
-            message(WARNING "Data:   Missing directory: ${dir}")
-        endforeach()
-        foreach(data_file ${missing_data_files})
-            message(WARNING "Data:   Missing data file: ${data_file}")
-        endforeach()
-        
-        if(ALARIS_CREATE_SAMPLE_DATA)
-            message(WARNING "Data: Run 'cmake --build . --target setup-data' to create synthetic data")
-        else()
-            message(STATUS "Data: Production mode - connect real data sources or enable development mode")
-            message(STATUS "Data: For development: cmake -DALARIS_DEVELOPMENT_MODE=ON ..")
-        endif()
-        return()
-    endif()
-    
-    # Report missing optional files (as info, not warnings)
-    if(missing_optional_files)
-        message(STATUS "Data: Some optional files missing (will use defaults):")
-        foreach(file ${missing_optional_files})
-            message(STATUS "Data:   Optional: ${file}")
-        endforeach()
-    endif()
-    
-    message(STATUS "Data: ✓ Validation passed - all required files and directories present")
-    
-    # Print summary of what's available
-    list(LENGTH required_data_files data_file_count)
-    if(data_file_count GREATER 0)
-        if(ALARIS_CREATE_SAMPLE_DATA)
-            message(STATUS "Data: ✓ Synthetic historical data available for ${data_file_count} symbols")
-            message(STATUS "Data: ⚠️  Using synthetic data - for development/testing only!")
-        else()
-            message(STATUS "Data: ✓ Real market data configuration ready")
-        endif()
-        message(STATUS "Data: ✓ FileSystemDataFeed will find data in ${ALARIS_DATA_DIR}")
-    endif()
-endfunction()
-
-# Function to clean data directory
-function(clean_data_directory)
-    set(dirs_to_clean
-        "${ALARIS_DATA_DIR}"
-        "${ALARIS_RESULTS_DIR}"
-        "${ALARIS_CACHE_DIR}"
-    )
-    
-    foreach(dir ${dirs_to_clean})
-        if(EXISTS "${dir}")
-            file(REMOVE_RECURSE "${dir}")
-        endif()
-    endforeach()
-    
-    if(EXISTS "${CMAKE_BINARY_DIR}/lean.json")
-        file(REMOVE "${CMAKE_BINARY_DIR}/lean.json")
-    endif()
-    
-    message(STATUS "Data: ✓ Cleaned data directories")
-endfunction()
-
-# Main data setup function (called during configuration)
+# Main data setup function
 function(setup_alaris_data)
-    if(ALARIS_CREATE_SAMPLE_DATA)
-        message(STATUS "Data: Setting up Alaris development data environment (SYNTHETIC DATA)...")
+    if(ALARIS_USE_IBKR_DATA)
+        message(STATUS "Data: Setting up Alaris IBKR data environment (PRODUCTION)...")
     else()
-        message(STATUS "Data: Setting up Alaris production data environment...")
+        message(STATUS "Data: Setting up Alaris development data environment (SYNTHETIC)...")
     endif()
     
     # Create directory structure
     create_data_directories()
     
-    # Download essential files (with graceful failure handling)
-    download_essential_data()
+    # Create IBKR data fetcher
+    if(ALARIS_USE_IBKR_DATA)
+        create_ibkr_data_fetcher()
+    endif()
     
     # Create configuration files
     create_lean_config_file()
@@ -615,37 +763,35 @@ function(setup_alaris_data)
     create_sample_data()
     
     # Print summary
-    if(ALARIS_MINIMAL_DATA)
-        list(LENGTH ESSENTIAL_SYMBOLS essential_count)
-        message(STATUS "Data: ✓ Minimal data setup completed (${essential_count} symbols)")
-    else()
-        list(LENGTH PRODUCTION_SYMBOLS production_count)
-        message(STATUS "Data: ✓ Production data setup completed (${production_count} symbols)")
-    endif()
+    list(LENGTH PRODUCTION_SYMBOLS production_count)
     
-    if(ALARIS_CREATE_SAMPLE_DATA)
-        message(STATUS "Data: ✓ Synthetic historical data created for development/testing")
-        message(STATUS "Data: ⚠️  WARNING: Synthetic data is for development only!")
+    if(ALARIS_USE_IBKR_DATA)
+        message(STATUS "Data: ✓ IBKR production data setup completed (${production_count} symbols)")
+        message(STATUS "Data: ✓ IBKR data fetcher created: ${CMAKE_BINARY_DIR}/fetch_ibkr_data.py")
+        message(STATUS "Data: ✓ Ready for automated historical and real-time data collection")
     else()
-        message(STATUS "Data: ✓ Production configuration ready - connect real data sources")
+        message(STATUS "Data: ✓ Development data setup completed")
+        if(ALARIS_CREATE_SAMPLE_DATA)
+            message(STATUS "Data: ✓ Synthetic historical data created for development/testing")
+            message(STATUS "Data: ⚠️  WARNING: Synthetic data is for development only!")
+        endif()
     endif()
     
     message(STATUS "Data: Location: ${ALARIS_DATA_DIR}")
     message(STATUS "Data: lean.json: ${CMAKE_BINARY_DIR}/lean.json")
 endfunction()
 
-# Create custom targets for data management WITHOUT external scripts
+# Enhanced data targets with IBKR support
 function(create_data_targets)
-    # Target to set up data - execute functions directly
+    # Target to set up data environment
     add_custom_target(setup-data
         COMMAND ${CMAKE_COMMAND} -E echo "Setting up Alaris data environment..."
         COMMAND ${CMAKE_COMMAND} 
             -DALARIS_DATA_DIR="${ALARIS_DATA_DIR}"
             -DALARIS_RESULTS_DIR="${ALARIS_RESULTS_DIR}"
             -DALARIS_CACHE_DIR="${ALARIS_CACHE_DIR}"
-            -DALARIS_MINIMAL_DATA=${ALARIS_MINIMAL_DATA}
+            -DALARIS_USE_IBKR_DATA=${ALARIS_USE_IBKR_DATA}
             -DALARIS_CREATE_SAMPLE_DATA=${ALARIS_CREATE_SAMPLE_DATA}
-            -DALARIS_DOWNLOAD_DATA=${ALARIS_DOWNLOAD_DATA}
             -DALARIS_DEVELOPMENT_MODE=${ALARIS_DEVELOPMENT_MODE}
             -DCMAKE_BINARY_DIR="${CMAKE_BINARY_DIR}"
             -P "${CMAKE_CURRENT_SOURCE_DIR}/.cmake/DataInlineSetup.cmake"
@@ -653,40 +799,75 @@ function(create_data_targets)
         VERBATIM
     )
     
-    # Target to enable development mode
+    # IBKR-specific targets
+    if(ALARIS_USE_IBKR_DATA OR NOT ALARIS_DEVELOPMENT_MODE)
+        # Target to fetch historical data for backtesting
+        add_custom_target(fetch-backtest-data
+            COMMAND ${CMAKE_COMMAND} -E echo "Fetching historical data for backtesting (1 year, daily)..."
+            COMMAND python3 "${CMAKE_BINARY_DIR}/fetch_ibkr_data.py" --mode backtest
+            DEPENDS setup-data
+            COMMENT "Fetching IBKR historical data for backtesting"
+            VERBATIM
+        )
+        
+        # Target to fetch historical data for forward testing
+        add_custom_target(fetch-forward-data
+            COMMAND ${CMAKE_COMMAND} -E echo "Fetching recent data for forward testing (1 day, 1 second)..."
+            COMMAND python3 "${CMAKE_BINARY_DIR}/fetch_ibkr_data.py" --mode forward
+            DEPENDS setup-data
+            COMMENT "Fetching IBKR recent data for forward testing"
+            VERBATIM
+        )
+        
+        # Target to start real-time data streaming
+        add_custom_target(start-realtime-data
+            COMMAND ${CMAKE_COMMAND} -E echo "Starting real-time data streaming..."
+            COMMAND python3 "${CMAKE_BINARY_DIR}/fetch_ibkr_data.py" --mode realtime --duration 3600
+            DEPENDS setup-data
+            COMMENT "Starting IBKR real-time data streaming (1 hour)"
+            VERBATIM
+        )
+        
+        # Target to fetch all data (backtest + forward)
+        add_custom_target(fetch-all-data
+            DEPENDS fetch-backtest-data fetch-forward-data
+            COMMENT "Fetching all IBKR historical data"
+        )
+    endif()
+    
+    # Development mode targets
+    add_custom_target(enable-ibkr-mode
+        COMMAND ${CMAKE_COMMAND} -E echo "Enabling IBKR production mode..."
+        COMMAND ${CMAKE_COMMAND} -DALARIS_USE_IBKR_DATA=ON -DALARIS_DEVELOPMENT_MODE=OFF ..
+        COMMENT "Enable IBKR production mode"
+        VERBATIM
+    )
+    
     add_custom_target(enable-dev-mode
         COMMAND ${CMAKE_COMMAND} -E echo "Enabling development mode with synthetic data..."
-        COMMAND ${CMAKE_COMMAND} -DALARIS_DEVELOPMENT_MODE=ON ..
+        COMMAND ${CMAKE_COMMAND} -DALARIS_DEVELOPMENT_MODE=ON -DALARIS_USE_IBKR_DATA=OFF ..
         COMMENT "Enable development mode with synthetic data"
         VERBATIM
     )
     
-    # Target to disable development mode (return to production)
-    add_custom_target(disable-dev-mode
-        COMMAND ${CMAKE_COMMAND} -E echo "Disabling development mode - returning to production configuration..."
-        COMMAND ${CMAKE_COMMAND} -DALARIS_DEVELOPMENT_MODE=OFF -DALARIS_CREATE_SAMPLE_DATA=OFF -DALARIS_AUTO_SETUP_DATA=ON ..
-        COMMENT "Disable development mode - return to production configuration"
-        VERBATIM
-    )
-    
-    # Target to clean data
+    # Standard targets (clean, validate, etc.)
     add_custom_target(clean-data
         COMMAND ${CMAKE_COMMAND} -E remove_directory "${ALARIS_DATA_DIR}"
         COMMAND ${CMAKE_COMMAND} -E remove_directory "${ALARIS_RESULTS_DIR}"
         COMMAND ${CMAKE_COMMAND} -E remove_directory "${ALARIS_CACHE_DIR}"
         COMMAND ${CMAKE_COMMAND} -E remove -f "${CMAKE_BINARY_DIR}/lean.json"
+        COMMAND ${CMAKE_COMMAND} -E remove -f "${CMAKE_BINARY_DIR}/fetch_ibkr_data.py"
         COMMENT "Cleaning Alaris data directories"
         VERBATIM
     )
     
-    # Target to validate data - execute validation directly
     add_custom_target(validate-data
         COMMAND ${CMAKE_COMMAND} -E echo "Validating Alaris data setup..."
         COMMAND ${CMAKE_COMMAND}
             -DALARIS_DATA_DIR="${ALARIS_DATA_DIR}"
             -DALARIS_RESULTS_DIR="${ALARIS_RESULTS_DIR}"
             -DALARIS_CACHE_DIR="${ALARIS_CACHE_DIR}"
-            -DALARIS_MINIMAL_DATA=${ALARIS_MINIMAL_DATA}
+            -DALARIS_USE_IBKR_DATA=${ALARIS_USE_IBKR_DATA}
             -DALARIS_CREATE_SAMPLE_DATA=${ALARIS_CREATE_SAMPLE_DATA}
             -DCMAKE_BINARY_DIR="${CMAKE_BINARY_DIR}"
             -P "${CMAKE_CURRENT_SOURCE_DIR}/.cmake/DataInlineValidate.cmake"
@@ -694,276 +875,57 @@ function(create_data_targets)
         VERBATIM
     )
     
-    # Target to refresh data (clean + setup)
+    # Enhanced refresh target
     add_custom_target(refresh-data
         DEPENDS clean-data setup-data
         COMMENT "Refreshing Alaris data (clean and rebuild)"
     )
     
-    # Target to verify data for Lean
-    add_custom_target(verify-lean-data
-        COMMAND ${CMAKE_COMMAND} -E echo "Verifying data for Lean FileSystemDataFeed..."
-        COMMAND ${CMAKE_COMMAND} -E echo "Data directory: ${ALARIS_DATA_DIR}"
-        COMMAND bash -c "find '${ALARIS_DATA_DIR}/equity/usa/daily' -name '*.csv' 2>/dev/null | head -5 | xargs -I {} echo 'Found: {}' || echo 'No CSV files found'"
-        COMMAND bash -c "echo 'Total CSV files: ' && find '${ALARIS_DATA_DIR}/equity/usa/daily' -name '*.csv' 2>/dev/null | wc -l || echo '0'"
-        COMMENT "Verifying Lean data availability"
-        VERBATIM
-    )
+    # IBKR connection test target
+    if(ALARIS_USE_IBKR_DATA OR NOT ALARIS_DEVELOPMENT_MODE)
+        add_custom_target(test-ibkr-connection
+            COMMAND ${CMAKE_COMMAND} -E echo "Testing IBKR Gateway connection..."
+            COMMAND python3 -c "
+from ib_insync import IB
+ib = IB()
+try:
+    ib.connect('${IBKR_GATEWAY_HOST}', ${IBKR_GATEWAY_PORT_PAPER}, clientId=${IBKR_CLIENT_ID})
+    print('✓ Successfully connected to IB Gateway')
+    print(f'Account: {ib.accountSummary()}' if ib.accountSummary() else '  Account info not available')
+    ib.disconnect()
+except Exception as e:
+    print(f'✗ Connection failed: {e}')
+    print('Make sure IB Gateway is running and API access is enabled')
+    exit(1)
+"
+            COMMENT "Testing IBKR Gateway connection"
+            VERBATIM
+        )
+    endif()
     
-    message(STATUS "Data: Created management targets (setup-data, clean-data, validate-data, refresh-data, verify-lean-data)")
-    message(STATUS "Data: Created mode targets (enable-dev-mode, disable-dev-mode)")
+    message(STATUS "Data: Created enhanced management targets with IBKR support")
+    if(ALARIS_USE_IBKR_DATA OR NOT ALARIS_DEVELOPMENT_MODE)
+        message(STATUS "Data: IBKR targets: fetch-backtest-data, fetch-forward-data, start-realtime-data")
+        message(STATUS "Data: Connection test: test-ibkr-connection")
+    endif()
+    message(STATUS "Data: Mode targets: enable-ibkr-mode, enable-dev-mode")
 endfunction()
 
-# Create inline scripts that don't rely on external files
-function(create_inline_data_scripts)
-    # Create inline setup script
-    set(INLINE_SETUP_CONTENT "
-# DataInlineSetup.cmake - Inline data setup
-message(STATUS \"Executing inline data setup...\")
-
-# Set up symbol lists
-set(ESSENTIAL_SYMBOLS \"SPY;QQQ;IWM;AAPL;MSFT\")
-set(PRODUCTION_SYMBOLS \"SPY;QQQ;IWM;EFA;EEM;TLT;GLD;VIX;AAPL;MSFT;GOOGL;AMZN;TSLA;META;NVDA;JPM;JNJ;V;PG;UNH;HD;MA;BAC;XLF;XLE;XLK;XLV;XLI;XLP;XLU;XLRE\")
-
-# Create directories
-file(MAKE_DIRECTORY \"\${ALARIS_DATA_DIR}\")
-file(MAKE_DIRECTORY \"\${ALARIS_DATA_DIR}/market-hours\")
-file(MAKE_DIRECTORY \"\${ALARIS_DATA_DIR}/symbol-properties\")
-file(MAKE_DIRECTORY \"\${ALARIS_DATA_DIR}/equity/usa/map_files\")
-file(MAKE_DIRECTORY \"\${ALARIS_DATA_DIR}/equity/usa/factor_files\")
-file(MAKE_DIRECTORY \"\${ALARIS_DATA_DIR}/equity/usa/daily\")
-file(MAKE_DIRECTORY \"\${ALARIS_DATA_DIR}/option/usa\")
-file(MAKE_DIRECTORY \"\${ALARIS_RESULTS_DIR}\")
-file(MAKE_DIRECTORY \"\${ALARIS_CACHE_DIR}\")
-
-# Create lean.json if it doesn't exist
-if(NOT EXISTS \"\${CMAKE_BINARY_DIR}/lean.json\")
-    if(ALARIS_DEVELOPMENT_MODE OR ALARIS_CREATE_SAMPLE_DATA)
-        set(CONFIG_COMMENT \"Alaris Trading System - Development Configuration\")
-        set(DEBUG_MODE \"true\")
-        set(LOG_LEVEL \"Debug\")
-    else()
-        set(CONFIG_COMMENT \"Alaris Trading System - Production Configuration\")
-        set(DEBUG_MODE \"false\")
-        set(LOG_LEVEL \"Info\")
-    endif()
-    
-    file(WRITE \"\${CMAKE_BINARY_DIR}/lean.json\" \"{
-  \\\"_comment\\\": \\\"\${CONFIG_COMMENT}\\\",
-  \\\"algorithm-type-name\\\": \\\"Alaris.Algorithm.ArbitrageAlgorithm\\\",
-  \\\"algorithm-language\\\": \\\"CSharp\\\",
-  \\\"data-directory\\\": \\\"\${ALARIS_DATA_DIR}/\\\",
-  \\\"cache-location\\\": \\\"\${ALARIS_CACHE_DIR}/\\\",
-  \\\"results-destination-folder\\\": \\\"\${ALARIS_RESULTS_DIR}/\\\",
-  \\\"debug-mode\\\": \${DEBUG_MODE},
-  \\\"log-level\\\": \\\"\${LOG_LEVEL}\\\",
-  \\\"environments\\\": {
-    \\\"backtesting\\\": {
-      \\\"live-mode\\\": false,
-      \\\"data-feed-handler\\\": \\\"QuantConnect.Lean.Engine.DataFeeds.FileSystemDataFeed\\\"
-    }
-  }
-}\")
-    message(STATUS \"Created lean.json configuration\")
-endif()
-
-# Create symbol databases and map files
-if(ALARIS_MINIMAL_DATA)
-    set(SYMBOLS_TO_PROCESS \${ESSENTIAL_SYMBOLS})
-    set(MODE_DESC \"minimal\")
-else()
-    set(SYMBOLS_TO_PROCESS \${PRODUCTION_SYMBOLS})
-    set(MODE_DESC \"production\")
-endif()
-
-# Create security database
-set(SYMBOL_PROPS_PATH \"\${ALARIS_DATA_DIR}/symbol-properties/security-database.csv\")
-if(NOT EXISTS \"\${SYMBOL_PROPS_PATH}\")
-    set(SYMBOL_PROPS_CONTENT \"Symbol,Market,SecurityType,Name,LotSize,MinimumPriceVariation,PriceMagnifier\\n\")
-    foreach(symbol \${SYMBOLS_TO_PROCESS})
-        string(APPEND SYMBOL_PROPS_CONTENT \"\${symbol},usa,Equity,\${symbol},1,0.01,1\\n\")
-    endforeach()
-    file(WRITE \"\${SYMBOL_PROPS_PATH}\" \"\${SYMBOL_PROPS_CONTENT}\")
-    message(STATUS \"Created security database\")
-endif()
-
-# Create map and factor files for each symbol
-foreach(symbol \${SYMBOLS_TO_PROCESS})
-    string(TOLOWER \"\${symbol}\" symbol_lower)
-    set(MAP_FILE_PATH \"\${ALARIS_DATA_DIR}/equity/usa/map_files/\${symbol_lower}.csv\")
-    set(FACTOR_FILE_PATH \"\${ALARIS_DATA_DIR}/equity/usa/factor_files/\${symbol_lower}.csv\")
-    
-    if(NOT EXISTS \"\${MAP_FILE_PATH}\")
-        file(WRITE \"\${MAP_FILE_PATH}\" \"20120101,\${symbol},\${symbol},\${symbol}\\n\")
-    endif()
-    
-    if(NOT EXISTS \"\${FACTOR_FILE_PATH}\")
-        file(WRITE \"\${FACTOR_FILE_PATH}\" \"20120101,1.0,1.0\\n\")
-    endif()
-    
-    # Create sample data if requested
-    if(ALARIS_CREATE_SAMPLE_DATA)
-        set(sample_data_dir \"\${ALARIS_DATA_DIR}/equity/usa/daily/\${symbol_lower}\")
-        file(MAKE_DIRECTORY \"\${sample_data_dir}\")
-        
-        set(sample_csv_file \"\${sample_data_dir}/20240101_20241231_trade.csv\")
-        if(NOT EXISTS \"\${sample_csv_file}\")
-            # Create simple synthetic data
-            set(CSV_CONTENT \"\")
-            foreach(day_num RANGE 1 250)
-                math(EXPR month_num \"(\${day_num} / 22) + 1\")
-                math(EXPR day_in_month \"(\${day_num} % 22) + 1\")
-                
-                if(month_num GREATER 12)
-                    set(month_num 12)
-                endif()
-                
-                if(month_num LESS 10)
-                    set(month_str \"0\${month_num}\")
-                else()
-                    set(month_str \"\${month_num}\")
-                endif()
-                
-                if(day_in_month LESS 10)
-                    set(day_str \"0\${day_in_month}\")
-                else()
-                    set(day_str \"\${day_in_month}\")
-                endif()
-                
-                set(date_str \"2024\${month_str}\${day_str}\")
-                string(APPEND CSV_CONTENT \"\${date_str} 00:00,100.00,100.50,99.50,100.25,1000000\\n\")
-            endforeach()
-            
-            file(WRITE \"\${sample_csv_file}\" \"\${CSV_CONTENT}\")
-        endif()
-    endif()
-endforeach()
-
-list(LENGTH SYMBOLS_TO_PROCESS symbol_count)
-message(STATUS \"Data setup completed for \${symbol_count} symbols (\${MODE_DESC} mode)\")
-
-if(ALARIS_CREATE_SAMPLE_DATA)
-    message(STATUS \"WARNING: Using synthetic data for development only!\")
-endif()
-")
-    
-    file(WRITE "${CMAKE_CURRENT_SOURCE_DIR}/.cmake/DataInlineSetup.cmake" "${INLINE_SETUP_CONTENT}")
-    
-    # Create inline validation script
-    set(INLINE_VALIDATE_CONTENT "
-# DataInlineValidate.cmake - Inline data validation
-message(STATUS \"Validating Alaris data setup...\")
-
-set(required_files
-    \"\${CMAKE_BINARY_DIR}/lean.json\"
-    \"\${ALARIS_DATA_DIR}/symbol-properties/security-database.csv\"
-)
-
-set(required_dirs
-    \"\${ALARIS_DATA_DIR}\"
-    \"\${ALARIS_DATA_DIR}/equity/usa/map_files\"
-    \"\${ALARIS_DATA_DIR}/equity/usa/factor_files\"
-    \"\${ALARIS_DATA_DIR}/equity/usa/daily\"
-    \"\${ALARIS_RESULTS_DIR}\"
-    \"\${ALARIS_CACHE_DIR}\"
-)
-
-set(missing_files \"\")
-set(missing_dirs \"\")
-
-# Check required files
-foreach(file \${required_files})
-    if(NOT EXISTS \"\${file}\")
-        list(APPEND missing_files \"\${file}\")
-    endif()
-endforeach()
-
-# Check directories
-foreach(dir \${required_dirs})
-    if(NOT IS_DIRECTORY \"\${dir}\")
-        list(APPEND missing_dirs \"\${dir}\")
-    endif()
-endforeach()
-
-# Check for data files if synthetic data is enabled
-if(ALARIS_CREATE_SAMPLE_DATA)
-    if(ALARIS_MINIMAL_DATA)
-        set(symbols_to_check \"SPY;QQQ;IWM;AAPL;MSFT\")
-    else()
-        set(symbols_to_check \"SPY;QQQ;IWM;EFA;EEM;TLT;GLD;VIX;AAPL;MSFT;GOOGL;AMZN;TSLA;META;NVDA;JPM;JNJ;V;PG;UNH;HD;MA;BAC;XLF;XLE;XLK;XLV;XLI;XLP;XLU;XLRE\")
-    endif()
-    
-    set(missing_data_files \"\")
-    foreach(symbol \${symbols_to_check})
-        string(TOLOWER \"\${symbol}\" symbol_lower)
-        set(data_file \"\${ALARIS_DATA_DIR}/equity/usa/daily/\${symbol_lower}/20240101_20241231_trade.csv\")
-        if(NOT EXISTS \"\${data_file}\")
-            list(APPEND missing_data_files \"\${data_file}\")
-        endif()
-    endforeach()
-    
-    if(missing_data_files)
-        list(APPEND missing_files \${missing_data_files})
-    endif()
-endif()
-
-# Print validation results
-if(missing_files OR missing_dirs)
-    message(WARNING \"Data validation found missing components:\")
-    foreach(file \${missing_files})
-        message(WARNING \"  Missing file: \${file}\")
-    endforeach()
-    foreach(dir \${missing_dirs})
-        message(WARNING \"  Missing directory: \${dir}\")
-    endforeach()
-    
-    if(ALARIS_CREATE_SAMPLE_DATA)
-        message(WARNING \"Run 'cmake --build . --target setup-data' to create synthetic data\")
-    else()
-        message(STATUS \"Production mode - configure real data sources\")
-    endif()
-    return()
-endif()
-
-message(STATUS \"✓ Data validation passed - all required files and directories present\")
-
-if(ALARIS_CREATE_SAMPLE_DATA)
-    message(STATUS \"✓ Synthetic historical data available for development/testing\")
-    message(STATUS \"⚠️  WARNING: Using synthetic data - for development/testing only!\")
-else()
-    message(STATUS \"✓ Production configuration ready\")
-endif()
-
-message(STATUS \"✓ FileSystemDataFeed will find data in \${ALARIS_DATA_DIR}\")
-")
-    
-    file(WRITE "${CMAKE_CURRENT_SOURCE_DIR}/.cmake/DataInlineValidate.cmake" "${INLINE_VALIDATE_CONTENT}")
-endfunction()
-
-# CHANGED: Auto-setup data during configuration if enabled (now ON by default)
+# Auto-setup data during configuration if enabled
 if(ALARIS_AUTO_SETUP_DATA)
     setup_alaris_data()
 else()
-    if(ALARIS_DEVELOPMENT_MODE)
-        message(STATUS "Data: Development mode enabled but auto-setup disabled.")
-        message(STATUS "Data: Run 'cmake --build . --target setup-data' to create synthetic data.")
+    if(ALARIS_USE_IBKR_DATA)
+        message(STATUS "Data: IBKR mode enabled but auto-setup disabled.")
+        message(STATUS "Data: Run 'cmake --build . --target setup-data' to create IBKR environment.")
+        message(STATUS "Data: Then run 'cmake --build . --target fetch-backtest-data' to fetch data.")
     else()
-        message(STATUS "Data: Production mode - auto-setup disabled.")
-        message(STATUS "Data: Run 'cmake --build . --target setup-data' to set up data environment.")
-        message(STATUS "Data: For development: cmake -DALARIS_DEVELOPMENT_MODE=ON ..")
+        message(STATUS "Data: Development mode - auto-setup disabled.")
+        message(STATUS "Data: Run 'cmake --build . --target setup-data' to create environment.")
     endif()
 endif()
 
-# Always create the inline scripts and targets
-create_inline_data_scripts()
+# Always create targets
 create_data_targets()
 
-# IMPROVED: Only validate if setup was supposed to run
-if(ALARIS_AUTO_SETUP_DATA)
-    validate_data_setup()
-else()
-    message(STATUS "Data: Skipping validation (auto-setup disabled)")
-    message(STATUS "Data: Run 'cmake --build . --target validate-data' to check manually")
-endif()
-
-message(STATUS "Data: Configuration completed")
+message(STATUS "Data: Enhanced configuration completed with IBKR integration")

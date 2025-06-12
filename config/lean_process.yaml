@@ -1,49 +1,229 @@
-# Lean Process Configuration
+# config/lean_process.yaml - Updated for IBKR Integration
+
+# Algorithm configuration
 algorithm:
-  name: "Lean"
-  start_date: "2024-01-01"
+  name: "AlarisArbitrage"
+  start_date: "2023-01-01"  # 1 year for backtesting
   end_date: "2024-12-31"
   cash: 1000000
+  
+  # Data resolution per mode
+  backtest_resolution: "Daily"
+  forward_test_resolution: "Second"
+  
+  # Universe configuration
+  universe:
+    size: 25
+    sectors: ["ETF", "Technology", "Financial", "Energy", "Healthcare"]
+    rebalance_frequency: "Monthly"
 
+# IBKR Brokerage configuration
 brokerage:
   type: "InteractiveBrokers"
   gateway_host: "127.0.0.1"
-  gateway_port: 4002
-  account: "DUE407919"
+  gateway_port: 4002  # Paper trading
+  gateway_port_live: 4001  # Live trading
+  account: "DU123456"  # Update with actual account
+  
+  # Connection settings
+  connection_timeout: 30
+  order_timeout: 60
+  enable_market_data: true
+  
+  # Data subscriptions
+  subscriptions:
+    level_1_data: true
+    level_2_data: false
+    tick_by_tick: true
+    options_data: true
 
+# Data provider configuration
 data:
   provider: "InteractiveBrokers"
-  resolution: "Minute"
+  
+  # Resolution configuration
+  resolutions:
+    backtest: "Daily"
+    forward_test: "Second"
+    live: "Tick"
+    
+  # Historical data settings
+  historical:
+    duration_backtest: "1 Y"
+    duration_forward: "1 D"
+    rth_only: true
+    
+  # Real-time data settings
+  real_time:
+    enabled: true
+    buffer_size: 10000
+    tick_processing: true
 
-# UPDATED: Consistent and POSIX-compliant shared memory names
+# Shared memory configuration - consistent with QuantLib
 shared_memory:
   market_data_buffer: "/alaris_market_data"
   signal_buffer: "/alaris_signals"
   control_buffer: "/alaris_control"
+  
+  # Buffer sizing for 25 symbols
+  buffer_sizes:
+    market_data: 8192
+    signals: 2048
+    control: 512
 
-# Add these configurations for the C# Config.Get calls
-alaris-market-data-buffer: "/alaris_market_data"
-alaris-signal-buffer: "/alaris_signals"
-alaris-control-buffer: "/alaris_control"
+# Strategy configuration
+strategy:
+  mode: "volatility_arbitrage"
+  frequency: "1s"  # 1-second for forward testing
+  
+  # Risk management
+  risk_management:
+    max_position_size: 0.04  # 4% per position for 25 symbols
+    max_portfolio_exposure: 0.20
+    max_daily_loss: 0.02
+    max_correlation_exposure: 0.30
+    
+    # Position sizing
+    use_kelly_criterion: true
+    kelly_fraction: 0.05
+    max_kelly_position: 0.20
+    
+    # Stop losses
+    stop_loss_percent: 0.15
+    trailing_stop_percent: 0.10
+    profit_target_percent: 0.30
 
-risk_management:
-  max_position_size: 0.05
-  max_daily_loss: 0.02
-
+# Symbol universe (same as QuantLib configuration)
 universe:
-  symbols: ["SPY", "QQQ", "IWM", "EFA", "EEM"]
-  option_chains: true
+  symbols:
+    etfs: ["SPY", "QQQ", "IWM", "EFA", "VTI"]
+    technology: ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA"]
+    financial: ["JPM", "BAC", "WFC", "GS", "MS"]
+    energy: ["XOM", "CVX", "COP", "EOG", "SLB"]
+    healthcare: ["JNJ", "PFE", "UNH", "ABBV", "MRK"]
+    
+  # Option chains (if enabled)
+  option_chains:
+    enabled: true
+    max_expiration_months: 3
+    strike_range_percent: 0.2
+    min_volume: 100
+    min_open_interest: 1000
 
+# Logging configuration
 logging:
   level: "INFO"
   file: "/var/log/alaris/lean.log"
+  console_output: true
+  
+  # Detailed logging for IBKR integration
+  ibkr_logging:
+    enabled: true
+    level: "DEBUG"
+    file: "/var/log/alaris/lean_ibkr.log"
+    log_orders: true
+    log_market_data: true
+    log_connections: true
 
+# IBKR-specific settings
 ib_settings:
   connection_timeout: 30
   enable_market_data: true
   order_timeout_seconds: 60
+  
+  # Paper trading configuration
   paper_trading:
     enabled: true
     starting_cash: 1000000
+    commission_model: "IBKR"
+    
+  # Live trading configuration (disabled by default)
   live_trading:
     enabled: false
+    risk_checks: true
+    max_order_size: 10000
+    pre_trade_risk_check: true
+    
+  # Market data configuration
+  market_data:
+    enable_streaming: true
+    enable_tick_by_tick: true
+    enable_level_2: false
+    max_concurrent_subscriptions: 25
+    
+  # Historical data settings
+  historical_data:
+    max_concurrent_requests: 5
+    rate_limit_delay_ms: 10500
+    timeout_seconds: 30
+    
+  # Order routing
+  order_routing:
+    default_exchange: "SMART"
+    enable_outside_rth: false
+    time_in_force: "DAY"
+
+# Performance monitoring
+monitoring:
+  enabled: true
+  metrics_interval_seconds: 60
+  
+  # IBKR-specific metrics
+  ibkr_metrics:
+    connection_status: true
+    data_feed_status: true
+    order_status: true
+    latency_monitoring: true
+    
+  # Performance thresholds
+  thresholds:
+    max_latency_ms: 100
+    min_data_rate_per_second: 10
+    max_order_latency_ms: 500
+
+# Data validation
+validation:
+  enabled: true
+  
+  # Data quality checks
+  data_quality:
+    check_gaps: true
+    check_outliers: true
+    outlier_threshold_std: 3.0
+    max_gap_minutes: 5
+    
+  # Real-time validation
+  real_time:
+    validate_ticks: true
+    validate_prices: true
+    max_price_change_percent: 0.1
+    
+# Error handling
+error_handling:
+  retry_attempts: 3
+  retry_delay_seconds: 5
+  
+  # IBKR-specific error handling
+  ibkr_errors:
+    connection_errors: "reconnect"
+    data_errors: "log_and_continue"
+    order_errors: "alert_and_stop"
+    rate_limit_errors: "backoff_and_retry"
+
+# Environment-specific overrides
+environments:
+  development:
+    use_synthetic_data: true
+    ibkr_integration: false
+    log_level: "DEBUG"
+    
+  staging:
+    use_paper_trading: true
+    ibkr_integration: true
+    log_level: "INFO"
+    
+  production:
+    use_live_trading: true
+    ibkr_integration: true
+    log_level: "INFO"
+    enable_risk_checks: true

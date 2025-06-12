@@ -1,11 +1,11 @@
-# QuantLib Process Configuration
+# config/quantlib_process.yaml - Updated for IBKR Integration
 process:
   name: "QuantLib"
   priority: 80
   cpu_affinity: [2, 3]
   memory_lock: false
   huge_pages: false
-  start_trading_enabled: false
+  start_trading_enabled: true  # Enable trading for IBKR integration
 
 quantlib:
   threading: "single"
@@ -19,54 +19,175 @@ shared_memory:
   signal_buffer: "/alaris_signals"
   control_buffer: "/alaris_control"
   buffer_sizes:
-    market_data: 4096
-    signals: 1024
-    control: 256
+    market_data: 8192  # Increased for 25 symbols
+    signals: 2048      # Increased for more signals
+    control: 512       # Increased for IBKR commands
 
 memory:
-  pool_size_mb: 8
+  pool_size_mb: 16  # Increased for larger symbol universe
 
 pricing:
   alo_engine:
     scheme: "fast"
     fixed_point_equation: "Auto"
+    # IBKR-specific pricing parameters
+    max_concurrent_pricing: 25
+    pricing_timeout_ms: 100
 
 volatility:
   garch:
     max_iterations: 500
     tolerance: 1e-6
     mode: "BestOfTwo"
-    max_history_length: 126
-  update_frequency_ms: 10
+    max_history_length: 252  # 1 year of daily data
+    # IBKR real-time volatility updates
+    real_time_updates: true
+    update_frequency_ms: 1000  # 1 second for forward testing
+  gjr_garch:
+    enabled: true
+    calibration_frequency: "daily"
+    min_observation_count: 50
 
 strategy:
   vol_arbitrage:
+    # Core strategy parameters
     entry_threshold: 0.05
     exit_threshold: 0.02
     confidence_threshold: 0.7
+    
+    # Portfolio risk management
     max_portfolio_delta: 0.10
     max_portfolio_gamma: 0.05
     max_portfolio_vega: 2.0
-    max_position_size: 0.05
+    max_position_size: 0.04  # Slightly lower for 25 symbols
     max_correlation_exposure: 0.30
+    
+    # Position sizing
     kelly_fraction: 0.05
     max_kelly_position: 0.20
     min_edge_ratio: 2.0
+    
+    # Risk controls
     stop_loss_percent: 0.15
     profit_target_percent: 0.30
     trailing_stop_percent: 0.10
+    
+    # Strategy configuration
     strategy_mode: "DELTA_NEUTRAL"
     model_selection: "garch_direct"
+    
+    # Hedging parameters
     hedge_threshold_delta: 0.10
     hedge_threshold_gamma: 0.05
     auto_hedge_enabled: true
     hedge_frequency_minutes: 15
+    
+    # Volatility regime detection
     low_vol_threshold: 0.15
     high_vol_threshold: 0.40
     regime_lookback_days: 21
+    
+    # IBKR-specific parameters
+    ibkr_integration:
+      enabled: true
+      real_time_data: true
+      historical_data_source: "ibkr"
+      tick_processing: true
+      order_routing: "smart"
+
+# Symbol universe configuration
+universe:
+  symbols:
+    # ETFs (5)
+    - "SPY"   # SPDR S&P 500 ETF Trust
+    - "QQQ"   # Invesco QQQ Trust
+    - "IWM"   # iShares Russell 2000 ETF
+    - "EFA"   # iShares MSCI EAFE ETF
+    - "VTI"   # Vanguard Total Stock Market ETF
+    
+    # Technology (5)
+    - "AAPL"  # Apple Inc.
+    - "MSFT"  # Microsoft Corporation
+    - "GOOGL" # Alphabet Inc. Class A
+    - "AMZN"  # Amazon.com Inc.
+    - "NVDA"  # NVIDIA Corporation
+    
+    # Financial (5)
+    - "JPM"   # JPMorgan Chase & Co.
+    - "BAC"   # Bank of America Corp.
+    - "WFC"   # Wells Fargo & Company
+    - "GS"    # The Goldman Sachs Group
+    - "MS"    # Morgan Stanley
+    
+    # Energy (5)
+    - "XOM"   # Exxon Mobil Corporation
+    - "CVX"   # Chevron Corporation
+    - "COP"   # ConocoPhillips
+    - "EOG"   # EOG Resources Inc.
+    - "SLB"   # Schlumberger Limited
+    
+    # Healthcare (5)
+    - "JNJ"   # Johnson & Johnson
+    - "PFE"   # Pfizer Inc.
+    - "UNH"   # UnitedHealth Group Inc.
+    - "ABBV"  # AbbVie Inc.
+    - "MRK"   # Merck & Co. Inc.
+
+  # Data configuration per mode
+  data_modes:
+    backtest:
+      resolution: "1 day"
+      duration: "1 Y"
+      what_to_show: "TRADES"
+      rth_only: true
+      
+    forward_test:
+      resolution: "1 sec"
+      duration: "1 D"
+      what_to_show: "TRADES"
+      rth_only: true
+      
+    live_trading:
+      real_time_bars: true
+      tick_by_tick: true
+      level_2_data: false
+
+# IBKR Integration settings
+ibkr:
+  connection:
+    host: "127.0.0.1"
+    paper_port: 4002
+    live_port: 4001
+    client_id: 999
+    timeout: 30
+    
+  data_settings:
+    max_concurrent_requests: 50
+    request_rate_limit: 60  # per 10 minutes
+    request_interval_ms: 10500  # 10.5 seconds between requests
+    
+  market_data:
+    enable_streaming: true
+    enable_tick_by_tick: true
+    enable_level_2: false
+    
+  options:
+    enable_option_chains: true
+    max_expiration_months: 3
+    strike_range_percent: 0.2
 
 logging:
   level: "INFO"
-  file: "/home/send2/.projects/Alaris/logs/quantlib.log"
+  file: "/var/log/alaris/quantlib.log"
   binary_mode: false
   enable_performance_log: true
+  
+  # IBKR-specific logging
+  ibkr_logging:
+    enabled: true
+    level: "DEBUG"
+    file: "/var/log/alaris/ibkr_data.log"
+    log_market_data: true
+    log_historical_requests: true
+
+---
