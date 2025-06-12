@@ -16,6 +16,7 @@ using QuantConnect.Packets;
 using QuantConnect.Interfaces;
 using QuantConnect.Brokerages.InteractiveBrokers;
 using QuantConnect.ToolBox;
+using QuantConnect.Data;
 
 using QCSymbol = QuantConnect.Symbol; 
 
@@ -175,45 +176,78 @@ namespace Alaris
 
         private static void DownloadHistoricalData()
         {
-            var yamlPath = Path.Combine(FindProjectRoot(), "config", "lean_process.yaml");
-            var yamlText = File.ReadAllText(yamlPath);
-            var deserializer = new DeserializerBuilder().Build();
-            var yamlConfig = deserializer.Deserialize<dynamic>(yamlText);
-
-            var symbols = ((List<object>)yamlConfig["universe"]["symbols"])
-                .Select(s => s?.ToString())
-                .Where(s => !string.IsNullOrEmpty(s))
-                .ToList();
-
-            var resolution = Enum.Parse<Resolution>(Config.Get("resolution", "Daily"), true);
-            var fromDate = DateTime.Parse(Config.Get("start-date", "2023-01-01"));
-            var toDate = DateTime.Parse(Config.Get("end-date", "2024-12-31"));
-
-            // CORRECTED: Use Composer to get the configured IDataDownloader instance.
-            // This is the standard Lean Engine approach and avoids referencing ToolBox directly.
-            var downloader = Composer.Instance.GetExportedValue<IDataDownloader>();
-            
-            Console.WriteLine($"Starting download using {downloader.GetType().Name} for {symbols.Count} symbols...");
-
-            foreach (var symbolStr in symbols)
+            try
             {
-                var symbol = QCSymbol.Create(symbolStr, SecurityType.Equity, Market.USA);
-                downloader.Download(symbol, resolution, fromDate, toDate);
-            }
+                var yamlPath = Path.Combine(FindProjectRoot(), "config", "lean_process.yaml");
+                var yamlText = File.ReadAllText(yamlPath);
+                var deserializer = new DeserializerBuilder().Build();
+                var yamlConfig = deserializer.Deserialize<dynamic>(yamlText);
 
-            Console.WriteLine("--- Data Download Process Completed ---");
+                var symbols = ((List<object>)yamlConfig["universe"]["symbols"])
+                    .Select(s => s?.ToString())
+                    .Where(s => !string.IsNullOrEmpty(s))
+                    .ToList();
+
+                var resolution = Enum.Parse<Resolution>(Config.Get("resolution", "Daily"), true);
+                var fromDate = DateTime.Parse(Config.Get("start-date", "2023-01-01"));
+                var toDate = DateTime.Parse(Config.Get("end-date", "2024-12-31"));
+
+                // Create InteractiveBrokers data downloader directly
+                // This is the correct approach for the current QuantConnect Lean API
+                var brokerage = new InteractiveBrokersBrokerage(
+                    algorithmSettings: null,
+                    orderProvider: null,
+                    securityProvider: null,
+                    account: Config.Get("ib-account"),
+                    host: Config.Get("ib-host"),
+                    port: Config.GetInt("ib-port"),
+                    clientId: Config.GetInt("ib-client-id"),
+                    loadExistingHoldings: false
+                );
+
+                Console.WriteLine($"Starting download using InteractiveBrokersBrokerage for {symbols.Count} symbols...");
+
+                foreach (var symbolStr in symbols!)
+                {
+                    if (string.IsNullOrEmpty(symbolStr)) continue;
+                    
+                    try
+                    {
+                        var symbol = QCSymbol.Create(symbolStr, SecurityType.Equity, Market.USA);
+                        
+                        // Use the data downloader interface
+                        var downloadRequest = new DataDownloaderGetParameters(symbol, resolution, fromDate, toDate);
+                        var data = brokerage.Get(downloadRequest);
+                        
+                        Console.WriteLine($"Downloaded data for {symbolStr}: {data?.Count() ?? 0} bars");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Failed to download data for {symbolStr}: {ex.Message}");
+                    }
+                }
+
+                Console.WriteLine("--- Data Download Process Completed ---");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Data download failed: {ex.Message}");
+                Log.Error(ex, "Data download process failed");
+            }
         }
         
         private static string FindProjectRoot()
         {
             string currentDir = Directory.GetCurrentDirectory();
-            while(currentDir != null)
+            while (!string.IsNullOrEmpty(currentDir))
             {
                 if (Directory.Exists(Path.Combine(currentDir, "config")) && Directory.Exists(Path.Combine(currentDir, "src")))
                 {
                     return currentDir;
                 }
-                currentDir = Directory.GetParent(currentDir)?.FullName;
+                var parent = Directory.GetParent(currentDir);
+                if (parent == null) break;
+                currentDir = parent.FullName;
             }
             return Directory.GetCurrentDirectory();
         }
