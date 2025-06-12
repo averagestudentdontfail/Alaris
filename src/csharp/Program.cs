@@ -138,6 +138,21 @@ namespace Alaris
                 var algoConfig = yamlConfig["algorithm"];
                 var brokerageConfig = yamlConfig["brokerage"];
                 
+                // Set API credentials from environment variables if available, otherwise from config
+                var userId = Environment.GetEnvironmentVariable("QC_USER_ID") ?? yamlConfig?["api-credentials"]?["job-user-id"]?.ToString();
+                var apiToken = Environment.GetEnvironmentVariable("QC_API_TOKEN") ?? yamlConfig?["api-credentials"]?["api-access-token"]?.ToString();
+
+                if (!string.IsNullOrEmpty(userId) && !string.IsNullOrEmpty(apiToken))
+                {
+                    Config.Set("job-user-id", userId);
+                    Config.Set("api-access-token", apiToken);
+                    Log.Trace("✓ API credentials loaded.");
+                }
+                else
+                {
+                    Log.Trace("API credentials not found. Data downloading may fail if data is not available locally.");
+                }
+                
                 // Core algorithm configuration
                 Config.Set("algorithm-type-name", (string)algoConfig["name"]);
                 Config.Set("algorithm-location", "Alaris.Lean.dll");

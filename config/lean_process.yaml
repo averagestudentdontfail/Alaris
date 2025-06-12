@@ -65,7 +65,3 @@ logging:
   level: "INFO"
   # Log file will be placed in the build directory.
   file: "alaris_lean.log"
-
-api-credentials:
-  job-user-id: 324116
-  api-access-token: "50c451983d2212d45991382271acdd62429e444a2b5e83c39c6662156c879b42"
