@@ -1,0 +1,62 @@
+{
+  // Default settings applied to all environments unless overridden
+  "algorithm-type-name": "Alaris.Algorithm.ArbitrageAlgorithm",
+  "algorithm-location": "Alaris.Algorithm.dll", // Your C# algorithm DLL
+  "data-folder": "./data",
+  "results-destination-folder": "./results",
+  "log-file": "alaris_lean_log.txt",
+  "debug-mode": false,
+
+  // Symbol universe for the algorithm
+  "symbols": "SPY,QQQ,IWM,EFA,VTI,AAPL,MSFT,GOOGL,AMZN,NVDA,JPM,BAC,WFC,GS,MS,XOM,CVX,COP,EOG,SLB,JNJ,PFE,UNH,ABBV,MRK",
+  "resolution": "Daily",
+  "start-date": "2023-01-01",
+  "end-date": "2024-12-31",
+  
+  // Defines the handlers for different operational modes
+  "environments": {
+    "backtest": {
+      "live-mode": false,
+      "setup-handler": "QuantConnect.Lean.Engine.Setup.BacktestingSetupHandler",
+      "result-handler": "QuantConnect.Lean.Engine.Results.BacktestingResultHandler",
+      "data-feed-handler": "QuantConnect.Lean.Engine.DataFeeds.FileSystemDataFeed",
+      "real-time-handler": "QuantConnect.Lean.Engine.RealTime.BacktestingRealTimeHandler",
+      "transaction-handler": "QuantConnect.Lean.Engine.TransactionHandlers.BacktestingTransactionHandler"
+    },
+    "paper": {
+      "live-mode": true,
+      "live-mode-brokerage": "InteractiveBrokersBrokerage",
+      "setup-handler": "QuantConnect.Lean.Engine.Setup.BrokerageSetupHandler",
+      "result-handler": "QuantConnect.Lean.Engine.Results.LiveTradingResultHandler",
+      "data-feed-handler": "QuantConnect.Lean.Engine.DataFeeds.LiveTradingDataFeed",
+      "real-time-handler": "QuantConnect.Lean.Engine.RealTime.LiveTradingRealTimeHandler",
+      "transaction-handler": "QuantConnect.Lean.Engine.TransactionHandlers.BrokerageTransactionHandler",
+      // Specific handlers for IBKR
+      "data-queue-handler": "QuantConnect.Brokerages.InteractiveBrokers.InteractiveBrokersBrokerage",
+      "brokerage": "QuantConnect.Brokerages.InteractiveBrokers.InteractiveBrokersBrokerage"
+    },
+    "live": {
+      "live-mode": true,
+      "live-mode-brokerage": "InteractiveBrokersBrokerage",
+      "setup-handler": "QuantConnect.Lean.Engine.Setup.BrokerageSetupHandler",
+      "result-handler": "QuantConnect.Lean.Engine.Results.LiveTradingResultHandler",
+      "data-feed-handler": "QuantConnect.Lean.Engine.DataFeeds.LiveTradingDataFeed",
+      "real-time-handler": "QuantConnect.Lean.Engine.RealTime.LiveTradingRealTimeHandler",
+      "transaction-handler": "QuantConnect.Lean.Engine.TransactionHandlers.BrokerageTransactionHandler",
+      // Specific handlers for IBKR
+      "data-queue-handler": "QuantConnect.Brokerages.InteractiveBrokers.InteractiveBrokersBrokerage",
+      "brokerage": "QuantConnect.Brokerages.InteractiveBrokers.InteractiveBrokersBrokerage"
+    },
+    "download": {
+        "data-downloader": "QuantConnect.Brokerages.InteractiveBrokers.InteractiveBrokersBrokerage"
+    }
+  },
+
+  // Interactive Brokers specific settings
+  "ib-account": "DUE407919", // Your paper or live account ID
+  "ib-user-name": "",
+  "ib-password": "",
+  "ib-host": "127.0.0.1",
+  "ib-port": "4002", // 4002 for Paper, 4001 for Live
+  "ib-agent-description": "Alaris"
+}

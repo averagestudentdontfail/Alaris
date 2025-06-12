@@ -8,6 +8,12 @@ using QuantConnect.Lean.Engine;
 using QuantConnect.Logging;
 using QuantConnect.Util;
 using QuantConnect.Packets;
+using QuantConnect.ToolBox;
+using QuantConnect.Brokerages.InteractiveBrokers;
+using System.Collections.Generic;
+using System.Linq;
+using QuantConnect;
+using QuantConnect.Interfaces;
 using QuantConnect.Lean.Engine.DataFeeds;
 using QuantConnect.Lean.Engine.Setup;
 using QuantConnect.Lean.Engine.RealTime;
@@ -16,221 +22,146 @@ using QuantConnect.Lean.Engine.Results;
 
 namespace Alaris
 {
-    class Program
+    public class Program
     {
-        static async Task<int> Main(string[] args)
+        public static async Task<int> Main(string[] args)
         {
-            try
+            // --- Command Line Configuration ---
+            var rootCommand = new RootCommand("Alaris Trading System - Lean Integration Engine");
+
+            var modeOption = new Option<string>(
+                name: "--mode",
+                description: "The operational mode for the Lean engine.",
+                getDefaultValue: () => "paper");
+            modeOption.AddAlias("-m");
+            modeOption.FromAmong("live", "paper", "backtest", "download");
+
+            var configOption = new Option<FileInfo>(
+                name: "--config",
+                description: "Path to the Lean configuration file.",
+                getDefaultValue: () => new FileInfo("config.json"));
+            configOption.AddAlias("-c");
+
+            rootCommand.AddOption(modeOption);
+            rootCommand.AddOption(configOption);
+
+            rootCommand.SetHandler(async (mode, configFile) =>
             {
-                Console.WriteLine("Starting Alaris Lean Process...");
+                await RunEngine(mode, configFile.FullName);
+            }, modeOption, configOption);
 
-                // Define command line options
-                var rootCommand = new RootCommand("Alaris Trading System - Lean Integration");
-                
-                var symbolOption = new Option<string>("--symbol", "Trading symbol (e.g., SPY)");
-                symbolOption.SetDefaultValue("SPY");
-                
-                var modeOption = new Option<string>("--mode", "Trading mode: live, paper, or backtest");
-                modeOption.SetDefaultValue("backtest");
-                
-                var strategyOption = new Option<string>("--strategy", "Strategy mode");
-                strategyOption.SetDefaultValue("deltaneutral");
-                
-                var startDateOption = new Option<string>("--start-date", "Backtest start date (YYYY-MM-DD)");
-                var endDateOption = new Option<string>("--end-date", "Backtest end date (YYYY-MM-DD)");
-                
-                var frequencyOption = new Option<string>("--frequency", "Data frequency: minute, hour, or daily");
-                frequencyOption.SetDefaultValue("minute");
-                
-                var debugOption = new Option<bool>("--debug", "Enable debug logging");
-
-                rootCommand.AddOption(symbolOption);
-                rootCommand.AddOption(modeOption);
-                rootCommand.AddOption(strategyOption);
-                rootCommand.AddOption(startDateOption);
-                rootCommand.AddOption(endDateOption);
-                rootCommand.AddOption(frequencyOption);
-                rootCommand.AddOption(debugOption);
-
-                rootCommand.SetHandler(async (context) =>
-                {
-                    var symbol = context.ParseResult.GetValueForOption(symbolOption) ?? "SPY";
-                    var mode = context.ParseResult.GetValueForOption(modeOption) ?? "backtest";
-                    var strategy = context.ParseResult.GetValueForOption(strategyOption) ?? "deltaneutral";
-                    var startDate = context.ParseResult.GetValueForOption(startDateOption);
-                    var endDate = context.ParseResult.GetValueForOption(endDateOption);
-                    var frequency = context.ParseResult.GetValueForOption(frequencyOption) ?? "minute";
-                    var debug = context.ParseResult.GetValueForOption(debugOption);
-
-                    await RunAlaris(symbol, mode, strategy, startDate, endDate, frequency, debug);
-                });
-
-                return await rootCommand.InvokeAsync(args);
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Fatal error in Alaris Lean Process:");
-                return 1;
-            }
+            return await rootCommand.InvokeAsync(args);
         }
 
-        private static Task RunAlaris(string symbol, string mode, string strategy, 
-                                          string? startDate, string? endDate, string frequency, bool debug)
-        {
-            try
-            {
-                // Display configuration
-                Console.WriteLine($"\nStarting Alaris with configuration:");
-                Console.WriteLine($"  Symbol: {symbol}");
-                Console.WriteLine($"  Mode: {mode}");
-                Console.WriteLine($"  Strategy: {strategy}");
-                Console.WriteLine($"  Frequency: {frequency}");
-                Console.WriteLine($"  Debug: {debug}");
-                if (mode == "backtest")
-                {
-                    Console.WriteLine($"  Start date: {startDate}");
-                    Console.WriteLine($"  End date: {endDate}");
-                }
-                Console.WriteLine();
-                
-                // --- CRITICAL FIX: Correct Data Path Resolution ---
-                
-                // Get the current working directory (should be project root)
-                string currentDirectory = Directory.GetCurrentDirectory();
-                Console.WriteLine($"[DEBUG] Current directory: {currentDirectory}");
-                
-                // Look for build directory in current directory or parent directories
-                string? buildDirectory = FindBuildDirectory(currentDirectory);
-                
-                if (buildDirectory == null)
-                {
-                    throw new DirectoryNotFoundException(
-                        "Could not find build directory. Please run from project root or ensure build directory exists.");
-                }
-                
-                string dataFolderPath = Path.Combine(buildDirectory, "data");
-                string cacheFolderPath = Path.Combine(buildDirectory, "cache");
-                string resultsFolderPath = Path.Combine(buildDirectory, "results");
-                
-                Console.WriteLine($"[INFO] Build directory: {buildDirectory}");
-                Console.WriteLine($"[INFO] Data folder: {dataFolderPath}");
-                Console.WriteLine($"[INFO] Cache folder: {cacheFolderPath}");
-                Console.WriteLine($"[INFO] Results folder: {resultsFolderPath}");
-                
-                // Validate that data directory exists
-                if (!Directory.Exists(dataFolderPath))
-                {
-                    throw new DirectoryNotFoundException(
-                        $"Data directory not found at: {dataFolderPath}\n" +
-                        "Please run 'cmake --build . --target setup-data' to set up data.");
-                }
-                
-                // Validate essential data files exist
-                string marketHoursFile = Path.Combine(dataFolderPath, "market-hours", "market-hours-database.json");
-                if (!File.Exists(marketHoursFile))
-                {
-                    throw new FileNotFoundException(
-                        $"Required data file not found: {marketHoursFile}\n" +
-                        "Please run 'cmake --build . --target setup-data' to download required data files.");
-                }
-                
-                Console.WriteLine($"[INFO] ✓ Data validation passed");
-                
-                // Set environment variables for the algorithm to access
-                Environment.SetEnvironmentVariable("ALARIS_SYMBOL", symbol);
-                Environment.SetEnvironmentVariable("ALARIS_STRATEGY", strategy);
-
-                // Configure Lean using the parsed arguments
-                var liveMode = !mode.Equals("backtest", StringComparison.OrdinalIgnoreCase);
-                Config.Set("environment", liveMode ? "live-trading" : "backtesting");
-                Config.Set("live-mode", liveMode.ToString().ToLower());
-                
-                Config.Set("algorithm-type-name", "Alaris.Algorithm.ArbitrageAlgorithm");
-                Config.Set("algorithm-location", typeof(Program).Assembly.Location);
-                
-                // --- CRITICAL: Set correct data paths ---
-                Config.Set("data-folder", dataFolderPath);
-                Config.Set("cache-location", cacheFolderPath);
-                Config.Set("results-destination-folder", resultsFolderPath);
-                
-                Config.Set("resolution", frequency);
-                
-                if (!liveMode)
-                {
-                     if (DateTime.TryParse(startDate, out var start))
-                     {
-                        Config.Set("start-date", start.ToString("yyyyMMdd"));
-                     }
-                     if (DateTime.TryParse(endDate, out var end))
-                     {
-                        Config.Set("end-date", end.ToString("yyyyMMdd"));
-                     }
-                }
-                else 
-                {
-                    Config.Set("live-mode-brokerage", "InteractiveBrokersBrokerage");
-                }
-                
-                Config.Set("debug-mode", debug.ToString().ToLower());
-                Log.DebuggingEnabled = debug;
-
-                Console.WriteLine("Initializing and running Lean engine in-process...");
-                
-                var systemHandlers = LeanEngineSystemHandlers.FromConfiguration(Composer.Instance);
-                var algorithmHandlers = LeanEngineAlgorithmHandlers.FromConfiguration(Composer.Instance);
-                systemHandlers.Initialize();
-                
-                string assemblyPath = Config.Get("algorithm-location");
-                var algorithmManager = new AlgorithmManager(liveMode, null);
-                
-                // Initialize the Lean manager with correct arguments
-                systemHandlers.LeanManager.Initialize(systemHandlers, algorithmHandlers, new BacktestNodePacket(), algorithmManager);
-                
-                var engine = new Engine(systemHandlers, algorithmHandlers, liveMode);
-                engine.Run(new BacktestNodePacket(), algorithmManager, assemblyPath, WorkerThread.Instance);
-
-                Console.WriteLine("\nAlaris Lean Process completed successfully.");
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Error running Alaris engine:");
-                throw;
-            }
-            
-            return Task.CompletedTask;
-        }
-        
         /// <summary>
-        /// Find the build directory by searching current directory and parent directories
+        /// Main entry point for running the Lean engine in different modes.
+        /// </summary>
+        private static async Task RunEngine(string mode, string configPath)
+        {
+            Console.WriteLine($"--- Alaris Lean Engine Initializing [Mode: {mode.ToUpper()}] ---");
+            
+            // --- Load Configuration ---
+            if (!File.Exists(configPath))
+            {
+                Log.Error($"Configuration file not found: {configPath}");
+                return;
+            }
+            Config.SetConfigurationFile(configPath);
+            // Sets the environment from the config file, which determines which handlers to load.
+            Config.Set("environment", mode);
+
+            // --- Find and Set Essential Paths ---
+            string? buildDirectory = FindBuildDirectory(Directory.GetCurrentDirectory());
+            if (buildDirectory == null)
+            {
+                Log.Error("Could not find the 'build' directory. Please run from the project root.");
+                return;
+            }
+            string dataDirectory = Path.Combine(buildDirectory, "data");
+            Config.Set("data-folder", dataDirectory);
+            Config.Set("cache-location", Path.Combine(buildDirectory, "cache"));
+            Config.Set("results-destination-folder", Path.Combine(buildDirectory, "results"));
+            Log.Trace($"Data folder set to: {dataDirectory}");
+
+            if (mode == "download")
+            {
+                DownloadHistoricalData();
+                return;
+            }
+
+            // --- Run Lean Engine with dynamically composed handlers ---
+            try
+            {
+                var systemHandlers = LeanEngineSystemHandlers.FromConfiguration(Composer.Instance);
+                systemHandlers.Initialize();
+
+                var algorithmHandlers = LeanEngineAlgorithmHandlers.FromConfiguration(Composer.Instance);
+                string assemblyPath = Config.Get("algorithm-location", "Alaris.Algorithm.dll");
+
+                var liveMode = mode.Contains("live") || mode.Contains("paper");
+                
+                // The AlgorithmManager will use the ISetupHandler defined in the config
+                var algorithmManager = new AlgorithmManager(liveMode);
+                
+                systemHandlers.LeanManager.Initialize(systemHandlers, algorithmHandlers, new BacktestNodePacket(), algorithmManager);
+                var engine = new Engine(systemHandlers, algorithmHandlers, liveMode);
+                
+                // Run the engine with the configured handlers
+                engine.Run(new BacktestNodePacket(), algorithmManager, assemblyPath, WorkerThread.Instance);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, $"Engine run failed in {mode} mode:");
+            }
+            finally
+            {
+                 Console.WriteLine($"--- Alaris Lean Engine Shutdown [Mode: {mode.ToUpper()}] ---");
+                 // Ensure proper shutdown of the LeanManager
+                 Engine.Main(new string[]{});
+            }
+        }
+
+        /// <summary>
+        /// Handles downloading of historical data using the configured downloader.
+        /// </summary>
+        private static void DownloadHistoricalData()
+        {
+            var symbols = Config.Get("symbols").Split(',').ToList();
+            var resolution = Enum.Parse<Resolution>(Config.Get("resolution", "Daily"), true);
+            var fromDate = DateTime.Parse(Config.Get("start-date", "2023-01-01"));
+            var toDate = DateTime.Parse(Config.Get("end-date", "2024-12-31"));
+
+            // This uses the IDataDownloader configured in config.json
+            var dataDownloader = Composer.Instance.GetExportedValue<IDataDownloader>();
+
+            Console.WriteLine($"Starting download for {symbols.Count} symbols from {fromDate:yyyy-MM-dd} to {toDate:yyyy-MM-dd} at {resolution} resolution...");
+
+            foreach (var symbolStr in symbols)
+            {
+                var symbol = Symbol.Create(symbolStr, SecurityType.Equity, Market.USA);
+                dataDownloader.Download(symbol, resolution, fromDate, toDate);
+            }
+
+            Console.WriteLine("--- Data Download Process Completed ---");
+        }
+
+        /// <summary>
+        /// Finds the build directory by searching parent directories.
         /// </summary>
         private static string? FindBuildDirectory(string startDirectory)
         {
             string currentDir = startDirectory;
-            
-            // Search up to 5 levels up
             for (int i = 0; i < 5; i++)
             {
-                // Check for build directory in current directory
                 string buildDir = Path.Combine(currentDir, "build");
-                if (Directory.Exists(buildDir))
+                if (Directory.Exists(buildDir) && Directory.Exists(Path.Combine(buildDir, "data")))
                 {
-                    // Verify it's a valid build directory by checking for data subdirectory
-                    string dataDir = Path.Combine(buildDir, "data");
-                    if (Directory.Exists(dataDir))
-                    {
-                        return buildDir;
-                    }
+                    return buildDir;
                 }
-                
-                // Move up one directory
-                string parentDir = Directory.GetParent(currentDir)?.FullName;
-                if (parentDir == null || parentDir == currentDir)
-                {
-                    break; // Reached root
-                }
-                currentDir = parentDir;
+                var parent = Directory.GetParent(currentDir);
+                if (parent == null) break;
+                currentDir = parent.FullName;
             }
-            
             return null;
         }
     }
