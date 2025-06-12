@@ -116,7 +116,7 @@ namespace Alaris.IPC
 
         // Platform-specific handles
         private MemoryMappedFile? _mmf; // Windows only
-        private IMemoryAccessor _accessor;
+        private IMemoryAccessor? _accessor; // Made nullable to fix CS8618
         
         // POSIX-specific handles
         private int _posixShmFd = -1;
@@ -145,7 +145,16 @@ namespace Alaris.IPC
             }
             catch (Exception ex)
             {
+                // Cleanup any partially initialized resources
+                Cleanup();
                 throw new InvalidOperationException($"Failed to initialize shared ring buffer '{_name}': {ex.Message}", ex);
+            }
+
+            // Ensure _accessor is initialized after successful initialization
+            if (_accessor == null)
+            {
+                Cleanup();
+                throw new InvalidOperationException($"Failed to properly initialize memory accessor for '{_name}'");
             }
         }
 
@@ -195,7 +204,7 @@ namespace Alaris.IPC
 
         public bool TryWrite(T item)
         {
-            if (_disposed) return false;
+            if (_disposed || _accessor == null) return false;
 
             long currentWrite = _accessor.ReadInt64(0);
             long currentRead = _accessor.ReadInt64(8);
@@ -219,7 +228,7 @@ namespace Alaris.IPC
         public bool TryRead(out T item)
         {
             item = default;
-            if (_disposed) return false;
+            if (_disposed || _accessor == null) return false;
 
             long currentRead = _accessor.ReadInt64(8);
             long currentWrite = _accessor.ReadInt64(0);
@@ -237,30 +246,36 @@ namespace Alaris.IPC
             return true;
         }
 
-        public int Size => (int)(_accessor.ReadInt64(0) - _accessor.ReadInt64(8));
+        public int Size => _accessor != null ? (int)(_accessor.ReadInt64(0) - _accessor.ReadInt64(8)) : 0;
         public bool IsEmpty => Size == 0;
         public bool IsFull => Size >= _bufferSize;
         public double Utilization => _bufferSize > 0 ? (double)Size / _bufferSize : 0.0;
+
+        private void Cleanup()
+        {
+            _accessor?.Dispose();
+            _mmf?.Dispose();
+
+            if (!OperatingSystem.IsWindows())
+            {
+                if (_posixMmapPtr != IntPtr.Zero && _posixMmapPtr != new IntPtr(-1))
+                {
+                    PosixSharedMemory.munmap(_posixMmapPtr, _totalSize);
+                    _posixMmapPtr = IntPtr.Zero;
+                }
+                if (_posixShmFd != -1)
+                {
+                    PosixSharedMemory.close(_posixShmFd);
+                    _posixShmFd = -1;
+                }
+            }
+        }
 
         public void Dispose()
         {
             if (!_disposed)
             {
-                _accessor?.Dispose();
-                _mmf?.Dispose(); // For Windows
-
-                if (!OperatingSystem.IsWindows())
-                {
-                    if (_posixMmapPtr != IntPtr.Zero && _posixMmapPtr != new IntPtr(-1))
-                    {
-                        PosixSharedMemory.munmap(_posixMmapPtr, _totalSize);
-                    }
-                    if (_posixShmFd != -1)
-                    {
-                        PosixSharedMemory.close(_posixShmFd);
-                    }
-                }
-                
+                Cleanup();
                 _disposed = true;
                 GC.SuppressFinalize(this);
             }
