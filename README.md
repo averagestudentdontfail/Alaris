@@ -1,116 +1,210 @@
 # Alaris Trading System
 
-Alaris is a professional-grade, high-performance algorithmic trading system designed for quantitative strategies, particularly in options and volatility arbitrage.
+Alaris is a high-performance algorithmic trading system for quantitative strategies, specializing in options and volatility arbitrage.
 
-It uses a unique **process-isolated architecture** to achieve maximum performance and stability, combining the strengths of C++ for computation and C# for brokerage interaction.
-
----
-
-## ► Overview
-
-### What is Alaris?
-
-Alaris is a complete infrastructure for developing and deploying sophisticated trading strategies. It is not just an algorithm, but a full-stack system that includes:
-
-* **A C++ QuantLib Engine**: For high-speed, low-latency financial calculations, including options pricing (ALO engine) and advanced volatility modeling (GARCH).
-* **A C# Lean Engine**: For robust portfolio management, order execution, and seamless integration with brokerages like Interactive Brokers.
-* **A Lock-Free IPC Bridge**: The two processes communicate in real-time through a high-performance shared memory interface, ensuring minimal overhead.
-
-### Why This Architecture?
-
-This hybrid approach provides significant advantages over monolithic systems:
-
-* **Performance**: Computationally intensive C++ tasks can be optimized with system-level tuning (e.g., real-time priority, CPU pinning) without being hindered by the C# garbage collector.
-* **Stability**: The processes are isolated. A failure in the C# brokerage connection layer will not crash the core C++ pricing engine, and vice-versa, making the system more resilient for live trading.
-* **Specialization**: It allows for using the best tool for the job: C++ for raw numerical speed and C# for its rich ecosystem and high-level abstractions for brokerage and data management.
+**Architecture**: Process-isolated C++ engine + C# brokerage integration with lock-free IPC communication.
 
 ---
 
-## ► Getting Started
+## System Overview
 
-Follow these steps to build, configure, and run the Alaris system.
+**Alaris combines two specialized processes:**
+
+* **C++ QuantLib Process** - High-speed financial calculations, options pricing (ALO), and GARCH volatility modeling
+* **C# Lean Process** - Portfolio management, order execution, and Interactive Brokers integration  
+* **Shared Memory IPC** - Real-time communication between processes with minimal latency
+
+**Key Benefits:**
+- **Performance** - C++ optimized for real-time priority without C# GC interference
+- **Stability** - Process isolation prevents cascading failures
+- **Specialization** - Best tools for each task (C++ for computation, C# for brokerage APIs)
+
+---
+
+## Quick Start
 
 ### Prerequisites
 
-You must have the following software installed on your system (Ubuntu/Debian recommended):
-
-* **GCC** (version 9.0+ with C++20 support)
-* **CMake** (version 3.20+)
-* **.NET SDK** (version 8.0+)
-* **QuantLib** (`libquantlib0-dev`)
-* **YAML-CPP** (`libyaml-cpp-dev`)
-* **Interactive Brokers (IBKR)**: TWS or Gateway must be installed and running.
-
+**Ubuntu/Debian (recommended):**
 ```bash
-# Example installation on Ubuntu/Debian
-sudo apt-get update
-sudo apt-get install -y build-essential cmake libquantlib0-dev libyaml-cpp-dev dotnet-sdk-8.0
+sudo apt update
+sudo apt install build-essential cmake libquantlib0-dev libyaml-cpp-dev dotnet-sdk-8.0
 ```
 
-### Step 1: Build the System
+**Requirements:**
+- GCC 9.0+ with C++20 support
+- CMake 3.20+
+- .NET SDK 8.0+
+- QuantLib and yaml-cpp libraries
+- Interactive Brokers TWS or Gateway
 
-The project uses a clean CMake build process. From the project's root directory:
+### Build & Setup
 
+**Single automated build:**
 ```bash
-# 1. Create a build directory
-mkdir build && cd build
-
-# 2. Configure the project
-cmake ..
-
-# 3. Compile all C++ and C# components
-cmake --build .
+# Clone and build
+git clone <repository-url> && cd Alaris
+cmake -S . -B build
+cmake --build build
 ```
 
-This will create all executables in the `build/bin/` directory and set up the necessary data folder structure in `build/data/`.
+**The build automatically:**
+- ✅ Compiles C++ and C# components
+- ✅ Sets Linux real-time capabilities (if sudo available)
+- ✅ Configures local logging paths
+- ✅ Generates startup script with networking detection
+- ✅ Creates all necessary scripts and directories
 
-### Step 2: Configure Your Brokerage
+### Configure IBKR Connection
 
-Before running the system, you must enter your Interactive Brokers account details.
+**Edit your account details:**
+```bash
+nano config/lean_process.yaml
+```
+Update the `brokerage.account` field with your IBKR account ID.
 
-1.  Open the file: `config/lean_process.yaml`
-2.  Edit the `account` field under the `brokerage` section with your IBKR account ID (e.g., `DU1234567` for paper trading).
+**For WSL users:** The system auto-detects Windows host IP, but verify:
+```bash
+# Test connectivity to your IB Gateway/TWS
+cd build
+nc -z <WINDOWS_HOST_IP> 4002  # Paper trading port
+```
 
-### Step 3: Populate Historical Data
+### Run the System
 
-After a successful build, you may need to download historical data from IBKR. This step is only required for backward trading and is not needed for forward trading.
+**Start Interactive Brokers first, then:**
+```bash
+cd build
+./start-alaris.sh paper    # Paper trading
+./start-alaris.sh live     # Live trading (caution!)
+```
 
-1.  **Launch and log in to IB Gateway or TWS.**
-2.  From your `build` directory, run the C# application in **download mode**:
+**Alternative manual startup:**
+```bash
+# Terminal 1 - QuantLib Process
+./bin/quantlib-process ../config/quantlib_process.yaml
 
-    ```bash
-    dotnet bin/Alaris.Lean.dll --mode download
-    ```
-
-This command instructs the Lean process to connect to IBKR and download the historical data for all symbols defined in `config/lean_process.yaml`, saving it to the `build/data` directory.
-
-### Step 4: Run the System
-
-You are now ready to run the full trading system.
-
-1.  **Ensure IB Gateway or TWS is running.**
-2.  From your `build` directory, execute the provided startup script:
-
-    ```bash
-    ./start-alaris.sh
-    ```
-
-This script handles starting and managing both the C++ and C# processes, allowing them to communicate and begin trading operations.
+# Terminal 2 - Lean Process  
+dotnet bin/Release/Alaris.Lean.dll --mode paper
+```
 
 ---
 
-## ► Operational Modes
+## Configuration
 
-The C# Lean process can be run in several modes via the `--mode` command-line flag. This is useful for development, testing, and live deployment.
+### Trading Strategy
+**Default configuration:** Delta-neutral volatility arbitrage across 25 symbols (ETFs, Tech, Finance, Energy, Healthcare)
 
-* `--mode download`
-    Connects to IBKR to download historical data.
+**Key files:**
+- `config/quantlib_process.yaml` - C++ engine settings, strategy parameters
+- `config/lean_process.yaml` - C# process settings, IBKR connection, symbol universe
+- `config/algorithm.json` - Algorithm-specific parameters
 
-* `--mode backtest`
-    Runs the algorithm using the historical data stored locally in `build/data`. Does not connect to the brokerage.
+### Performance Optimization
+**Automatic on Linux:**
+- Real-time process priority (`CAP_SYS_NICE`)
+- Memory locking (`CAP_IPC_LOCK`)
+- Local logging (no `/var/log/` permissions needed)
 
-* `--mode paper`
-    Connects to an IBKR paper trading account for forward-testing with simulated money.
+**Manual optimization:**
+```bash
+# If automatic setup failed
+sudo ./set-capabilities.sh
+```
 
-* `--mode live`
-    Connects to an IBKR live trading account. **Use with caution, have fun, and avoid losing all your money!**
+---
+
+## Operational Modes
+
+| Mode | Purpose | Connection |
+|------|---------|------------|
+| `download` | Historical data retrieval | IBKR required |
+| `backtest` | Strategy testing on historical data | Local data only |
+| `paper` | Forward testing with simulated money | IBKR paper account |
+| `live` | Real money trading | IBKR live account |
+
+**Examples:**
+```bash
+# Download market data first
+./start-alaris.sh download
+
+# Backtest strategy
+./start-alaris.sh backtest
+
+# Paper trading
+./start-alaris.sh paper
+
+# Live trading (use with extreme caution)
+./start-alaris.sh live
+```
+
+---
+
+## Troubleshooting
+
+### Build Issues
+```bash
+# Clean rebuild
+rm -rf build && cmake -S . -B build && cmake --build build
+```
+
+### IBKR Connection Issues
+- ✅ IB Gateway/TWS running and logged in
+- ✅ API enabled in IB settings (Global Config → API → Settings)
+- ✅ "Allow connections from localhost only" unchecked (for WSL)
+- ✅ Correct host IP in config files
+
+### WSL Networking
+```bash
+# Find Windows host IP
+ip route show default | awk '/default/ {print $3}'
+
+# Update config files
+sed -i 's/host: "127.0.0.1"/host: "YOUR_WINDOWS_IP"/g' config/*.yaml
+```
+
+### Process Management
+```bash
+# Check running processes
+ps aux | grep -E "(quantlib-process|Alaris.Lean)"
+
+# Stop all processes
+pkill -f "quantlib-process|Alaris.Lean"
+sudo rm -f /dev/shm/alaris_*
+```
+
+---
+
+## System Monitoring
+
+**Real-time status:**
+- QuantLib process logs: `build/logs/quantlib.log`
+- Lean process output: Terminal display
+- Shared memory status: `ls /dev/shm/alaris_*`
+
+**Success indicators:**
+- ✅ "IBKR connection established"
+- ✅ "Market data streaming" 
+- ✅ "Strategy loaded: delta-neutral volatility arbitrage"
+- ✅ "Trading signals generated"
+
+---
+
+## Production Deployment
+
+**Installation:**
+```bash
+cmake --install build --prefix /opt/alaris
+/opt/alaris/bin/alaris-production-setup.sh
+```
+
+**System service:**
+```bash
+# Enable automatic startup
+sudo systemctl enable alaris-quantlib.service
+sudo systemctl enable alaris-lean.service
+```
+
+---
+
+*The Alaris system is designed for quantitative trading professionals. Ensure proper risk management and testing before live deployment.*
