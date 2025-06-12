@@ -1,245 +1,116 @@
-# Alaris - High-Performance Derivatives Trading System
+# Alaris Trading System
 
-Alaris is a production-grade derivatives trading system designed for volatility arbitrage using American options. The system employs a process-isolated architecture with deterministic execution guarantees.
+Alaris is a professional-grade, high-performance algorithmic trading system designed for quantitative strategies, particularly in options and volatility arbitrage.
 
-## 🏗️ Quick Start
+It uses a unique **process-isolated architecture** to achieve maximum performance and stability, combining the strengths of C++ for computation and C# for brokerage interaction.
+
+---
+
+## ► Overview
+
+### What is Alaris?
+
+Alaris is a complete infrastructure for developing and deploying sophisticated trading strategies. It is not just an algorithm, but a full-stack system that includes:
+
+* **A C++ QuantLib Engine**: For high-speed, low-latency financial calculations, including options pricing (ALO engine) and advanced volatility modeling (GARCH).
+* **A C# Lean Engine**: For robust portfolio management, order execution, and seamless integration with brokerages like Interactive Brokers.
+* **A Lock-Free IPC Bridge**: The two processes communicate in real-time through a high-performance shared memory interface, ensuring minimal overhead.
+
+### Why This Architecture?
+
+This hybrid approach provides significant advantages over monolithic systems:
+
+* **Performance**: Computationally intensive C++ tasks can be optimized with system-level tuning (e.g., real-time priority, CPU pinning) without being hindered by the C# garbage collector.
+* **Stability**: The processes are isolated. A failure in the C# brokerage connection layer will not crash the core C++ pricing engine, and vice-versa, making the system more resilient for live trading.
+* **Specialization**: It allows for using the best tool for the job: C++ for raw numerical speed and C# for its rich ecosystem and high-level abstractions for brokerage and data management.
+
+---
+
+## ► Getting Started
+
+Follow these steps to build, configure, and run the Alaris system.
 
 ### Prerequisites
-- Ubuntu 20.04+ (recommended)
-- CMake 3.20+
-- GCC 9.0+ with C++20 support
-- QuantLib development libraries
-- .NET 8 SDK (for Lean process)
-- Interactive Brokers TWS/Gateway
 
-### Build System
+You must have the following software installed on your system (Ubuntu/Debian recommended):
+
+* **GCC** (version 9.0+ with C++20 support)
+* **CMake** (version 3.20+)
+* **.NET SDK** (version 8.0+)
+* **QuantLib** (`libquantlib0-dev`)
+* **YAML-CPP** (`libyaml-cpp-dev`)
+* **Interactive Brokers (IBKR)**: TWS or Gateway must be installed and running.
+
 ```bash
-# Install dependencies (Ubuntu/Debian)
+# Example installation on Ubuntu/Debian
 sudo apt-get update
-sudo apt-get install -y build-essential cmake libboost-all-dev \
-    libquantlib0-dev dotnet-sdk-8.0
-
-# Build Alaris
-./scripts/build.sh
-
-# Run tests
-cd build && make test
+sudo apt-get install -y build-essential cmake libquantlib0-dev libyaml-cpp-dev dotnet-sdk-8.0
 ```
 
-### Configuration
-1. Edit `config/lean_process.yaml` with your Interactive Brokers credentials
-2. Update `config/quantlib_process.yaml` for your system settings
+### Step 1: Build the System
 
-### Start Trading
+The project uses a clean CMake build process. From the project's root directory:
+
 ```bash
-# Start QuantLib process
-./scripts/start_alaris.sh
+# 1. Create a build directory
+mkdir build && cd build
 
-# In another terminal, start Lean process
-cd src/csharp && dotnet run
+# 2. Configure the project
+cmake ..
+
+# 3. Compile all C++ and C# components
+cmake --build .
 ```
 
-## 📊 Monitoring
-- System logs: `logs/`
-- Performance metrics via shared memory
-- Real-time health monitoring via Grafana dashboards
-- Prometheus metrics collection
+This will create all executables in the `build/bin/` directory and set up the necessary data folder structure in `build/data/`.
 
-## 🔧 Architecture
+### Step 2: Configure Your Brokerage
 
-### Core Components
-- **QuantLib Process (C++)**: 
-  - Option pricing engine (ALO)
-  - GJR-GARCH volatility models
-  - Signal generation
-  - Real-time market data processing
-  - Lock-free shared memory IPC
+Before running the system, you must enter your Interactive Brokers account details.
 
-- **Lean Process (C#)**:
-  - Market data handling
-  - Order execution
-  - Risk management
-  - Interactive Brokers integration
-  - Performance monitoring
+1.  Open the file: `config/lean_process.yaml`
+2.  Edit the `account` field under the `brokerage` section with your IBKR account ID (e.g., `DU1234567` for paper trading).
 
-### System Features
-- Process-isolated architecture for stability
-- Lock-free shared memory communication
-- Real-time priority scheduling
-- Memory pool optimization
-- Deterministic execution guarantees
-- Comprehensive monitoring and logging
+### Step 3: Populate Historical Data
 
-## 🐳 Production Deployment
+After a successful build, you need to download historical data from IBKR. This is a one-time step required for backtesting and algorithm initialization.
 
-### Quick Production Setup
-```bash
-# Deploy to production
-./scripts/deploy_production.sh
+1.  **Launch and log in to IB Gateway or TWS.**
+2.  From your `build` directory, run the C# application in **download mode**:
 
-# Deploy for development
-./scripts/deploy_development.sh
-```
+    ```bash
+    dotnet bin/Alaris.Lean.dll --mode download
+    ```
 
-### Manual Docker Commands
-```bash
-# Build and start all services
-docker-compose up --build -d
+This command instructs the Lean process to connect to IBKR and download the historical data for all symbols defined in `config/lean_process.yaml`, saving it to the `build/data` directory.
 
-# View running services
-docker-compose ps
+### Step 4: Run the System
 
-# View logs
-docker-compose logs -f quantlib-process
-docker-compose logs -f lean-process
+You are now ready to run the full trading system.
 
-# Stop all services
-docker-compose down
+1.  **Ensure IB Gateway or TWS is running.**
+2.  From your `build` directory, execute the provided startup script:
 
-# Full cleanup
-docker-compose down -v --remove-orphans
-```
+    ```bash
+    ./start-alaris.sh
+    ```
 
-### Monitoring & Observability
+This script handles starting and managing both the C++ and C# processes, allowing them to communicate and begin trading operations.
 
-#### Grafana Dashboards
-- **URL**: http://localhost:3000
-- **Credentials**: admin/alaris123
-- **Dashboards**: 
-  - Alaris Trading System (Main dashboard)
-  - System performance metrics
-  - Trading P&L tracking
+---
 
-#### Prometheus Metrics
-- **URL**: http://localhost:9090
-- **Metrics collected**:
-  - System health (up/down status)
-  - Trading performance (P&L, signals)
-  - Process performance (latency, throughput)
-  - Resource utilization
+## ► Operational Modes
 
-### Production Considerations
+The C# Lean process can be run in several modes via the `--mode` command-line flag. This is useful for development, testing, and live deployment.
 
-#### System Requirements
-- **CPU**: 4+ cores (2 isolated for QuantLib process)
-- **Memory**: 8GB+ RAM
-- **Storage**: 100GB+ SSD for logs and data
-- **Network**: Low-latency connection to Interactive Brokers
+* `--mode download`
+    Connects to IBKR to download historical data.
 
-#### Security
-- Run containers with non-root users
-- Secure sensitive configuration files
-- Monitor access to trading APIs
-- Regular security updates
+* `--mode backtest`
+    Runs the algorithm using the historical data stored locally in `build/data`. Does not connect to the brokerage.
 
-#### Backup & Recovery
-- Database backups (if using persistent storage)
-- Configuration backup
-- Log archival strategy
-- Disaster recovery procedures
+* `--mode paper`
+    Connects to an IBKR paper trading account for forward-testing with simulated money.
 
-### Interactive Brokers Configuration
-
-#### Required Setup
-1. **IB Gateway or TWS**: Must be running and configured
-2. **API Permissions**: Enable API access in IB account
-3. **Account Configuration**: Update `config/lean_process.yaml`:
-
-```yaml
-brokerage:
-  gateway_host: "127.0.0.1"
-  gateway_port: 4001        # 4001 for live, 7497 for paper
-  account: "YOUR_ACCOUNT"   # Your IB account number
-```
-
-#### Testing Connection
-```bash
-# Test IB Gateway connectivity
-nc -zv localhost 4001
-
-# Check Lean process logs for connection status
-docker-compose logs lean-process | grep -i "interactive"
-```
-
-### Troubleshooting
-
-#### Common Issues
-
-**1. QuantLib process fails to start**
-```bash
-# Check container logs
-docker-compose logs quantlib-process
-
-# Check shared memory permissions
-ls -la /dev/shm/alaris/
-
-# Verify QuantLib installation in container
-docker-compose exec quantlib-process ldd /opt/alaris/bin/quantlib_process
-```
-
-**2. Lean process connection issues**
-```bash
-# Verify IB Gateway is running
-netstat -an | grep 4001
-
-# Check container networking
-docker-compose exec lean-process ping quantlib-process
-
-# Test IB connection
-docker-compose logs lean-process | grep -E "(connection|error)"
-```
-
-**3. Monitoring not working**
-```bash
-# Check Prometheus targets
-curl http://localhost:9090/api/v1/targets
-
-# Restart monitoring stack
-docker-compose restart prometheus grafana
-
-# Check Grafana logs
-docker-compose logs grafana
-```
-
-#### Performance Optimization
-
-**1. System Tuning**
-```bash
-# Set CPU governor to performance
-echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
-
-# Increase shared memory limits
-echo 'kernel.shmmax = 68719476736' | sudo tee -a /etc/sysctl.conf
-
-# Apply changes
-sudo sysctl -p
-```
-
-**2. Container Optimization**
-```bash
-# Monitor container resource usage
-docker stats
-
-# Adjust container resources in docker-compose.yml
-# Increase CPU/memory limits for better performance
-```
-
-### Maintenance
-
-#### Regular Tasks
-- **Daily**: Check system health via Grafana
-- **Weekly**: Review trading performance and logs
-- **Monthly**: Update containers and dependencies
-- **Quarterly**: Full system backup and DR test
-
-#### Log Management
-```bash
-# Rotate logs
-docker-compose exec quantlib-process logrotate /etc/logrotate.conf
-
-# Archive old logs
-tar -czf alaris-logs-$(date +%Y%m%d).tar.gz logs/
-
-# Clean up old containers
-docker system prune -f
-```
+* `--mode live`
+    Connects to an IBKR live trading account. **Use with caution, have fun, and avoid losing all your money!**
