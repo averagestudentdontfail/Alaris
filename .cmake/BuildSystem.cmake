@@ -1,4 +1,5 @@
 # .cmake/BuildSystem.cmake
+# Streamlined build system for Alaris trading system
 
 # Platform detection
 if(WIN32)
@@ -48,7 +49,9 @@ function(add_dotnet_project TARGET_NAME PROJECT_FILE)
         COMMAND ${CMAKE_COMMAND} -E echo "Building .NET project: ${TARGET_NAME}"
         COMMAND ${DOTNET_EXECUTABLE} build "${PROJECT_FILE}" -c ${CMAKE_BUILD_TYPE} --verbosity quiet
         COMMAND ${CMAKE_COMMAND} -E echo "Copying .NET artifacts to: ${FINAL_DESTINATION_DIR}"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${FINAL_DESTINATION_DIR}"
         COMMAND ${CMAKE_COMMAND} -E copy_directory "${DOTNET_OUTPUT_DIR}" "${FINAL_DESTINATION_DIR}"
+        COMMAND ${CMAKE_COMMAND} -E echo "Verifying .NET build output..."
         COMMAND ${CMAKE_COMMAND} -E echo "✓ .NET project ${TARGET_NAME} built successfully"
         WORKING_DIRECTORY ${PROJECT_DIR}
         VERBATIM
@@ -62,14 +65,6 @@ function(add_dotnet_project TARGET_NAME PROJECT_FILE)
     if(TARGET alaris)
         add_dependencies(${TARGET_NAME} alaris)
     endif()
-    
-    # Add post-build verification
-    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E echo "Verifying .NET build output..."
-        COMMAND test -d "${FINAL_DESTINATION_DIR}" || (echo "ERROR: .NET output directory not found" && exit 1)
-        COMMAND ${CMAKE_COMMAND} -E echo "✓ .NET build verification passed"
-        VERBATIM
-    )
 endfunction()
 
 # Function to create a build summary
