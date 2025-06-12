@@ -1,57 +1,4 @@
-# Function to add capability and data management targets
-function(add_capability_and_data_targets)
-    # Capability targets (if enabled)
-    if(ALARIS_SET_CAPABILITIES AND ALARIS_CAPABILITIES_AVAILABLE)
-        # Create a target to set capabilities manually
-        add_custom_target(set-capabilities
-            COMMAND bash "${ALARIS_CAPABILITY_SCRIPT}"
-            DEPENDS alaris quantlib-process
-            COMMENT "Setting Linux capabilities for real-time performance"
-            VERBATIM
-        )
-        
-        # Create a target to check current capabilities
-        add_custom_target(check-capabilities
-            COMMAND echo "Checking capabilities for executables..."
-            COMMAND bash -c "echo 'quantlib-process:' && getcap ${CMAKE_BINARY_DIR}/bin/quantlib-process || echo '  No capabilities set'"
-            COMMAND bash -c "echo 'alaris:' && getcap ${CMAKE_BINARY_DIR}/bin/alaris || echo '  No capabilities set'"
-            COMMENT "Checking current Linux capabilities"
-            VERBATIM
-        )
-        
-        # Create a target to remove capabilities
-        add_custom_target(remove-capabilities
-            COMMAND echo "Removing capabilities..."
-            COMMAND bash -c "if [[ -f '${CMAKE_BINARY_DIR}/bin/quantlib-process' ]]; then sudo setcap -r '${CMAKE_BINARY_DIR}/bin/quantlib-process' && echo 'Removed from quantlib-process'; fi"
-            COMMAND bash -c "if [[ -f '${CMAKE_BINARY_DIR}/bin/alaris' ]]; then sudo setcap -r '${CMAKE_BINARY_DIR}/bin/alaris' && echo 'Removed from alaris'; fi"
-            COMMENT "Removing Linux capabilities"
-            VERBATIM
-        )
-        
-        message(STATUS "Components: Capability targets created (set-capabilities, check-capabilities, remove-capabilities)")
-    endif()
-    
-    # Environment verification target (both data and capabilities)
-    add_custom_target(verify-environment
-        COMMAND echo "=== Alaris Environment Verification ==="
-        COMMAND echo "Checking data environment..."
-        COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_SOURCE_DIR}/.cmake/DataValidateTarget.cmake"
-        COMMENT "Verifying complete Alaris environment"
-        VERBATIM
-    )
-    
-    if(ALARIS_SET_CAPABILITIES AND ALARIS_CAPABILITIES_AVAILABLE)
-        add_custom_command(TARGET verify-environment POST_BUILD
-            COMMAND echo "Checking capabilities..."
-            COMMAND bash -c "getcap ${CMAKE_BINARY_DIR}/bin/quantlib-process || echo 'No capabilities set for quantlib-process'"
-            COMMAND bash -c "getcap ${CMAKE_BINARY_DIR}/bin/alaris || echo 'No capabilities set for alaris'"
-            COMMAND echo "=== Environment Verification Complete ==="
-            VERBATIM
-        )
-    endif()
-    
-    message(STATUS "Components: Environment verification targets created")
-endfunction()# .cmake/Components.cmake
+# .cmake/Components.cmake
 # Component definitions and organization
 
 # Define QuantLib components
@@ -143,7 +90,14 @@ function(add_post_build_targets)
     if(ALARIS_AUTO_SETUP_DATA)
         add_custom_command(TARGET alaris POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E echo "Verifying data environment for Lean integration..."
-            COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_SOURCE_DIR}/.cmake/DataValidateTarget.cmake"
+            COMMAND ${CMAKE_COMMAND}
+                -DALARIS_DATA_DIR="${ALARIS_DATA_DIR}"
+                -DALARIS_RESULTS_DIR="${ALARIS_RESULTS_DIR}"
+                -DALARIS_CACHE_DIR="${ALARIS_CACHE_DIR}"
+                -DALARIS_MINIMAL_DATA=${ALARIS_MINIMAL_DATA}
+                -DALARIS_CREATE_SAMPLE_DATA=${ALARIS_CREATE_SAMPLE_DATA}
+                -DCMAKE_BINARY_DIR="${CMAKE_BINARY_DIR}"
+                -P "${CMAKE_CURRENT_SOURCE_DIR}/.cmake/DataInlineValidate.cmake"
             COMMENT "Verifying data environment"
             VERBATIM
         )
@@ -175,6 +129,68 @@ function(add_post_build_targets)
     endif()
     
     message(STATUS "Components: Post-build verification targets configured")
+endfunction()
+
+# Function to add capability and data management targets
+function(add_capability_and_data_targets)
+    # Capability targets (if enabled)
+    if(ALARIS_SET_CAPABILITIES AND ALARIS_CAPABILITIES_AVAILABLE)
+        # Create a target to set capabilities manually
+        add_custom_target(set-capabilities
+            COMMAND bash "${ALARIS_CAPABILITY_SCRIPT}"
+            DEPENDS alaris quantlib-process
+            COMMENT "Setting Linux capabilities for real-time performance"
+            VERBATIM
+        )
+        
+        # Create a target to check current capabilities
+        add_custom_target(check-capabilities
+            COMMAND echo "Checking capabilities for executables..."
+            COMMAND bash -c "echo 'quantlib-process:' && getcap ${CMAKE_BINARY_DIR}/bin/quantlib-process || echo '  No capabilities set'"
+            COMMAND bash -c "echo 'alaris:' && getcap ${CMAKE_BINARY_DIR}/bin/alaris || echo '  No capabilities set'"
+            COMMENT "Checking current Linux capabilities"
+            VERBATIM
+        )
+        
+        # Create a target to remove capabilities
+        add_custom_target(remove-capabilities
+            COMMAND echo "Removing capabilities..."
+            COMMAND bash -c "if [[ -f '${CMAKE_BINARY_DIR}/bin/quantlib-process' ]]; then sudo setcap -r '${CMAKE_BINARY_DIR}/bin/quantlib-process' && echo 'Removed from quantlib-process'; fi"
+            COMMAND bash -c "if [[ -f '${CMAKE_BINARY_DIR}/bin/alaris' ]]; then sudo setcap -r '${CMAKE_BINARY_DIR}/bin/alaris' && echo 'Removed from alaris'; fi"
+            COMMENT "Removing Linux capabilities"
+            VERBATIM
+        )
+        
+        message(STATUS "Components: Capability targets created (set-capabilities, check-capabilities, remove-capabilities)")
+    endif()
+    
+    # Environment verification target (both data and capabilities)
+    add_custom_target(verify-environment
+        COMMAND echo "=== Alaris Environment Verification ==="
+        COMMAND echo "Checking data environment..."
+        COMMAND ${CMAKE_COMMAND}
+            -DALARIS_DATA_DIR="${ALARIS_DATA_DIR}"
+            -DALARIS_RESULTS_DIR="${ALARIS_RESULTS_DIR}"
+            -DALARIS_CACHE_DIR="${ALARIS_CACHE_DIR}"
+            -DALARIS_MINIMAL_DATA=${ALARIS_MINIMAL_DATA}
+            -DALARIS_CREATE_SAMPLE_DATA=${ALARIS_CREATE_SAMPLE_DATA}
+            -DCMAKE_BINARY_DIR="${CMAKE_BINARY_DIR}"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/.cmake/DataInlineValidate.cmake"
+        COMMENT "Verifying complete Alaris environment"
+        VERBATIM
+    )
+    
+    if(ALARIS_SET_CAPABILITIES AND ALARIS_CAPABILITIES_AVAILABLE)
+        add_custom_command(TARGET verify-environment POST_BUILD
+            COMMAND echo "Checking capabilities..."
+            COMMAND bash -c "getcap ${CMAKE_BINARY_DIR}/bin/quantlib-process || echo 'No capabilities set for quantlib-process'"
+            COMMAND bash -c "getcap ${CMAKE_BINARY_DIR}/bin/alaris || echo 'No capabilities set for alaris'"
+            COMMAND echo "=== Environment Verification Complete ==="
+            VERBATIM
+        )
+    endif()
+    
+    message(STATUS "Components: Environment verification targets created")
 endfunction()
 
 # Function to create development convenience targets
