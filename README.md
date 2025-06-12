@@ -59,7 +59,7 @@ cmake --build build
 
 **Available build targets:**
 ```bash
-cmake --build build                 # Build everything
+cmake --build build                          # Build everything
 cmake --build build --target alaris-all      # Build all C++ components  
 cmake --build build --target lean-process    # Build .NET components
 cmake --build build --target verify-build    # Verify build completion
