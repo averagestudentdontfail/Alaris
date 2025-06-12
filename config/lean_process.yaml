@@ -65,6 +65,3 @@ logging:
   level: "INFO"
   # Log file will be placed in the build directory.
   file: "alaris_lean.log"
-
----
-# End of config/lean_process.yaml

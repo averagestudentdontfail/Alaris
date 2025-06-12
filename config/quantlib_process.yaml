@@ -182,6 +182,3 @@ logging:
     file: "logs/ibkr_data.log"
     log_market_data: true
     log_historical_requests: true
-
----
-# End of config/quantlib_process.yaml
