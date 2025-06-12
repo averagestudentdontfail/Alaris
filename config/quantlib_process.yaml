@@ -171,7 +171,7 @@ ibkr:
 
 logging:
   level: "INFO"
-  file: "/var/log/alaris/quantlib.log"
+  file: "logs/quantlib.log"
   binary_mode: false
   enable_performance_log: true
   
@@ -179,7 +179,7 @@ logging:
   ibkr_logging:
     enabled: true
     level: "DEBUG"
-    file: "/var/log/alaris/ibkr_data.log"
+    file: "logs/ibkr_data.log"
     log_market_data: true
     log_historical_requests: true
 
