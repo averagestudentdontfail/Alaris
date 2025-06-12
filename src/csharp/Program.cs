@@ -6,7 +6,6 @@ using System.CommandLine;
 using System.Collections.Generic;
 using System.Linq;
 using YamlDotNet.Serialization;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using QuantConnect;
 using QuantConnect.Configuration;
@@ -17,14 +16,13 @@ using QuantConnect.Packets;
 using QuantConnect.Interfaces;
 using QuantConnect.Brokerages.InteractiveBrokers;
 using QuantConnect.ToolBox;
+using QuantConnect.ToolBox.LeanDataDownloader; 
+using QCSymbol = QuantConnect.Symbol; 
 
 namespace Alaris
 {
     /// <summary>
     /// Main entry point for the Alaris C# Lean process.
-    /// This application is responsible for running the trading algorithm in various modes
-    /// (live, paper, backtest, data download) by dynamically configuring the Lean engine
-    /// based on master YAML/JSON configuration files.
     /// </summary>
     public class Program
     {
@@ -48,9 +46,10 @@ namespace Alaris
             rootCommand.AddOption(modeOption);
             rootCommand.AddOption(configDirOption);
 
-            rootCommand.SetHandler(async (mode, configDir) =>
+            // Fixed: Changed from async to sync to resolve warning CS1998
+            rootCommand.SetHandler((mode, configDir) =>
             {
-                await RunEngine(mode, configDir.FullName);
+                RunEngine(mode, configDir.FullName);
             }, modeOption, configDirOption);
 
             return await rootCommand.InvokeAsync(args);
@@ -59,11 +58,10 @@ namespace Alaris
         /// <summary>
         /// Configures and runs the Lean engine based on the selected operational mode.
         /// </summary>
-        private static async Task RunEngine(string mode, string configDir)
+        private static void RunEngine(string mode, string configDir) // Fixed: Method is now sync (void)
         {
             Console.WriteLine($"--- Alaris Lean Engine Initializing [Mode: {mode.ToUpper()}] ---");
 
-            // 1. Load Master Configuration from YAML/JSON
             var leanConfigPath = Path.Combine(configDir, "lean_process.yaml");
             var algoConfigPath = Path.Combine(configDir, "algorithm.json");
 
@@ -73,7 +71,6 @@ namespace Alaris
                 return;
             }
 
-            // 2. Set Essential Paths
             string? buildDirectory = FindBuildDirectory(Directory.GetCurrentDirectory());
             if (buildDirectory == null)
             {
@@ -85,37 +82,36 @@ namespace Alaris
             Config.Set("results-destination-folder", Path.Combine(buildDirectory, "results"));
             Log.Trace($"Data folder set to: {Config.Get("data-folder")}");
 
-            // 3. Execute the requested mode
             if (mode == "download")
             {
                 DownloadHistoricalData();
+                return;
             }
-            else
-            {
-                // Run the full Lean engine for backtesting or live/paper trading
-                try
-                {
-                    var systemHandlers = LeanEngineSystemHandlers.FromConfiguration(Composer.Instance);
-                    systemHandlers.Initialize();
 
-                    var algorithmHandlers = LeanEngineAlgorithmHandlers.FromConfiguration(Composer.Instance);
-                    var engine = new Engine(systemHandlers, algorithmHandlers, Config.GetBool("live-mode"));
-                    
-                    var algorithmManager = new AlgorithmManager(Config.GetBool("live-mode"));
-                    systemHandlers.LeanManager.Initialize(systemHandlers, algorithmHandlers, new BacktestNodePacket(), algorithmManager);
-                    
-                    string algorithmPath = Config.Get("algorithm-location");
-                    engine.Run(new BacktestNodePacket(), algorithmManager, algorithmPath, WorkerThread.Instance);
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, $"Engine run failed in {mode} mode:");
-                }
-                finally
-                {
-                    Console.WriteLine($"--- Alaris Lean Engine Shutdown [Mode: {mode.ToUpper()}] ---");
-                    Engine.Main(new string[]{}); // Perform cleanup
-                }
+            LeanEngineSystemHandlers systemHandlers = null;
+            try
+            {
+                systemHandlers = LeanEngineSystemHandlers.FromConfiguration(Composer.Instance);
+                systemHandlers.Initialize();
+
+                var algorithmHandlers = LeanEngineAlgorithmHandlers.FromConfiguration(Composer.Instance);
+                var engine = new Engine(systemHandlers, algorithmHandlers, Config.GetBool("live-mode"));
+                
+                var algorithmManager = new AlgorithmManager(Config.GetBool("live-mode"));
+                systemHandlers.LeanManager.Initialize(systemHandlers, algorithmHandlers, new BacktestNodePacket(), algorithmManager);
+                
+                string algorithmPath = Config.Get("algorithm-location");
+                engine.Run(new BacktestNodePacket(), algorithmManager, algorithmPath, WorkerThread.Instance);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, $"Engine run failed in {mode} mode:");
+            }
+            finally
+            {
+                Console.WriteLine($"--- Alaris Lean Engine Shutdown [Mode: {mode.ToUpper()}] ---");
+                // Fixed: Correctly dispose of system handlers to perform cleanup.
+                systemHandlers?.Dispose(); 
             }
         }
         
@@ -127,37 +123,28 @@ namespace Alaris
         {
             try
             {
-                // --- Load lean_process.yaml ---
                 var deserializer = new DeserializerBuilder().Build();
                 var yamlText = File.ReadAllText(yamlPath);
                 var yamlConfig = deserializer.Deserialize<dynamic>(yamlText);
 
                 var algoConfig = yamlConfig["algorithm"];
                 var brokerageConfig = yamlConfig["brokerage"];
-                var universeConfig = yamlConfig["universe"];
-
-                // --- Load algorithm.json ---
-                var jsonText = File.ReadAllText(jsonPath);
-                var jsonConfig = JObject.Parse(jsonText);
                 
-                // --- Set Core Algorithm and Brokerage Settings ---
                 Config.Set("algorithm-type-name", (string)algoConfig["name"]);
-                Config.Set("algorithm-location", "Alaris.Algorithm.dll"); // Assume it's in the bin directory
+                Config.Set("algorithm-location", "Alaris.Algorithm.dll");
                 Config.Set("start-date", (string)algoConfig["start_date"]);
                 Config.Set("end-date", (string)algoConfig["end_date"]);
                 Config.Set("cash", (string)algoConfig["cash"]);
 
-                // --- Set IBKR Connection Details ---
                 Config.Set("ib-account", (string)brokerageConfig["account"]);
                 Config.Set("ib-host", (string)brokerageConfig["host"]);
-                Config.Set("ib-client-id", (string)brokerageConfig["client_id"]);
+                Config.Set("ib-client-id", brokerageConfig["client_id"].ToString()); // Ensure it's a string
                 
                 string port = mode == "live" 
-                    ? (string)brokerageConfig["live_port"] 
-                    : (string)brokerageConfig["paper_port"];
+                    ? brokerageConfig["live_port"].ToString()
+                    : brokerageConfig["paper_port"].ToString();
                 Config.Set("ib-port", port);
 
-                // --- Set Handlers Based on Mode ---
                 bool isLive = (mode == "live" || mode == "paper");
                 Config.Set("live-mode", isLive.ToString().ToLower());
                 
@@ -200,7 +187,7 @@ namespace Alaris
             var deserializer = new DeserializerBuilder().Build();
             var yamlConfig = deserializer.Deserialize<dynamic>(yamlText);
 
-            var symbols = ((List<object>)yamlConfig["universe"]["symbols"]).Select(s => s.ToString()).ToList();
+            var symbols = ((List<object>)yamlConfig["universe"]["symbols"]).Select(s => s?.ToString()).ToList();
             var resolution = Enum.Parse<Resolution>(Config.Get("resolution", "Daily"), true);
             var fromDate = DateTime.Parse(Config.Get("start-date", "2023-01-01"));
             var toDate = DateTime.Parse(Config.Get("end-date", "2024-12-31"));
@@ -211,7 +198,8 @@ namespace Alaris
             foreach (var symbolStr in symbols)
             {
                 if(string.IsNullOrEmpty(symbolStr)) continue;
-                var symbol = Symbol.Create(symbolStr, SecurityType.Equity, Market.USA);
+                // Fixed: Use the QCSymbol alias to create the symbol object
+                var symbol = QCSymbol.Create(symbolStr, SecurityType.Equity, Market.USA);
                 downloader.Download(symbol, resolution, fromDate, toDate);
             }
 
@@ -262,5 +250,3 @@ namespace Alaris
         }
     }
 }
-
-// Action required add the YamlDotNet and Newtonsoft.Json packages to your C# project. You can do this by editing your Alaris.Lean.csproj file or by running the following commands in the src/csharp directory.
