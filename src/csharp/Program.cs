@@ -3,10 +3,7 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using System.CommandLine;
-using System.Collections.Generic;
-using System.Linq;
 using YamlDotNet.Serialization;
-using Newtonsoft.Json.Linq;
 using QuantConnect;
 using QuantConnect.Configuration;
 using QuantConnect.Lean.Engine;
@@ -14,9 +11,6 @@ using QuantConnect.Logging;
 using QuantConnect.Util;
 using QuantConnect.Packets;
 using QuantConnect.Interfaces;
-using QuantConnect.Brokerages.InteractiveBrokers;
-
-using QCSymbol = QuantConnect.Symbol; 
 
 namespace Alaris
 {
@@ -31,7 +25,7 @@ namespace Alaris
                 description: "The operational mode for the Lean engine.",
                 getDefaultValue: () => "backtest");
             modeOption.AddAlias("-m");
-            modeOption.FromAmong("live", "paper", "backtest", "download");
+            modeOption.FromAmong("live", "paper", "backtest");
 
             var configDirOption = new Option<DirectoryInfo>(
                 name: "--config-dir",
@@ -55,62 +49,88 @@ namespace Alaris
             Console.WriteLine($"--- Alaris Lean Engine Initializing [Mode: {mode.ToUpper()}] ---");
 
             var leanConfigPath = Path.Combine(configDir, "lean_process.yaml");
-            var algoConfigPath = Path.Combine(configDir, "algorithm.json");
 
-            if (!LoadConfigurationFromFiles(leanConfigPath, algoConfigPath, mode))
+            if (!LoadConfigurationFromFiles(leanConfigPath, mode))
             {
                 Log.Error("Engine startup failed due to configuration errors.");
                 return;
             }
 
+            // Set up data directories - Lean will handle data downloads automatically
             string? buildDirectory = FindBuildDirectory(Directory.GetCurrentDirectory());
             if (buildDirectory == null)
             {
                 Log.Error("Could not find the 'build' directory. Please run from the project root or build directory.");
                 return;
             }
+
+            // Ensure required directories exist
+            EnsureDirectoryExists(Path.Combine(buildDirectory, "data"));
+            EnsureDirectoryExists(Path.Combine(buildDirectory, "cache"));
+            EnsureDirectoryExists(Path.Combine(buildDirectory, "results"));
+
             Config.Set("data-folder", Path.Combine(buildDirectory, "data"));
             Config.Set("cache-location", Path.Combine(buildDirectory, "cache"));
             Config.Set("results-destination-folder", Path.Combine(buildDirectory, "results"));
 
-            if (mode == "download")
-            {
-                Log.Trace("Download mode is handled automatically by Lean when data is needed.");
-                Log.Trace("Historical data will be downloaded on-demand during algorithm execution.");
-                return;
-            }
+            Log.Trace($"Data folder: {Config.Get("data-folder")}");
+            Log.Trace($"Cache folder: {Config.Get("cache-location")}");
+            Log.Trace($"Results folder: {Config.Get("results-destination-folder")}");
 
             LeanEngineSystemHandlers? systemHandlers = null;
             try
             {
+                Log.Trace("Initializing Lean Engine system handlers...");
                 systemHandlers = LeanEngineSystemHandlers.FromConfiguration(Composer.Instance);
                 systemHandlers.Initialize();
 
+                Log.Trace("Initializing Lean Engine algorithm handlers...");
                 var algorithmHandlers = LeanEngineAlgorithmHandlers.FromConfiguration(Composer.Instance);
-                var engine = new Engine(systemHandlers, algorithmHandlers, Config.GetBool("live-mode"));
                 
-                var algorithmManager = new AlgorithmManager(Config.GetBool("live-mode"));
-                systemHandlers.LeanManager.Initialize(systemHandlers, algorithmHandlers, new BacktestNodePacket(), algorithmManager);
+                var isLiveMode = Config.GetBool("live-mode");
+                var engine = new Engine(systemHandlers, algorithmHandlers, isLiveMode);
                 
-                string algorithmPath = Config.Get("algorithm-location");
-                engine.Run(new BacktestNodePacket(), algorithmManager, algorithmPath, WorkerThread.Instance);
+                var algorithmManager = new AlgorithmManager(isLiveMode);
+                
+                // Create appropriate packet based on mode
+                var packet = isLiveMode 
+                    ? new LiveNodePacket() as AlgorithmNodePacket
+                    : new BacktestNodePacket() as AlgorithmNodePacket;
+
+                systemHandlers.LeanManager.Initialize(systemHandlers, algorithmHandlers, packet, algorithmManager);
+                
+                string algorithmLocation = Config.Get("algorithm-location");
+                Log.Trace($"Starting engine with algorithm: {algorithmLocation}");
+                
+                // Start the engine - Lean will automatically handle data downloads as needed
+                engine.Run(packet, algorithmManager, algorithmLocation, WorkerThread.Instance);
             }
             catch (Exception ex)
             {
-                Log.Error(ex, $"Engine run failed in {mode} mode:");
+                Log.Error(ex, $"Engine execution failed in {mode} mode:");
+                Console.WriteLine($"Error: {ex.Message}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"Inner Exception: {ex.InnerException.Message}");
+                }
             }
             finally
             {
                 Console.WriteLine($"--- Alaris Lean Engine Shutdown [Mode: {mode.ToUpper()}] ---");
-                // Correctly dispose of system handlers to perform cleanup.
-                systemHandlers?.Dispose(); 
+                systemHandlers?.Dispose();
             }
         }
         
-        private static bool LoadConfigurationFromFiles(string yamlPath, string jsonPath, string mode)
+        private static bool LoadConfigurationFromFiles(string yamlPath, string mode)
         {
             try
             {
+                if (!File.Exists(yamlPath))
+                {
+                    Log.Error($"Configuration file not found: {yamlPath}");
+                    return false;
+                }
+
                 var deserializer = new DeserializerBuilder().Build();
                 var yamlText = File.ReadAllText(yamlPath);
                 var yamlConfig = deserializer.Deserialize<dynamic>(yamlText);
@@ -118,12 +138,14 @@ namespace Alaris
                 var algoConfig = yamlConfig["algorithm"];
                 var brokerageConfig = yamlConfig["brokerage"];
                 
+                // Core algorithm configuration
                 Config.Set("algorithm-type-name", (string)algoConfig["name"]);
                 Config.Set("algorithm-location", "Alaris.Lean.dll");
                 Config.Set("start-date", (string)algoConfig["start_date"]);
                 Config.Set("end-date", (string)algoConfig["end_date"]);
                 Config.Set("cash", algoConfig["cash"].ToString());
 
+                // Interactive Brokers configuration
                 Config.Set("ib-account", (string)brokerageConfig["account"]);
                 Config.Set("ib-host", (string)brokerageConfig["host"]);
                 Config.Set("ib-client-id", brokerageConfig["client_id"].ToString());
@@ -136,10 +158,10 @@ namespace Alaris
                 bool isLive = (mode == "live" || mode == "paper");
                 Config.Set("live-mode", isLive.ToString().ToLower());
                 
-                // Define which handlers to use for each mode.
-                // This is the core of Lean's modularity.
+                // Configure Lean engine handlers based on mode
                 if (isLive)
                 {
+                    // Live trading configuration
                     Config.Set("live-mode-brokerage", "InteractiveBrokersBrokerage");
                     Config.Set("setup-handler", "QuantConnect.Lean.Engine.Setup.BrokerageSetupHandler");
                     Config.Set("result-handler", "QuantConnect.Lean.Engine.Results.LiveTradingResultHandler");
@@ -147,23 +169,42 @@ namespace Alaris
                     Config.Set("real-time-handler", "QuantConnect.Lean.Engine.RealTime.LiveTradingRealTimeHandler");
                     Config.Set("transaction-handler", "QuantConnect.Lean.Engine.TransactionHandlers.BrokerageTransactionHandler");
                     Config.Set("data-queue-handler", "QuantConnect.Brokerages.InteractiveBrokers.InteractiveBrokersBrokerage");
+                    
+                    Log.Trace($"Configured for {mode} trading with Interactive Brokers on port {port}");
                 }
-                else // backtest
+                else
                 {
+                    // Backtesting configuration
                     Config.Set("setup-handler", "QuantConnect.Lean.Engine.Setup.BacktestingSetupHandler");
                     Config.Set("result-handler", "QuantConnect.Lean.Engine.Results.BacktestingResultHandler");
                     Config.Set("data-feed-handler", "QuantConnect.Lean.Engine.DataFeeds.FileSystemDataFeed");
                     Config.Set("real-time-handler", "QuantConnect.Lean.Engine.RealTime.BacktestingRealTimeHandler");
                     Config.Set("transaction-handler", "QuantConnect.Lean.Engine.TransactionHandlers.BacktestingTransactionHandler");
+                    
+                    Log.Trace("Configured for backtesting mode");
                 }
+
+                // Set additional Lean configuration for automatic data handling
+                Config.Set("data-provider", "InteractiveBrokersBrokerage");
+                Config.Set("map-file-provider", "LocalDiskMapFileProvider");
+                Config.Set("factor-file-provider", "LocalDiskFactorFileProvider");
                 
-                Log.Trace("Configuration loaded successfully.");
+                Log.Trace("✓ Configuration loaded successfully - Lean will handle data automatically");
                 return true;
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
-                Log.Error(ex, $"Failed to load or parse configuration files ({yamlPath}).");
+                Log.Error(ex, $"Failed to load configuration from {yamlPath}:");
                 return false;
+            }
+        }
+
+        private static void EnsureDirectoryExists(string path)
+        {
+            if (!Directory.Exists(path))
+            {
+                Directory.CreateDirectory(path);
+                Log.Trace($"Created directory: {path}");
             }
         }
         
@@ -172,7 +213,8 @@ namespace Alaris
             string currentDir = Directory.GetCurrentDirectory();
             while (!string.IsNullOrEmpty(currentDir))
             {
-                if (Directory.Exists(Path.Combine(currentDir, "config")) && Directory.Exists(Path.Combine(currentDir, "src")))
+                if (Directory.Exists(Path.Combine(currentDir, "config")) && 
+                    Directory.Exists(Path.Combine(currentDir, "src")))
                 {
                     return currentDir;
                 }
@@ -190,11 +232,11 @@ namespace Alaris
             {
                 if (Path.GetFileName(currentDir).Equals("build", StringComparison.OrdinalIgnoreCase))
                 {
-                     if(Directory.Exists(Path.Combine(currentDir, "data"))) return currentDir;
+                    return currentDir;
                 }
                 
                 string buildDir = Path.Combine(currentDir, "build");
-                if (Directory.Exists(buildDir) && Directory.Exists(Path.Combine(buildDir, "data")))
+                if (Directory.Exists(buildDir))
                 {
                     return buildDir;
                 }
