@@ -1,5 +1,4 @@
 # .cmake/BuildSystem.cmake
-# Streamlined build system for Alaris trading system
 
 # Platform detection
 if(WIN32)
@@ -120,7 +119,7 @@ endfunction()
 # Function to add helpful build messages
 function(add_build_messages)
     # Add a target that shows helpful information
-    add_custom_target(help
+    add_custom_target(alaris-help
         COMMAND ${CMAKE_COMMAND} -E echo ""
         COMMAND ${CMAKE_COMMAND} -E echo "=== Alaris Trading System Build Help ==="
         COMMAND ${CMAKE_COMMAND} -E echo ""

@@ -218,7 +218,7 @@ function(check_sudo_availability)
             if(SUDO_CHECK_RESULT EQUAL 0)
                 set(ALARIS_CAN_SUDO TRUE CACHE INTERNAL "")
                 message(STATUS "Sudo access available - capabilities will be set automatically")
-            else
+            else()
                 set(ALARIS_CAN_SUDO FALSE CACHE INTERNAL "")
                 message(STATUS "Sudo access not available - capabilities must be set manually")
             endif()

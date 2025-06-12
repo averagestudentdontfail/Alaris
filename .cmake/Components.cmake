@@ -1,5 +1,4 @@
 # .cmake/Components.cmake
-# Component definitions for Alaris
 
 # Source files for core library
 set(QUANTLIB_CORE_SOURCES

@@ -62,7 +62,7 @@ if(TARGET lean-process)
         COMMAND ${CMAKE_COMMAND} -E echo "  ./start-alaris.sh live     # Live trading"
         COMMAND ${CMAKE_COMMAND} -E echo ""
         COMMAND ${CMAKE_COMMAND} -E echo "Troubleshooting:"
-        COMMAND ${CMAKE_COMMAND} -E echo "  make help                  # Show help"
+        COMMAND ${CMAKE_COMMAND} -E echo "  make alaris-help           # Show help"
         COMMAND ${CMAKE_COMMAND} -E echo "  make verify-build          # Verify build"
         COMMAND ${CMAKE_COMMAND} -E echo "  make alaris-setup          # Manual setup"
         COMMAND ${CMAKE_COMMAND} -E echo "============================"
@@ -130,5 +130,5 @@ add_custom_target(test-ibkr
 message(STATUS "=== Configuration Complete ===")
 message(STATUS "Ready to build: cmake --build .")
 message(STATUS "Quick build:    make dev")
-message(STATUS "Show help:      make help")
+message(STATUS "Show help:      make alaris-help")
 message(STATUS "===============================")
