@@ -1,4 +1,4 @@
-# config/quantlib_process.yaml - Updated for IBKR Integration
+# config/quantlib_process.yaml
 process:
   name: "QuantLib"
   priority: 80
@@ -13,24 +13,22 @@ quantlib:
   calendar: "UnitedStates"
   enable_debug: false
 
-# UPDATED: POSIX-compliant shared memory names
 shared_memory:
   market_data_buffer: "/alaris_market_data"
   signal_buffer: "/alaris_signals"
   control_buffer: "/alaris_control"
   buffer_sizes:
-    market_data: 8192  # Increased for 25 symbols
-    signals: 2048      # Increased for more signals
-    control: 512       # Increased for IBKR commands
+    market_data: 8192  
+    signals: 2048      
+    control: 512       
 
 memory:
-  pool_size_mb: 16  # Increased for larger symbol universe
+  pool_size_mb: 16 
 
 pricing:
   alo_engine:
     scheme: "fast"
     fixed_point_equation: "Auto"
-    # IBKR-specific pricing parameters
     max_concurrent_pricing: 25
     pricing_timeout_ms: 100
 
@@ -39,14 +37,9 @@ volatility:
     max_iterations: 500
     tolerance: 1e-6
     mode: "BestOfTwo"
-    max_history_length: 252  # 1 year of daily data
-    # IBKR real-time volatility updates
+    max_history_length: 252 
     real_time_updates: true
     update_frequency_ms: 1000  # 1 second for forward testing
-  gjr_garch:
-    enabled: true
-    calibration_frequency: "daily"
-    min_observation_count: 50
 
 strategy:
   vol_arbitrage:
@@ -73,8 +66,8 @@ strategy:
     trailing_stop_percent: 0.10
     
     # Strategy configuration
-    strategy_mode: "DELTA_NEUTRAL"
-    model_selection: "garch_direct"
+    strategy_mode: "DELTA_NEUTRAL" # Delta-neutral strategy is currently selected for volatility arbitrage, however, this can be changed to "GAMMA_NEUTRAL" or "VEGA_NEUTRAL" as needed.
+    model_selection: "garch_direct" # Direct GARCH model for volatility estimation.
     
     # Hedging parameters
     hedge_threshold_delta: 0.10
@@ -191,3 +184,4 @@ logging:
     log_historical_requests: true
 
 ---
+# End of config/quantlib_process.yaml

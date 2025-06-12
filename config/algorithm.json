@@ -1,16 +1,13 @@
 {
-  "alaris": {
-    "default_symbol": "SPY",
-    "default_strategy": "deltaneutral",
-    "default_frequency": "minute",
+  "alaris_strategy_config": {
     "risk_management": {
-      "max_portfolio_exposure": 0.2,
-      "max_daily_loss": 0.02,
-      "max_position_size": 0.05,
+      "max_portfolio_exposure_percent": 0.2,
+      "max_daily_loss_percent": 0.02,
+      "max_position_size_percent": 0.05,
       "stop_loss_percent": 0.1,
       "take_profit_percent": 0.2
     },
-    "strategy_parameters": {
+    "parameters": {
       "deltaneutral": {
         "delta_threshold": 0.1,
         "gamma_threshold": 0.05,
@@ -19,16 +16,16 @@
       },
       "gammascalping": {
         "gamma_threshold": 0.1,
-        "delta_hedge_frequency": "1H",
-        "profit_target": 0.02
+        "delta_hedge_frequency_hours": 1,
+        "profit_target_percent": 0.02
       },
       "volatilitytiming": {
         "vol_lookback_days": 20,
-        "vol_threshold": 0.25,
-        "entry_signal_strength": 0.7
+        "vol_entry_threshold": 0.25,
+        "signal_confidence_threshold": 0.7
       },
       "relativevalue": {
-        "skew_threshold": 0.1,
+        "skew_entry_threshold": 0.1,
         "term_structure_threshold": 0.05,
         "correlation_threshold": 0.8
       }
