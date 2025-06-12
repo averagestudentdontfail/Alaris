@@ -73,7 +73,7 @@ Before running the system, you must enter your Interactive Brokers account detai
 
 ### Step 3: Populate Historical Data
 
-After a successful build, you need to download historical data from IBKR This step is only required for backward trading and is not needed for forward trading.
+After a successful build, you may need to download historical data from IBKR. This step is only required for backward trading and is not needed for forward trading.
 
 1.  **Launch and log in to IB Gateway or TWS.**
 2.  From your `build` directory, run the C# application in **download mode**:
