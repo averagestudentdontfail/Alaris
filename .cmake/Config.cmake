@@ -134,7 +134,7 @@ echo \"Automated setup complete.\"
     message(STATUS "Created automated setup script: ${AUTO_SETUP_SCRIPT}")
 endfunction()
 
-# Create startup script
+# Create enhanced startup script with data management
 function(create_startup_script)
     set(STARTUP_CONTENT "#!/bin/bash
 set -e
@@ -147,6 +147,199 @@ IBKR_HOST=\$(grep \"host:\" ../config/lean_process.yaml | awk '{print \$2}' | tr
 echo \"Starting Alaris Trading System in \$MODE mode...\"
 echo \"IBKR Host: \$IBKR_HOST\"
 
+# Function to setup Lean data environment
+setup_lean_data() {
+    echo \"Setting up Lean data environment...\"
+    
+    # Create essential directories
+    mkdir -p data/market-hours
+    mkdir -p data/symbol-properties
+    mkdir -p data/factor-files
+    mkdir -p data/map-files
+    mkdir -p data/equity/usa/daily
+    mkdir -p data/equity/usa/hour
+    mkdir -p data/equity/usa/minute
+    mkdir -p data/equity/usa/second
+    mkdir -p data/equity/usa/tick
+    mkdir -p cache
+    mkdir -p results
+    mkdir -p logs
+    
+    # Download essential Lean data files if they don't exist
+    if [[ ! -f \"data/market-hours/market-hours-database.json\" ]]; then
+        echo \"Downloading market hours database...\"
+        if command -v curl >/dev/null 2>&1; then
+            curl -L -o \"data/market-hours/market-hours-database.json\" \\
+                \"https://raw.githubusercontent.com/QuantConnect/Lean/master/Data/market-hours/market-hours-database.json\" || \\
+            echo \"Warning: Could not download market-hours-database.json\"
+        elif command -v wget >/dev/null 2>&1; then
+            wget -O \"data/market-hours/market-hours-database.json\" \\
+                \"https://raw.githubusercontent.com/QuantConnect/Lean/master/Data/market-hours/market-hours-database.json\" || \\
+            echo \"Warning: Could not download market-hours-database.json\"
+        else
+            echo \"Warning: Neither curl nor wget available for downloading data files\"
+            # Create minimal market hours file
+            cat > \"data/market-hours/market-hours-database.json\" << 'EOF'
+{
+  \"entries\": {
+    \"USA\": {
+      \"market\": \"usa\",
+      \"dataTimeZone\": \"America/New_York\",
+      \"exchangeTimeZone\": \"America/New_York\",
+      \"sunday\": [],
+      \"monday\": [
+        { \"start\": \"09:30:00\", \"end\": \"16:00:00\" }
+      ],
+      \"tuesday\": [
+        { \"start\": \"09:30:00\", \"end\": \"16:00:00\" }
+      ],
+      \"wednesday\": [
+        { \"start\": \"09:30:00\", \"end\": \"16:00:00\" }
+      ],
+      \"thursday\": [
+        { \"start\": \"09:30:00\", \"end\": \"16:00:00\" }
+      ],
+      \"friday\": [
+        { \"start\": \"09:30:00\", \"end\": \"16:00:00\" }
+      ],
+      \"saturday\": [],
+      \"holidays\": [],
+      \"earlyCloses\": []
+    }
+  }
+}
+EOF
+            echo \"✓ Created minimal market hours database\"
+        fi
+    fi
+    
+    # Download symbol properties database
+    if [[ ! -f \"data/symbol-properties/symbol-properties-database.csv\" ]]; then
+        echo \"Downloading symbol properties database...\"
+        if command -v curl >/dev/null 2>&1; then
+            curl -L -o \"data/symbol-properties/symbol-properties-database.csv\" \\
+                \"https://raw.githubusercontent.com/QuantConnect/Lean/master/Data/symbol-properties/symbol-properties-database.csv\" || \\
+            echo \"Warning: Could not download symbol-properties-database.csv\"
+        elif command -v wget >/dev/null 2>&1; then
+            wget -O \"data/symbol-properties/symbol-properties-database.csv\" \\
+                \"https://raw.githubusercontent.com/QuantConnect/Lean/master/Data/symbol-properties/symbol-properties-database.csv\" || \\
+            echo \"Warning: Could not download symbol-properties-database.csv\"
+        fi
+    fi
+    
+    echo \"✓ Lean data environment setup complete\"
+}
+
+# Function to download historical data
+download_historical_data() {
+    local symbols=(\"SPY\" \"QQQ\" \"IWM\" \"EFA\" \"VTI\" \"AAPL\" \"MSFT\" \"GOOGL\" \"AMZN\" \"NVDA\" 
+                   \"JPM\" \"BAC\" \"WFC\" \"GS\" \"MS\" \"XOM\" \"CVX\" \"COP\" \"EOG\" \"SLB\" 
+                   \"JNJ\" \"PFE\" \"UNH\" \"ABBV\" \"MRK\")
+    
+    echo \"Downloading historical data for \${#symbols[@]} symbols...\"
+    echo \"This may take several minutes...\"
+    
+    # Check if IBKR connection is available
+    if ! timeout 5 bash -c 'cat < /dev/null > /dev/tcp/'\$IBKR_HOST'/4002' 2>/dev/null; then
+        echo \"Warning: IBKR connection not available. Cannot download historical data.\"
+        echo \"Please ensure IB Gateway/TWS is running and try again.\"
+        return 1
+    fi
+    
+    # Start QuantLib process for data download
+    echo \"Starting QuantLib process for data download...\"
+    ./bin/quantlib-process ../config/quantlib_process.yaml --mode download &
+    local QUANTLIB_PID=\$!
+    sleep 3
+    
+    # Start Lean process in download mode
+    echo \"Starting Lean data download...\"
+    if [[ -f \"./bin/Alaris.Lean.dll\" ]]; then
+        timeout 1800 dotnet ./bin/Alaris.Lean.dll --mode download --symbols \"\${symbols[*]}\" || {
+            echo \"Data download completed or timed out after 30 minutes\"
+        }
+    elif [[ -d \"./bin/Release\" ]]; then
+        timeout 1800 dotnet ./bin/Release/Alaris.Lean.dll --mode download --symbols \"\${symbols[*]}\" || {
+            echo \"Data download completed or timed out after 30 minutes\"
+        }
+    else
+        echo \"Error: Could not find Lean executable for data download\"
+        kill \$QUANTLIB_PID 2>/dev/null || true
+        return 1
+    fi
+    
+    # Clean up
+    kill \$QUANTLIB_PID 2>/dev/null || true
+    echo \"✓ Historical data download complete\"
+}
+
+# Function to check data availability
+check_data_availability() {
+    local data_ready=true
+    
+    if [[ ! -f \"data/market-hours/market-hours-database.json\" ]]; then
+        echo \"✗ Market hours database missing\"
+        data_ready=false
+    fi
+    
+    if [[ ! -d \"data/equity/usa/daily\" ]] || [[ -z \"\$(ls -A data/equity/usa/daily 2>/dev/null)\" ]]; then
+        echo \"✗ No historical data found\"
+        data_ready=false
+    fi
+    
+    if [[ \"\$data_ready\" == \"true\" ]]; then
+        echo \"✓ Data environment ready\"
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Handle different modes
+case \"\$MODE\" in
+    \"download\")
+        echo \"=== Data Download Mode ===\"
+        setup_lean_data
+        download_historical_data
+        echo \"Data download complete. Run with 'backtest' mode to test strategy.\"
+        exit 0
+        ;;
+    \"backtest\")
+        echo \"=== Backtest Mode ===\"
+        setup_lean_data
+        if ! check_data_availability; then
+            echo \"\"
+            echo \"Data not available. Options:\"
+            echo \"  1. Run './start-alaris.sh download' to download data\"
+            echo \"  2. Provide your own data files in the data/ directory\"
+            echo \"  3. Continue with paper/live trading modes\"
+            echo \"\"
+            read -p \"Download data now? (y/n): \" -n 1 -r
+            echo
+            if [[ \$REPLY =~ ^[Yy]\$ ]]; then
+                download_historical_data
+            else
+                echo \"Exiting. Run './start-alaris.sh download' when ready.\"
+                exit 1
+            fi
+        fi
+        ;;
+    \"paper\"|\"live\")
+        echo \"=== \$(echo \$MODE | tr '[:lower:]' '[:upper:]') Trading Mode ===\"
+        setup_lean_data
+        ;;
+    *)
+        echo \"Usage: \$0 {download|backtest|paper|live}\"
+        echo \"\"
+        echo \"Modes:\"
+        echo \"  download  - Download historical data from IBKR\"
+        echo \"  backtest  - Run strategy backtest on historical data\"
+        echo \"  paper     - Forward test with paper trading account\"
+        echo \"  live      - Live trading with real money (use with caution)\"
+        exit 1
+        ;;
+esac
+
 # Check for required executables
 if [[ ! -f \"./bin/quantlib-process\" ]]; then
     echo \"Error: quantlib-process not found. Run 'cmake --build .' first.\"
@@ -156,6 +349,30 @@ fi
 if [[ ! -f \"./bin/Alaris.Lean.dll\" ]] && [[ ! -d \"./bin/Release\" ]]; then
     echo \"Error: Lean process not found. Ensure .NET build completed successfully.\"
     exit 1
+fi
+
+# Test IBKR connectivity for non-backtest modes
+if [[ \"\$MODE\" != \"backtest\" ]]; then
+    echo \"Testing IBKR connectivity...\"
+    local port
+    if [[ \"\$MODE\" == \"paper\" ]]; then
+        port=4002
+    else
+        port=4001
+    fi
+    
+    if ! timeout 5 bash -c 'cat < /dev/null > /dev/tcp/'\$IBKR_HOST'/'\$port 2>/dev/null; then
+        echo \"Warning: Cannot connect to IBKR on \$IBKR_HOST:\$port\"
+        echo \"Please ensure IB Gateway/TWS is running and configured properly.\"
+        echo \"\"
+        read -p \"Continue anyway? (y/n): \" -n 1 -r
+        echo
+        if [[ ! \$REPLY =~ ^[Yy]\$ ]]; then
+            exit 1
+        fi
+    else
+        echo \"✓ IBKR connection available\"
+    fi
 fi
 
 # Clean shared memory
@@ -191,7 +408,12 @@ fi
 LEAN_PID=\$!
 echo \"Lean PID: \$LEAN_PID\"
 
+echo \"\"
 echo \"Alaris Trading System started successfully!\"
+echo \"Mode: \$MODE\"
+echo \"QuantLib PID: \$QUANTLIB_PID\"
+echo \"Lean PID: \$LEAN_PID\"
+echo \"\"
 echo \"Press Ctrl+C to stop...\"
 
 wait \$LEAN_PID
@@ -201,7 +423,7 @@ wait \$LEAN_PID
     file(WRITE "${STARTUP_SCRIPT}" "${STARTUP_CONTENT}")
     execute_process(COMMAND chmod +x "${STARTUP_SCRIPT}" ERROR_QUIET)
     set(ALARIS_STARTUP_SCRIPT "${STARTUP_SCRIPT}" CACHE INTERNAL "")
-    message(STATUS "Created startup script: ${STARTUP_SCRIPT}")
+    message(STATUS "Created enhanced startup script: ${STARTUP_SCRIPT}")
 endfunction()
 
 # Check sudo availability for better user feedback
