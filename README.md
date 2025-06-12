@@ -178,13 +178,13 @@ cmake --build build --target alaris-setup  # Re-run setup
 
 ### Available Make Targets
 ```bash
-make -C build alaris-complete               # Build everything and run setup
-make -C build set-capabilities              # Set Linux capabilities
-make -C build alaris-setup                  # Run setup manually
-make -C build verify-build                  # Verify build completion
-make -C build alaris-help                   # Show detailed help
-make -C build clean-shm                     # Clean shared memory
-make -C build test-ibkr                     # Test IBKR connectivity
+make -C build alaris-complete  # Build everything and run setup
+make -C build set-capabilities # Set Linux capabilities
+make -C build alaris-setup     # Run setup manually
+make -C build verify-build     # Verify build completion
+make -C build alaris-help      # Show detailed help
+make -C build clean-shm        # Clean shared memory
+make -C build test-ibkr        # Test IBKR connectivity
 ```
 
 ---
