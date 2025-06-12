@@ -148,7 +148,7 @@ universe:
 # IBKR Integration settings
 ibkr:
   connection:
-    host: "127.0.0.1"
+    host: "172.31.16.1"
     paper_port: 4002
     live_port: 4001
     client_id: 999

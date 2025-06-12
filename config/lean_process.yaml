@@ -14,7 +14,7 @@ algorithm:
 brokerage:
   # Must be "InteractiveBrokers" for the system to load the correct handler.
   type: "InteractiveBrokers"
-  host: "127.0.0.1"
+  host: "172.31.16.1"
   paper_port: 4002
   live_port: 4001
   
