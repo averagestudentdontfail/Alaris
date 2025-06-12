@@ -634,52 +634,21 @@ function(setup_alaris_data)
     message(STATUS "Data: lean.json: ${CMAKE_BINARY_DIR}/lean.json")
 endfunction()
 
-# Function to create DataSetupTarget.cmake script
-function(create_data_setup_target_script)
-    set(SETUP_SCRIPT_CONTENT "
-# DataSetupTarget.cmake - Executed by setup-data target
-message(STATUS \"Executing data setup...\")
-
-# Re-run the main data setup function
-include(\${CMAKE_CURRENT_SOURCE_DIR}/.cmake/Data.cmake)
-setup_alaris_data()
-validate_data_setup()
-
-message(STATUS \"Data setup completed successfully!\")
-")
-    
-    file(WRITE "${CMAKE_CURRENT_SOURCE_DIR}/.cmake/DataSetupTarget.cmake" "${SETUP_SCRIPT_CONTENT}")
-endfunction()
-
-# Function to create DataValidateTarget.cmake script  
-function(create_data_validate_target_script)
-    set(VALIDATE_SCRIPT_CONTENT "
-# DataValidateTarget.cmake - Executed by validate-data target
-message(STATUS \"Validating data setup...\")
-
-# Set up the same variables as the main script
-set(ALARIS_DATA_DIR \"${ALARIS_DATA_DIR}\")
-set(ALARIS_RESULTS_DIR \"${ALARIS_RESULTS_DIR}\")
-set(ALARIS_CACHE_DIR \"${ALARIS_CACHE_DIR}\")
-set(ESSENTIAL_SYMBOLS \"${ESSENTIAL_SYMBOLS}\")
-set(PRODUCTION_SYMBOLS \"${PRODUCTION_SYMBOLS}\")
-set(ALARIS_MINIMAL_DATA ${ALARIS_MINIMAL_DATA})
-set(ALARIS_CREATE_SAMPLE_DATA ${ALARIS_CREATE_SAMPLE_DATA})
-
-# Re-run validation
-include(\${CMAKE_CURRENT_SOURCE_DIR}/.cmake/Data.cmake)
-validate_data_setup()
-")
-    
-    file(WRITE "${CMAKE_CURRENT_SOURCE_DIR}/.cmake/DataValidateTarget.cmake" "${VALIDATE_SCRIPT_CONTENT}")
-endfunction()
-
-# Create custom targets for data management
+# Create custom targets for data management WITHOUT external scripts
 function(create_data_targets)
-    # Target to set up data
+    # Target to set up data - execute functions directly
     add_custom_target(setup-data
         COMMAND ${CMAKE_COMMAND} -E echo "Setting up Alaris data environment..."
-        COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_SOURCE_DIR}/.cmake/DataSetupTarget.cmake"
+        COMMAND ${CMAKE_COMMAND} 
+            -DALARIS_DATA_DIR="${ALARIS_DATA_DIR}"
+            -DALARIS_RESULTS_DIR="${ALARIS_RESULTS_DIR}"
+            -DALARIS_CACHE_DIR="${ALARIS_CACHE_DIR}"
+            -DALARIS_MINIMAL_DATA=${ALARIS_MINIMAL_DATA}
+            -DALARIS_CREATE_SAMPLE_DATA=${ALARIS_CREATE_SAMPLE_DATA}
+            -DALARIS_DOWNLOAD_DATA=${ALARIS_DOWNLOAD_DATA}
+            -DALARIS_DEVELOPMENT_MODE=${ALARIS_DEVELOPMENT_MODE}
+            -DCMAKE_BINARY_DIR="${CMAKE_BINARY_DIR}"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/.cmake/DataInlineSetup.cmake"
         COMMENT "Setting up Alaris data environment"
         VERBATIM
     )
@@ -710,9 +679,17 @@ function(create_data_targets)
         VERBATIM
     )
     
-    # Target to validate data
+    # Target to validate data - execute validation directly
     add_custom_target(validate-data
-        COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_SOURCE_DIR}/.cmake/DataValidateTarget.cmake"
+        COMMAND ${CMAKE_COMMAND} -E echo "Validating Alaris data setup..."
+        COMMAND ${CMAKE_COMMAND}
+            -DALARIS_DATA_DIR="${ALARIS_DATA_DIR}"
+            -DALARIS_RESULTS_DIR="${ALARIS_RESULTS_DIR}"
+            -DALARIS_CACHE_DIR="${ALARIS_CACHE_DIR}"
+            -DALARIS_MINIMAL_DATA=${ALARIS_MINIMAL_DATA}
+            -DALARIS_CREATE_SAMPLE_DATA=${ALARIS_CREATE_SAMPLE_DATA}
+            -DCMAKE_BINARY_DIR="${CMAKE_BINARY_DIR}"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/.cmake/DataInlineValidate.cmake"
         COMMENT "Validating Alaris data setup"
         VERBATIM
     )
@@ -737,6 +714,232 @@ function(create_data_targets)
     message(STATUS "Data: Created mode targets (enable-dev-mode, disable-dev-mode)")
 endfunction()
 
+# Create inline scripts that don't rely on external files
+function(create_inline_data_scripts)
+    # Create inline setup script
+    set(INLINE_SETUP_CONTENT "
+# DataInlineSetup.cmake - Inline data setup
+message(STATUS \"Executing inline data setup...\")
+
+# Set up symbol lists
+set(ESSENTIAL_SYMBOLS \"SPY;QQQ;IWM;AAPL;MSFT\")
+set(PRODUCTION_SYMBOLS \"SPY;QQQ;IWM;EFA;EEM;TLT;GLD;VIX;AAPL;MSFT;GOOGL;AMZN;TSLA;META;NVDA;JPM;JNJ;V;PG;UNH;HD;MA;BAC;XLF;XLE;XLK;XLV;XLI;XLP;XLU;XLRE\")
+
+# Create directories
+file(MAKE_DIRECTORY \"\${ALARIS_DATA_DIR}\")
+file(MAKE_DIRECTORY \"\${ALARIS_DATA_DIR}/market-hours\")
+file(MAKE_DIRECTORY \"\${ALARIS_DATA_DIR}/symbol-properties\")
+file(MAKE_DIRECTORY \"\${ALARIS_DATA_DIR}/equity/usa/map_files\")
+file(MAKE_DIRECTORY \"\${ALARIS_DATA_DIR}/equity/usa/factor_files\")
+file(MAKE_DIRECTORY \"\${ALARIS_DATA_DIR}/equity/usa/daily\")
+file(MAKE_DIRECTORY \"\${ALARIS_DATA_DIR}/option/usa\")
+file(MAKE_DIRECTORY \"\${ALARIS_RESULTS_DIR}\")
+file(MAKE_DIRECTORY \"\${ALARIS_CACHE_DIR}\")
+
+# Create lean.json if it doesn't exist
+if(NOT EXISTS \"\${CMAKE_BINARY_DIR}/lean.json\")
+    if(ALARIS_DEVELOPMENT_MODE OR ALARIS_CREATE_SAMPLE_DATA)
+        set(CONFIG_COMMENT \"Alaris Trading System - Development Configuration\")
+        set(DEBUG_MODE \"true\")
+        set(LOG_LEVEL \"Debug\")
+    else()
+        set(CONFIG_COMMENT \"Alaris Trading System - Production Configuration\")
+        set(DEBUG_MODE \"false\")
+        set(LOG_LEVEL \"Info\")
+    endif()
+    
+    file(WRITE \"\${CMAKE_BINARY_DIR}/lean.json\" \"{
+  \\\"_comment\\\": \\\"\${CONFIG_COMMENT}\\\",
+  \\\"algorithm-type-name\\\": \\\"Alaris.Algorithm.ArbitrageAlgorithm\\\",
+  \\\"algorithm-language\\\": \\\"CSharp\\\",
+  \\\"data-directory\\\": \\\"\${ALARIS_DATA_DIR}/\\\",
+  \\\"cache-location\\\": \\\"\${ALARIS_CACHE_DIR}/\\\",
+  \\\"results-destination-folder\\\": \\\"\${ALARIS_RESULTS_DIR}/\\\",
+  \\\"debug-mode\\\": \${DEBUG_MODE},
+  \\\"log-level\\\": \\\"\${LOG_LEVEL}\\\",
+  \\\"environments\\\": {
+    \\\"backtesting\\\": {
+      \\\"live-mode\\\": false,
+      \\\"data-feed-handler\\\": \\\"QuantConnect.Lean.Engine.DataFeeds.FileSystemDataFeed\\\"
+    }
+  }
+}\")
+    message(STATUS \"Created lean.json configuration\")
+endif()
+
+# Create symbol databases and map files
+if(ALARIS_MINIMAL_DATA)
+    set(SYMBOLS_TO_PROCESS \${ESSENTIAL_SYMBOLS})
+    set(MODE_DESC \"minimal\")
+else()
+    set(SYMBOLS_TO_PROCESS \${PRODUCTION_SYMBOLS})
+    set(MODE_DESC \"production\")
+endif()
+
+# Create security database
+set(SYMBOL_PROPS_PATH \"\${ALARIS_DATA_DIR}/symbol-properties/security-database.csv\")
+if(NOT EXISTS \"\${SYMBOL_PROPS_PATH}\")
+    set(SYMBOL_PROPS_CONTENT \"Symbol,Market,SecurityType,Name,LotSize,MinimumPriceVariation,PriceMagnifier\\n\")
+    foreach(symbol \${SYMBOLS_TO_PROCESS})
+        string(APPEND SYMBOL_PROPS_CONTENT \"\${symbol},usa,Equity,\${symbol},1,0.01,1\\n\")
+    endforeach()
+    file(WRITE \"\${SYMBOL_PROPS_PATH}\" \"\${SYMBOL_PROPS_CONTENT}\")
+    message(STATUS \"Created security database\")
+endif()
+
+# Create map and factor files for each symbol
+foreach(symbol \${SYMBOLS_TO_PROCESS})
+    string(TOLOWER \"\${symbol}\" symbol_lower)
+    set(MAP_FILE_PATH \"\${ALARIS_DATA_DIR}/equity/usa/map_files/\${symbol_lower}.csv\")
+    set(FACTOR_FILE_PATH \"\${ALARIS_DATA_DIR}/equity/usa/factor_files/\${symbol_lower}.csv\")
+    
+    if(NOT EXISTS \"\${MAP_FILE_PATH}\")
+        file(WRITE \"\${MAP_FILE_PATH}\" \"20120101,\${symbol},\${symbol},\${symbol}\\n\")
+    endif()
+    
+    if(NOT EXISTS \"\${FACTOR_FILE_PATH}\")
+        file(WRITE \"\${FACTOR_FILE_PATH}\" \"20120101,1.0,1.0\\n\")
+    endif()
+    
+    # Create sample data if requested
+    if(ALARIS_CREATE_SAMPLE_DATA)
+        set(sample_data_dir \"\${ALARIS_DATA_DIR}/equity/usa/daily/\${symbol_lower}\")
+        file(MAKE_DIRECTORY \"\${sample_data_dir}\")
+        
+        set(sample_csv_file \"\${sample_data_dir}/20240101_20241231_trade.csv\")
+        if(NOT EXISTS \"\${sample_csv_file}\")
+            # Create simple synthetic data
+            set(CSV_CONTENT \"\")
+            foreach(day_num RANGE 1 250)
+                math(EXPR month_num \"(\${day_num} / 22) + 1\")
+                math(EXPR day_in_month \"(\${day_num} % 22) + 1\")
+                
+                if(month_num GREATER 12)
+                    set(month_num 12)
+                endif()
+                
+                if(month_num LESS 10)
+                    set(month_str \"0\${month_num}\")
+                else()
+                    set(month_str \"\${month_num}\")
+                endif()
+                
+                if(day_in_month LESS 10)
+                    set(day_str \"0\${day_in_month}\")
+                else()
+                    set(day_str \"\${day_in_month}\")
+                endif()
+                
+                set(date_str \"2024\${month_str}\${day_str}\")
+                string(APPEND CSV_CONTENT \"\${date_str} 00:00,100.00,100.50,99.50,100.25,1000000\\n\")
+            endforeach()
+            
+            file(WRITE \"\${sample_csv_file}\" \"\${CSV_CONTENT}\")
+        endif()
+    endif()
+endforeach()
+
+list(LENGTH SYMBOLS_TO_PROCESS symbol_count)
+message(STATUS \"Data setup completed for \${symbol_count} symbols (\${MODE_DESC} mode)\")
+
+if(ALARIS_CREATE_SAMPLE_DATA)
+    message(STATUS \"WARNING: Using synthetic data for development only!\")
+endif()
+")
+    
+    file(WRITE "${CMAKE_CURRENT_SOURCE_DIR}/.cmake/DataInlineSetup.cmake" "${INLINE_SETUP_CONTENT}")
+    
+    # Create inline validation script
+    set(INLINE_VALIDATE_CONTENT "
+# DataInlineValidate.cmake - Inline data validation
+message(STATUS \"Validating Alaris data setup...\")
+
+set(required_files
+    \"\${CMAKE_BINARY_DIR}/lean.json\"
+    \"\${ALARIS_DATA_DIR}/symbol-properties/security-database.csv\"
+)
+
+set(required_dirs
+    \"\${ALARIS_DATA_DIR}\"
+    \"\${ALARIS_DATA_DIR}/equity/usa/map_files\"
+    \"\${ALARIS_DATA_DIR}/equity/usa/factor_files\"
+    \"\${ALARIS_DATA_DIR}/equity/usa/daily\"
+    \"\${ALARIS_RESULTS_DIR}\"
+    \"\${ALARIS_CACHE_DIR}\"
+)
+
+set(missing_files \"\")
+set(missing_dirs \"\")
+
+# Check required files
+foreach(file \${required_files})
+    if(NOT EXISTS \"\${file}\")
+        list(APPEND missing_files \"\${file}\")
+    endif()
+endforeach()
+
+# Check directories
+foreach(dir \${required_dirs})
+    if(NOT IS_DIRECTORY \"\${dir}\")
+        list(APPEND missing_dirs \"\${dir}\")
+    endif()
+endforeach()
+
+# Check for data files if synthetic data is enabled
+if(ALARIS_CREATE_SAMPLE_DATA)
+    if(ALARIS_MINIMAL_DATA)
+        set(symbols_to_check \"SPY;QQQ;IWM;AAPL;MSFT\")
+    else()
+        set(symbols_to_check \"SPY;QQQ;IWM;EFA;EEM;TLT;GLD;VIX;AAPL;MSFT;GOOGL;AMZN;TSLA;META;NVDA;JPM;JNJ;V;PG;UNH;HD;MA;BAC;XLF;XLE;XLK;XLV;XLI;XLP;XLU;XLRE\")
+    endif()
+    
+    set(missing_data_files \"\")
+    foreach(symbol \${symbols_to_check})
+        string(TOLOWER \"\${symbol}\" symbol_lower)
+        set(data_file \"\${ALARIS_DATA_DIR}/equity/usa/daily/\${symbol_lower}/20240101_20241231_trade.csv\")
+        if(NOT EXISTS \"\${data_file}\")
+            list(APPEND missing_data_files \"\${data_file}\")
+        endif()
+    endforeach()
+    
+    if(missing_data_files)
+        list(APPEND missing_files \${missing_data_files})
+    endif()
+endif()
+
+# Print validation results
+if(missing_files OR missing_dirs)
+    message(WARNING \"Data validation found missing components:\")
+    foreach(file \${missing_files})
+        message(WARNING \"  Missing file: \${file}\")
+    endforeach()
+    foreach(dir \${missing_dirs})
+        message(WARNING \"  Missing directory: \${dir}\")
+    endforeach()
+    
+    if(ALARIS_CREATE_SAMPLE_DATA)
+        message(WARNING \"Run 'cmake --build . --target setup-data' to create synthetic data\")
+    else()
+        message(STATUS \"Production mode - configure real data sources\")
+    endif()
+    return()
+endif()
+
+message(STATUS \"✓ Data validation passed - all required files and directories present\")
+
+if(ALARIS_CREATE_SAMPLE_DATA)
+    message(STATUS \"✓ Synthetic historical data available for development/testing\")
+    message(STATUS \"⚠️  WARNING: Using synthetic data - for development/testing only!\")
+else()
+    message(STATUS \"✓ Production configuration ready\")
+endif()
+
+message(STATUS \"✓ FileSystemDataFeed will find data in \${ALARIS_DATA_DIR}\")
+")
+    
+    file(WRITE "${CMAKE_CURRENT_SOURCE_DIR}/.cmake/DataInlineValidate.cmake" "${INLINE_VALIDATE_CONTENT}")
+endfunction()
+
 # CHANGED: Auto-setup data during configuration if enabled (now ON by default)
 if(ALARIS_AUTO_SETUP_DATA)
     setup_alaris_data()
@@ -751,9 +954,8 @@ else()
     endif()
 endif()
 
-# Always create the target scripts and targets
-create_data_setup_target_script()
-create_data_validate_target_script()
+# Always create the inline scripts and targets
+create_inline_data_scripts()
 create_data_targets()
 
 # IMPROVED: Only validate if setup was supposed to run
