@@ -49,11 +49,11 @@ cmake --build build
 ```
 
 **The build automatically:**
-- ✅ Compiles C++ and C# components
-- ✅ Sets Linux real-time capabilities (if sudo available)
-- ✅ Configures local logging paths
-- ✅ Generates startup script with networking detection
-- ✅ Creates all necessary scripts and directories
+- Compiles C++ and C# components
+- Sets Linux real-time capabilities (if sudo available)
+- Configures local logging paths
+- Generates startup script with networking detection
+- Creates all necessary scripts and directories
 
 ### Configure IBKR Connection
 
@@ -149,10 +149,10 @@ rm -rf build && cmake -S . -B build && cmake --build build
 ```
 
 ### IBKR Connection Issues
-- ✅ IB Gateway/TWS running and logged in
-- ✅ API enabled in IB settings (Global Config → API → Settings)
-- ✅ "Allow connections from localhost only" unchecked (for WSL)
-- ✅ Correct host IP in config files
+- IB Gateway/TWS running and logged in
+- API enabled in IB settings (Global Config → API → Settings)
+- "Allow connections from localhost only" unchecked (for WSL)
+- Correct host IP in config files
 
 ### WSL Networking
 ```bash
@@ -183,10 +183,10 @@ sudo rm -f /dev/shm/alaris_*
 - Shared memory status: `ls /dev/shm/alaris_*`
 
 **Success indicators:**
-- ✅ "IBKR connection established"
-- ✅ "Market data streaming" 
-- ✅ "Strategy loaded: delta-neutral volatility arbitrage"
-- ✅ "Trading signals generated"
+- "IBKR connection established"
+- "Market data streaming" 
+- "Strategy loaded: delta-neutral volatility arbitrage"
+- "Trading signals generated"
 
 ---
 
@@ -207,4 +207,4 @@ sudo systemctl enable alaris-lean.service
 
 ---
 
-*The Alaris system is designed for quantitative trading professionals. Ensure proper risk management and testing before live deployment.*
+*The Alaris system is designed for those who know what they are doing. With that being said, have fun, and be safe!*
