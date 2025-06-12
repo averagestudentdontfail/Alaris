@@ -40,9 +40,9 @@ set(ESSENTIAL_SYMBOLS
 # Production symbol universe (broader coverage)
 set(PRODUCTION_SYMBOLS
     # Core ETFs
-    "SPY" "QQQ" "IWM" "EFA" "EEM" "TLT" "GLD" "VIX"
+    "SPY" "QQQ" "IWM" "EFA" "EEM" "TLT" "GLD" "VIX" "IVV" "VOO"
     # Major Tech
-    "AAPL" "MSFT" "GOOGL" "AMZN" "TSLA" "META" "NVDA"
+    "AAPL" "MSFT" "GOOGL" "AMZN" "TSLA" "META" "NVDA" "ORCL"
     # Major Financial/Industrial
     "JPM" "JNJ" "V" "PG" "UNH" "HD" "MA" "BAC"
     # Additional liquid names for options
