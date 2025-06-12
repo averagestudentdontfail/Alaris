@@ -152,6 +152,9 @@ namespace Alaris
                 {
                     Log.Trace("API credentials not found. Data downloading may fail if data is not available locally.");
                 }
+
+                // *** ADD THIS LINE TO AGREE TO THE TERMS ***
+                Config.Set("data-provider-agree-to-terms", "true");
                 
                 // Core algorithm configuration
                 Config.Set("algorithm-type-name", (string)algoConfig["name"]);
