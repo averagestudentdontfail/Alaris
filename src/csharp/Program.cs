@@ -158,10 +158,10 @@ namespace Alaris
                 bool isLive = (mode == "live" || mode == "paper");
                 Config.Set("live-mode", isLive.ToString().ToLower());
                 
-                // Configure Lean engine handlers based on mode
+                // Configure Lean engine handlers and data provider based on mode
                 if (isLive)
                 {
-                    // Live trading configuration
+                    // --- Live/Paper Trading Configuration ---
                     Config.Set("live-mode-brokerage", "InteractiveBrokersBrokerage");
                     Config.Set("setup-handler", "QuantConnect.Lean.Engine.Setup.BrokerageSetupHandler");
                     Config.Set("result-handler", "QuantConnect.Lean.Engine.Results.LiveTradingResultHandler");
@@ -170,22 +170,27 @@ namespace Alaris
                     Config.Set("transaction-handler", "QuantConnect.Lean.Engine.TransactionHandlers.BrokerageTransactionHandler");
                     Config.Set("data-queue-handler", "QuantConnect.Brokerages.InteractiveBrokers.InteractiveBrokersBrokerage");
                     
+                    // For live trading, the data provider is the brokerage itself
+                    Config.Set("data-provider", "InteractiveBrokersBrokerage");
+                    
                     Log.Trace($"Configured for {mode} trading with Interactive Brokers on port {port}");
                 }
                 else
                 {
-                    // Backtesting configuration
+                    // --- Backtesting Configuration ---
                     Config.Set("setup-handler", "QuantConnect.Lean.Engine.Setup.BacktestingSetupHandler");
                     Config.Set("result-handler", "QuantConnect.Lean.Engine.Results.BacktestingResultHandler");
                     Config.Set("data-feed-handler", "QuantConnect.Lean.Engine.DataFeeds.FileSystemDataFeed");
                     Config.Set("real-time-handler", "QuantConnect.Lean.Engine.RealTime.BacktestingRealTimeHandler");
                     Config.Set("transaction-handler", "QuantConnect.Lean.Engine.TransactionHandlers.BacktestingTransactionHandler");
                     
+                    // For backtesting, use the API data provider to download data if needed
+                    Config.Set("data-provider", "QuantConnect.Lean.Engine.DataFeeds.ApiDataProvider");
+                    
                     Log.Trace("Configured for backtesting mode");
                 }
 
-                // Set additional Lean configuration for automatic data handling
-                Config.Set("data-provider", "InteractiveBrokersBrokerage");
+                // Set additional Lean configuration for data handling
                 Config.Set("map-file-provider", "LocalDiskMapFileProvider");
                 Config.Set("factor-file-provider", "LocalDiskFactorFileProvider");
                 
