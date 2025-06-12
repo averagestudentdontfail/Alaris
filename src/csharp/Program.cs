@@ -16,14 +16,11 @@ using QuantConnect.Packets;
 using QuantConnect.Interfaces;
 using QuantConnect.Brokerages.InteractiveBrokers;
 using QuantConnect.ToolBox;
-using QuantConnect.ToolBox.LeanDataDownloader; 
+
 using QCSymbol = QuantConnect.Symbol; 
 
 namespace Alaris
 {
-    /// <summary>
-    /// Main entry point for the Alaris C# Lean process.
-    /// </summary>
     public class Program
     {
         public static async Task<int> Main(string[] args)
@@ -46,7 +43,6 @@ namespace Alaris
             rootCommand.AddOption(modeOption);
             rootCommand.AddOption(configDirOption);
 
-            // Fixed: Changed from async to sync to resolve warning CS1998
             rootCommand.SetHandler((mode, configDir) =>
             {
                 RunEngine(mode, configDir.FullName);
@@ -55,10 +51,7 @@ namespace Alaris
             return await rootCommand.InvokeAsync(args);
         }
 
-        /// <summary>
-        /// Configures and runs the Lean engine based on the selected operational mode.
-        /// </summary>
-        private static void RunEngine(string mode, string configDir) // Fixed: Method is now sync (void)
+        private static void RunEngine(string mode, string configDir)
         {
             Console.WriteLine($"--- Alaris Lean Engine Initializing [Mode: {mode.ToUpper()}] ---");
 
@@ -80,7 +73,6 @@ namespace Alaris
             Config.Set("data-folder", Path.Combine(buildDirectory, "data"));
             Config.Set("cache-location", Path.Combine(buildDirectory, "cache"));
             Config.Set("results-destination-folder", Path.Combine(buildDirectory, "results"));
-            Log.Trace($"Data folder set to: {Config.Get("data-folder")}");
 
             if (mode == "download")
             {
@@ -88,7 +80,7 @@ namespace Alaris
                 return;
             }
 
-            LeanEngineSystemHandlers systemHandlers = null;
+            LeanEngineSystemHandlers? systemHandlers = null;
             try
             {
                 systemHandlers = LeanEngineSystemHandlers.FromConfiguration(Composer.Instance);
@@ -110,15 +102,11 @@ namespace Alaris
             finally
             {
                 Console.WriteLine($"--- Alaris Lean Engine Shutdown [Mode: {mode.ToUpper()}] ---");
-                // Fixed: Correctly dispose of system handlers to perform cleanup.
+                // Correctly dispose of system handlers to perform cleanup.
                 systemHandlers?.Dispose(); 
             }
         }
         
-        /// <summary>
-        /// Loads settings from lean_process.yaml and algorithm.json and populates
-        /// the static QuantConnect.Configuration.Config class.
-        /// </summary>
         private static bool LoadConfigurationFromFiles(string yamlPath, string jsonPath, string mode)
         {
             try
@@ -131,14 +119,14 @@ namespace Alaris
                 var brokerageConfig = yamlConfig["brokerage"];
                 
                 Config.Set("algorithm-type-name", (string)algoConfig["name"]);
-                Config.Set("algorithm-location", "Alaris.Algorithm.dll");
+                Config.Set("algorithm-location", "Alaris.Lean.dll");
                 Config.Set("start-date", (string)algoConfig["start_date"]);
                 Config.Set("end-date", (string)algoConfig["end_date"]);
-                Config.Set("cash", (string)algoConfig["cash"]);
+                Config.Set("cash", algoConfig["cash"].ToString());
 
                 Config.Set("ib-account", (string)brokerageConfig["account"]);
                 Config.Set("ib-host", (string)brokerageConfig["host"]);
-                Config.Set("ib-client-id", brokerageConfig["client_id"].ToString()); // Ensure it's a string
+                Config.Set("ib-client-id", brokerageConfig["client_id"].ToString());
                 
                 string port = mode == "live" 
                     ? brokerageConfig["live_port"].ToString()
@@ -148,6 +136,8 @@ namespace Alaris
                 bool isLive = (mode == "live" || mode == "paper");
                 Config.Set("live-mode", isLive.ToString().ToLower());
                 
+                // Define which handlers to use for each mode.
+                // This is the core of Lean's modularity.
                 if (isLive)
                 {
                     Config.Set("live-mode-brokerage", "InteractiveBrokersBrokerage");
@@ -167,19 +157,22 @@ namespace Alaris
                     Config.Set("transaction-handler", "QuantConnect.Lean.Engine.TransactionHandlers.BacktestingTransactionHandler");
                 }
                 
+                // For download mode, specify the downloader
+                if (mode == "download")
+                {
+                    Config.Set("data-downloader", "QuantConnect.Brokerages.InteractiveBrokers.InteractiveBrokersBrokerage");
+                }
+                
                 Log.Trace("Configuration loaded successfully.");
                 return true;
             }
             catch(Exception ex)
             {
-                Log.Error(ex, $"Failed to load or parse configuration files ({yamlPath}, {jsonPath}).");
+                Log.Error(ex, $"Failed to load or parse configuration files ({yamlPath}).");
                 return false;
             }
         }
 
-        /// <summary>
-        /// Handles downloading of historical data using the configured downloader.
-        /// </summary>
         private static void DownloadHistoricalData()
         {
             var yamlPath = Path.Combine(FindProjectRoot(), "config", "lean_process.yaml");
@@ -187,18 +180,23 @@ namespace Alaris
             var deserializer = new DeserializerBuilder().Build();
             var yamlConfig = deserializer.Deserialize<dynamic>(yamlText);
 
-            var symbols = ((List<object>)yamlConfig["universe"]["symbols"]).Select(s => s?.ToString()).ToList();
+            var symbols = ((List<object>)yamlConfig["universe"]["symbols"])
+                .Select(s => s?.ToString())
+                .Where(s => !string.IsNullOrEmpty(s))
+                .ToList();
+
             var resolution = Enum.Parse<Resolution>(Config.Get("resolution", "Daily"), true);
             var fromDate = DateTime.Parse(Config.Get("start-date", "2023-01-01"));
             var toDate = DateTime.Parse(Config.Get("end-date", "2024-12-31"));
 
-            var downloader = new LeanDataDownloader(new InteractiveBrokersBrokerage());
-            Console.WriteLine($"Starting download for {symbols.Count} symbols from {fromDate:yyyy-MM-dd} to {toDate:yyyy-MM-dd} at {resolution} resolution.");
+            // CORRECTED: Use Composer to get the configured IDataDownloader instance.
+            // This is the standard Lean Engine approach and avoids referencing ToolBox directly.
+            var downloader = Composer.Instance.GetExportedValue<IDataDownloader>();
+            
+            Console.WriteLine($"Starting download using {downloader.GetType().Name} for {symbols.Count} symbols...");
 
             foreach (var symbolStr in symbols)
             {
-                if(string.IsNullOrEmpty(symbolStr)) continue;
-                // Fixed: Use the QCSymbol alias to create the symbol object
                 var symbol = QCSymbol.Create(symbolStr, SecurityType.Equity, Market.USA);
                 downloader.Download(symbol, resolution, fromDate, toDate);
             }
@@ -206,9 +204,6 @@ namespace Alaris
             Console.WriteLine("--- Data Download Process Completed ---");
         }
         
-        /// <summary>
-        /// Finds the root directory of the project to locate the config folder.
-        /// </summary>
         private static string FindProjectRoot()
         {
             string currentDir = Directory.GetCurrentDirectory();
@@ -220,12 +215,9 @@ namespace Alaris
                 }
                 currentDir = Directory.GetParent(currentDir)?.FullName;
             }
-            return Directory.GetCurrentDirectory(); // Fallback
+            return Directory.GetCurrentDirectory();
         }
 
-        /// <summary>
-        /// Finds the build directory by searching the current directory and its parents.
-        /// </summary>
         private static string? FindBuildDirectory(string startDirectory)
         {
             string currentDir = startDirectory;
