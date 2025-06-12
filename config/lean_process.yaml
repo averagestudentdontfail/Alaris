@@ -23,7 +23,7 @@ brokerage:
   gateway_host: "127.0.0.1"
   gateway_port: 4002  # Paper trading
   gateway_port_live: 4001  # Live trading
-  account: "DU123456"  # Update with actual account
+  account: "DUE407919"  
   
   # Connection settings
   connection_timeout: 30
@@ -93,7 +93,7 @@ strategy:
     trailing_stop_percent: 0.10
     profit_target_percent: 0.30
 
-# Symbol universe (same as QuantLib configuration)
+# Symbol universe
 universe:
   symbols:
     etfs: ["SPY", "QQQ", "IWM", "EFA", "VTI"]
@@ -137,7 +137,7 @@ ib_settings:
     starting_cash: 1000000
     commission_model: "IBKR"
     
-  # Live trading configuration (disabled by default)
+  # Live trading configuration
   live_trading:
     enabled: false
     risk_checks: true
