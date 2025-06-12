@@ -87,7 +87,7 @@ nc -z <WINDOWS_HOST_IP> 4002  # Paper trading port
 ```bash
 cd build
 ./start-alaris.sh paper    # Paper trading
-./start-alaris.sh live     # Live trading (caution!)
+./start-alaris.sh live     # Live trading
 ```
 
 **Alternative manual startup:**
