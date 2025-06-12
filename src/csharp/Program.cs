@@ -15,8 +15,6 @@ using QuantConnect.Util;
 using QuantConnect.Packets;
 using QuantConnect.Interfaces;
 using QuantConnect.Brokerages.InteractiveBrokers;
-using QuantConnect.ToolBox;
-using QuantConnect.Data;
 
 using QCSymbol = QuantConnect.Symbol; 
 
@@ -77,7 +75,8 @@ namespace Alaris
 
             if (mode == "download")
             {
-                DownloadHistoricalData();
+                Log.Trace("Download mode is handled automatically by Lean when data is needed.");
+                Log.Trace("Historical data will be downloaded on-demand during algorithm execution.");
                 return;
             }
 
@@ -158,12 +157,6 @@ namespace Alaris
                     Config.Set("transaction-handler", "QuantConnect.Lean.Engine.TransactionHandlers.BacktestingTransactionHandler");
                 }
                 
-                // For download mode, specify the downloader
-                if (mode == "download")
-                {
-                    Config.Set("data-downloader", "QuantConnect.Brokerages.InteractiveBrokers.InteractiveBrokersBrokerage");
-                }
-                
                 Log.Trace("Configuration loaded successfully.");
                 return true;
             }
@@ -171,68 +164,6 @@ namespace Alaris
             {
                 Log.Error(ex, $"Failed to load or parse configuration files ({yamlPath}).");
                 return false;
-            }
-        }
-
-        private static void DownloadHistoricalData()
-        {
-            try
-            {
-                var yamlPath = Path.Combine(FindProjectRoot(), "config", "lean_process.yaml");
-                var yamlText = File.ReadAllText(yamlPath);
-                var deserializer = new DeserializerBuilder().Build();
-                var yamlConfig = deserializer.Deserialize<dynamic>(yamlText);
-
-                var symbols = ((List<object>)yamlConfig["universe"]["symbols"])
-                    .Select(s => s?.ToString())
-                    .Where(s => !string.IsNullOrEmpty(s))
-                    .ToList();
-
-                var resolution = Enum.Parse<Resolution>(Config.Get("resolution", "Daily"), true);
-                var fromDate = DateTime.Parse(Config.Get("start-date", "2023-01-01"));
-                var toDate = DateTime.Parse(Config.Get("end-date", "2024-12-31"));
-
-                // Create InteractiveBrokers data downloader directly
-                // This is the correct approach for the current QuantConnect Lean API
-                var brokerage = new InteractiveBrokersBrokerage(
-                    algorithmSettings: null,
-                    orderProvider: null,
-                    securityProvider: null,
-                    account: Config.Get("ib-account"),
-                    host: Config.Get("ib-host"),
-                    port: Config.GetInt("ib-port"),
-                    clientId: Config.GetInt("ib-client-id"),
-                    loadExistingHoldings: false
-                );
-
-                Console.WriteLine($"Starting download using InteractiveBrokersBrokerage for {symbols.Count} symbols...");
-
-                foreach (var symbolStr in symbols!)
-                {
-                    if (string.IsNullOrEmpty(symbolStr)) continue;
-                    
-                    try
-                    {
-                        var symbol = QCSymbol.Create(symbolStr, SecurityType.Equity, Market.USA);
-                        
-                        // Use the data downloader interface
-                        var downloadRequest = new DataDownloaderGetParameters(symbol, resolution, fromDate, toDate);
-                        var data = brokerage.Get(downloadRequest);
-                        
-                        Console.WriteLine($"Downloaded data for {symbolStr}: {data?.Count() ?? 0} bars");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Failed to download data for {symbolStr}: {ex.Message}");
-                    }
-                }
-
-                Console.WriteLine("--- Data Download Process Completed ---");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Data download failed: {ex.Message}");
-                Log.Error(ex, "Data download process failed");
             }
         }
         
