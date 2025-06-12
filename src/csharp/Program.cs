@@ -153,7 +153,7 @@ namespace Alaris
                     Log.Trace("API credentials not found. Data downloading may fail if data is not available locally.");
                 }
 
-                // *** ADD THIS LINE TO AGREE TO THE TERMS ***
+                // Agree to QuantConnect's data terms of service
                 Config.Set("data-provider-agree-to-terms", "true");
                 
                 // Core algorithm configuration
@@ -190,6 +190,10 @@ namespace Alaris
                     
                     // For live trading, the data provider is the brokerage itself
                     Config.Set("data-provider", "InteractiveBrokersBrokerage");
+
+                    // Auxiliary data providers for live trading
+                    Config.Set("map-file-provider", "LocalDiskMapFileProvider");
+                    Config.Set("factor-file-provider", "LocalDiskFactorFileProvider");
                     
                     Log.Trace($"Configured for {mode} trading with Interactive Brokers on port {port}");
                 }
@@ -204,13 +208,13 @@ namespace Alaris
                     
                     // For backtesting, use the API data provider to download data if needed
                     Config.Set("data-provider", "QuantConnect.Lean.Engine.DataFeeds.ApiDataProvider");
+
+                    // Auxiliary data providers required by ApiDataProvider
+                    Config.Set("map-file-provider", "QuantConnect.Data.Auxiliary.LocalZipMapFileProvider");
+                    Config.Set("factor-file-provider", "QuantConnect.Data.Auxiliary.LocalZipFactorFileProvider");
                     
                     Log.Trace("Configured for backtesting mode");
                 }
-
-                // Set additional Lean configuration for data handling
-                Config.Set("map-file-provider", "LocalDiskMapFileProvider");
-                Config.Set("factor-file-provider", "LocalDiskFactorFileProvider");
                 
                 Log.Trace("✓ Configuration loaded successfully - Lean will handle data automatically");
                 return true;
