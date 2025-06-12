@@ -59,7 +59,7 @@ cmake --build build
 
 **Available build targets:**
 ```bash
-cmake --build build                 # Build everything
+cmake --build build                          # Build everything
 cmake --build build --target alaris-all      # Build all C++ components  
 cmake --build build --target lean-process    # Build .NET components
 cmake --build build --target verify-build    # Verify build completion
@@ -87,7 +87,7 @@ nc -z <WINDOWS_HOST_IP> 4002  # Paper trading port
 ```bash
 cd build
 ./start-alaris.sh paper    # Paper trading
-./start-alaris.sh live     # Live trading (caution!)
+./start-alaris.sh live     # Live trading
 ```
 
 **Alternative manual startup:**
