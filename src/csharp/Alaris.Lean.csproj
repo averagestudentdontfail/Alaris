@@ -40,19 +40,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Explicitly include all algorithm files -->
-    <Compile Include="Algorithm\ArbitrageAlgorithm.cs" />
-    <Compile Include="Algorithm\DataDownload.cs" />
-    <Compile Include="IPC\MessageTypes.cs" />
-    <Compile Include="IPC\SharedMemoryBridge.cs" />
-    <Compile Include="IPC\SharedRingBuffer.cs" />
-    <Compile Include="Monitoring\GCOptimizer.cs" />
-    <Compile Include="Monitoring\PerformanceMonitor.cs" />
-    <Compile Include="Program.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <!-- This ensures your master YAML/JSON configs are copied to the output directory -->
+    <!-- Configuration files copied to output directory -->
     <None Update="config\*.yaml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
