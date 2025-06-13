@@ -37,13 +37,18 @@
 
     <!-- System.CommandLine is used for robust argument parsing -->
     <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
+  </ItemGroup>
 
-    <!-- 
-      REMOVED: The explicit reference to System.IO.MemoryMappedFiles.
-      This functionality is built into the .NET 9 SDK and is no longer needed
-      as a separate package. Keeping it causes the NU1102 version conflict error.
-    -->
-    <!-- <PackageReference Include="System.IO.MemoryMappedFiles" Version="8.0.0" /> -->
+  <ItemGroup>
+    <!-- Explicitly include all algorithm files -->
+    <Compile Include="Algorithm\ArbitrageAlgorithm.cs" />
+    <Compile Include="Algorithm\DataDownload.cs" />
+    <Compile Include="IPC\MessageTypes.cs" />
+    <Compile Include="IPC\SharedMemoryBridge.cs" />
+    <Compile Include="IPC\SharedRingBuffer.cs" />
+    <Compile Include="Monitoring\GCOptimizer.cs" />
+    <Compile Include="Monitoring\PerformanceMonitor.cs" />
+    <Compile Include="Program.cs" />
   </ItemGroup>
 
   <ItemGroup>

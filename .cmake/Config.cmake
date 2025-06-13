@@ -287,7 +287,7 @@ download_historical_data() {
     
     cat > \"\$download_config\" << EOF
 algorithm:
-  name: \"Alaris.Algorithm.ArbitrageAlgorithm\"
+  name: \"Alaris.Algorithm.DataDownload\"
   start_date: \"2020-01-01\"
   end_date: \"\$(date '+%Y-%m-%d')\"
   cash: 100000
@@ -349,6 +349,7 @@ EOF
     # Set environment variables for data download
     export QC_USER_ID=\"\$qc_user_id\"
     export QC_API_TOKEN=\"\$qc_api_token\"
+    export ALARIS_SYMBOLS=\"\$(echo \"\$symbols_section\" | tr '\\n' ',' | sed 's/,\$//')\"
     
     # Start the data download process
     local download_success=false
@@ -358,17 +359,22 @@ EOF
     echo \"Log file: \$download_log\"
     echo \"\"
     
+    # Create a temporary config directory and copy the config
+    mkdir -p \"temp_config\"
+    cp \"\$download_config\" \"temp_config/lean_process.yaml\"
+    
     if [[ -f \"./bin/Alaris.Lean.dll\" ]]; then
-        if timeout 1800 dotnet \"./bin/Alaris.Lean.dll\" --mode backtest --config-dir \"\$(dirname \"\$download_config\")\" 2>&1 | tee \"\$download_log\"; then
+        if timeout 1800 dotnet \"./bin/Alaris.Lean.dll\" --mode backtest --config-dir \"temp_config\" 2>&1 | tee \"\$download_log\"; then
             download_success=true
         fi
     elif [[ -d \"./bin/Release\" ]]; then
-        if timeout 1800 dotnet \"./bin/Release/Alaris.Lean.dll\" --mode backtest --config-dir \"\$(dirname \"\$download_config\")\" 2>&1 | tee \"\$download_log\"; then
+        if timeout 1800 dotnet \"./bin/Release/Alaris.Lean.dll\" --mode backtest --config-dir \"temp_config\" 2>&1 | tee \"\$download_log\"; then
             download_success=true
         fi
     fi
     
-    # Clean up temporary config
+    # Clean up temporary files
+    rm -rf \"temp_config\"
     rm -f \"\$download_config\"
     
     # Analyze results
@@ -411,17 +417,16 @@ EOF
         else
             echo \"⚠ No data files found after download process\"
             echo \"\"
-            echo \"This could indicate:\"
-            echo \"  1. API credentials issue (check QuantConnect account)\"
-            echo \"  2. Data subscription limitations\"
-            echo \"  3. Network connectivity problems\"
-            echo \"  4. Lean configuration issues\"
+            echo \"Check the download log for details:\"
+            echo \"  cat \$download_log\"
             echo \"\"
-            echo \"Troubleshooting:\"
-            echo \"  1. Check download log: cat \$download_log\"
-            echo \"  2. Verify QuantConnect API credentials\"
-            echo \"  3. Test with a single symbol first\"
-            echo \"  4. Check QuantConnect account data quotas\"
+            echo \"Common issues:\"
+            echo \"  1. API credentials not working (check QuantConnect account)\"
+            echo \"  2. Data subscription limitations (check account quotas)\"
+            echo \"  3. Network connectivity problems\"
+            echo \"\"
+            echo \"For immediate testing, you can use:\"
+            echo \"  ./start-alaris.sh paper     # Live forward testing\"
             echo \"\"
             return 1
         fi
@@ -429,15 +434,16 @@ EOF
         echo \"\"
         echo \"✗ Data download failed or timed out (30 minute limit)\"
         echo \"\"
-        echo \"Troubleshooting steps:\"
-        echo \"  1. Check download log: cat \$download_log\"
-        echo \"  2. Verify QuantConnect API credentials\"
-        echo \"  3. Check internet connection\"
-        echo \"  4. Verify QuantConnect account is active\"
-        echo \"  5. Try downloading fewer symbols at once\"
+        echo \"Check the download log for details:\"
+        echo \"  cat \$download_log\"
         echo \"\"
-        echo \"For immediate testing, you can use:\"
-        echo \"  ./start-alaris.sh paper     # Live forward testing\"
+        echo \"If the algorithm failed to initialize, this might indicate:\"
+        echo \"  1. Build issues with the Lean process\"
+        echo \"  2. Missing dependencies\"
+        echo \"  3. Configuration problems\"
+        echo \"\"
+        echo \"Try rebuilding the project:\"
+        echo \"  cmake --build . --target lean-process\"
         echo \"\"
         return 1
     fi
