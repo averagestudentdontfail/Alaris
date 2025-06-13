@@ -151,7 +151,13 @@ namespace Alaris
                 var algorithmManager = new AlgorithmManager(isLiveMode);
                 
                 // Use a BacktestNodePacket for download and backtest modes
-                var packet = new BacktestNodePacket(0, 0, "", new Dictionary<string, string>(), 10000, "");
+                var packet = isLiveMode 
+                    ? new LiveNodePacket() as AlgorithmNodePacket
+                    : new BacktestNodePacket() as AlgorithmNodePacket;
+
+                // Set user and token for data provider access
+                packet.UserId = Config.GetInt("job-user-id");
+                packet.Channel = Config.Get("api-access-token");
                 
                 systemHandlers.LeanManager.Initialize(systemHandlers, algorithmHandlers, packet, algorithmManager);
                 
