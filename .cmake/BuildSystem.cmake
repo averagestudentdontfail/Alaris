@@ -50,26 +50,7 @@ function(add_dotnet_project TARGET_NAME PROJECT_FILE)
         COMMAND ${DOTNET_EXECUTABLE} build "${PROJECT_FILE}" -c ${CMAKE_BUILD_TYPE} --verbosity quiet
         COMMAND ${CMAKE_COMMAND} -E echo "Copying .NET artifacts to: ${FINAL_DESTINATION_DIR}"
         COMMAND ${CMAKE_COMMAND} -E make_directory "${FINAL_DESTINATION_DIR}"
-        # Copy from multiple possible output locations
-        COMMAND ${CMAKE_COMMAND} -E echo "Searching for .NET build outputs..."
-        COMMAND bash -c "
-            # Find and copy all DLL and EXE files from any subdirectory of bin/
-            find '${DOTNET_OUTPUT_DIR}' -name '*.dll' -o -name '*.exe' -o -name '*.pdb' -o -name '*.json' | while read file; do
-                if [[ -f \"\$file\" ]]; then
-                    echo \"Copying: \$file\"
-                    cp \"\$file\" '${FINAL_DESTINATION_DIR}/' 2>/dev/null || true
-                fi
-            done
-            # Ensure the main DLL is present
-            if [[ ! -f '${FINAL_DESTINATION_DIR}/Alaris.Lean.dll' ]]; then
-                echo 'ERROR: Alaris.Lean.dll not found after build'
-                echo 'Available files in ${DOTNET_OUTPUT_DIR}:'
-                find '${DOTNET_OUTPUT_DIR}' -type f
-                exit 1
-            else
-                echo '✓ Alaris.Lean.dll found and copied'
-            fi
-        "
+        COMMAND ${CMAKE_COMMAND} -E copy_directory "${DOTNET_OUTPUT_DIR}" "${FINAL_DESTINATION_DIR}"
         COMMAND ${CMAKE_COMMAND} -E echo "Verifying .NET build output..."
         COMMAND ${CMAKE_COMMAND} -E echo "✓ .NET project ${TARGET_NAME} built successfully"
         WORKING_DIRECTORY ${PROJECT_DIR}
