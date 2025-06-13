@@ -25,7 +25,7 @@ namespace Alaris
                 description: "The operational mode for the Lean engine.",
                 getDefaultValue: () => "backtest");
             modeOption.AddAlias("-m");
-            modeOption.FromAmong("live", "paper", "backtest");
+            modeOption.FromAmong("live", "paper", "backtest", "download");
 
             var configDirOption = new Option<DirectoryInfo>(
                 name: "--config-dir",
@@ -54,6 +54,12 @@ namespace Alaris
             {
                 Log.Error("Engine startup failed due to configuration errors.");
                 return;
+            }
+
+            if (mode.Equals("download", StringComparison.OrdinalIgnoreCase))
+            {
+                Config.Set("algorithm-type-name", "Alaris.Algorithm.DataDownload");
+                Log.Trace("Download mode detected. Overriding algorithm to 'Alaris.Algorithm.DataDownload'.");
             }
 
             // Set up data directories - Lean will handle data downloads automatically
@@ -100,7 +106,7 @@ namespace Alaris
                 systemHandlers.LeanManager.Initialize(systemHandlers, algorithmHandlers, packet, algorithmManager);
                 
                 string algorithmLocation = Config.Get("algorithm-location");
-                Log.Trace($"Starting engine with algorithm: {algorithmLocation}");
+                Log.Trace($"Starting engine with algorithm: {Config.Get("algorithm-type-name")} from {algorithmLocation}");
                 
                 // Start the engine - Lean will automatically handle data downloads as needed
                 engine.Run(packet, algorithmManager, algorithmLocation, WorkerThread.Instance);
