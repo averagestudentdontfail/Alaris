@@ -38,13 +38,25 @@ namespace Alaris
 
             rootCommand.SetHandler((mode, configDir) =>
             {
-                RunEngine(mode, configDir.FullName);
+                // --- SOLUTION ---
+                // Route to a dedicated download method to avoid dependency conflicts.
+                if (mode.Equals("download", StringComparison.OrdinalIgnoreCase))
+                {
+                    RunDownload();
+                }
+                else
+                {
+                    RunTrading(mode, configDir.FullName);
+                }
             }, modeOption, configDirOption);
 
             return await rootCommand.InvokeAsync(args);
         }
 
-        private static void RunEngine(string mode, string configDir)
+        /// <summary>
+        /// Runs the Lean engine for live or paper trading, loading full configuration.
+        /// </summary>
+        private static void RunTrading(string mode, string configDir)
         {
             Console.WriteLine($"--- Alaris Lean Engine Initializing [Mode: {mode.ToUpper()}] ---");
 
@@ -56,13 +68,44 @@ namespace Alaris
                 return;
             }
 
-            if (mode.Equals("download", StringComparison.OrdinalIgnoreCase))
-            {
-                Config.Set("algorithm-type-name", "Alaris.Algorithm.DataDownload");
-                Log.Trace("Download mode detected. Overriding algorithm to 'Alaris.Algorithm.DataDownload'.");
-            }
+            RunEngine(mode);
+        }
 
-            // Set up data directories - Lean will handle data downloads automatically
+        /// <summary>
+        /// Runs the Lean engine in a minimal configuration specifically for downloading data.
+        /// This bypasses YAML parsing to avoid any potential dependency conflicts.
+        /// </summary>
+        private static void RunDownload()
+        {
+            Console.WriteLine($"--- Alaris Lean Engine Initializing [Mode: DOWNLOAD] ---");
+
+            // Manually set the minimal required configuration for data downloading.
+            Config.Set("environment", "lean-cli");
+            Config.Set("algorithm-type-name", "Alaris.Algorithm.DataDownload");
+            Config.Set("algorithm-location", "Alaris.Lean.dll");
+            Config.Set("data-provider", "QuantConnect.Lean.Engine.DataFeeds.ApiDataProvider");
+            Config.Set("job-user-id", Environment.GetEnvironmentVariable("QC_USER_ID") ?? "0");
+            Config.Set("api-access-token", Environment.GetEnvironmentVariable("QC_API_TOKEN") ?? "");
+            Config.Set("data-provider-agree-to-terms", "true");
+            
+            // Set required handlers for a backtesting/download environment
+            Config.Set("setup-handler", "QuantConnect.Lean.Engine.Setup.BacktestingSetupHandler");
+            Config.Set("result-handler", "QuantConnect.Lean.Engine.Results.BacktestingResultHandler");
+            Config.Set("data-feed-handler", "QuantConnect.Lean.Engine.DataFeeds.FileSystemDataFeed");
+            Config.Set("real-time-handler", "QuantConnect.Lean.Engine.RealTime.BacktestingRealTimeHandler");
+            Config.Set("transaction-handler", "QuantConnect.Lean.Engine.TransactionHandlers.BacktestingTransactionHandler");
+            Config.Set("map-file-provider", "QuantConnect.Data.Auxiliary.LocalZipMapFileProvider");
+            Config.Set("factor-file-provider", "QuantConnect.Data.Auxiliary.LocalZipFactorFileProvider");
+
+            RunEngine("download");
+        }
+
+        /// <summary>
+        /// The core method to set up and run the Lean engine.
+        /// </summary>
+        private static void RunEngine(string mode)
+        {
+            // Set up data directories
             string? buildDirectory = FindBuildDirectory(Directory.GetCurrentDirectory());
             if (buildDirectory == null)
             {
@@ -70,7 +113,6 @@ namespace Alaris
                 return;
             }
 
-            // Ensure required directories exist
             EnsureDirectoryExists(Path.Combine(buildDirectory, "data"));
             EnsureDirectoryExists(Path.Combine(buildDirectory, "cache"));
             EnsureDirectoryExists(Path.Combine(buildDirectory, "results"));
@@ -80,8 +122,6 @@ namespace Alaris
             Config.Set("results-destination-folder", Path.Combine(buildDirectory, "results"));
 
             Log.Trace($"Data folder: {Config.Get("data-folder")}");
-            Log.Trace($"Cache folder: {Config.Get("cache-location")}");
-            Log.Trace($"Results folder: {Config.Get("results-destination-folder")}");
 
             LeanEngineSystemHandlers? systemHandlers = null;
             try
@@ -98,7 +138,6 @@ namespace Alaris
                 
                 var algorithmManager = new AlgorithmManager(isLiveMode);
                 
-                // Create appropriate packet based on mode
                 var packet = isLiveMode 
                     ? new LiveNodePacket() as AlgorithmNodePacket
                     : new BacktestNodePacket() as AlgorithmNodePacket;
@@ -108,17 +147,11 @@ namespace Alaris
                 string algorithmLocation = Config.Get("algorithm-location");
                 Log.Trace($"Starting engine with algorithm: {Config.Get("algorithm-type-name")} from {algorithmLocation}");
                 
-                // Start the engine - Lean will automatically handle data downloads as needed
                 engine.Run(packet, algorithmManager, algorithmLocation, WorkerThread.Instance);
             }
             catch (Exception ex)
             {
                 Log.Error(ex, $"Engine execution failed in {mode} mode:");
-                Console.WriteLine($"Error: {ex.Message}");
-                if (ex.InnerException != null)
-                {
-                    Console.WriteLine($"Inner Exception: {ex.InnerException.Message}");
-                }
             }
             finally
             {
@@ -144,32 +177,19 @@ namespace Alaris
                 var algoConfig = yamlConfig["algorithm"];
                 var brokerageConfig = yamlConfig["brokerage"];
                 
-                // Set API credentials from environment variables if available, otherwise from config
-                var userId = Environment.GetEnvironmentVariable("QC_USER_ID") ?? yamlConfig?["api-credentials"]?["job-user-id"]?.ToString();
-                var apiToken = Environment.GetEnvironmentVariable("QC_API_TOKEN") ?? yamlConfig?["api-credentials"]?["api-access-token"]?.ToString();
+                var userId = Environment.GetEnvironmentVariable("QC_USER_ID") ?? "0";
+                var apiToken = Environment.GetEnvironmentVariable("QC_API_TOKEN") ?? "";
 
-                if (!string.IsNullOrEmpty(userId) && !string.IsNullOrEmpty(apiToken))
-                {
-                    Config.Set("job-user-id", userId);
-                    Config.Set("api-access-token", apiToken);
-                    Log.Trace("✓ API credentials loaded.");
-                }
-                else
-                {
-                    Log.Trace("API credentials not found. Data downloading may fail if data is not available locally.");
-                }
-
-                // Agree to QuantConnect's data terms of service
+                Config.Set("job-user-id", userId);
+                Config.Set("api-access-token", apiToken);
                 Config.Set("data-provider-agree-to-terms", "true");
                 
-                // Core algorithm configuration
                 Config.Set("algorithm-type-name", (string)algoConfig["name"]);
                 Config.Set("algorithm-location", "Alaris.Lean.dll");
                 Config.Set("start-date", (string)algoConfig["start_date"]);
                 Config.Set("end-date", (string)algoConfig["end_date"]);
                 Config.Set("cash", algoConfig["cash"].ToString());
 
-                // Interactive Brokers configuration
                 Config.Set("ib-account", (string)brokerageConfig["account"]);
                 Config.Set("ib-host", (string)brokerageConfig["host"]);
                 Config.Set("ib-client-id", brokerageConfig["client_id"].ToString());
@@ -182,10 +202,8 @@ namespace Alaris
                 bool isLive = (mode == "live" || mode == "paper");
                 Config.Set("live-mode", isLive.ToString().ToLower());
                 
-                // Configure Lean engine handlers and data provider based on mode
                 if (isLive)
                 {
-                    // --- Live/Paper Trading Configuration ---
                     Config.Set("live-mode-brokerage", "InteractiveBrokersBrokerage");
                     Config.Set("setup-handler", "QuantConnect.Lean.Engine.Setup.BrokerageSetupHandler");
                     Config.Set("result-handler", "QuantConnect.Lean.Engine.Results.LiveTradingResultHandler");
@@ -193,36 +211,23 @@ namespace Alaris
                     Config.Set("real-time-handler", "QuantConnect.Lean.Engine.RealTime.LiveTradingRealTimeHandler");
                     Config.Set("transaction-handler", "QuantConnect.Lean.Engine.TransactionHandlers.BrokerageTransactionHandler");
                     Config.Set("data-queue-handler", "QuantConnect.Brokerages.InteractiveBrokers.InteractiveBrokersBrokerage");
-                    
-                    // For live trading, the data provider is the brokerage itself
                     Config.Set("data-provider", "InteractiveBrokersBrokerage");
-
-                    // Auxiliary data providers for live trading
                     Config.Set("map-file-provider", "LocalDiskMapFileProvider");
                     Config.Set("factor-file-provider", "LocalDiskFactorFileProvider");
-                    
-                    Log.Trace($"Configured for {mode} trading with Interactive Brokers on port {port}");
                 }
                 else
                 {
-                    // --- Backtesting Configuration ---
                     Config.Set("setup-handler", "QuantConnect.Lean.Engine.Setup.BacktestingSetupHandler");
                     Config.Set("result-handler", "QuantConnect.Lean.Engine.Results.BacktestingResultHandler");
                     Config.Set("data-feed-handler", "QuantConnect.Lean.Engine.DataFeeds.FileSystemDataFeed");
                     Config.Set("real-time-handler", "QuantConnect.Lean.Engine.RealTime.BacktestingRealTimeHandler");
                     Config.Set("transaction-handler", "QuantConnect.Lean.Engine.TransactionHandlers.BacktestingTransactionHandler");
-                    
-                    // For backtesting, use the API data provider to download data if needed
                     Config.Set("data-provider", "QuantConnect.Lean.Engine.DataFeeds.ApiDataProvider");
-
-                    // Auxiliary data providers required by ApiDataProvider
                     Config.Set("map-file-provider", "QuantConnect.Data.Auxiliary.LocalZipMapFileProvider");
                     Config.Set("factor-file-provider", "QuantConnect.Data.Auxiliary.LocalZipFactorFileProvider");
-                    
-                    Log.Trace("Configured for backtesting mode");
                 }
                 
-                Log.Trace("✓ Configuration loaded successfully - Lean will handle data automatically");
+                Log.Trace("✓ Configuration loaded successfully.");
                 return true;
             }
             catch (Exception ex)
@@ -237,7 +242,6 @@ namespace Alaris
             if (!Directory.Exists(path))
             {
                 Directory.CreateDirectory(path);
-                Log.Trace($"Created directory: {path}");
             }
         }
         
