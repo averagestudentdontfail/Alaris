@@ -11,9 +11,8 @@ using System.Linq;
 namespace Alaris.Algorithm
 {
     /// <summary>
-    /// Simple algorithm specifically designed for data downloading.
-    /// This algorithm initializes the universe and lets Lean handle data downloading
-    /// without any shared memory communication or trading logic.
+    /// Simple data download algorithm - no shared memory, no complex logic
+    /// Just downloads data for the configured symbols
     /// </summary>
     public class DataDownload : QCAlgorithm
     {
@@ -25,87 +24,62 @@ namespace Alaris.Algorithm
         {
             try
             {
-                Log("=== Data Download Algorithm Initializing ===");
+                Log("=== Simple Data Download Algorithm Starting ===");
                 
-                // Set up time range for data download
-                SetStartDate(2020, 1, 1);
-                SetEndDate(DateTime.Now.AddDays(-1)); // Yesterday to ensure data availability
-                SetCash(100000); // Not used for data download, but required
+                // Set up time range for data download (last 4 years)
+                SetStartDate(2021, 1, 1);
+                SetEndDate(DateTime.Now.AddDays(-1));
+                SetCash(100000); // Required but not used for data download
 
-                // Configure universe symbols from environment or use defaults
-                var symbolsConfig = Environment.GetEnvironmentVariable("ALARIS_SYMBOLS");
-                if (!string.IsNullOrEmpty(symbolsConfig))
+                // Get symbols from environment or use defaults
+                var symbolsFromEnv = Environment.GetEnvironmentVariable("ALARIS_SYMBOLS");
+                if (!string.IsNullOrEmpty(symbolsFromEnv))
                 {
-                    _symbols = symbolsConfig.Split(',').Select(s => s.Trim()).ToList();
+                    _symbols = symbolsFromEnv.Split(',').Select(s => s.Trim()).Where(s => !string.IsNullOrEmpty(s)).ToList();
+                    Log($"Using symbols from environment: {string.Join(", ", _symbols)}");
                 }
                 else
                 {
-                    // Default symbols - same as in main algorithm
+                    // Default symbols
                     _symbols = new List<string>
                     {
                         "SPY", "QQQ", "IWM", "EFA", "VTI",
-                        "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA",
-                        "JPM", "BAC", "WFC", "GS", "MS",
-                        "XOM", "CVX", "COP", "EOG", "SLB",
-                        "JNJ", "PFE", "UNH", "ABBV", "MRK"
+                        "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA"
                     };
+                    Log($"Using default symbols: {string.Join(", ", _symbols)}");
                 }
 
-                Log($"Configuring data download for {_symbols.Count} symbols:");
-                foreach (var symbol in _symbols)
-                {
-                    Log($"  - {symbol}");
-                }
+                Log($"Configuring data download for {_symbols.Count} symbols");
 
                 // Add securities to universe
                 foreach (var symbol in _symbols)
                 {
                     try
                     {
-                        // Add equity with daily resolution for data download
+                        Log($"Adding {symbol} to universe...");
+                        
+                        // Add equity with daily resolution
                         var equity = AddEquity(symbol, Resolution.Daily, Market.USA);
+                        equity.SetDataNormalizationMode(DataNormalizationMode.Adjusted);
                         
-                        // Also add minute resolution for more granular data
-                        var equityMinute = AddEquity(symbol, Resolution.Minute, Market.USA);
-                        
-                        // Add options if available
-                        try
-                        {
-                            var option = AddOption(symbol, Resolution.Daily);
-                            option.SetFilter(universe => universe.IncludeWeeklys()
-                                                               .Strikes(-10, +10)
-                                                               .Expiration(TimeSpan.FromDays(0), TimeSpan.FromDays(90)));
-                        }
-                        catch (Exception ex)
-                        {
-                            Log($"Note: Could not add options for {symbol}: {ex.Message}");
-                        }
-
                         _lastDataTime[symbol] = DateTime.MinValue;
-                        Log($"✓ Added {symbol} to universe");
+                        Log($"✓ Successfully added {symbol}");
                     }
                     catch (Exception ex)
                     {
-                        Error($"Failed to add {symbol} to universe: {ex.Message}");
+                        Error($"Failed to add {symbol}: {ex.Message}");
                     }
                 }
 
-                // Schedule periodic progress updates
-                Schedule.On(DateRules.EveryDay(), TimeRules.Every(TimeSpan.FromHours(1)), () =>
-                {
-                    LogDataProgress();
-                });
-
-                Log($"✓ Data download algorithm initialized successfully");
-                Log($"✓ Universe configured with {Securities.Count} securities");
-                Log($"✓ Data download will begin automatically");
+                Log($"✓ Data download algorithm initialized with {Securities.Count} securities");
+                Log("✓ Data download will begin automatically");
                 Log("=== Initialization Complete ===");
             }
             catch (Exception ex)
             {
-                Error($"Failed to initialize data download algorithm: {ex.Message}");
+                Error($"CRITICAL: Algorithm initialization failed: {ex.Message}");
                 Error($"Stack trace: {ex.StackTrace}");
-                throw; // Re-throw to fail the algorithm
+                throw;
             }
         }
 
@@ -113,7 +87,7 @@ namespace Alaris.Algorithm
         {
             try
             {
-                // Process and count data points
+                // Count data points received
                 foreach (var kvp in data.Bars)
                 {
                     var symbol = kvp.Key.Value;
@@ -122,64 +96,16 @@ namespace Alaris.Algorithm
                     _dataPointsReceived++;
                     _lastDataTime[symbol] = bar.Time;
                     
-                    // Log progress every 1000 data points
-                    if (_dataPointsReceived % 1000 == 0)
+                    // Log every 500 data points
+                    if (_dataPointsReceived % 500 == 0)
                     {
-                        Log($"Data progress: {_dataPointsReceived} data points received");
-                    }
-                }
-
-                // Process options data if available
-                if (data.OptionChains != null)
-                {
-                    foreach (var chain in data.OptionChains)
-                    {
-                        var underlying = chain.Key.Underlying.Value;
-                        var optionCount = chain.Value.Count();
-                        
-                        if (optionCount > 0)
-                        {
-                            Debug($"Options data: {underlying} has {optionCount} contracts");
-                        }
+                        Log($"Progress: {_dataPointsReceived} data points received");
                     }
                 }
             }
             catch (Exception ex)
             {
-                Error($"Error processing data: {ex.Message}");
-            }
-        }
-
-        private void LogDataProgress()
-        {
-            try
-            {
-                Log($"=== Data Download Progress ===");
-                Log($"Total data points received: {_dataPointsReceived}");
-                Log($"Securities in universe: {Securities.Count}");
-                
-                var symbolsWithData = _lastDataTime.Where(kvp => kvp.Value > DateTime.MinValue).Count();
-                Log($"Symbols with data: {symbolsWithData}/{_symbols.Count}");
-                
-                if (symbolsWithData > 0)
-                {
-                    Log("Latest data timestamps:");
-                    foreach (var kvp in _lastDataTime.Where(x => x.Value > DateTime.MinValue).Take(5))
-                    {
-                        Log($"  {kvp.Key}: {kvp.Value:yyyy-MM-dd HH:mm:ss}");
-                    }
-                    
-                    if (_lastDataTime.Count > 5)
-                    {
-                        Log($"  ... and {_lastDataTime.Count - 5} more symbols");
-                    }
-                }
-                
-                Log("===============================");
-            }
-            catch (Exception ex)
-            {
-                Error($"Error logging progress: {ex.Message}");
+                Error($"Error in OnData: {ex.Message}");
             }
         }
 
@@ -187,54 +113,33 @@ namespace Alaris.Algorithm
         {
             try
             {
-                Log("=== Data Download Complete ===");
+                Log("=== Data Download Summary ===");
                 Log($"Total data points processed: {_dataPointsReceived}");
-                Log($"Securities processed: {Securities.Count}");
+                Log($"Securities configured: {Securities.Count}");
                 
                 var symbolsWithData = _lastDataTime.Where(kvp => kvp.Value > DateTime.MinValue).Count();
                 Log($"Symbols with data: {symbolsWithData}/{_symbols.Count}");
                 
                 if (symbolsWithData > 0)
                 {
-                    Log("Final data summary:");
+                    Log("Symbols with data received:");
                     foreach (var kvp in _lastDataTime.Where(x => x.Value > DateTime.MinValue))
                     {
-                        Log($"  ✓ {kvp.Key}: Latest data {kvp.Value:yyyy-MM-dd}");
+                        Log($"  ✓ {kvp.Key}: Latest {kvp.Value:yyyy-MM-dd}");
                     }
                 }
                 
-                var symbolsWithoutData = _symbols.Where(s => !_lastDataTime.ContainsKey(s) || _lastDataTime[s] == DateTime.MinValue).ToList();
-                if (symbolsWithoutData.Any())
+                if (_dataPointsReceived == 0)
                 {
-                    Log("Symbols without data:");
-                    foreach (var symbol in symbolsWithoutData)
-                    {
-                        Log($"  ✗ {symbol}: No data received");
-                    }
-                }
-                
-                Log("===============================");
-                
-                // Provide guidance based on results
-                if (symbolsWithData == 0)
-                {
-                    Log("⚠ No data was downloaded. This might indicate:");
-                    Log("  - API credentials issue");
-                    Log("  - Data subscription limitations");
-                    Log("  - Network connectivity problems");
-                    Log("  - QuantConnect account data quotas exceeded");
-                }
-                else if (symbolsWithData < _symbols.Count)
-                {
-                    Log($"⚠ Partial data download: {symbolsWithData}/{_symbols.Count} symbols");
-                    Log("  - Some symbols may not be available");
-                    Log("  - Check data subscription for missing symbols");
+                    Log("⚠ WARNING: No data was received during the download process");
+                    Log("This might indicate API credential issues or data subscription limits");
                 }
                 else
                 {
-                    Log($"✓ Complete data download: {symbolsWithData}/{_symbols.Count} symbols");
-                    Log("✓ Data is ready for backtesting");
+                    Log($"✓ Data download completed successfully with {_dataPointsReceived} data points");
                 }
+                
+                Log("=== End Summary ===");
             }
             catch (Exception ex)
             {
