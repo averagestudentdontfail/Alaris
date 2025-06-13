@@ -1,4 +1,4 @@
-// src/csharp/Algorithm/DataDownloadAlgorithm.cs
+// src/csharp/Algorithm/DataDownload.cs
 using QuantConnect;
 using QuantConnect.Algorithm;
 using QuantConnect.Data;
@@ -15,7 +15,7 @@ namespace Alaris.Algorithm
     /// This algorithm initializes the universe and lets Lean handle data downloading
     /// without any shared memory communication or trading logic.
     /// </summary>
-    public class DataDownloadAlgorithm : QCAlgorithm
+    public class DataDownload : QCAlgorithm
     {
         private List<string> _symbols = new List<string>();
         private int _dataPointsReceived = 0;
