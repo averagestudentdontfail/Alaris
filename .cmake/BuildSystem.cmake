@@ -41,8 +41,75 @@ function(add_dotnet_project TARGET_NAME PROJECT_FILE)
     endif()
 
     get_filename_component(PROJECT_DIR ${PROJECT_FILE} DIRECTORY)
-    set(DOTNET_OUTPUT_DIR "${PROJECT_DIR}/bin")
     set(FINAL_DESTINATION_DIR "${CMAKE_BINARY_DIR}/bin")
+
+    # Create a copy script to handle multiple possible output locations
+    set(COPY_SCRIPT "${CMAKE_BINARY_DIR}/copy_dotnet_${TARGET_NAME}.sh")
+    file(WRITE "${COPY_SCRIPT}" "#!/bin/bash
+set -e
+PROJECT_DIR=\"${PROJECT_DIR}\"
+DEST_DIR=\"${FINAL_DESTINATION_DIR}\"
+BUILD_TYPE=\"${CMAKE_BUILD_TYPE}\"
+
+echo \"Searching for .NET build output in \$PROJECT_DIR/bin/...\"
+
+# Function to copy files from source to destination
+copy_dotnet_files() {
+    local src_dir=\"\$1\"
+    echo \"Copying files from \$src_dir to \$DEST_DIR\"
+    
+    # Create destination directory
+    mkdir -p \"\$DEST_DIR\"
+    
+    # Copy all files from source to destination
+    cp -v \"\$src_dir\"/* \"\$DEST_DIR/\" 2>/dev/null || true
+    
+    # Verify the main DLL was copied
+    if [[ -f \"\$DEST_DIR/Alaris.Lean.dll\" ]]; then
+        echo \"✓ Alaris.Lean.dll successfully copied\"
+        echo \"Files in destination:\"
+        ls -la \"\$DEST_DIR/\"*.dll \"\$DEST_DIR/\"*.exe 2>/dev/null || echo \"  No DLL/EXE files found\"
+    else
+        echo \"ERROR: Alaris.Lean.dll was not copied to \$DEST_DIR\"
+        echo \"Source directory contents:\"
+        ls -la \"\$src_dir/\"
+        echo \"Destination directory contents:\"
+        ls -la \"\$DEST_DIR/\"
+        return 1
+    fi
+}
+
+# Try different possible output locations
+if [[ -f \"\$PROJECT_DIR/bin/Alaris.Lean.dll\" ]]; then
+    echo \"Found output in bin/ - copying...\"
+    copy_dotnet_files \"\$PROJECT_DIR/bin\"
+elif [[ -f \"\$PROJECT_DIR/bin/\$BUILD_TYPE/Alaris.Lean.dll\" ]]; then
+    echo \"Found output in bin/\$BUILD_TYPE/ - copying...\"
+    copy_dotnet_files \"\$PROJECT_DIR/bin/\$BUILD_TYPE\"
+elif [[ -f \"\$PROJECT_DIR/bin/Release/Alaris.Lean.dll\" ]]; then
+    echo \"Found output in bin/Release/ - copying...\"
+    copy_dotnet_files \"\$PROJECT_DIR/bin/Release\"
+elif [[ -f \"\$PROJECT_DIR/bin/Debug/Alaris.Lean.dll\" ]]; then
+    echo \"Found output in bin/Debug/ - copying...\"
+    copy_dotnet_files \"\$PROJECT_DIR/bin/Debug\"
+else
+    echo \"ERROR: Could not find Alaris.Lean.dll in any expected location:\"
+    echo \"  \$PROJECT_DIR/bin/\"
+    echo \"  \$PROJECT_DIR/bin/\$BUILD_TYPE/\"
+    echo \"  \$PROJECT_DIR/bin/Release/\"
+    echo \"  \$PROJECT_DIR/bin/Debug/\"
+    echo \"\"
+    echo \"Available files in \$PROJECT_DIR/bin/:\"
+    find \"\$PROJECT_DIR/bin\" -name \"*.dll\" -o -name \"*.exe\" 2>/dev/null || echo \"  No DLL/EXE files found\"
+    echo \"\"
+    echo \"Directory structure:\"
+    ls -la \"\$PROJECT_DIR/bin/\" 2>/dev/null || echo \"  bin/ directory not found\"
+    exit 1
+fi
+
+echo \"✓ Successfully copied .NET artifacts to \$DEST_DIR\"
+")
+    execute_process(COMMAND chmod +x "${COPY_SCRIPT}")
 
     # Add custom target with better dependency handling
     add_custom_target(${TARGET_NAME} ALL
@@ -50,8 +117,7 @@ function(add_dotnet_project TARGET_NAME PROJECT_FILE)
         COMMAND ${DOTNET_EXECUTABLE} build "${PROJECT_FILE}" -c ${CMAKE_BUILD_TYPE} --verbosity quiet
         COMMAND ${CMAKE_COMMAND} -E echo "Copying .NET artifacts to: ${FINAL_DESTINATION_DIR}"
         COMMAND ${CMAKE_COMMAND} -E make_directory "${FINAL_DESTINATION_DIR}"
-        COMMAND ${CMAKE_COMMAND} -E copy_directory "${DOTNET_OUTPUT_DIR}" "${FINAL_DESTINATION_DIR}"
-        COMMAND ${CMAKE_COMMAND} -E echo "Verifying .NET build output..."
+        COMMAND bash "${COPY_SCRIPT}"
         COMMAND ${CMAKE_COMMAND} -E echo "✓ .NET project ${TARGET_NAME} built successfully"
         WORKING_DIRECTORY ${PROJECT_DIR}
         VERBATIM
