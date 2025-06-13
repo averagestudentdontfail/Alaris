@@ -237,8 +237,8 @@ case \"\$MODE\" in
         setup_lean_data
         
         # Check if QuantConnect API credentials are available
-        local qc_user_id=\"\${QC_USER_ID:-}\"
-        local qc_api_token=\"\${QC_API_TOKEN:-}\"
+        qc_user_id=\"\${QC_USER_ID:-}\"
+        qc_api_token=\"\${QC_API_TOKEN:-}\"
         
         if [[ -z \"\$qc_user_id\" || -z \"\$qc_api_token\" ]]; then
             echo \"\"
@@ -282,7 +282,7 @@ case \"\$MODE\" in
         export QC_API_TOKEN=\"\$qc_api_token\"
         
         # Start the data download process - THIS IS THE KEY FIX
-        local download_log=\"logs/data_download_\$(date +%Y%m%d_%H%M%S).log\"
+        download_log=\"logs/data_download_\$(date +%Y%m%d_%H%M%S).log\"
         
         echo \"Download progress (this may take a while):\"
         echo \"Log file: \$download_log\"
@@ -295,16 +295,16 @@ case \"\$MODE\" in
             echo \"\"
             
             # Check what was actually downloaded
-            local symbols_with_data=0
-            local total_files=0
+            symbols_with_data=0
+            total_files=0
             
             echo \"Downloaded data summary:\"
             for symbol_dir in data/equity/usa/*/; do
                 if [[ -d \"\$symbol_dir\" ]]; then
-                    local symbol=\$(basename \"\$symbol_dir\")
-                    local zip_files=\$(find \"\$symbol_dir\" -name \"*.zip\" 2>/dev/null | wc -l)
-                    local csv_files=\$(find \"\$symbol_dir\" -name \"*.csv\" 2>/dev/null | wc -l)
-                    local total_symbol_files=\$((zip_files + csv_files))
+                    symbol=\$(basename \"\$symbol_dir\")
+                    zip_files=\$(find \"\$symbol_dir\" -name \"*.zip\" 2>/dev/null | wc -l)
+                    csv_files=\$(find \"\$symbol_dir\" -name \"*.csv\" 2>/dev/null | wc -l)
+                    total_symbol_files=\$((zip_files + csv_files))
                     
                     if [[ \$total_symbol_files -gt 0 ]]; then
                         echo \"  ✓ \$symbol: \$total_symbol_files files (\$zip_files zip, \$csv_files csv)\"
@@ -346,7 +346,7 @@ case \"\$MODE\" in
         echo \"=== Backtest Mode ===\"
         setup_lean_data
         # Check for data availability
-        local data_count=\$(find data/equity/usa -name \"*.csv\" -o -name \"*.zip\" 2>/dev/null | wc -l)
+        data_count=\$(find data/equity/usa -name \"*.csv\" -o -name \"*.zip\" 2>/dev/null | wc -l)
         if [[ \$data_count -lt 5 ]]; then
             echo \"\"
             echo \"Historical data required for backtesting. Options:\"
@@ -401,7 +401,7 @@ fi
 # Test IBKR connectivity for trading modes
 if [[ \"\$MODE\" == \"paper\" || \"\$MODE\" == \"live\" ]]; then
     echo \"Testing IBKR connectivity...\"
-    local port
+    port
     if [[ \"\$MODE\" == \"paper\" ]]; then
         port=4002
     else
