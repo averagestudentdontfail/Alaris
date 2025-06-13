@@ -53,7 +53,6 @@ namespace Alaris
             Console.WriteLine($"--- Alaris Lean Engine Initializing [Mode: {mode.ToUpper()}] ---");
 
             // Step 1: Always load the primary configuration file.
-            // This ensures a single source of truth for symbols and other settings.
             var leanConfigPath = Path.Combine(configDir, "lean_process.yaml");
             if (!LoadConfigurationFromYaml(leanConfigPath, mode))
             {
@@ -62,8 +61,6 @@ namespace Alaris
             }
 
             // Step 2: If in 'download' mode, override the algorithm name.
-            // This is the key fix: run the simple data download algorithm
-            // instead of the complex trading one.
             if (mode.Equals("download", StringComparison.OrdinalIgnoreCase))
             {
                 Config.Set("algorithm-type-name", "Alaris.Algorithm.DataDownload");
