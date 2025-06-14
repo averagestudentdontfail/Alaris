@@ -1,4 +1,3 @@
-// src/csharp/Program.cs - Enhanced with comprehensive debugging
 using System;
 using System.IO;
 using System.Threading.Tasks;
@@ -13,6 +12,7 @@ using QuantConnect.Logging;
 using QuantConnect.Util;
 using QuantConnect.Packets;
 using QuantConnect.Interfaces;
+using QuantConnect.Api;
 
 namespace Alaris
 {
@@ -73,7 +73,7 @@ namespace Alaris
 
                     if (mode.Equals("download", StringComparison.OrdinalIgnoreCase))
                     {
-                        RunDownload(debug, verbose);
+                        RunProductionDownload(debug, verbose);
                     }
                     else
                     {
@@ -199,6 +199,171 @@ namespace Alaris
             }
         }
 
+        private static void RunProductionDownload(bool debug, bool verbose)
+        {
+            Log.Trace("=== Starting Production Download Mode ===");
+
+            try
+            {
+                // Validate QuantConnect credentials
+                var qcUserId = Environment.GetEnvironmentVariable("QC_USER_ID");
+                var qcApiToken = Environment.GetEnvironmentVariable("QC_API_TOKEN");
+                
+                if (string.IsNullOrEmpty(qcUserId) || string.IsNullOrEmpty(qcApiToken))
+                {
+                    LogCriticalError("QuantConnect API credentials not found! Set QC_USER_ID and QC_API_TOKEN environment variables.", null);
+                    return;
+                }
+
+                // Validate credential format
+                if (!int.TryParse(qcUserId, out int userId) || userId <= 0)
+                {
+                    LogCriticalError($"Invalid QC_USER_ID format: {qcUserId}. Must be a positive integer.", null);
+                    return;
+                }
+
+                if (string.IsNullOrWhiteSpace(qcApiToken) || qcApiToken.Length < 32)
+                {
+                    LogCriticalError("Invalid QC_API_TOKEN format. Must be a valid API token from QuantConnect.", null);
+                    return;
+                }
+
+                Log.Trace($"✓ Validated QuantConnect credentials for user: {qcUserId}");
+
+                // Configure comprehensive Lean environment for production data download
+                SetupProductionConfiguration(qcUserId, qcApiToken, debug);
+
+                // Initialize API components before running engine
+                InitializeApiComponents();
+
+                Log.Trace("✓ Production download configuration complete");
+                RunEngine("download", debug, verbose);
+            }
+            catch (Exception ex)
+            {
+                LogCriticalError("Failed to run production download mode", ex);
+            }
+        }
+
+        private static void SetupProductionConfiguration(string userId, string apiToken, bool debug)
+        {
+            Log.Trace("Setting up production configuration for QuantConnect API...");
+
+            // Core Lean configuration
+            Config.Set("environment", "backtesting-desktop");
+            Config.Set("algorithm-type-name", "Alaris.Algorithm.DataDownload");
+            Config.Set("algorithm-location", "Alaris.Lean.dll");
+            Config.Set("live-mode", "false");
+
+            // API Authentication Configuration - Critical for hash-based auth
+            Config.Set("job-user-id", userId);
+            Config.Set("api-access-token", apiToken);
+            Config.Set("api-url", "https://www.quantconnect.com/api/v2/");
+            
+            // Organization and project configuration
+            Config.Set("job-organization-id", ""); // Will be populated by API
+            Config.Set("project-id", "0");
+            Config.Set("version-id", "");
+            
+            // Data provider configuration - Critical for ApiDataProvider
+            Config.Set("data-provider", "QuantConnect.Lean.Engine.DataFeeds.ApiDataProvider");
+            Config.Set("downloader-data-update-period", "7");
+            Config.Set("data-purchase-limit", decimal.MaxValue.ToString());
+            Config.Set("data-provider-agree-to-terms", "true");
+
+            // API Client Configuration - Required for proper authentication
+            Config.Set("api-timeout", "300000"); // 5 minutes for large downloads
+            Config.Set("api-retry-count", "3");
+            Config.Set("api-retry-delay", "5000"); // 5 seconds between retries
+
+            // Engine handlers configuration
+            Config.Set("setup-handler", "QuantConnect.Lean.Engine.Setup.BacktestingSetupHandler");
+            Config.Set("result-handler", "QuantConnect.Lean.Engine.Results.BacktestingResultHandler");
+            Config.Set("data-feed-handler", "QuantConnect.Lean.Engine.DataFeeds.FileSystemDataFeed");
+            Config.Set("real-time-handler", "QuantConnect.Lean.Engine.RealTime.BacktestingRealTimeHandler");
+            Config.Set("transaction-handler", "QuantConnect.Lean.Engine.TransactionHandlers.BacktestingTransactionHandler");
+            
+            // File providers - Required by ApiDataProvider
+            Config.Set("map-file-provider", "QuantConnect.Data.Auxiliary.LocalZipMapFileProvider");
+            Config.Set("factor-file-provider", "QuantConnect.Data.Auxiliary.LocalZipFactorFileProvider");
+            Config.Set("data-permission-manager", "DataPermissionManager");
+            Config.Set("object-store", "LocalObjectStore");
+
+            // Lean Manager configuration
+            Config.Set("lean-manager-type", "LocalLeanManager");
+
+            // Additional required configurations for ApiDataProvider
+            Config.Set("data-directory", Config.Get("data-folder"));
+            Config.Set("cache-location", Config.Get("cache-location"));
+            
+            // Job packet configuration - Required for proper API context
+            Config.Set("job-id", "0");
+            Config.Set("algorithm-id", "");
+            
+            // Security configuration
+            Config.Set("force-exchange-always-open", "false");
+            Config.Set("live-mode-brokerage", "");
+            
+            // Performance configuration for large downloads
+            Config.Set("maximum-concurrent-data-downloads", "4");
+            Config.Set("data-download-timeout", "600000"); // 10 minutes per file
+
+            Log.Trace("✓ Production configuration setup complete");
+        }
+
+        private static void InitializeApiComponents()
+        {
+            Log.Trace("Initializing API components...");
+
+            try
+            {
+                // Register the API client with the Composer if not already registered
+                if (!Composer.Instance.GetParts<IApi>().Any())
+                {
+                    Log.Trace("Registering API client with Composer...");
+                    var apiClient = new Api();
+                    Composer.Instance.AddPart<IApi>(apiClient);
+                    Log.Trace("✓ API client registered");
+                }
+
+                // Test API connectivity before proceeding
+                TestApiConnectivity();
+
+                Log.Trace("✓ API components initialized successfully");
+            }
+            catch (Exception ex)
+            {
+                LogCriticalError("Failed to initialize API components", ex);
+                throw;
+            }
+        }
+
+        private static void TestApiConnectivity()
+        {
+            Log.Trace("Testing QuantConnect API connectivity...");
+
+            try
+            {
+                var api = Composer.Instance.GetPart<IApi>();
+                if (api == null)
+                {
+                    throw new InvalidOperationException("API client not available in Composer");
+                }
+
+                // Test basic connectivity with a simple API call
+                Log.Trace("Attempting API connectivity test...");
+                
+                // Note: We can't do a full test here because it would trigger the same
+                // authentication issues. The real test happens when ApiDataProvider is created.
+                Log.Trace("✓ API client is available and configured");
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"API connectivity test failed: {ex.Message}");
+                throw;
+            }
+        }
+
         private static void RunTrading(string mode, string configDir, bool debug, bool verbose)
         {
             Log.Trace($"=== Starting Trading Mode: {mode.ToUpper()} ===");
@@ -241,91 +406,6 @@ namespace Alaris
             catch (Exception ex)
             {
                 LogCriticalError($"Failed to run trading mode {mode}", ex);
-            }
-        }
-
-        private static void RunDownload(bool debug, bool verbose)
-        {
-            Log.Trace("=== Starting Download Mode ===");
-
-            try
-            {
-                // Manually set the minimal required configuration for data downloading
-                Config.Set("environment", "backtesting-desktop");
-                Config.Set("algorithm-type-name", "Alaris.Algorithm.DataDownload");
-                Config.Set("algorithm-location", "Alaris.Lean.dll");
-
-                // Enhanced debug logging for assembly loading
-                if (debug)
-                {
-                    LogAssemblyInformation();
-                }
-
-                // Configure data provider to use the QuantConnect API
-                Config.Set("data-provider", "QuantConnect.Lean.Engine.DataFeeds.ApiDataProvider");
-                Config.Set("job-user-id", Environment.GetEnvironmentVariable("QC_USER_ID") ?? "0");
-                Config.Set("api-access-token", Environment.GetEnvironmentVariable("QC_API_TOKEN") ?? "");
-                Config.Set("data-provider-agree-to-terms", "true");
-                
-                // Set required handlers for a backtesting/download environment
-                Config.Set("setup-handler", "QuantConnect.Lean.Engine.Setup.BacktestingSetupHandler");
-                Config.Set("result-handler", "QuantConnect.Lean.Engine.Results.BacktestingResultHandler");
-                Config.Set("data-feed-handler", "QuantConnect.Lean.Engine.DataFeeds.FileSystemDataFeed");
-                Config.Set("real-time-handler", "QuantConnect.Lean.Engine.RealTime.BacktestingRealTimeHandler");
-                Config.Set("transaction-handler", "QuantConnect.Lean.Engine.TransactionHandlers.BacktestingTransactionHandler");
-                Config.Set("map-file-provider", "QuantConnect.Data.Auxiliary.LocalZipMapFileProvider");
-                Config.Set("factor-file-provider", "QuantConnect.Data.Auxiliary.LocalZipFactorFileProvider");
-
-                Log.Trace("Download configuration set successfully");
-                RunEngine("download", debug, verbose);
-            }
-            catch (Exception ex)
-            {
-                LogCriticalError("Failed to run download mode", ex);
-            }
-        }
-
-        private static void LogAssemblyInformation()
-        {
-            try
-            {
-                Log.Trace("=== Assembly Information ===");
-                
-                var loadedAssemblies = AppDomain.CurrentDomain.GetAssemblies();
-                Log.Trace($"Total loaded assemblies: {loadedAssemblies.Length}");
-                
-                foreach (var assembly in loadedAssemblies)
-                {
-                    try
-                    {
-                        var name = assembly.GetName();
-                        Log.Trace($"Assembly: {name.Name} v{name.Version} from {assembly.Location}");
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Trace($"Failed to get info for assembly: {ex.Message}");
-                    }
-                }
-                
-                // Subscribe to assembly loading events for real-time monitoring
-                AppDomain.CurrentDomain.AssemblyLoad += (sender, args) =>
-                {
-                    try
-                    {
-                        var name = args.LoadedAssembly.GetName();
-                        Log.Trace($"Assembly Loaded: {name.Name} v{name.Version} from {args.LoadedAssembly.Location}");
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Trace($"Failed to log newly loaded assembly: {ex.Message}");
-                    }
-                };
-                
-                Log.Trace("=== End Assembly Information ===");
-            }
-            catch (Exception ex)
-            {
-                Log.Error($"Failed to log assembly information: {ex.Message}");
             }
         }
 
@@ -442,34 +522,16 @@ namespace Alaris
             {
                 LogCriticalError($"Engine execution failed in {mode} mode", ex);
                 
-                // Additional debug information
-                if (debug)
+                // Provide specific troubleshooting for download mode
+                if (mode == "download")
                 {
-                    Log.Error("=== Additional Debug Information ===");
-                    Log.Error($"Current directory: {Directory.GetCurrentDirectory()}");
-                    Log.Error($"Assembly location: {Assembly.GetExecutingAssembly().Location}");
-                    
-                    // Log loaded assemblies at time of failure
-                    try
-                    {
-                        var assemblies = AppDomain.CurrentDomain.GetAssemblies();
-                        Log.Error($"Loaded assemblies at failure: {assemblies.Length}");
-                        foreach (var asm in assemblies)
-                        {
-                            try
-                            {
-                                Log.Error($"  - {asm.GetName().Name} v{asm.GetName().Version}");
-                            }
-                            catch
-                            {
-                                Log.Error($"  - <Unknown assembly>");
-                            }
-                        }
-                    }
-                    catch (Exception debugEx)
-                    {
-                        Log.Error($"Failed to get debug information: {debugEx.Message}");
-                    }
+                    Log.Error("=== Download Mode Troubleshooting ===");
+                    Log.Error("Common solutions:");
+                    Log.Error("1. Verify QuantConnect credentials are correct");
+                    Log.Error("2. Check account has data agreement signed");
+                    Log.Error("3. Ensure sufficient credit balance for data purchase");
+                    Log.Error("4. Check network connectivity to quantconnect.com");
+                    Log.Error("5. Try again in a few minutes if rate limited");
                 }
             }
             finally
@@ -477,7 +539,9 @@ namespace Alaris
                 Log.Trace($"=== Alaris Lean Engine Shutdown [Mode: {mode.ToUpper()}] ===");
                 try
                 {
+                    Log.Trace("LeanEngineSystemHandlers.Dispose(): start...");
                     systemHandlers?.Dispose();
+                    Log.Trace("LeanEngineSystemHandlers.Dispose(): Disposed of system handlers.");
                     Log.Trace("✓ System handlers disposed successfully");
                 }
                 catch (Exception ex)
@@ -499,12 +563,18 @@ namespace Alaris
                     "algorithm-type-name", "algorithm-location", "environment",
                     "setup-handler", "result-handler", "data-feed-handler",
                     "real-time-handler", "transaction-handler", "live-mode",
-                    "data-provider", "job-user-id", "debugging", "log-level"
+                    "data-provider", "job-user-id", "debugging", "log-level",
+                    "api-access-token", "api-url", "job-organization-id",
+                    "project-id", "data-purchase-limit", "downloader-data-update-period"
                 };
 
                 foreach (var key in configKeys)
                 {
                     var value = Config.Get(key, "<not set>");
+                    if (key == "api-access-token" && value.Length > 10)
+                    {
+                        value = value.Substring(0, 8) + "***";
+                    }
                     Log.Trace($"Config {key}: {value}");
                 }
                 

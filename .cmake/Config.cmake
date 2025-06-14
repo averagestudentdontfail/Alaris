@@ -134,52 +134,221 @@ echo \"Automated setup complete.\"
     message(STATUS "Created automated setup script: ${AUTO_SETUP_SCRIPT}")
 endfunction()
 
-# Create enhanced startup script with CORRECT mode passing
+# Create production-grade startup script with comprehensive QuantConnect API support
 function(create_startup_script)
     set(STARTUP_CONTENT "#!/bin/bash
+# Production-grade Alaris startup script with comprehensive QuantConnect API support
 set -e
 BUILD_DIR=\"${CMAKE_BINARY_DIR}\"
 cd \"\$BUILD_DIR\"
 
 MODE=\"\${1:-paper}\"
-IBKR_HOST=\$(grep \"host:\" ../config/lean_process.yaml | awk '{print \$2}' | tr -d '\"' 2>/dev/null || echo \"127.0.0.1\")
+DEBUG_FLAG=\"\${2:-}\"
+VERBOSE_FLAG=\"\${3:-}\"
 
-echo \"Starting Alaris Trading System in \$MODE mode...\"
-echo \"IBKR Host: \$IBKR_HOST\"
+# Enhanced logging functions
+log_info() {
+    echo \"[INFO] \$1\"
+}
 
-# Function to setup Lean data environment
-setup_lean_data() {
-    echo \"Setting up Lean data environment...\"
+log_warn() {
+    echo \"[WARN] \$1\" >&2
+}
+
+log_error() {
+    echo \"[ERROR] \$1\" >&2
+}
+
+log_success() {
+    echo \"[SUCCESS] \$1\"
+}
+
+# Function to validate QuantConnect credentials
+validate_qc_credentials() {
+    local user_id=\"\${QC_USER_ID:-}\"
+    local api_token=\"\${QC_API_TOKEN:-}\"
     
-    # Create essential directories
-    mkdir -p data/market-hours
-    mkdir -p data/symbol-properties
-    mkdir -p data/factor-files
-    mkdir -p data/map-files
-    mkdir -p data/equity/usa/daily
-    mkdir -p data/equity/usa/hour
-    mkdir -p data/equity/usa/minute
-    mkdir -p data/equity/usa/second
-    mkdir -p data/equity/usa/tick
-    mkdir -p cache
-    mkdir -p results
-    mkdir -p logs
+    if [[ -z \"\$user_id\" || -z \"\$api_token\" ]]; then
+        return 1
+    fi
     
-    # Download essential Lean data files if they don't exist
-    if [[ ! -f \"data/market-hours/market-hours-database.json\" ]]; then
-        echo \"Downloading market hours database...\"
-        if command -v curl >/dev/null 2>&1; then
-            curl -L -o \"data/market-hours/market-hours-database.json\" \\
-                \"https://raw.githubusercontent.com/QuantConnect/Lean/master/Data/market-hours/market-hours-database.json\" || \\
-            echo \"Warning: Could not download market-hours-database.json\"
-        elif command -v wget >/dev/null 2>&1; then
-            wget -O \"data/market-hours/market-hours-database.json\" \\
-                \"https://raw.githubusercontent.com/QuantConnect/Lean/master/Data/market-hours/market-hours-database.json\" || \\
-            echo \"Warning: Could not download market-hours-database.json\"
+    # Validate user ID format (should be numeric)
+    if ! [[ \"\$user_id\" =~ ^[0-9]+\$ ]]; then
+        log_error \"QC_USER_ID must be numeric. Current value: '\$user_id'\"
+        return 1
+    fi
+    
+    # Validate API token format (should be hex string, typically 64 characters)
+    if [[ \${#api_token} -lt 32 ]]; then
+        log_error \"QC_API_TOKEN appears to be too short. Expected at least 32 characters, got \${#api_token}\"
+        return 1
+    fi
+    
+    if ! [[ \"\$api_token\" =~ ^[a-fA-F0-9]+\$ ]]; then
+        log_error \"QC_API_TOKEN should be a hexadecimal string\"
+        return 1
+    fi
+    
+    return 0
+}
+
+# Function to display credential setup instructions
+show_credential_setup() {
+    echo \"\"
+    echo \"==============================================================\"
+    echo \"          QuantConnect API Credentials Required\"
+    echo \"==============================================================\"
+    echo \"\"
+    echo \"To download real historical data, you need QuantConnect API credentials:\"
+    echo \"\"
+    echo \"1. Create a free account at: https://www.quantconnect.com\"
+    echo \"2. Sign in and go to your account dashboard\"
+    echo \"3. Navigate to the API section\"
+    echo \"4. Find your credentials:\"
+    echo \"   • User ID: A numeric value (e.g., 1234567)\"
+    echo \"   • API Token: A long hexadecimal string\"
+    echo \"5. Set them as environment variables:\"
+    echo \"\"
+    echo \"   export QC_USER_ID='your-numeric-user-id'\"
+    echo \"   export QC_API_TOKEN='your-hex-api-token'\"
+    echo \"\"
+    echo \"6. Important: Ensure you have:\"
+    echo \"   • Signed the data agreement in your account\"
+    echo \"   • Sufficient credit balance for data downloads\"
+    echo \"   • Active data subscription (if required)\"
+    echo \"\"
+    echo \"7. Re-run this command after setting credentials\"
+    echo \"\"
+    echo \"==============================================================\"
+    echo \"\"
+}
+
+# Function to test network connectivity
+test_network_connectivity() {
+    log_info \"Testing network connectivity to QuantConnect...\"
+    
+    if command -v curl >/dev/null 2>&1; then
+        if curl -s --connect-timeout 10 \"https://www.quantconnect.com\" >/dev/null; then
+            log_success \"Network connectivity to QuantConnect: OK\"
+            return 0
         else
-            echo \"Warning: Neither curl nor wget available for downloading data files\"
-            # Create minimal market hours file
-            cat > \"data/market-hours/market-hours-database.json\" << 'EOF'
+            log_error \"Cannot reach QuantConnect servers\"
+            return 1
+        fi
+    elif command -v wget >/dev/null 2>&1; then
+        if wget -q --timeout=10 --spider \"https://www.quantconnect.com\" 2>/dev/null; then
+            log_success \"Network connectivity to QuantConnect: OK\"
+            return 0
+        else
+            log_error \"Cannot reach QuantConnect servers\"
+            return 1
+        fi
+    else
+        log_warn \"Neither curl nor wget available - cannot test connectivity\"
+        return 0
+    fi
+}
+
+# Enhanced data environment setup
+setup_lean_data_environment() {
+    log_info \"Setting up comprehensive Lean data environment...\"
+    
+    # Create all required directories
+    local directories=(
+        \"data/market-hours\"
+        \"data/symbol-properties\" 
+        \"data/factor-files\"
+        \"data/map-files\"
+        \"data/fundamental\"
+        \"data/alternative\"
+        \"data/equity/usa/daily\"
+        \"data/equity/usa/hour\"
+        \"data/equity/usa/minute\"
+        \"data/equity/usa/second\"
+        \"data/equity/usa/tick\"
+        \"data/option/usa\"
+        \"data/forex\"
+        \"data/cfd\"
+        \"data/crypto\"
+        \"cache\"
+        \"results\" 
+        \"logs\"
+    )
+    
+    for dir in \"\${directories[@]}\"; do
+        mkdir -p \"\$dir\"
+    done
+    
+    # Download essential configuration files
+    download_essential_files
+    
+    log_success \"Lean data environment setup complete\"
+}
+
+# Download essential Lean configuration files
+download_essential_files() {
+    log_info \"Downloading essential Lean configuration files...\"
+    
+    # Market hours database
+    if [[ ! -f \"data/market-hours/market-hours-database.json\" ]]; then
+        log_info \"Downloading market hours database...\"
+        if download_file \\
+            \"https://raw.githubusercontent.com/QuantConnect/Lean/master/Data/market-hours/market-hours-database.json\" \\
+            \"data/market-hours/market-hours-database.json\"; then
+            log_success \"Market hours database downloaded\"
+        else
+            log_warn \"Failed to download market hours database - creating minimal version\"
+            create_minimal_market_hours
+        fi
+    fi
+    
+    # Symbol properties database
+    if [[ ! -f \"data/symbol-properties/symbol-properties-database.csv\" ]]; then
+        log_info \"Downloading symbol properties database...\"
+        if ! download_file \\
+            \"https://raw.githubusercontent.com/QuantConnect/Lean/master/Data/symbol-properties/symbol-properties-database.csv\" \\
+            \"data/symbol-properties/symbol-properties-database.csv\"; then
+            log_warn \"Failed to download symbol properties database\"
+        else
+            log_success \"Symbol properties database downloaded\"
+        fi
+    fi
+}
+
+# Generic file download function with retry logic
+download_file() {
+    local url=\"\$1\"
+    local destination=\"\$2\"
+    local max_retries=3
+    local retry_count=0
+    
+    while [[ \$retry_count -lt \$max_retries ]]; do
+        if command -v curl >/dev/null 2>&1; then
+            if curl -L -f -s --connect-timeout 30 --max-time 300 -o \"\$destination\" \"\$url\"; then
+                return 0
+            fi
+        elif command -v wget >/dev/null 2>&1; then
+            if wget -q --timeout=300 -O \"\$destination\" \"\$url\"; then
+                return 0
+            fi
+        else
+            log_error \"Neither curl nor wget available for downloading files\"
+            return 1
+        fi
+        
+        ((retry_count++))
+        if [[ \$retry_count -lt \$max_retries ]]; then
+            log_warn \"Download attempt \$retry_count failed, retrying in 5 seconds...\"
+            sleep 5
+        fi
+    done
+    
+    return 1
+}
+
+# Create minimal market hours database if download fails
+create_minimal_market_hours() {
+    cat > \"data/market-hours/market-hours-database.json\" << 'EOF'
 {
   \"entries\": {
     \"USA\": {
@@ -187,21 +356,11 @@ setup_lean_data() {
       \"dataTimeZone\": \"America/New_York\",
       \"exchangeTimeZone\": \"America/New_York\",
       \"sunday\": [],
-      \"monday\": [
-        { \"start\": \"09:30:00\", \"end\": \"16:00:00\" }
-      ],
-      \"tuesday\": [
-        { \"start\": \"09:30:00\", \"end\": \"16:00:00\" }
-      ],
-      \"wednesday\": [
-        { \"start\": \"09:30:00\", \"end\": \"16:00:00\" }
-      ],
-      \"thursday\": [
-        { \"start\": \"09:30:00\", \"end\": \"16:00:00\" }
-      ],
-      \"friday\": [
-        { \"start\": \"09:30:00\", \"end\": \"16:00:00\" }
-      ],
+      \"monday\": [{ \"start\": \"09:30:00\", \"end\": \"16:00:00\" }],
+      \"tuesday\": [{ \"start\": \"09:30:00\", \"end\": \"16:00:00\" }],
+      \"wednesday\": [{ \"start\": \"09:30:00\", \"end\": \"16:00:00\" }],
+      \"thursday\": [{ \"start\": \"09:30:00\", \"end\": \"16:00:00\" }],
+      \"friday\": [{ \"start\": \"09:30:00\", \"end\": \"16:00:00\" }],
       \"saturday\": [],
       \"holidays\": [],
       \"earlyCloses\": []
@@ -209,265 +368,338 @@ setup_lean_data() {
   }
 }
 EOF
-            echo \"✓ Created minimal market hours database\"
-        fi
-    fi
-    
-    # Download symbol properties database
-    if [[ ! -f \"data/symbol-properties/symbol-properties-database.csv\" ]]; then
-        echo \"Downloading symbol properties database...\"
-        if command -v curl >/dev/null 2>&1; then
-            curl -L -o \"data/symbol-properties/symbol-properties-database.csv\" \\
-                \"https://raw.githubusercontent.com/QuantConnect/Lean/master/Data/symbol-properties/symbol-properties-database.csv\" || \\
-            echo \"Warning: Could not download symbol-properties-database.csv\"
-        elif command -v wget >/dev/null 2>&1; then
-            wget -O \"data/symbol-properties/symbol-properties-database.csv\" \\
-                \"https://raw.githubusercontent.com/QuantConnect/Lean/master/Data/symbol-properties/symbol-properties-database.csv\" || \\
-            echo \"Warning: Could not download symbol-properties-database.csv\"
-        fi
-    fi
-    
-    echo \"✓ Lean data environment setup complete\"
+    log_success \"Created minimal market hours database\"
 }
 
-# Handle different modes
+# Function to check system requirements
+check_system_requirements() {
+    log_info \"Checking system requirements...\"
+    
+    # Check .NET availability
+    if ! command -v dotnet >/dev/null 2>&1; then
+        log_error \".NET SDK not found. Please install .NET 6.0 or later.\"
+        return 1
+    fi
+    
+    local dotnet_version
+    dotnet_version=\$(dotnet --version 2>/dev/null || echo \"unknown\")
+    log_success \".NET SDK found: \$dotnet_version\"
+    
+    # Check required files
+    if [[ ! -f \"./bin/Alaris.Lean.dll\" ]]; then
+        log_error \"Alaris.Lean.dll not found. Please build the project first:\"
+        log_error \"  cmake --build .\"
+        return 1
+    fi
+    
+    log_success \"Required files found\"
+    return 0
+}
+
+# Production download mode with comprehensive validation
+run_production_download() {
+    log_info \"=== Starting Production Data Download ===\"
+    
+    # System requirements check
+    if ! check_system_requirements; then
+        log_error \"System requirements not met\"
+        return 1
+    fi
+    
+    # Validate credentials
+    if ! validate_qc_credentials; then
+        log_error \"QuantConnect API credentials validation failed\"
+        show_credential_setup
+        return 1
+    fi
+    
+    local user_id=\"\${QC_USER_ID}\"
+    local token_preview=\"\${QC_API_TOKEN:0:8}***\"
+    log_success \"Credentials validated - User ID: \$user_id, Token: \$token_preview\"
+    
+    # Test network connectivity
+    if ! test_network_connectivity; then
+        log_error \"Network connectivity issues detected\"
+        log_error \"Please check your internet connection and firewall settings\"
+        return 1
+    fi
+    
+    # Setup data environment
+    setup_lean_data_environment
+    
+    # Configure environment variables for the download process
+    export QC_USER_ID=\"\$user_id\"
+    export QC_API_TOKEN=\"\$QC_API_TOKEN\"
+    
+    # Set optional configuration from environment
+    export ALARIS_DOWNLOAD_SYMBOLS=\"\${ALARIS_DOWNLOAD_SYMBOLS:-}\"
+    export ALARIS_DOWNLOAD_RESOLUTION=\"\${ALARIS_DOWNLOAD_RESOLUTION:-Daily}\"
+    export ALARIS_DOWNLOAD_OPTIONS=\"\${ALARIS_DOWNLOAD_OPTIONS:-true}\"
+    export ALARIS_DATA_START_DATE=\"\${ALARIS_DATA_START_DATE:-2018-01-01}\"
+    export ALARIS_DATA_END_DATE=\"\${ALARIS_DATA_END_DATE:-}\"
+    
+    # Create download log
+    local download_log=\"logs/production_download_\$(date +%Y%m%d_%H%M%S).log\"
+    
+    log_info \"Starting QuantConnect API data download...\"
+    log_info \"This may take 15-45 minutes depending on data volume and connection speed\"
+    log_info \"Log file: \$download_log\"
+    log_info \"\"
+    log_info \"Download configuration:\"
+    log_info \"  Symbols: \${ALARIS_DOWNLOAD_SYMBOLS:-'Production defaults (40+ symbols)'}\"
+    log_info \"  Resolution: \${ALARIS_DOWNLOAD_RESOLUTION}\"
+    log_info \"  Include Options: \${ALARIS_DOWNLOAD_OPTIONS}\"
+    log_info \"  Date Range: \${ALARIS_DATA_START_DATE} to \${ALARIS_DATA_END_DATE:-'latest'}\"
+    log_info \"\"
+    
+    # Build dotnet command with appropriate flags
+    local dotnet_args=(
+        \"./bin/Alaris.Lean.dll\"
+        \"--mode\" \"download\"
+    )
+    
+    # Add debug/verbose flags if specified
+    if [[ \"\$DEBUG_FLAG\" == \"--debug\" ]]; then
+        dotnet_args+=(\"--debug\")
+    fi
+    
+    if [[ \"\$VERBOSE_FLAG\" == \"--verbose\" ]]; then
+        dotnet_args+=(\"--verbose\")
+    fi
+    
+    # Execute download with timeout
+    log_info \"Executing download command...\"
+    if timeout 3600 dotnet \"\${dotnet_args[@]}\" 2>&1 | tee \"\$download_log\"; then
+        log_success \"Download process completed!\"
+        analyze_download_results \"\$download_log\"
+    else
+        local exit_code=\$?
+        if [[ \$exit_code -eq 124 ]]; then
+            log_error \"Download timed out after 60 minutes\"
+        else
+            log_error \"Download process failed with exit code: \$exit_code\"
+        fi
+        log_error \"Check the download log for details: \$download_log\"
+        return 1
+    fi
+}
+
+# Analyze download results and provide feedback
+analyze_download_results() {
+    local log_file=\"\$1\"
+    
+    log_info \"Analyzing download results...\"
+    
+    # Count data files
+    local data_files
+    data_files=\$(find data/equity/usa -name \"*.zip\" -o -name \"*.csv\" 2>/dev/null | wc -l)
+    
+    local option_files
+    option_files=\$(find data/option/usa -name \"*.zip\" -o -name \"*.csv\" 2>/dev/null | wc -l)
+    
+    # Check for successful completion indicators in log
+    local symbols_with_data
+    symbols_with_data=\$(grep -c \"Successfully added equity:\" \"\$log_file\" 2>/dev/null || echo \"0\")
+    
+    local symbols_with_options
+    symbols_with_options=\$(grep -c \"Successfully added options for:\" \"\$log_file\" 2>/dev/null || echo \"0\")
+    
+    # Check for errors
+    local error_count
+    error_count=\$(grep -c \"ERROR\\|Failed to add symbol\" \"\$log_file\" 2>/dev/null || echo \"0\")
+    
+    log_info \"\"
+    log_info \"=== Download Results Analysis ===\"
+    log_info \"Data files found:\"
+    log_info \"  Equity data files: \$data_files\"
+    log_info \"  Option data files: \$option_files\"
+    log_info \"  Total data files: \$((data_files + option_files))\"
+    log_info \"\"
+    log_info \"Symbol processing:\"
+    log_info \"  Symbols with equity data: \$symbols_with_data\"
+    log_info \"  Symbols with options data: \$symbols_with_options\"
+    log_info \"  Errors encountered: \$error_count\"
+    log_info \"=================================\"
+    log_info \"\"
+    
+    if [[ \$data_files -gt 0 ]]; then
+        log_success \"✓ Download completed successfully!\"
+        log_info \"Next steps:\"
+        log_info \"  1. Run backtest: './start-alaris.sh backtest'\"
+        log_info \"  2. Check data directory: ls -la data/equity/usa/\"
+        log_info \"  3. Start paper trading: './start-alaris.sh paper'\"
+    else
+        log_warn \"⚠ No data files found after download\"
+        log_info \"Possible issues:\"
+        log_info \"  - API authentication problems\"
+        log_info \"  - Insufficient account balance\"
+        log_info \"  - Data subscription required\"
+        log_info \"  - Network connectivity issues\"
+        log_info \"\"
+        log_info \"Check the log file for detailed error information:\"
+        log_info \"  tail -50 \$log_file\"
+    fi
+}
+
+# Get IBKR host configuration
+IBKR_HOST=\$(grep \"host:\" ../config/lean_process.yaml | awk '{print \$2}' | tr -d '\"' 2>/dev/null || echo \"127.0.0.1\")
+
+echo \"Starting Alaris Trading System in \$MODE mode...\"
+echo \"IBKR Host: \$IBKR_HOST\"
+
+# Main mode handling
 case \"\$MODE\" in
     \"download\")
-        echo \"=== Data Download Mode ===\"
-        setup_lean_data
-        
-        # Check if QuantConnect API credentials are available
-        qc_user_id=\"\${QC_USER_ID:-}\"
-        qc_api_token=\"\${QC_API_TOKEN:-}\"
-        
-        if [[ -z \"\$qc_user_id\" || -z \"\$qc_api_token\" ]]; then
-            echo \"\"
-            echo \"⚠ QuantConnect API credentials not found in environment variables.\"
-            echo \"For downloading historical data:\"
-            echo \"\"
-            echo \"1. Sign up for a free account at https://www.quantconnect.com\"
-            echo \"2. Get your API credentials from your account dashboard\"
-            echo \"3. Set environment variables:\"
-            echo \"   export QC_USER_ID='your-user-id'\"
-            echo \"   export QC_API_TOKEN='your-api-token'\"
-            echo \"4. Re-run this download command\"
-            echo \"\"
-            read -p \"Continue with limited data download? (y/n): \" -n 1 -r
-            echo
-            if [[ ! \$REPLY =~ ^[Yy]\$ ]]; then
-                echo \"Data download cancelled. Set up QuantConnect API credentials and try again.\"
-                exit 1
-            fi
-            echo \"Proceeding with limited data download...\"
-        else
-            echo \"✓ QuantConnect API credentials found\"
-            echo \"Using QuantConnect data service for historical data download\"
-        fi
-        
-        # Check for required executables
-        if [[ ! -f \"./bin/Alaris.Lean.dll\" ]]; then
-            echo \"✗ Lean process not found. Please build the project first:\"
-            echo \"  cmake --build .\"
-            exit 1
-        fi
-        
-        echo \"\"
-        echo \"Starting Lean engine for data download...\"
-        echo \"This will download historical data for all configured symbols.\"
-        echo \"Download may take 10-30 minutes depending on data amount and connection speed.\"
-        echo \"\"
-        
-        # Set environment variables for data download
-        export QC_USER_ID=\"\$qc_user_id\"
-        export QC_API_TOKEN=\"\$qc_api_token\"
-        
-        # Start the data download process - THIS IS THE KEY FIX
-        download_log=\"logs/data_download_\$(date +%Y%m%d_%H%M%S).log\"
-        
-        echo \"Download progress (this may take a while):\"
-        echo \"Log file: \$download_log\"
-        echo \"\"
-        
-        # CRITICAL FIX: Use --mode download, not --mode backtest
-        if timeout 1800 dotnet \"./bin/Alaris.Lean.dll\" --mode download 2>&1 | tee \"\$download_log\"; then
-            echo \"\"
-            echo \"✓ Data download process completed!\"
-            echo \"\"
-            
-            # Check what was actually downloaded
-            symbols_with_data=0
-            total_files=0
-            
-            echo \"Downloaded data summary:\"
-            for symbol_dir in data/equity/usa/*/; do
-                if [[ -d \"\$symbol_dir\" ]]; then
-                    symbol=\$(basename \"\$symbol_dir\")
-                    zip_files=\$(find \"\$symbol_dir\" -name \"*.zip\" 2>/dev/null | wc -l)
-                    csv_files=\$(find \"\$symbol_dir\" -name \"*.csv\" 2>/dev/null | wc -l)
-                    total_symbol_files=\$((zip_files + csv_files))
-                    
-                    if [[ \$total_symbol_files -gt 0 ]]; then
-                        echo \"  ✓ \$symbol: \$total_symbol_files files (\$zip_files zip, \$csv_files csv)\"
-                        ((symbols_with_data++))
-                        ((total_files += total_symbol_files))
-                    fi
-                fi
-            done
-            
-            echo \"\"
-            if [[ \$symbols_with_data -gt 0 ]]; then
-                echo \"✓ Successfully downloaded data for \$symbols_with_data symbols (\$total_files total files)\"
-                echo \"✓ Data ready for backtesting and analysis\"
-                echo \"\"
-                echo \"Data location: \$(pwd)/data/\"
-                echo \"\"
-                echo \"Next steps:\"
-                echo \"  ./start-alaris.sh backtest  # Test strategy with downloaded data\"
-                echo \"  ./start-alaris.sh paper     # Live forward testing\"
-                echo \"\"
-            else
-                echo \"⚠ No data files found after download process\"
-                echo \"\"
-                echo \"Check the download log for details:\"
-                echo \"  cat \$download_log\"
-                echo \"\"
-            fi
-        else
-            echo \"\"
-            echo \"✗ Data download failed or timed out (30 minute limit)\"
-            echo \"\"
-            echo \"Check the download log for details:\"
-            echo \"  cat \$download_log\"
-            echo \"\"
-        fi
-        exit 0
+        run_production_download
+        exit \$?
         ;;
+        
     \"backtest\")
-        echo \"=== Backtest Mode ===\"
-        setup_lean_data
+        log_info \"=== Backtest Mode ===\"
+        setup_lean_data_environment
+        
         # Check for data availability
         data_count=\$(find data/equity/usa -name \"*.csv\" -o -name \"*.zip\" 2>/dev/null | wc -l)
-        if [[ \$data_count -lt 5 ]]; then
-            echo \"\"
-            echo \"Historical data required for backtesting. Options:\"
-            echo \"  1. Run './start-alaris.sh download' to download real data\"
-            echo \"  2. Use './start-alaris.sh paper' for live forward testing\"
-            echo \"\"
-            read -p \"Download real data now? (y/n): \" -n 1 -r
-            echo
+        if [[ \$data_count -lt 1 ]]; then
+            log_warn \"No historical data found for backtesting\"
+            log_info \"\"
+            log_info \"Options:\"
+            log_info \"  1. Download data: './start-alaris.sh download'\"
+            log_info \"  2. Use paper trading: './start-alaris.sh paper'\"
+            log_info \"\"
+            read -p \"Download data now? (y/N): \" -r
             if [[ \$REPLY =~ ^[Yy]\$ ]]; then
-                echo \"Starting data download...\"
-                exec \"\$0\" download
+                exec \"\$0\" download \"\$DEBUG_FLAG\" \"\$VERBOSE_FLAG\"
             else
-                echo \"Skipping data download.\"
-                echo \"Run './start-alaris.sh download' when ready for backtesting.\"
+                log_info \"Backtest cancelled. Please download data first.\"
                 exit 1
             fi
         fi
+        
+        log_info \"Found \$data_count data files for backtesting\"
         ;;
+        
     \"paper\"|\"live\")
-        echo \"=== \$(echo \$MODE | tr '[:lower:]' '[:upper:]') Trading Mode ===\"
-        setup_lean_data
+        log_info \"=== \$(echo \$MODE | tr '[:lower:]' '[:upper:]') Trading Mode ===\"
+        setup_lean_data_environment
         ;;
+        
     *)
-        echo \"Usage: \$0 {download|backtest|paper|live}\"
+        echo \"Usage: \$0 {download|backtest|paper|live} [--debug] [--verbose]\"
         echo \"\"
         echo \"Modes:\"
-        echo \"  download  - Download historical data from QuantConnect API\"
-        echo \"  backtest  - Run strategy backtest on historical data\"
-        echo \"  paper     - Forward test with paper trading account\"
-        echo \"  live      - Live trading with real money (use with caution)\"
+        echo \"  download   - Download historical data from QuantConnect API\"
+        echo \"  backtest   - Run strategy backtest on historical data\"
+        echo \"  paper      - Forward test with paper trading account\"
+        echo \"  live       - Live trading with real money (use with caution)\"
         echo \"\"
-        echo \"Setup:\"
+        echo \"Flags:\"
+        echo \"  --debug    - Enable maximum debugging output\"
+        echo \"  --verbose  - Enable verbose logging\"
+        echo \"\"
+        echo \"Data Download Setup:\"
         echo \"  1. Get QuantConnect API credentials: https://www.quantconnect.com\"
-        echo \"  2. Export QC_USER_ID and QC_API_TOKEN environment variables\"
-        echo \"  3. Run './start-alaris.sh download' to get real data\"
+        echo \"  2. Set environment variables:\"
+        echo \"     export QC_USER_ID='your-user-id'\"
+        echo \"     export QC_API_TOKEN='your-api-token'\"
+        echo \"  3. Run: './start-alaris.sh download'\"
+        echo \"\"
+        echo \"Optional Configuration:\"
+        echo \"  export ALARIS_DOWNLOAD_SYMBOLS='SPY,QQQ,AAPL'  # Custom symbol list\"
+        echo \"  export ALARIS_DOWNLOAD_RESOLUTION='Minute'     # Resolution (Daily/Hour/Minute)\"
+        echo \"  export ALARIS_DOWNLOAD_OPTIONS='true'          # Include options data\"
+        echo \"  export ALARIS_DATA_START_DATE='2020-01-01'     # Custom start date\"
         echo \"\"
         exit 1
         ;;
 esac
 
-# Check for required executables (for non-download modes)
-if [[ ! -f \"./bin/quantlib-process\" ]]; then
-    echo \"Error: quantlib-process not found. Run 'cmake --build .' first.\"
-    exit 1
-fi
-
-if [[ ! -f \"./bin/Alaris.Lean.dll\" ]]; then
-    echo \"Error: Lean process not found. Ensure .NET build completed successfully.\"
-    exit 1
-fi
-
-# Test IBKR connectivity for trading modes
-if [[ \"\$MODE\" == \"paper\" || \"\$MODE\" == \"live\" ]]; then
-    echo \"Testing IBKR connectivity...\"
-    port
-    if [[ \"\$MODE\" == \"paper\" ]]; then
-        port=4002
-    else
-        port=4001
-    fi
-    
-    if ! timeout 5 bash -c 'cat < /dev/null > /dev/tcp/'\$IBKR_HOST'/'\$port 2>/dev/null; then
-        echo \"Warning: Cannot connect to IBKR on \$IBKR_HOST:\$port\"
-        echo \"Please ensure IB Gateway/TWS is running and configured properly.\"
-        echo \"\"
-        read -p \"Continue anyway? (y/n): \" -n 1 -r
-        echo
-        if [[ ! \$REPLY =~ ^[Yy]\$ ]]; then
-            exit 1
-        fi
-    else
-        echo \"✓ IBKR connection available\"
-    fi
-fi
-
-# Clean shared memory
-echo \"Cleaning shared memory...\"
-sudo rm -f /dev/shm/alaris_* 2>/dev/null || rm -f /dev/shm/alaris_* 2>/dev/null || true
-
-cleanup() {
-    echo \"Shutting down Alaris...\"
-    [[ -n \$QUANTLIB_PID ]] && kill \$QUANTLIB_PID 2>/dev/null || true
-    [[ -n \$LEAN_PID ]] && kill \$LEAN_PID 2>/dev/null || true
-    sudo rm -f /dev/shm/alaris_* 2>/dev/null || rm -f /dev/shm/alaris_* 2>/dev/null || true
-    echo \"Cleanup complete.\"
-}
-trap cleanup EXIT INT TERM
-
-# Start QuantLib process (for trading modes)
+# Rest of the script for trading modes (non-download)
 if [[ \"\$MODE\" != \"download\" ]]; then
-    echo \"Starting QuantLib process...\"
+    # Check for required executables
+    if [[ ! -f \"./bin/quantlib-process\" ]]; then
+        log_error \"quantlib-process not found. Run 'cmake --build .' first.\"
+        exit 1
+    fi
+
+    if [[ ! -f \"./bin/Alaris.Lean.dll\" ]]; then
+        log_error \"Lean process not found. Ensure .NET build completed successfully.\"
+        exit 1
+    fi
+
+    # Test IBKR connectivity for trading modes
+    if [[ \"\$MODE\" == \"paper\" || \"\$MODE\" == \"live\" ]]; then
+        log_info \"Testing IBKR connectivity...\"
+        port=\$([[ \"\$MODE\" == \"paper\" ]] && echo \"4002\" || echo \"4001\")
+        
+        if ! timeout 5 bash -c \"cat < /dev/null > /dev/tcp/\$IBKR_HOST/\$port\" 2>/dev/null; then
+            log_warn \"Cannot connect to IBKR on \$IBKR_HOST:\$port\"
+            log_warn \"Please ensure IB Gateway/TWS is running and configured properly.\"
+            echo \"\"
+            read -p \"Continue anyway? (y/N): \" -r
+            if [[ ! \$REPLY =~ ^[Yy]\$ ]]; then
+                exit 1
+            fi
+        else
+            log_success \"IBKR connection available\"
+        fi
+    fi
+
+    # Clean shared memory
+    log_info \"Cleaning shared memory...\"
+    sudo rm -f /dev/shm/alaris_* 2>/dev/null || rm -f /dev/shm/alaris_* 2>/dev/null || true
+
+    # Cleanup function
+    cleanup() {
+        log_info \"Shutting down Alaris...\"
+        [[ -n \$QUANTLIB_PID ]] && kill \$QUANTLIB_PID 2>/dev/null || true
+        [[ -n \$LEAN_PID ]] && kill \$LEAN_PID 2>/dev/null || true
+        sudo rm -f /dev/shm/alaris_* 2>/dev/null || rm -f /dev/shm/alaris_* 2>/dev/null || true
+        log_info \"Cleanup complete.\"
+    }
+    trap cleanup EXIT INT TERM
+
+    # Start QuantLib process
+    log_info \"Starting QuantLib process...\"
     ./bin/quantlib-process ../config/quantlib_process.yaml &
     QUANTLIB_PID=\$!
-    echo \"QuantLib PID: \$QUANTLIB_PID\"
+    log_info \"QuantLib PID: \$QUANTLIB_PID\"
     sleep 3
+
+    # Build Lean command
+    lean_args=(\"./bin/Alaris.Lean.dll\" \"--mode\" \"\$MODE\")
+    
+    if [[ \"\$DEBUG_FLAG\" == \"--debug\" ]]; then
+        lean_args+=(\"--debug\")
+    fi
+    
+    if [[ \"\$VERBOSE_FLAG\" == \"--verbose\" ]]; then
+        lean_args+=(\"--verbose\")
+    fi
+
+    # Start Lean process
+    log_info \"Starting Lean process...\"
+    dotnet \"\${lean_args[@]}\" &
+    LEAN_PID=\$!
+    log_info \"Lean PID: \$LEAN_PID\"
+
+    log_success \"\"
+    log_success \"Alaris Trading System started successfully!\"
+    log_info \"Mode: \$MODE\"
+    log_info \"QuantLib PID: \$QUANTLIB_PID\" 
+    log_info \"Lean PID: \$LEAN_PID\"
+    log_info \"\"
+    log_info \"Press Ctrl+C to stop...\"
+
+    wait \$LEAN_PID
 fi
-
-# Start Lean process - CRITICAL FIX: Pass the correct mode
-echo \"Starting Lean process...\"
-dotnet ./bin/Alaris.Lean.dll --mode \"\$MODE\" &
-LEAN_PID=\$!
-echo \"Lean PID: \$LEAN_PID\"
-
-echo \"\"
-echo \"Alaris Trading System started successfully!\"
-echo \"Mode: \$MODE\"
-if [[ -n \$QUANTLIB_PID ]]; then
-    echo \"QuantLib PID: \$QUANTLIB_PID\"
-fi
-echo \"Lean PID: \$LEAN_PID\"
-echo \"\"
-echo \"Press Ctrl+C to stop...\"
-
-wait \$LEAN_PID
 ")
     
     set(STARTUP_SCRIPT "${CMAKE_BINARY_DIR}/start-alaris.sh")
     file(WRITE "${STARTUP_SCRIPT}" "${STARTUP_CONTENT}")
     execute_process(COMMAND chmod +x "${STARTUP_SCRIPT}" ERROR_QUIET)
     set(ALARIS_STARTUP_SCRIPT "${STARTUP_SCRIPT}" CACHE INTERNAL "")
-    message(STATUS "Created enhanced startup script: ${STARTUP_SCRIPT}")
+    message(STATUS "Created production startup script: ${STARTUP_SCRIPT}")
 endfunction()
 
 # Check sudo availability for better user feedback
