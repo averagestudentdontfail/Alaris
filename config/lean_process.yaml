@@ -1,6 +1,7 @@
 # config/lean_process_debug.yaml
 algorithm:
   name: "Alaris.Algorithm.ArbitrageAlgorithm"
+  location: "./bin/Alaris.Lean.dll"
   start_date: "2023-01-01"
   end_date: "2024-12-31"
   cash: 1000000
