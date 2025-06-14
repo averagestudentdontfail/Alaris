@@ -1,4 +1,4 @@
-// src/csharp/Algorithm/DataDownload.cs - Production Implementation
+// src/csharp/Algorithm/DataDownload.cs - Fixed Version
 using QuantConnect;
 using QuantConnect.Algorithm;
 using QuantConnect.Data;
@@ -12,7 +12,9 @@ using System.Linq;
 namespace Alaris.Algorithm
 {
     /// <summary>
-    /// This algorithm properly configures the universe and handles the data download process.
+    /// Production-grade data download algorithm designed to work with QuantConnect's ApiDataProvider.
+    /// This algorithm properly configures the universe and handles the data download process
+    /// with comprehensive error handling and progress reporting.
     /// </summary>
     public class DataDownload : QCAlgorithm
     {
@@ -559,7 +561,7 @@ namespace Alaris.Algorithm
                 if (successfulSymbols < _symbolsToDownload.Count)
                 {
                     Log($"\nNote: {_symbolsToDownload.Count - successfulSymbols} symbols failed to download.");
-                    Log("This may be due to:")
+                    Log("This may be due to:");
                     Log("- Symbols not available in QuantConnect's data");
                     Log("- Network issues during download");
                     Log("- Insufficient data subscription");
