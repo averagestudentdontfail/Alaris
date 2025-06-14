@@ -1,30 +1,64 @@
-# config/lean_process.yaml
+# config/lean_process_debug.yaml
 algorithm:
-  # The name of your algorithm class inside the C# project.
   name: "Alaris.Algorithm.ArbitrageAlgorithm"
-  
-  # Default backtesting period. Can be overridden by command-line arguments.
   start_date: "2023-01-01"
   end_date: "2024-12-31"
-  
-  # Starting cash for the portfolio.
   cash: 1000000
 
-# IBKR Brokerage configuration for both paper and live trading.
+debugging:
+  enabled: true
+  method: "LocalCmdline"
+  show_missing_data_logs: true
+  log_level: "Debug"
+  log_handler: "QuantConnect.Logging.CompositeLogHandler"
+  show_missing_data_logs: true
+  verbose_mode: true
+  
+logging:
+  level: "Debug"  # Changed from INFO to Debug for maximum verbosity
+  file: "logs/alaris_lean_debug.log"
+  console_level: "Debug"
+  file_level: "Trace"
+  log_to_console: true
+  log_to_file: true
+  max_log_file_size_mb: 100
+  max_log_files: 5
+  
+# Component logging
+  component_logging:
+    algorithm: "Debug"
+    data_feed: "Debug"
+    transaction_handler: "Debug"
+    setup_handler: "Debug"
+    result_handler: "Debug"
+    brokerage: "Debug"
+    security_manager: "Debug"
+    
+  # Performance logging
+  performance_logging:
+    enabled: true
+    log_memory_usage: true
+    log_gc_events: true
+    log_assembly_loading: true
+    log_initialization_steps: true
+
+# IBKR Brokerage configuration
 brokerage:
-  # Must be "InteractiveBrokers" for the system to load the correct handler.
   type: "InteractiveBrokers"
   host: "172.31.16.1"
   paper_port: 4002
   live_port: 4001
-  
-  # Your IBKR account ID (e.g., "DU1234567" for paper accounts).
   account: "DUE407919"
-  
-  # Unique client ID for this API connection.
   client_id: 100
+  
+  # Debug-specific brokerage settings
+  debug_options:
+    log_api_messages: true
+    log_connection_attempts: true
+    connection_timeout: 60
+    enable_trace_logging: true
 
-# Defines the universe of symbols the algorithm will trade.
+# Universe configuration
 universe:
   symbols:
     - "SPY"
@@ -52,16 +86,73 @@ universe:
     - "UNH"
     - "ABBV"
     - "MRK"
+  
+  # Debug settings for symbol loading
+  debug_symbol_loading:
+    enabled: true
+    validate_symbols: true
+    log_symbol_details: true
+    fail_on_missing_symbol: false  # Continue even if some symbols fail
 
-# Shared memory settings must match quantlib_process.yaml for IPC.
+# Assembly and .NET configuration for debugging
+assembly:
+  debug_assembly_loading: true
+  log_assembly_resolution: true
+  validate_dependencies: true
+  
+  # .NET 9.0 compatibility settings
+  dotnet_compatibility:
+    force_framework_version: "net9.0"
+    ignore_version_conflicts: false
+    log_version_mismatches: true
+
+# Data configuration with debugging
+data:
+  debug_data_loading: true
+  log_data_requests: true
+  validate_data_integrity: true
+  
+  # Timeout settings for debugging
+  timeouts:
+    data_request_timeout_seconds: 30
+    symbol_loading_timeout_seconds: 60
+    initialization_timeout_seconds: 300
+
+# Shared memory configuration (unchanged)
 shared_memory:
   market_data_buffer: "/alaris_market_data"
   signal_buffer: "/alaris_signals"
   control_buffer: "/alaris_control"
 
-# Logging configuration for the C# Lean process.
-logging:
-  # Options: "DEBUG", "INFO", "WARN", "ERROR"
-  level: "INFO"
-  # Log file will be placed in the build directory.
-  file: "alaris_lean.log"
+# Environment debugging
+environment:
+  log_environment_variables: true
+  log_working_directory: true
+  log_assembly_locations: true
+  log_configuration_sources: true
+  
+  # System information logging
+  system_info:
+    log_os_version: true
+    log_dotnet_version: true
+    log_available_memory: true
+    log_cpu_info: true
+
+# Error handling configuration
+error_handling:
+  break_on_first_exception: true
+  log_full_stack_traces: true
+  include_inner_exceptions: true
+  log_assembly_load_failures: true
+  capture_initialization_errors: true
+  
+  # Recovery options
+  retry_failed_operations: false  # Disable retries during debugging
+  continue_on_non_critical_errors: false
+
+# Development-specific settings
+development:
+  enable_hot_reload: false
+  disable_optimizations: true
+  enable_detailed_timing: true
+  log_memory_allocations: true
