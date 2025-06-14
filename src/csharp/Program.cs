@@ -1,3 +1,4 @@
+// src/csharp/Program.cs
 using System;
 using System.IO;
 using System.Threading.Tasks;
@@ -5,6 +6,7 @@ using System.CommandLine;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Diagnostics;
+using System.Linq;
 using QuantConnect;
 using QuantConnect.Configuration;
 using QuantConnect.Lean.Engine;
@@ -317,17 +319,21 @@ namespace Alaris
 
             try
             {
-                // Register the API client with the Composer if not already registered
-                if (!Composer.Instance.GetParts<IApi>().Any())
+                // Check if API client is available - Fixed method call
+                var apiClient = Composer.Instance.GetExportedValueByTypeName<IApi>("Api");
+                if (apiClient == null)
                 {
-                    Log.Trace("Registering API client with Composer...");
-                    var apiClient = new Api();
-                    Composer.Instance.AddPart<IApi>(apiClient);
-                    Log.Trace("✓ API client registered");
+                    Log.Trace("Creating new API client instance...");
+                    apiClient = new Api();
+                    Log.Trace("✓ API client created");
+                }
+                else
+                {
+                    Log.Trace("✓ API client already available");
                 }
 
-                // Test API connectivity before proceeding
-                TestApiConnectivity();
+                // Test basic API availability
+                TestApiConnectivity(apiClient);
 
                 Log.Trace("✓ API components initialized successfully");
             }
@@ -338,21 +344,17 @@ namespace Alaris
             }
         }
 
-        private static void TestApiConnectivity()
+        private static void TestApiConnectivity(IApi api)
         {
             Log.Trace("Testing QuantConnect API connectivity...");
 
             try
             {
-                var api = Composer.Instance.GetPart<IApi>();
                 if (api == null)
                 {
-                    throw new InvalidOperationException("API client not available in Composer");
+                    throw new InvalidOperationException("API client not available");
                 }
 
-                // Test basic connectivity with a simple API call
-                Log.Trace("Attempting API connectivity test...");
-                
                 // Note: We can't do a full test here because it would trigger the same
                 // authentication issues. The real test happens when ApiDataProvider is created.
                 Log.Trace("✓ API client is available and configured");

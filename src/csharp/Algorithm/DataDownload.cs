@@ -1,4 +1,4 @@
-// src/csharp/Algorithm/DataDownload.cs - Fixed Version
+// src/csharp/Algorithm/DataDownload.cs
 using QuantConnect;
 using QuantConnect.Algorithm;
 using QuantConnect.Data;
@@ -11,10 +11,8 @@ using System.Linq;
 
 namespace Alaris.Algorithm
 {
-    /// <summary>
-    /// Production-grade data download algorithm designed to work with QuantConnect's ApiDataProvider.
-    /// This algorithm properly configures the universe and handles the data download process
-    /// with comprehensive error handling and progress reporting.
+    /// <summary>.
+    /// This algorithm properly configures the universe and handles the data download process.
     /// </summary>
     public class DataDownload : QCAlgorithm
     {
@@ -192,9 +190,30 @@ namespace Alaris.Algorithm
                     // Add the underlying equity
                     var equity = AddEquity(symbolString, _targetResolution, Market.USA);
                     
-                    // Configure the security for optimal data collection
+                    // Configure the security for optimal data collection using the new API
                     var security = Securities[equity.Symbol];
-                    security.SetDataNormalizationMode(DataNormalizationMode.Adjusted);
+                    
+                    // Use the new SubscriptionManager API to set data normalization mode
+                    try
+                    {
+                        var subscription = SubscriptionManager.SubscriptionDataConfigService.Add(
+                            equity.Symbol, 
+                            _targetResolution, 
+                            fillForward: true, 
+                            extendedMarketHours: false
+                        );
+                        
+                        if (subscription != null)
+                        {
+                            subscription.SetDataNormalizationMode(DataNormalizationMode.Adjusted);
+                        }
+                    }
+                    catch (Exception subscriptionEx)
+                    {
+                        // Fallback: If the new API fails, log warning but continue
+                        Log($"Warning: Could not set data normalization mode for {symbolString}: {subscriptionEx.Message}");
+                    }
+                    
                     security.SetLeverage(1.0m); // Set leverage for proper risk calculations
 
                     // Store the symbol for tracking
