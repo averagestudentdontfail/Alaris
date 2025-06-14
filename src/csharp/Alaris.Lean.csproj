@@ -2,8 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <!-- CRITICAL FIX: Change from net9.0 to net6.0 for compatibility -->
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
     <AssemblyName>Alaris.Lean</AssemblyName>
     <RootNamespace>Alaris</RootNamespace>
     <Nullable>enable</Nullable>
@@ -28,15 +27,15 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- FIXED: Use compatible QuantConnect package versions for .NET 6.0 -->
-    <PackageReference Include="QuantConnect.Lean" Version="2.5.16704" />
-    <PackageReference Include="QuantConnect.Brokerages.InteractiveBrokers" Version="2.5.16704" />
+    <!-- Latest QuantConnect packages that support .NET 9.0 -->
+    <PackageReference Include="QuantConnect.Lean" Version="2.5.16910" />
+    <PackageReference Include="QuantConnect.Brokerages.InteractiveBrokers" Version="2.5.16910" />
     
-    <!-- These packages are compatible with .NET 6.0 -->
-    <PackageReference Include="YamlDotNet" Version="13.7.1" />
+    <!-- Packages for YAML and JSON configuration parsing -->
+    <PackageReference Include="YamlDotNet" Version="15.1.2" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
 
-    <!-- Use a compatible version of System.CommandLine -->
+    <!-- System.CommandLine is used for robust argument parsing -->
     <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
   </ItemGroup>
 
