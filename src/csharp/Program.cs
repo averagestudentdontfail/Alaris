@@ -254,7 +254,7 @@ namespace Alaris
             // Core Lean configuration
             Config.Set("environment", "backtesting-desktop");
             Config.Set("algorithm-type-name", "Alaris.Algorithm.DataDownload");
-            Config.Set("algorithm-location", "Alaris.Lean.dll");
+            Config.Set("algorithm-location", "./bin/Alaris.Lean.dll");
             Config.Set("live-mode", "false");
 
             // API Authentication Configuration - Critical for hash-based auth
