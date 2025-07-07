@@ -1,0 +1,23 @@
+project:
+  type: default
+  output-dir: docs
+
+format:
+  html:
+    theme: [cosmo, Styling.scss]
+    toc: true
+    number-sections: true
+    
+  pdf:
+    pdf-engine: xelatex
+    keep-tex: true
+    include-in-header:
+      text: |
+        \usepackage{microtype}
+        \usepackage{booktabs}
+        \usepackage{amsmath}
+        \usepackage{mathtools}
+
+execute:
+  freeze: auto
+  cache: true

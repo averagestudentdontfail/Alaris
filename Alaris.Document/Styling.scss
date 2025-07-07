@@ -1,0 +1,612 @@
+/*-- scss:defaults --*/
+
+// Import Google Fonts
+@import url('https://fonts.googleapis.com/css2?family=Source+Serif+Pro:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Source+Sans+Pro:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400;1,600&family=Source+Code+Pro:wght@300;400;500&display=swap');
+
+// Color palette - academic and professional
+$primary-color: #1f4e79;
+$secondary-color: #2d5aa0;
+$accent-color: #c5282f;
+$text-color: #2c3e50;
+$light-gray: #f8f9fa;
+$medium-gray: #6c757d;
+$dark-gray: #495057;
+
+// Sunny theme colors (unified with your Styles.css)
+$sunny-yellow: #ffdf00;
+$sunny-blue: #1e90ff;
+$sunny-navy: #1e3a8a;
+$sunny-gray: #f8f9fa;
+$sunny-dark: #2d3748;
+
+// Typography variables
+$font-family-serif: "Source Serif Pro", "Liberation Serif", "Charter", "Bitstream Charter", serif;
+$font-family-sans: "Source Sans Pro", "Liberation Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+$font-family-mono: "Source Code Pro", "Liberation Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+
+$font-size-base: 1.1rem;
+$line-height-base: 1.6;
+
+// Spacing
+$spacer: 1.5rem;
+
+/*-- scss:rules --*/
+
+// Base typography
+body {
+  font-family: $font-family-serif;
+  font-size: $font-size-base;
+  line-height: $line-height-base;
+  color: $text-color;
+  font-feature-settings: "kern", "liga", "clig", "calt";
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: 0.01em;
+}
+
+// Container and layout
+.quarto-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+#quarto-content {
+  padding: 2rem 0;
+}
+
+// Headings with unified styling
+h1, h2, h3, h4, h5, h6 {
+  font-family: $font-family-sans;
+  font-weight: 600;
+  line-height: 1.3;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  color: $primary-color;
+}
+
+h1 {
+  font-size: 2.2rem;
+  font-weight: 700;
+  border-bottom: 3px solid $primary-color;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1.5rem;
+  margin-top: 1rem;
+}
+
+h2 {
+  font-size: 1.7rem;
+  margin-top: 2.5rem;
+  border-bottom: 2px solid $sunny-blue;
+  padding-bottom: 0.3rem;
+}
+
+h3 {
+  font-size: 1.4rem;
+  color: $secondary-color;
+  border-left: 4px solid $sunny-blue;
+  padding-left: 1rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.8rem;
+}
+
+h4 {
+  font-size: 1.2rem;
+  color: $dark-gray;
+  margin-top: 1.5rem;
+  margin-bottom: 0.7rem;
+  font-weight: 600;
+}
+
+// Title and metadata styling (UNIFIED AND FIXED)
+.title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: $sunny-navy;
+  text-align: center;
+  margin-bottom: 0.5rem;
+  line-height: 1.2;
+  font-family: $font-family-sans;
+}
+
+.subtitle {
+  font-size: 1.3rem;
+  font-weight: 400;
+  color: $sunny-blue;
+  text-align: center;
+  margin-bottom: 1.5rem;
+  font-style: italic;
+  font-family: $font-family-sans;
+}
+
+// FIXED: Author and date styling - unified and properly centered
+.author, .authors {
+  text-align: center;
+  margin: 1.5rem 0 0.5rem 0;
+  
+  .author-name,
+  & {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: $sunny-navy;
+    font-family: $font-family-sans;
+    display: block;
+  }
+  
+  .affiliation {
+    font-size: 1rem;
+    font-style: italic;
+    color: $medium-gray;
+    font-weight: 400;
+    margin-top: 0.3rem;
+    display: block;
+  }
+}
+
+.date {
+  text-align: center;
+  font-family: $font-family-sans;
+  font-size: 1rem;
+  color: $medium-gray;
+  font-weight: 500;
+  margin: 0.5rem 0 2rem 0;
+  display: block;
+  width: 100%;
+}
+
+// ENHANCED: Quarto-specific metadata styling for proper centering
+.quarto-title-block {
+  text-align: center;
+  margin-bottom: 2rem;
+  
+  .quarto-title-meta {
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    gap: 3rem;
+    margin: 1.5rem 0;
+    flex-wrap: wrap;
+    
+    .quarto-title-meta-heading {
+      text-align: center !important;
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: $medium-gray;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-family: $font-family-sans;
+    }
+    
+    .quarto-title-meta-contents {
+      text-align: center !important;
+      font-family: $font-family-sans;
+      font-size: 1rem;
+      color: $sunny-navy;
+      font-weight: 500;
+      display: block;
+      margin: 0 auto;
+      width: 100%;
+    }
+    
+    // Individual meta items - ensure each section is centered
+    > div {
+      text-align: center !important;
+      min-width: 150px;
+      flex: 1;
+      
+      // Make sure both heading and contents are centered
+      > * {
+        text-align: center !important;
+        display: block;
+        margin: 0 auto;
+      }
+    }
+  }
+}
+
+// Additional fallback for stubborn date centering
+div[class*="quarto-title-meta"] div:last-child,
+div[class*="quarto-title-meta"] div:nth-child(2),
+.quarto-title-meta > div {
+  text-align: center !important;
+  
+  * {
+    text-align: center !important;
+  }
+}
+
+// Paragraphs and text
+p {
+  margin-bottom: 1.2rem;
+  text-align: justify;
+  hyphens: auto;
+  orphans: 3;
+  widows: 3;
+}
+
+// Links
+a {
+  color: $secondary-color;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    color: $accent-color;
+    border-bottom-color: $accent-color;
+  }
+}
+
+// Code styling
+code {
+  font-family: $font-family-mono;
+  font-size: 0.9em;
+  background-color: rgba($primary-color, 0.1);
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  border: 1px solid rgba($primary-color, 0.2);
+}
+
+pre {
+  background-color: $light-gray;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  padding: 1rem;
+  margin: 1.5rem 0;
+  overflow-x: auto;
+  
+  code {
+    background: none;
+    border: none;
+    padding: 0;
+  }
+}
+
+// Enhanced tables
+table {
+  width: 100%;
+  margin: 2rem 0;
+  border-collapse: collapse;
+  font-family: $font-family-sans;
+  font-size: 0.95rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+thead {
+  background: linear-gradient(135deg, $sunny-blue 0%, $sunny-navy 100%);
+  color: white;
+  
+  th {
+    padding: 1rem 0.75rem;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid darken($primary-color, 10%);
+    font-size: 0.9rem;
+    letter-spacing: 0.5px;
+  }
+}
+
+tbody {
+  tr {
+    &:nth-child(even) {
+      background-color: rgba($primary-color, 0.05);
+    }
+    
+    &:hover {
+      background-color: $sunny-gray;
+      transition: background-color 0.2s ease;
+    }
+  }
+  
+  td {
+    padding: 0.8rem 0.75rem;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 0.9rem;
+  }
+}
+
+// Table and figure captions
+.table-caption, .figure-caption, figcaption {
+  font-family: $font-family-sans;
+  font-size: 0.9rem;
+  color: $medium-gray;
+  margin-top: 0.5rem;
+  font-style: italic;
+  text-align: center;
+}
+
+// Mathematical expressions
+.katex {
+  font-size: 1.05em;
+}
+
+.katex-display {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: linear-gradient(135deg, $sunny-gray 0%, #ffffff 100%);
+  border-left: 4px solid $sunny-blue;
+  border-radius: 0 8px 8px 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+// Blockquotes
+blockquote {
+  border-left: 4px solid $accent-color;
+  margin: 1.5rem 0;
+  padding: 1rem 1.5rem;
+  background-color: rgba($accent-color, 0.05);
+  font-style: italic;
+  
+  p:last-child {
+    margin-bottom: 0;
+  }
+}
+
+// Lists
+ul, ol {
+  margin-bottom: 1.2rem;
+  padding-left: 2rem;
+}
+
+li {
+  margin-bottom: 0.5rem;
+  line-height: 1.6;
+}
+
+// Enhanced Table of Contents
+#TOC {
+  background: linear-gradient(135deg, $sunny-gray 0%, #ffffff 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  position: sticky;
+  top: 2rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  
+  .toc-title {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: $sunny-navy;
+    margin-bottom: 1rem;
+    border-bottom: 2px solid $sunny-blue;
+    padding-bottom: 0.5rem;
+  }
+  
+  ul {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+  }
+  
+  li {
+    margin-bottom: 0.3rem;
+    
+    a {
+      display: block;
+      padding: 0.3rem 0.5rem;
+      border-radius: 3px;
+      transition: all 0.2s ease;
+      font-size: 0.9rem;
+      border-bottom: none;
+      
+      &:hover {
+        background-color: rgba($sunny-blue, 0.1);
+        text-decoration: none;
+        color: $sunny-blue;
+      }
+    }
+  }
+  
+  > ul > li > a {
+    font-weight: 600;
+    color: $primary-color;
+  }
+  
+  .toc-section-number {
+    font-weight: 600;
+    color: $sunny-blue;
+    margin-right: 0.5rem;
+  }
+}
+
+// Enhanced Abstract
+.abstract {
+  background: linear-gradient(135deg, $sunny-gray 0%, #ffffff 100%);
+  border: 1px solid #e2e8f0;
+  border-left: 5px solid $sunny-blue;
+  border-radius: 8px;
+  padding: 2rem;
+  margin: 2rem 0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  
+  h2 {
+    font-size: 1.2rem;
+    margin-top: 0;
+    margin-bottom: 1rem;
+    color: $sunny-navy;
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+}
+
+// Keywords and JEL codes
+.keywords, .jel {
+  background: $sunny-gray;
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1.5rem 0;
+  border-left: 4px solid $sunny-yellow;
+  font-family: $font-family-sans;
+  font-size: 0.9rem;
+  
+  strong {
+    color: $sunny-navy;
+    font-weight: 600;
+  }
+  
+  .keyword {
+    display: inline-block;
+    background: $sunny-blue;
+    color: white;
+    padding: 0.3rem 0.6rem;
+    margin: 0.2rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 500;
+  }
+}
+
+// Figures
+figure {
+  margin: 2rem 0;
+  text-align: center;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+// Footnotes
+.footnote-ref {
+  color: $accent-color;
+  font-weight: 600;
+}
+
+.footnotes {
+  border-top: 2px solid $primary-color;
+  margin-top: 3rem;
+  padding-top: 1rem;
+  font-size: 0.9rem;
+  
+  ol {
+    padding-left: 1.5rem;
+  }
+}
+
+// Responsive design
+@media (max-width: 768px) {
+  body {
+    font-size: 1rem;
+    padding: 1rem;
+  }
+  
+  .title {
+    font-size: 2rem;
+  }
+  
+  .subtitle {
+    font-size: 1.1rem;
+  }
+  
+  h1 {
+    font-size: 1.8rem;
+  }
+  
+  h2 {
+    font-size: 1.5rem;
+  }
+  
+  .quarto-container {
+    padding: 0 15px;
+  }
+  
+  #TOC {
+    position: static;
+    margin-bottom: 1.5rem;
+  }
+  
+  .abstract {
+    padding: 1.5rem;
+  }
+  
+  table {
+    font-size: 0.85rem;
+  }
+  
+  .katex-display {
+    overflow-x: auto;
+  }
+}
+
+// Print styles
+@media print {
+  body {
+    font-size: 11pt;
+    line-height: 1.4;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+  }
+  
+  p, li {
+    orphans: 3;
+    widows: 3;
+  }
+  
+  .katex-display {
+    page-break-inside: avoid;
+  }
+  
+  table {
+    page-break-inside: avoid;
+  }
+  
+  .title {
+    font-size: 18pt;
+  }
+  
+  h1 {
+    font-size: 16pt;
+  }
+  
+  h2 {
+    font-size: 14pt;
+  }
+  
+  #TOC {
+    break-after: page;
+  }
+}
+
+// NUCLEAR OPTION: Force ONLY title metadata to center (more selective)
+.quarto-title-block .title,
+.quarto-title-block .subtitle,
+.quarto-title-meta * {
+  text-align: center !important;
+}
+
+// Specifically target any div that might contain date information
+.quarto-title-meta div:nth-child(2) *,
+.quarto-title-meta div:last-child *,
+div:nth-of-type(2) .quarto-title-meta-contents {
+  text-align: center !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  display: block !important;
+}
+
+// OVERRIDE: Keep abstract and keywords with normal text alignment
+.abstract,
+.keywords,
+.jel {
+  text-align: justify !important;
+  
+  * {
+    text-align: justify !important;
+  }
+  
+  h2 {
+    text-align: left !important;
+  }
+}

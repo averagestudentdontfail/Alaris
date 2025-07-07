@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AssemblyName>Alaris.QuantLib</AssemblyName>
+    <RootNamespace>Alaris.QuantLib</RootNamespace>
+    <PackageId>Alaris.QuantLib</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>Alaris Team</Authors>
+    <Company>Alaris</Company>
+    <Product>Alaris QuantLib</Product>
+    <Description>Professional American option pricing engines and QuantLib C# bindings for financial derivatives</Description>
+    <Copyright>© Alaris Team</Copyright>
+  </PropertyGroup>
+
+  <!-- Native Libraries -->
+  <ItemGroup>
+    <None Include="../Alaris.Library/Native/libNQuantLibc.so">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Pack>true</Pack>
+      <PackagePath>runtimes/linux-x64/native/</PackagePath>
+    </None>
+    <None Include="../Alaris.Library/Runtime/libQuantLib.so.1">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Pack>true</Pack>
+      <PackagePath>runtimes/linux-x64/native/</PackagePath>
+    </None>
+  </ItemGroup>
+
+</Project>
