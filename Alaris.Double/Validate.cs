@@ -1,7 +1,8 @@
 using Alaris.Quantlib;
+using Alaris.Double;
 using Microsoft.Extensions.Logging;
 
-namespace Alaris.Quantlib.Double;
+namespace Alaris.Double;
 
 /// <summary>
 /// Comprehensive validation and benchmarking suite for the double boundary engine

@@ -1,6 +1,8 @@
 using Alaris.Quantlib;
+using Alaris.Double;
 
-namespace Alaris.Quantlib.Double
+
+namespace Alaris.Double
 {
     /// <summary>
     /// Exercise regime types for American options under general interest rate conditions

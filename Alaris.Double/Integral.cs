@@ -1,6 +1,8 @@
 using Alaris.Quantlib;
+using Alaris.Double;
 
-namespace Alaris.Quantlib.Double;
+
+namespace Alaris.Double;
 
 /// <summary>
 /// Implements the integral equation solvers for double boundary American options

@@ -1,4 +1,5 @@
 using Alaris.Quantlib;
+using Alaris.Double;
 using Microsoft.Extensions.Logging;
 
 namespace Alaris.Double;

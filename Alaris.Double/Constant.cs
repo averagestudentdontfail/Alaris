@@ -1,4 +1,7 @@
-namespace Alaris.Quantlib.Double;
+using Alaris.Quantlib;
+using Alaris.Double;
+
+namespace Alaris.Double;
 
 /// <summary>
 /// Mathematical and numerical constants for the Alaris Double Boundary Engine
