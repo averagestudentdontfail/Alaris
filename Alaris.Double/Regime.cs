@@ -86,20 +86,10 @@ namespace Alaris.Double
                 return double.PositiveInfinity; // Boundaries never intersect
             }
 
-            // Use QuantLib's Brent solver to find intersection time
-            var solver = new Brent();
-            solver.setMaxEvaluations(1000);
-            
+            // Use simplified numerical root finding to avoid SWIG binding issues
             try
             {
-                // Function that equals zero when boundaries intersect: B(τ) - Y(τ) = 0
-                var intersectionFunction = new IntersectionFunctionWrapper(r, q, sigma, strike);
-                
-                // Search in reasonable time range
-                double minTime = 0.001; // 1 day
-                double maxTime = 10.0;  // 10 years
-                
-                return solver.solve(intersectionFunction.CreateUnaryFunction(), 1e-8, minTime, maxTime, 1.0);
+                return FindIntersectionTimeNumerical(r, q, sigma, strike);
             }
             catch
             {
@@ -251,80 +241,72 @@ namespace Alaris.Double
             // Rough estimate based on boundary evolution rates
             return Math.Max(0.1, -2.0 * Math.Log(Math.Abs(r / q)) / (sigma * sigma));
         }
-    }
 
-    /// <summary>
-    /// Wrapper class for finding boundary intersection time using QuantLib solvers
-    /// Avoids the UnaryFunction inheritance issue by using composition
-    /// </summary>
-    internal class IntersectionFunctionWrapper
-    {
-        private readonly double _r, _q, _sigma, _strike;
-
-        public IntersectionFunctionWrapper(double r, double q, double sigma, double strike)
+        /// <summary>
+        /// Simple numerical root finding for boundary intersection time
+        /// Uses bisection method to avoid SWIG binding issues with QuantLib solvers
+        /// </summary>
+        private static double FindIntersectionTimeNumerical(double r, double q, double sigma, double strike)
         {
-            _r = r;
-            _q = q;
-            _sigma = sigma;
-            _strike = strike;
-        }
-
-        public double Evaluate(double tau)
-        {
-            // This would compute B(τ) - Y(τ) using the spectral boundary representations
-            // For now, use simplified analytical approximation
-            var (lambdaMinus, lambdaPlus) = RegimeAnalyzer.ComputeCharacteristicRoots(_r, _q, _sigma);
+            const double tolerance = 1e-8;
+            const int maxIterations = 100;
             
-            double upperAsymptotic = _strike * lambdaMinus / (lambdaMinus - 1.0);
-            double lowerAsymptotic = _strike * lambdaPlus / (lambdaPlus - 1.0);
+            double lowerBound = 0.001; // 1 day
+            double upperBound = 10.0;  // 10 years
             
-            // Simple exponential approach to asymptotic values
-            double upperBoundary = _strike + (upperAsymptotic - _strike) * (1.0 - Math.Exp(-tau));
-            double lowerBoundary = _strike * _r / _q + (lowerAsymptotic - _strike * _r / _q) * (1.0 - Math.Exp(-tau));
+            // Check if root exists in the interval
+            double fLower = EvaluateBoundaryDifference(lowerBound, r, q, sigma, strike);
+            double fUpper = EvaluateBoundaryDifference(upperBound, r, q, sigma, strike);
             
-            return upperBoundary - lowerBoundary;
+            if (fLower * fUpper > 0)
+            {
+                // No root in interval, return analytical estimate
+                return EstimateIntersectionTimeAnalytical(r, q, sigma);
+            }
+            
+            // Bisection method
+            for (int iter = 0; iter < maxIterations; iter++)
+            {
+                double midPoint = 0.5 * (lowerBound + upperBound);
+                double fMid = EvaluateBoundaryDifference(midPoint, r, q, sigma, strike);
+                
+                if (Math.Abs(fMid) < tolerance || Math.Abs(upperBound - lowerBound) < tolerance)
+                {
+                    return midPoint;
+                }
+                
+                if (fLower * fMid < 0)
+                {
+                    upperBound = midPoint;
+                    fUpper = fMid;
+                }
+                else
+                {
+                    lowerBound = midPoint;
+                    fLower = fMid;
+                }
+            }
+            
+            return 0.5 * (lowerBound + upperBound);
         }
 
         /// <summary>
-        /// Creates a UnaryFunction that can be used with QuantLib solvers
-        /// This tries different method names to work around SWIG binding differences
+        /// Evaluates the difference B(τ) - Y(τ) for boundary intersection finding
         /// </summary>
-        public UnaryFunction CreateUnaryFunction()
+        private static double EvaluateBoundaryDifference(double tau, double r, double q, double sigma, double strike)
         {
-            return new IntersectionUnaryFunction(this);
-        }
-
-        private class IntersectionUnaryFunction : UnaryFunction
-        {
-            private readonly IntersectionFunctionWrapper _wrapper;
-
-            public IntersectionUnaryFunction(IntersectionFunctionWrapper wrapper)
-            {
-                _wrapper = wrapper;
-            }
-
-            // Try the most common method name first
-            public override double value(double x)
-            {
-                return _wrapper.Evaluate(x);
-            }
-
-            // If 'value' doesn't work, try these alternatives by uncommenting:
+            // This is a simplified approximation using asymptotic boundary behavior
+            // In practice, this would use the full spectral boundary representations
+            var (lambdaMinus, lambdaPlus) = ComputeCharacteristicRoots(r, q, sigma);
             
-            // public override double op(double x)
-            // {
-            //     return _wrapper.Evaluate(x);
-            // }
-
-            // public override double call(double x)
-            // {
-            //     return _wrapper.Evaluate(x);
-            // }
-
-            // public override double invoke(double x)
-            // {
-            //     return _wrapper.Evaluate(x);
-            // }
+            double upperAsymptotic = strike * lambdaMinus / (lambdaMinus - 1.0);
+            double lowerAsymptotic = strike * lambdaPlus / (lambdaPlus - 1.0);
+            
+            // Simple exponential approach to asymptotic values
+            double upperBoundary = strike + (upperAsymptotic - strike) * (1.0 - Math.Exp(-tau));
+            double lowerBoundary = strike * r / q + (lowerAsymptotic - strike * r / q) * (1.0 - Math.Exp(-tau));
+            
+            return upperBoundary - lowerBoundary;
         }
     }
 }

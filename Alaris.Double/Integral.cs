@@ -63,24 +63,9 @@ public static class IntegralEquationSolvers
         BoundaryFunction boundaryFunction, double strike, double r, double q, double sigma,
         double intersectionTime = double.PositiveInfinity)
     {
-        var solver = new Brent();
-        solver.setMaxEvaluations(1000);
-        solver.setLowerBound(0.01 * strike);
-        solver.setUpperBound(0.99 * strike);
-
-        var objectiveFunction = new LowerBoundaryObjective(tau, boundaryFunction, strike, r, q, sigma, 
-                                                         Math.Min(tau, intersectionTime));
-
-        try
-        {
-            return solver.solve(objectiveFunction, 1e-12, initialGuess, 0.01 * strike, 0.99 * strike);
-        }
-        catch
-        {
-            // Fallback to simplified Newton-Raphson if Brent fails
-            return SolveLowerBoundaryNewtonRaphson(tau, initialGuess, boundaryFunction, strike, r, q, sigma,
-                                                 Math.Min(tau, intersectionTime));
-        }
+        // Use simple Newton-Raphson instead of Brent solver to avoid inheritance issues
+        return SolveLowerBoundaryNewtonRaphson(tau, initialGuess, boundaryFunction, strike, r, q, sigma,
+                                             Math.Min(tau, intersectionTime));
     }
 
     /// <summary>
@@ -126,7 +111,7 @@ public static class IntegralEquationSolvers
         
         try
         {
-            return integrator.value(integrand.value, 0.0, effectiveTau);
+            return QuantLibApiHelper.CallSimpsonIntegral(integrator, integrand.value, 0.0, effectiveTau);
         }
         catch
         {
@@ -144,7 +129,7 @@ public static class IntegralEquationSolvers
     {
         // European delta component
         double d_plus = ComputeD(1, tau, boundary / strike, r, q, sigma);
-        double europeanDelta = -Math.Exp(-q * tau) * _normalCdf.value(-d_plus);
+        double europeanDelta = -Math.Exp(-q * tau) * QuantLibApiHelper.CallCumNorm(_normalCdf, -d_plus);
 
         // Integral components from smooth-pasting condition
         double interestDeltaIntegral = ComputeLowerBoundaryInterestIntegral(tau, effectiveTau, boundary,
@@ -167,7 +152,7 @@ public static class IntegralEquationSolvers
         
         try
         {
-            return integrator.value(integrand.value, 0.0, effectiveTau);
+            return QuantLibApiHelper.CallSimpsonIntegral(integrator, integrand.value, 0.0, effectiveTau);
         }
         catch
         {
@@ -185,7 +170,7 @@ public static class IntegralEquationSolvers
         
         try
         {
-            return integrator.value(integrand.value, 0.0, effectiveTau);
+            return QuantLibApiHelper.CallSimpsonIntegral(integrator, integrand.value, 0.0, effectiveTau);
         }
         catch
         {
@@ -234,8 +219,8 @@ public static class IntegralEquationSolvers
         double d1 = ComputeD(1, tau, spot / strike, r, q, sigma);
         double d2 = ComputeD(-1, tau, spot / strike, r, q, sigma);
 
-        return strike * Math.Exp(-r * tau) * _normalCdf.value(-d2) - 
-               spot * Math.Exp(-q * tau) * _normalCdf.value(-d1);
+        return strike * Math.Exp(-r * tau) * QuantLibApiHelper.CallCumNorm(_normalCdf, -d2) - 
+               spot * Math.Exp(-q * tau) * QuantLibApiHelper.CallCumNorm(_normalCdf, -d1);
     }
 
     /// <summary>
@@ -309,7 +294,7 @@ internal class InterestPremiumIntegrand
         double d_minus = (Math.Log(_currentBoundary / boundaryAtU) + (_r - _q - 0.5 * _sigma * _sigma) * timeStep) / 
                         (_sigma * Math.Sqrt(timeStep));
         
-        return _r * _strike * Math.Exp(-_r * timeStep) * _normalCdf.value(-d_minus);
+        return _r * _strike * Math.Exp(-_r * timeStep) * QuantLibApiHelper.CallCumNorm(_normalCdf, -d_minus);
     }
 }
 
@@ -346,7 +331,7 @@ internal class DividendPremiumIntegrand
         double d_plus = (Math.Log(_currentBoundary / boundaryAtU) + (_r - _q + 0.5 * _sigma * _sigma) * timeStep) / 
                        (_sigma * Math.Sqrt(timeStep));
         
-        return _q * _currentBoundary * Math.Exp(-_q * timeStep) * _normalCdf.value(-d_plus);
+        return _q * _currentBoundary * Math.Exp(-_q * timeStep) * QuantLibApiHelper.CallCumNorm(_normalCdf, -d_plus);
     }
 }
 
@@ -384,7 +369,7 @@ internal class LowerBoundaryInterestIntegrand
                         (_sigma * Math.Sqrt(timeStep));
         
         return (_r * _strike / _boundary) * Math.Exp(-_r * timeStep) * 
-               _normalPdf.value(-d_minus) / (_sigma * Math.Sqrt(timeStep));
+               QuantLibApiHelper.CallNormPdf(_normalPdf, -d_minus) / (_sigma * Math.Sqrt(timeStep));
     }
 }
 
@@ -422,36 +407,9 @@ internal class LowerBoundaryDividendIntegrand
         double d_plus = (Math.Log(_boundary / boundaryAtU) + (_r - _q + 0.5 * _sigma * _sigma) * timeStep) / 
                        (_sigma * Math.Sqrt(timeStep));
         
-        double densityTerm = _normalPdf.value(-d_plus) / (_sigma * Math.Sqrt(timeStep));
-        double cdfTerm = _normalCdf.value(-d_plus);
+        double densityTerm = QuantLibApiHelper.CallNormPdf(_normalPdf, -d_plus) / (_sigma * Math.Sqrt(timeStep));
+        double cdfTerm = QuantLibApiHelper.CallCumNorm(_normalCdf, -d_plus);
         
         return _q * Math.Exp(-_q * timeStep) * (densityTerm + cdfTerm);
-    }
-}
-
-/// <summary>
-/// Objective function for finding the lower boundary using root finding
-/// </summary>
-internal class LowerBoundaryObjective : UnaryFunction
-{
-    private readonly double _tau, _strike, _r, _q, _sigma, _effectiveTau;
-    private readonly BoundaryFunction _boundaryFunction;
-
-    public LowerBoundaryObjective(double tau, BoundaryFunction boundaryFunction, double strike,
-                                double r, double q, double sigma, double effectiveTau)
-    {
-        _tau = tau;
-        _boundaryFunction = boundaryFunction;
-        _strike = strike;
-        _r = r;
-        _q = q;
-        _sigma = sigma;
-        _effectiveTau = effectiveTau;
-    }
-
-    public override double value(double boundary)
-    {
-        return IntegralEquationSolvers.EvaluateLowerBoundaryCondition(_tau, boundary, _boundaryFunction,
-                                                                    _strike, _r, _q, _sigma, _effectiveTau);
     }
 }
