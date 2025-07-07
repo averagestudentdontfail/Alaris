@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Alaris.Double")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+635401ff26ed3ef1735064cb42f9dbf53fc9df0b")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+af686722198f45b8026c11889d7bd7bc669082f6")]
 [assembly: System.Reflection.AssemblyProductAttribute("Alaris.Double")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Alaris.Double")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

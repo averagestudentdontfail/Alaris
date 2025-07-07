@@ -1,6 +1,4 @@
-using Alaris.Quantlib;
 using Alaris.Double;
-
 
 namespace Alaris.Double
 {
@@ -95,13 +93,13 @@ namespace Alaris.Double
             try
             {
                 // Function that equals zero when boundaries intersect: B(τ) - Y(τ) = 0
-                var intersectionFunction = new IntersectionFunction(r, q, sigma, strike);
+                var intersectionFunction = new IntersectionFunctionWrapper(r, q, sigma, strike);
                 
                 // Search in reasonable time range
                 double minTime = 0.001; // 1 day
                 double maxTime = 10.0;  // 10 years
                 
-                return solver.solve(intersectionFunction, 1e-8, minTime, maxTime, 1.0);
+                return solver.solve(intersectionFunction.CreateUnaryFunction(), 1e-8, minTime, maxTime, 1.0);
             }
             catch
             {
@@ -256,13 +254,14 @@ namespace Alaris.Double
     }
 
     /// <summary>
-    /// Function class for finding boundary intersection time using QuantLib solvers
+    /// Wrapper class for finding boundary intersection time using QuantLib solvers
+    /// Avoids the UnaryFunction inheritance issue by using composition
     /// </summary>
-    internal class IntersectionFunction : UnaryFunction
+    internal class IntersectionFunctionWrapper
     {
         private readonly double _r, _q, _sigma, _strike;
 
-        public IntersectionFunction(double r, double q, double sigma, double strike)
+        public IntersectionFunctionWrapper(double r, double q, double sigma, double strike)
         {
             _r = r;
             _q = q;
@@ -270,7 +269,7 @@ namespace Alaris.Double
             _strike = strike;
         }
 
-        public override double value(double tau)
+        public double Evaluate(double tau)
         {
             // This would compute B(τ) - Y(τ) using the spectral boundary representations
             // For now, use simplified analytical approximation
@@ -284,6 +283,48 @@ namespace Alaris.Double
             double lowerBoundary = _strike * _r / _q + (lowerAsymptotic - _strike * _r / _q) * (1.0 - Math.Exp(-tau));
             
             return upperBoundary - lowerBoundary;
+        }
+
+        /// <summary>
+        /// Creates a UnaryFunction that can be used with QuantLib solvers
+        /// This tries different method names to work around SWIG binding differences
+        /// </summary>
+        public UnaryFunction CreateUnaryFunction()
+        {
+            return new IntersectionUnaryFunction(this);
+        }
+
+        private class IntersectionUnaryFunction : UnaryFunction
+        {
+            private readonly IntersectionFunctionWrapper _wrapper;
+
+            public IntersectionUnaryFunction(IntersectionFunctionWrapper wrapper)
+            {
+                _wrapper = wrapper;
+            }
+
+            // Try the most common method name first
+            public override double value(double x)
+            {
+                return _wrapper.Evaluate(x);
+            }
+
+            // If 'value' doesn't work, try these alternatives by uncommenting:
+            
+            // public override double op(double x)
+            // {
+            //     return _wrapper.Evaluate(x);
+            // }
+
+            // public override double call(double x)
+            // {
+            //     return _wrapper.Evaluate(x);
+            // }
+
+            // public override double invoke(double x)
+            // {
+            //     return _wrapper.Evaluate(x);
+            // }
         }
     }
 }

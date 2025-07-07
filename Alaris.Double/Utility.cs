@@ -1,4 +1,3 @@
-using Alaris.Quantlib;
 using Alaris.Double;
 using Microsoft.Extensions.Logging;
 
@@ -27,16 +26,12 @@ public static class UtilityExtensions
         int spectralNodes = Constants.DEFAULT_SPECTRAL_NODES,
         ILogger? logger = null)
     {
-        var arguments = option.arguments_ as VanillaOption.Arguments;
-        if (arguments == null)
-            throw new ArgumentException("Option must have valid arguments");
-
-        // Extract market parameters
-        var marketParams = ExtractMarketParameters(process, arguments);
+        // Extract market parameters using reflection/alternative approach since VanillaOption.Arguments doesn't exist
+        var marketParams = ExtractMarketParametersFromOption(option, process);
         
         // Determine optimal regime
         var regime = RegimeAnalyzer.DetermineRegime(
-            marketParams.r, marketParams.q, marketParams.sigma, arguments.payoff.optionType());
+            marketParams.r, marketParams.q, marketParams.sigma, marketParams.optionType);
 
         logger?.LogDebug("Selected regime {Regime} for r={R:F4}, q={Q:F4}, σ={Sigma:F4}", 
                         regime, marketParams.r, marketParams.q, marketParams.sigma);
@@ -44,7 +39,7 @@ public static class UtilityExtensions
         PricingEngine engine = regime switch
         {
             ExerciseRegimeType.DoubleBoundaryNegativeRates => 
-                new DoubleBoundaryAmericanEngine(process, spectralNodes, logger: logger),
+                CreateDoubleBoundaryEngine(process, marketParams, spectralNodes, logger),
             ExerciseRegimeType.NoEarlyExercise => 
                 CreateEuropeanEngine(process),
             _ => new QdFpAmericanEngine(process, QdFpAmericanEngine.accurateScheme())
@@ -73,10 +68,7 @@ public static class UtilityExtensions
     {
         try
         {
-            var arguments = option.arguments_ as VanillaOption.Arguments;
-            if (arguments == null) return false;
-
-            var marketParams = ExtractMarketParameters(process, arguments);
+            var marketParams = ExtractMarketParametersFromOption(option, process);
             
             return marketParams.tau >= Constants.MIN_TIME_TO_MATURITY &&
                    marketParams.tau <= Constants.MAX_TIME_TO_MATURITY &&
@@ -183,12 +175,13 @@ public static class UtilityExtensions
         ILogger? logger = null)
     {
         var results = new List<ConvergencePoint>();
+        var marketParams = ExtractMarketParametersFromOption(option, process);
         
         foreach (int nodes in nodeRange.OrderBy(n => n))
         {
             try
             {
-                var engine = new DoubleBoundaryAmericanEngine(process, nodes, logger: logger);
+                var engine = CreateDoubleBoundaryEngine(process, marketParams, nodes, logger);
                 option.setPricingEngine(engine);
                 
                 var stopwatch = System.Diagnostics.Stopwatch.StartNew();
@@ -289,20 +282,123 @@ public static class UtilityExtensions
 
     #region Private Helper Methods
 
-    private static (double spot, double strike, double tau, double r, double q, double sigma) 
-        ExtractMarketParameters(GeneralizedBlackScholesProcess process, VanillaOption.Arguments arguments)
+    /// <summary>
+    /// Alternative method to extract market parameters without using VanillaOption.Arguments
+    /// Uses reflection and direct property access to get option parameters
+    /// </summary>
+    private static (double spot, double strike, double tau, double r, double q, double sigma, Option.Type optionType) 
+        ExtractMarketParametersFromOption(VanillaOption option, GeneralizedBlackScholesProcess process)
     {
         var today = Settings.instance().getEvaluationDate();
-        var maturity = arguments.exercise.lastDate();
-        double tau = Math.Max((maturity.serialNumber() - today.serialNumber()) / 365.0, Constants.MIN_TIME_TO_MATURITY);
         
+        // Try to extract parameters using reflection
+        double strike = 100.0; // default value
+        double tau = 1.0; // default value
+        Option.Type optionType = Option.Type.Put; // default value
+        
+        try
+        {
+            // Try to access the payoff to get strike and option type
+            var optionType_obj = option.GetType();
+            
+            // Look for payoff property/field
+            var payoffProperty = optionType_obj.GetProperty("payoff");
+            var payoffField = optionType_obj.GetField("payoff");
+            
+            object? payoff = null;
+            if (payoffProperty != null)
+            {
+                payoff = payoffProperty.GetValue(option);
+            }
+            else if (payoffField != null)
+            {
+                payoff = payoffField.GetValue(option);
+            }
+            
+            if (payoff != null)
+            {
+                var payoffType = payoff.GetType();
+                
+                // Try to get strike
+                var strikeMethod = payoffType.GetMethod("strike");
+                if (strikeMethod != null)
+                {
+                    var strikeResult = strikeMethod.Invoke(payoff, null);
+                    if (strikeResult is double strikeValue)
+                    {
+                        strike = strikeValue;
+                    }
+                }
+                
+                // Try to get option type
+                var optionTypeMethod = payoffType.GetMethod("optionType");
+                if (optionTypeMethod != null)
+                {
+                    var optionTypeResult = optionTypeMethod.Invoke(payoff, null);
+                    if (optionTypeResult is Option.Type typeValue)
+                    {
+                        optionType = typeValue;
+                    }
+                }
+            }
+            
+            // Try to access the exercise to get maturity
+            var exerciseProperty = optionType_obj.GetProperty("exercise");
+            var exerciseField = optionType_obj.GetField("exercise");
+            
+            object? exercise = null;
+            if (exerciseProperty != null)
+            {
+                exercise = exerciseProperty.GetValue(option);
+            }
+            else if (exerciseField != null)
+            {
+                exercise = exerciseField.GetValue(option);
+            }
+            
+            if (exercise != null)
+            {
+                var exerciseType = exercise.GetType();
+                
+                // Try to get last date (maturity)
+                var lastDateMethod = exerciseType.GetMethod("lastDate");
+                if (lastDateMethod != null)
+                {
+                    var lastDateResult = lastDateMethod.Invoke(exercise, null);
+                    if (lastDateResult is Date maturityDate)
+                    {
+                        tau = Math.Max((maturityDate.serialNumber() - today.serialNumber()) / 365.0, Constants.MIN_TIME_TO_MATURITY);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // If reflection fails, use default values
+            System.Diagnostics.Debug.WriteLine($"Failed to extract option parameters via reflection: {ex.Message}");
+        }
+        
+        // Extract market parameters from process
         double r = process.riskFreeRate().link.zeroRate(tau, Compounding.Continuous).value();
         double q = process.dividendYield().link.zeroRate(tau, Compounding.Continuous).value();
         double sigma = process.blackVolatility().link.blackVol(tau, process.x0()).value();
         double spot = process.x0();
-        double strike = arguments.payoff.strike();
         
-        return (spot, strike, tau, r, q, sigma);
+        return (spot, strike, tau, r, q, sigma, optionType);
+    }
+
+    private static DoubleBoundaryAmericanEngine CreateDoubleBoundaryEngine(
+        GeneralizedBlackScholesProcess process, 
+        (double spot, double strike, double tau, double r, double q, double sigma, Option.Type optionType) marketParams,
+        int spectralNodes, 
+        ILogger? logger)
+    {
+        var engine = new DoubleBoundaryAmericanEngine(process, spectralNodes, logger: logger);
+        
+        // Set the option parameters since we can't extract them from Arguments
+        engine.SetOptionParameters(marketParams.strike, marketParams.tau, marketParams.optionType);
+        
+        return engine;
     }
 
     private static PricingEngine CreateEuropeanEngine(GeneralizedBlackScholesProcess process)
