@@ -1,0 +1,6 @@
+/home/sunny/.project/Alaris/Alaris.Double/obj/Debug/net9.0/Alaris.Double.csproj.AssemblyReference.cache
+/home/sunny/.project/Alaris/Alaris.Double/obj/Debug/net9.0/Alaris.Double.GeneratedMSBuildEditorConfig.editorconfig
+/home/sunny/.project/Alaris/Alaris.Double/obj/Debug/net9.0/Alaris.Double.AssemblyInfoInputs.cache
+/home/sunny/.project/Alaris/Alaris.Double/obj/Debug/net9.0/Alaris.Double.AssemblyInfo.cs
+/home/sunny/.project/Alaris/Alaris.Double/obj/Debug/net9.0/Alaris.Double.csproj.CoreCompileInputs.cache
+/home/sunny/.project/Alaris/Alaris.Double/obj/Debug/net9.0/Alaris.Double.sourcelink.json

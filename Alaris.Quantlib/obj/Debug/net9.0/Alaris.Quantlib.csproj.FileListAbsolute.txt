@@ -11,3 +11,4 @@
 /home/sunny/.project/Alaris/Alaris.Quantlib/obj/Debug/net9.0/ref/Alaris.QuantLib.dll
 /home/sunny/.project/Alaris/Alaris.Quantlib/bin/Debug/net9.0/libNQuantLibc.so
 /home/sunny/.project/Alaris/Alaris.Quantlib/bin/Debug/net9.0/libQuantLib.so.1
+/home/sunny/.project/Alaris/Alaris.Quantlib/obj/Debug/net9.0/Alaris.Quantlib.sourcelink.json
