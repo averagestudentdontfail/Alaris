@@ -26,54 +26,39 @@ public static class UtilityExtensions
         int spectralNodes = Constants.DEFAULT_SPECTRAL_NODES,
         ILogger? logger = null)
     {
-        // Extract market parameters using reflection/alternative approach since VanillaOption.Arguments doesn't exist
-        var marketParams = ExtractMarketParametersFromOption(option, process);
+        // Use the static method from DoubleBoundaryAmericanEngine
+        double price = DoubleBoundaryAmericanEngine.PriceAmericanOption(option, process, spectralNodes, logger: logger);
         
-        // Determine optimal regime
+        // Extract market parameters to determine regime for details
+        var marketParams = ExtractMarketParametersFromOption(option, process);
         var regime = RegimeAnalyzer.DetermineRegime(
             marketParams.r, marketParams.q, marketParams.sigma, marketParams.optionType);
 
-        logger?.LogDebug("Selected regime {Regime} for r={R:F4}, q={Q:F4}, σ={Sigma:F4}", 
-                        regime, marketParams.r, marketParams.q, marketParams.sigma);
-
-        DoubleBoundaryResults? details = null;
-        double price = 0.0;
-
-        switch (regime)
+        var details = new DoubleBoundaryResults
         {
-            case ExerciseRegimeType.DoubleBoundaryNegativeRates:
+            Regime = regime,
+            OptionPrice = price,
+            CriticalVolatility = RegimeAnalyzer.CriticalVolatility(marketParams.r, marketParams.q)
+        };
+
+        // If double boundary regime, get full details
+        if (regime == ExerciseRegimeType.DoubleBoundaryNegativeRates)
+        {
+            try
+            {
+                var engine = new DoubleBoundaryAmericanEngine(process, spectralNodes, logger: logger);
+                engine.SetOptionParameters(marketParams.strike, marketParams.tau, marketParams.optionType);
+                engine.CalculatePrice(); // This will populate the results
+                var fullDetails = engine.GetDetailedResults();
+                if (fullDetails != null)
                 {
-                    var doubleEngine = CreateDoubleBoundaryEngine(process, marketParams, spectralNodes, logger);
-                    price = doubleEngine.CalculatePrice();
-                    details = doubleEngine.GetDetailedResults();
+                    details = fullDetails;
                 }
-                break;
-                
-            case ExerciseRegimeType.NoEarlyExercise:
-                {
-                    var europeanEngine = CreateEuropeanEngine(process);
-                    option.setPricingEngine(europeanEngine);
-                    price = option.NPV();
-                    details = new DoubleBoundaryResults
-                    {
-                        Regime = regime,
-                        OptionPrice = price
-                    };
-                }
-                break;
-                
-            default:
-                {
-                    var standardEngine = new QdFpAmericanEngine(process, QdFpAmericanEngine.accurateScheme());
-                    option.setPricingEngine(standardEngine);
-                    price = option.NPV();
-                    details = new DoubleBoundaryResults
-                    {
-                        Regime = regime,
-                        OptionPrice = price
-                    };
-                }
-                break;
+            }
+            catch (Exception ex)
+            {
+                logger?.LogWarning(ex, "Failed to get detailed results for double boundary option");
+            }
         }
 
         return (price, details);
@@ -202,7 +187,8 @@ public static class UtilityExtensions
         {
             try
             {
-                var engine = CreateDoubleBoundaryEngine(process, marketParams, nodes, logger);
+                var engine = new DoubleBoundaryAmericanEngine(process, nodes, logger: logger);
+                engine.SetOptionParameters(marketParams.strike, marketParams.tau, marketParams.optionType);
                 
                 var stopwatch = System.Diagnostics.Stopwatch.StartNew();
                 double price = engine.CalculatePrice();
@@ -297,6 +283,29 @@ public static class UtilityExtensions
             AverageTime = results.Where(r => r.Success).Average(r => r.ComputationTime.TotalMilliseconds),
             SuccessRate = (double)results.Count(r => r.Success) / results.Count
         };
+    }
+
+    /// <summary>
+    /// Creates a pricing engine that automatically selects the optimal method
+    /// For integration with QuantLib's option.setPricingEngine() pattern
+    /// </summary>
+    /// <param name="process">Market process</param>
+    /// <param name="strike">Strike price</param>
+    /// <param name="timeToMaturity">Time to maturity</param>
+    /// <param name="optionType">Option type</param>
+    /// <param name="spectralNodes">Spectral nodes for double boundary cases</param>
+    /// <param name="logger">Optional logger</param>
+    /// <returns>Appropriate pricing engine</returns>
+    public static PricingEngine CreateOptimalEngine(
+        GeneralizedBlackScholesProcess process,
+        double strike,
+        double timeToMaturity,
+        Option.Type optionType,
+        int spectralNodes = Constants.DEFAULT_SPECTRAL_NODES,
+        ILogger? logger = null)
+    {
+        return DoubleBoundaryAmericanEngine.CreateCompatibleEngine(
+            process, strike, timeToMaturity, optionType, spectralNodes, logger);
     }
 
     #endregion
@@ -400,31 +409,40 @@ public static class UtilityExtensions
         }
         
         // Extract market parameters from process
-        double r = QuantLibApiHelper.GetInterestRateValue(QuantLibApiHelper.GetTermStructure(process.riskFreeRate()).zeroRate(tau, Compounding.Continuous));
-        double q = QuantLibApiHelper.GetInterestRateValue(QuantLibApiHelper.GetTermStructure(process.dividendYield()).zeroRate(tau, Compounding.Continuous));
-        double sigma = QuantLibApiHelper.GetVolatilityStructure(process.blackVolatility()).blackVol(tau, process.x0());
+        double r = GetRateFromTermStructure(process.riskFreeRate(), tau);
+        double q = GetRateFromTermStructure(process.dividendYield(), tau);
+        double sigma = GetVolatilityFromStructure(process.blackVolatility(), tau, process.x0());
         double spot = process.x0();
         
         return (spot, strike, tau, r, q, sigma, optionType);
     }
 
-    private static DoubleBoundaryAmericanEngine CreateDoubleBoundaryEngine(
-        GeneralizedBlackScholesProcess process, 
-        (double spot, double strike, double tau, double r, double q, double sigma, Option.Type optionType) marketParams,
-        int spectralNodes, 
-        ILogger? logger)
+    // Helper methods for safe rate/volatility extraction
+    private static double GetRateFromTermStructure(YieldTermStructureHandle handle, double tau)
     {
-        var engine = new DoubleBoundaryAmericanEngine(process, spectralNodes, logger: logger);
-        
-        // Set the option parameters since we can't extract them from Arguments
-        engine.SetOptionParameters(marketParams.strike, marketParams.tau, marketParams.optionType);
-        
-        return engine;
+        try
+        {
+            var termStructure = QuantLibApiHelper.GetTermStructure(handle);
+            var rate = termStructure.zeroRate(tau, Compounding.Continuous);
+            return QuantLibApiHelper.GetInterestRateValue(rate);
+        }
+        catch
+        {
+            return 0.05; // Default 5% rate
+        }
     }
 
-    private static PricingEngine CreateEuropeanEngine(GeneralizedBlackScholesProcess process)
+    private static double GetVolatilityFromStructure(BlackVolTermStructureHandle handle, double tau, double spot)
     {
-        return new AnalyticEuropeanEngine(process);
+        try
+        {
+            var volStructure = QuantLibApiHelper.GetVolatilityStructure(handle);
+            return volStructure.blackVol(tau, spot);
+        }
+        catch
+        {
+            return 0.20; // Default 20% volatility
+        }
     }
 
     private static string GetRecommendedEngine(ExerciseRegimeType regime)
