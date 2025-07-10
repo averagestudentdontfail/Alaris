@@ -288,14 +288,15 @@ public static class UtilityExtensions
     /// <summary>
     /// Creates a pricing engine that automatically selects the optimal method
     /// For integration with QuantLib's option.setPricingEngine() pattern
+    /// Note: For double boundary cases, use PriceWithOptimalEngine() extension method instead
     /// </summary>
     /// <param name="process">Market process</param>
     /// <param name="strike">Strike price</param>
     /// <param name="timeToMaturity">Time to maturity</param>
     /// <param name="optionType">Option type</param>
-    /// <param name="spectralNodes">Spectral nodes for double boundary cases</param>
+    /// <param name="spectralNodes">Spectral nodes for double boundary cases (unused due to SWIG limitations)</param>
     /// <param name="logger">Optional logger</param>
-    /// <returns>Appropriate pricing engine</returns>
+    /// <returns>Appropriate pricing engine (falls back to standard engines for double boundary cases)</returns>
     public static PricingEngine CreateOptimalEngine(
         GeneralizedBlackScholesProcess process,
         double strike,

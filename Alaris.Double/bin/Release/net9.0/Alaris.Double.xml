@@ -1,0 +1,871 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Alaris.Double</name>
+    </assembly>
+    <members>
+        <member name="T:Alaris.Double.QuantLibApiHelper">
+            <summary>
+            Helper class to handle SWIG binding API differences
+            Maps common method names to their actual SWIG-generated equivalents
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.QuantLibApiHelper.CallCumNorm(CumulativeNormalDistribution,System.Double)">
+            <summary>
+            Safely calls CumulativeNormalDistribution with the correct method name
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.QuantLibApiHelper.CallNormPdf(NormalDistribution,System.Double)">
+            <summary>
+            Safely calls NormalDistribution with the correct method name
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.QuantLibApiHelper.CallSimpsonIntegral(SimpsonIntegral,System.Func{System.Double,System.Double},System.Double,System.Double)">
+            <summary>
+            Safely integrates using Simpson's rule with correct method name
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.QuantLibApiHelper.CallGaussLobattoIntegral(GaussLobattoIntegral,System.Func{System.Double,System.Double},System.Double,System.Double)">
+            <summary>
+            Safely integrates using Gauss-Lobatto with correct method name
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.QuantLibApiHelper.AddDaysToDate(Date,System.Int32)">
+            <summary>
+            Safely adds days to a Date with correct method name
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.QuantLibApiHelper.GetTermStructure(YieldTermStructureHandle)">
+            <summary>
+            Safely gets the term structure from a handle
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.QuantLibApiHelper.GetVolatilityStructure(BlackVolTermStructureHandle)">
+            <summary>
+            Safely gets the volatility structure from a handle
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.QuantLibApiHelper.GetInterestRateValue(InterestRate)">
+            <summary>
+            Safely gets the rate value from InterestRate
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.QuantLibApiHelper.FallbackIntegration(System.Func{System.Double,System.Double},System.Double,System.Double,System.Int32)">
+            <summary>
+            Fallback numerical integration using trapezoidal rule
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.QuantLibApiHelper.Erf(System.Double)">
+            <summary>
+            Error function approximation for CDF fallback
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.Constants">
+            <summary>
+            Mathematical and numerical constants for the Alaris Double Boundary Engine
+            All values are calibrated for optimal performance and accuracy
+            </summary>
+        </member>
+        <member name="F:Alaris.Double.Constants.EPSILON">
+            <summary>
+            Machine epsilon for floating-point comparisons
+            Used for regime boundary detection and convergence testing
+            </summary>
+        </member>
+        <member name="F:Alaris.Double.Constants.MIN_TIME_TO_MATURITY">
+            <summary>
+            Minimum time to maturity for option pricing (1 hour)
+            Below this threshold, options are treated as expired
+            </summary>
+        </member>
+        <member name="F:Alaris.Double.Constants.MAX_TIME_TO_MATURITY">
+            <summary>
+            Maximum time to maturity for accurate pricing (30 years)
+            Beyond this, perpetual option approximations are used
+            </summary>
+        </member>
+        <member name="F:Alaris.Double.Constants.MIN_VOLATILITY">
+            <summary>
+            Minimum volatility for numerical stability (0.1% per annum)
+            </summary>
+        </member>
+        <member name="F:Alaris.Double.Constants.MAX_VOLATILITY">
+            <summary>
+            Maximum volatility for reasonable option pricing (500% per annum)
+            </summary>
+        </member>
+        <member name="F:Alaris.Double.Constants.MIN_INTEREST_RATE">
+            <summary>
+            Minimum interest rate for numerical computations (-10% per annum)
+            Extreme negative rates beyond this may cause numerical instability
+            </summary>
+        </member>
+        <member name="F:Alaris.Double.Constants.MAX_INTEREST_RATE">
+            <summary>
+            Maximum interest rate for reasonable pricing (50% per annum)
+            </summary>
+        </member>
+        <member name="F:Alaris.Double.Constants.DEFAULT_SPECTRAL_NODES">
+            <summary>
+            Default number of Chebyshev collocation nodes
+            Optimal balance between accuracy and computational efficiency
+            </summary>
+        </member>
+        <member name="F:Alaris.Double.Constants.MIN_SPECTRAL_NODES">
+            <summary>
+            Minimum number of spectral nodes for meaningful approximation
+            </summary>
+        </member>
+        <member name="F:Alaris.Double.Constants.MAX_SPECTRAL_NODES">
+            <summary>
+            Maximum number of spectral nodes for practical computation
+            Beyond this, diminishing returns due to roundoff errors
+            </summary>
+        </member>
+        <member name="F:Alaris.Double.Constants.MIN_SPECTRAL_CONVERGENCE_RATE">
+            <summary>
+            Convergence rate threshold for spectral methods
+            Below this rate, transformation may be ineffective
+            </summary>
+        </member>
+        <member name="F:Alaris.Double.Constants.DEFAULT_TOLERANCE">
+            <summary>
+            Default convergence tolerance for boundary iterations
+            Provides machine precision accuracy for most applications
+            </summary>
+        </member>
+        <member name="F:Alaris.Double.Constants.FAST_TOLERANCE">
+            <summary>
+            Relaxed tolerance for fast approximations
+            </summary>
+        </member>
+        <member name="F:Alaris.Double.Constants.HIGH_PRECISION_TOLERANCE">
+            <summary>
+            High precision tolerance for research applications
+            </summary>
+        </member>
+        <member name="F:Alaris.Double.Constants.DEFAULT_MAX_ITERATIONS">
+            <summary>
+            Default maximum iterations for boundary fixed-point schemes
+            </summary>
+        </member>
+        <member name="F:Alaris.Double.Constants.FAST_MAX_ITERATIONS">
+            <summary>
+            Fast convergence iteration limit
+            </summary>
+        </member>
+        <member name="F:Alaris.Double.Constants.HIGH_PRECISION_MAX_ITERATIONS">
+            <summary>
+            High precision iteration limit
+            </summary>
+        </member>
+        <member name="F:Alaris.Double.Constants.ANDERSON_MEMORY_DEPTH">
+            <summary>
+            Anderson acceleration memory depth
+            Number of previous iterates to use for acceleration
+            </summary>
+        </member>
+        <member name="F:Alaris.Double.Constants.INTEGRATION_TOLERANCE">
+            <summary>
+            Default tolerance for adaptive quadrature
+            </summary>
+        </member>
+        <member name="F:Alaris.Double.Constants.MAX_INTEGRATION_SUBDIVISIONS">
+            <summary>
+            Maximum number of adaptive quadrature subdivisions
+            </summary>
+        </member>
+        <member name="F:Alaris.Double.Constants.DEFAULT_QUADRATURE_POINTS">
+            <summary>
+            Default number of Gauss-Legendre quadrature points
+            </summary>
+        </member>
+        <member name="F:Alaris.Double.Constants.NUMERICAL_DERIVATIVE_STEP">
+            <summary>
+            Step size for numerical derivatives (central difference)
+            </summary>
+        </member>
+        <member name="F:Alaris.Double.Constants.BOUNDARY_RELAXATION_FACTOR">
+            <summary>
+            Relaxation factor for boundary value updates
+            Prevents oscillations in fixed-point iterations
+            </summary>
+        </member>
+        <member name="F:Alaris.Double.Constants.BOUNDARY_SAFETY_MARGIN">
+            <summary>
+            Safety margin for boundary bounds
+            Ensures boundaries stay within reasonable ranges
+            </summary>
+        </member>
+        <member name="F:Alaris.Double.Constants.BOUNDARY_DECAY_RATE">
+            <summary>
+            Exponential decay rate for boundary initialization
+            Controls approach to perpetual boundary values
+            </summary>
+        </member>
+        <member name="F:Alaris.Double.Constants.ROOT_FINDING_TOLERANCE">
+            <summary>
+            Default tolerance for Brent's method root finding
+            </summary>
+        </member>
+        <member name="F:Alaris.Double.Constants.MAX_ROOT_FINDING_EVALUATIONS">
+            <summary>
+            Maximum evaluations for root finding algorithms
+            </summary>
+        </member>
+        <member name="F:Alaris.Double.Constants.ROOT_FINDING_BRACKET_EXPANSION">
+            <summary>
+            Initial bracket expansion factor for root finding
+            </summary>
+        </member>
+        <member name="F:Alaris.Double.Constants.VALIDATION_TOLERANCE">
+            <summary>
+            Relative error tolerance for validation against known results
+            </summary>
+        </member>
+        <member name="F:Alaris.Double.Constants.CONVERGENCE_TEST_CASES">
+            <summary>
+            Number of test cases for convergence analysis
+            </summary>
+        </member>
+        <member name="F:Alaris.Double.Constants.BENCHMARK_TIMEOUT_MS">
+            <summary>
+            Benchmark timeout in milliseconds
+            Maximum time allowed for performance tests
+            </summary>
+        </member>
+        <member name="F:Alaris.Double.Constants.BOUNDARY_CACHE_SIZE">
+            <summary>
+            Cache size for boundary function evaluations
+            Number of recently computed values to cache
+            </summary>
+        </member>
+        <member name="F:Alaris.Double.Constants.PARALLEL_THRESHOLD">
+            <summary>
+            Parallel processing threshold
+            Minimum problem size to enable parallel computation
+            </summary>
+        </member>
+        <member name="F:Alaris.Double.Constants.MEMORY_CHUNK_SIZE">
+            <summary>
+            Memory allocation chunk size for large arrays
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.ParameterSets">
+            <summary>
+            Predefined parameter sets for common use cases
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.ParameterSets.Fast">
+            <summary>
+            Fast approximation parameters for real-time applications
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.ParameterSets.Standard">
+            <summary>
+            Standard precision parameters for most applications
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.ParameterSets.HighPrecision">
+            <summary>
+            High precision parameters for research and validation
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.ParameterSets.Research">
+            <summary>
+            Research-grade parameters for maximum accuracy
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.BenchmarkValues">
+            <summary>
+            Known benchmark values for validation
+            Source: Various academic papers and commercial systems
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.BenchmarkValues.ClassicAmericanPut">
+            <summary>
+            Classic American put option benchmark (Haug, 2007)
+            S=36, K=40, r=0.06, q=0.02, σ=0.20, T=1.0
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.BenchmarkValues.DoubleBoundaryCase">
+            <summary>
+            Double boundary test case (Healy, 2021)
+            S=100, K=100, r=-0.01, q=-0.02, σ=0.15, T=0.5
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.BenchmarkValues.CriticalVolatilityCases">
+            <summary>
+            Critical volatility validation cases
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.ErrorMessages">
+            <summary>
+            Error messages and diagnostic information
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.LogCategories">
+            <summary>
+            Logging categories for diagnostic output
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.DoubleBoundaryResults">
+            <summary>
+            Results structure for double boundary American option calculations
+            Contains detailed information about the exercise regime and boundaries
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.DoubleBoundaryAmericanEngine">
+            <summary>
+            Advanced American option pricing engine supporting double boundaries under negative interest rates
+            Standalone implementation that integrates with QuantLib when possible
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DoubleBoundaryAmericanEngine.SetOptionParameters(System.Double,System.Double,Option.Type)">
+            <summary>
+            Method to set option parameters externally since we can't access Arguments directly
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DoubleBoundaryAmericanEngine.CalculatePrice">
+            <summary>
+            Main pricing method - calculates option price and stores results
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DoubleBoundaryAmericanEngine.GetDetailedResults">
+            <summary>
+            Gets the detailed results from the last calculation
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DoubleBoundaryAmericanEngine.PriceAmericanOption(VanillaOption,GeneralizedBlackScholesProcess,System.Int32,System.Double,Microsoft.Extensions.Logging.ILogger)">
+            <summary>
+            Static method to price an American option with optimal engine selection
+            Integrates with QuantLib's VanillaOption framework
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DoubleBoundaryAmericanEngine.CreateCompatibleEngine(GeneralizedBlackScholesProcess,System.Double,System.Double,Option.Type,System.Int32,Microsoft.Extensions.Logging.ILogger)">
+            <summary>
+            Creates a QuantLib-compatible pricing engine
+            Returns the appropriate QuantLib engine based on the detected regime
+            Note: For double boundary cases, use PriceAmericanOption() method instead
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.MarketParameters">
+            <summary>
+            Market parameter container
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.DoubleBoundaryPremiumIntegrand">
+            <summary>
+            Integrand for computing double boundary early exercise premium
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.IntegralEquationSolvers">
+            <summary>
+            Implements the integral equation solvers for double boundary American options
+            Based on equations (4.6) and (4.7) from "The Alaris Mathematical Framework"
+            Uses QuantLib's numerical methods for precision and robustness
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.IntegralEquationSolvers.SolveUpperBoundaryEquation(System.Double,System.Double,Alaris.Double.BoundaryFunction,System.Double,System.Double,System.Double,System.Double,System.Double)">
+            <summary>
+            Solves the upper boundary value-matching equation (4.6)
+            K - B(τ) = v(τ, B(τ)) + early exercise premium
+            </summary>
+            <param name="tau">Time to maturity</param>
+            <param name="currentBoundary">Current boundary value B(τ)</param>
+            <param name="boundaryFunction">Function providing B(u) for u ∈ [0,τ]</param>
+            <param name="strike">Strike price K</param>
+            <param name="r">Risk-free rate</param>
+            <param name="q">Dividend yield</param>
+            <param name="sigma">Volatility</param>
+            <param name="intersectionTime">Boundary intersection time τ*</param>
+            <returns>Updated boundary value</returns>
+        </member>
+        <member name="M:Alaris.Double.IntegralEquationSolvers.SolveLowerBoundaryEquation(System.Double,System.Double,Alaris.Double.BoundaryFunction,System.Double,System.Double,System.Double,System.Double,System.Double)">
+            <summary>
+            Solves the lower boundary smooth-pasting equation (4.7)
+            ∂V/∂s(τ, Y(τ)) = -1
+            </summary>
+            <param name="tau">Time to maturity</param>
+            <param name="initialGuess">Initial guess for Y(τ)</param>
+            <param name="boundaryFunction">Function providing Y(u) for u ∈ [0,τ]</param>
+            <param name="strike">Strike price K</param>
+            <param name="r">Risk-free rate</param>
+            <param name="q">Dividend yield</param>
+            <param name="sigma">Volatility</param>
+            <param name="intersectionTime">Boundary intersection time τ*</param>
+            <returns>Lower boundary value Y(τ)</returns>
+        </member>
+        <member name="M:Alaris.Double.IntegralEquationSolvers.ComputeInterestPremium(System.Double,System.Double,System.Double,Alaris.Double.BoundaryFunction,System.Double,System.Double,System.Double,System.Double)">
+            <summary>
+            Computes the interest rate component of the early exercise premium
+            ∫[0,min(τ,τ*)] rK e^(-r(τ-u)) Φ(-d_-(τ-u,B(τ)/B(u))) du
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.IntegralEquationSolvers.ComputeDividendPremium(System.Double,System.Double,System.Double,Alaris.Double.BoundaryFunction,System.Double,System.Double,System.Double,System.Double)">
+            <summary>
+            Computes the dividend component of the early exercise premium
+            ∫[0,min(τ,τ*)] qB(τ) e^(-q(τ-u)) Φ(-d_+(τ-u,B(τ)/B(u))) du
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.IntegralEquationSolvers.EvaluateLowerBoundaryCondition(System.Double,System.Double,Alaris.Double.BoundaryFunction,System.Double,System.Double,System.Double,System.Double,System.Double)">
+            <summary>
+            Evaluates the smooth-pasting condition for the lower boundary
+            Returns: ∂V/∂s(τ, Y(τ)) + 1 (should equal zero at the solution)
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.IntegralEquationSolvers.ComputeBlackScholesPut(System.Double,System.Double,System.Double,System.Double,System.Double,System.Double)">
+            <summary>
+            Computes Black-Scholes put option price
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.IntegralEquationSolvers.ComputeD(System.Int32,System.Double,System.Double,System.Double,System.Double,System.Double)">
+            <summary>
+            Computes the d± functions used in Black-Scholes formulas
+            d±(τ, S/K) = [ln(S/K) + (r-q±σ²/2)τ] / (σ√τ)
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.IntegralEquationSolvers.IntegrateTrapezoidal(System.Func{System.Double,System.Double},System.Double,System.Double,System.Int32)">
+            <summary>
+            Fallback trapezoidal integration for cases where adaptive methods fail
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.InterestPremiumIntegrand">
+            <summary>
+            Integrand for the interest premium calculation
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.DividendPremiumIntegrand">
+            <summary>
+            Integrand for the dividend premium calculation
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.LowerBoundaryInterestIntegrand">
+            <summary>
+            Integrand for lower boundary interest term in smooth-pasting condition
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.LowerBoundaryDividendIntegrand">
+            <summary>
+            Integrand for lower boundary dividend term in smooth-pasting condition
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.Program">
+            <summary>
+            Comprehensive test program for the Alaris Double Boundary American Options Engine
+            Demonstrates all functionality including negative interest rate scenarios
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.OptionPricingResults">
+            <summary>
+            Container for option pricing results
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.ExerciseRegimeType">
+            <summary>
+            Exercise regime types for American options under general interest rate conditions
+            </summary>
+        </member>
+        <member name="F:Alaris.Double.ExerciseRegimeType.SingleBoundaryPositive">
+            <summary>Single boundary case: r ≥ q ≥ 0</summary>
+        </member>
+        <member name="F:Alaris.Double.ExerciseRegimeType.SingleBoundaryNegativeDividend">
+            <summary>Single boundary case: r ≥ 0 and q less than 0</summary>
+        </member>
+        <member name="F:Alaris.Double.ExerciseRegimeType.DoubleBoundaryNegativeRates">
+            <summary>Double boundary case: q less than r less than 0, σ ≤ σ*</summary>
+        </member>
+        <member name="F:Alaris.Double.ExerciseRegimeType.NoEarlyExercise">
+            <summary>No exercise case: various conditions where early exercise is never optimal</summary>
+        </member>
+        <member name="F:Alaris.Double.ExerciseRegimeType.Degenerate">
+            <summary>Degenerate cases requiring special handling</summary>
+        </member>
+        <member name="T:Alaris.Double.RegimeAnalyzer">
+            <summary>
+            Comprehensive analysis of American option exercise regimes under general interest rate conditions
+            Implements the mathematical framework from "The Alaris Mathematical Framework" paper
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.RegimeAnalyzer.DetermineRegime(System.Double,System.Double,System.Double,Option.Type)">
+            <summary>
+            Determines the exercise regime for American options
+            </summary>
+            <param name="r">Risk-free interest rate</param>
+            <param name="q">Dividend yield</param>
+            <param name="sigma">Volatility</param>
+            <param name="optionType">Option type (Put or Call)</param>
+            <returns>The appropriate exercise regime</returns>
+        </member>
+        <member name="M:Alaris.Double.RegimeAnalyzer.CriticalVolatility(System.Double,System.Double)">
+            <summary>
+            Calculates the critical volatility threshold σ* = |√(-2r) - √(-2q)|
+            Above this threshold, boundaries intersect before maturity
+            </summary>
+            <param name="r">Risk-free interest rate (must be negative)</param>
+            <param name="q">Dividend yield (must be negative)</param>
+            <returns>Critical volatility, or NaN if parameters invalid</returns>
+        </member>
+        <member name="M:Alaris.Double.RegimeAnalyzer.EstimateBoundaryIntersectionTime(System.Double,System.Double,System.Double,System.Double)">
+            <summary>
+            Estimates the boundary intersection time τ* for double boundary cases
+            Uses numerical root finding when boundaries intersect before maturity
+            </summary>
+            <param name="r">Risk-free interest rate</param>
+            <param name="q">Dividend yield</param>
+            <param name="sigma">Volatility</param>
+            <param name="strike">Strike price</param>
+            <returns>Time to boundary intersection, or +∞ if no intersection</returns>
+        </member>
+        <member name="M:Alaris.Double.RegimeAnalyzer.ComputeCharacteristicRoots(System.Double,System.Double,System.Double)">
+            <summary>
+            Computes the characteristic equation roots for American option boundaries
+            λ = (-μ ± √(μ² + 2rσ²)) / σ²
+            where μ = r - q - σ²/2
+            </summary>
+            <param name="r">Risk-free interest rate</param>
+            <param name="q">Dividend yield</param>
+            <param name="sigma">Volatility</param>
+            <returns>Tuple of (λ₋, λ₊) roots</returns>
+        </member>
+        <member name="M:Alaris.Double.RegimeAnalyzer.PerpetualBoundary(System.Double,System.Double,System.Double,System.Double,Option.Type)">
+            <summary>
+            Calculates the perpetual American option boundary
+            B∞ = K * λ / (λ - 1) for puts, where λ is the appropriate characteristic root
+            </summary>
+            <param name="strike">Strike price</param>
+            <param name="r">Risk-free interest rate</param>
+            <param name="q">Dividend yield</param>
+            <param name="sigma">Volatility</param>
+            <param name="optionType">Option type</param>
+            <returns>Perpetual boundary level</returns>
+        </member>
+        <member name="M:Alaris.Double.RegimeAnalyzer.ValidateRegimeParameters(Alaris.Double.ExerciseRegimeType,System.Double,System.Double,System.Double)">
+            <summary>
+            Validates that parameters are suitable for the given regime
+            </summary>
+            <param name="regime">Exercise regime</param>
+            <param name="r">Risk-free interest rate</param>
+            <param name="q">Dividend yield</param>
+            <param name="sigma">Volatility</param>
+            <returns>True if parameters are valid for the regime</returns>
+        </member>
+        <member name="M:Alaris.Double.RegimeAnalyzer.FindIntersectionTimeNumerical(System.Double,System.Double,System.Double,System.Double)">
+            <summary>
+            Simple numerical root finding for boundary intersection time
+            Uses bisection method to avoid SWIG binding issues with QuantLib solvers
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.RegimeAnalyzer.EvaluateBoundaryDifference(System.Double,System.Double,System.Double,System.Double,System.Double)">
+            <summary>
+            Evaluates the difference B(τ) - Y(τ) for boundary intersection finding
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.Spectral">
+            <summary>
+            Implements spectral collocation methods using Chebyshev polynomials
+            for boundary function approximation in American option pricing
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.Spectral.ChebyshevNodes(System.Int32)">
+            <summary>
+            Generates Chebyshev-Gauss-Lobatto collocation nodes on [-1, 1]
+            </summary>
+            <param name="n">Number of nodes</param>
+            <returns>Array of collocation points</returns>
+        </member>
+        <member name="M:Alaris.Double.Spectral.ChebyshevPolynomial(System.Int32,System.Double)">
+            <summary>
+            Computes Chebyshev polynomial of the first kind T_n(x)
+            </summary>
+            <param name="n">Polynomial degree</param>
+            <param name="x">Evaluation point</param>
+            <returns>T_n(x)</returns>
+        </member>
+        <member name="M:Alaris.Double.Spectral.ChebyshevPolynomialDerivative(System.Int32,System.Double)">
+            <summary>
+            Computes derivative of Chebyshev polynomial U_n(x) = T'_{n+1}(x)/(n+1)
+            </summary>
+            <param name="n">Polynomial degree</param>
+            <param name="x">Evaluation point</param>
+            <returns>T'_n(x)</returns>
+        </member>
+        <member name="M:Alaris.Double.Spectral.ChebyshevInterpolate(System.Double[],System.Double)">
+            <summary>
+            Interpolates function values at Chebyshev nodes using Clenshaw's algorithm
+            </summary>
+            <param name="coefficients">Chebyshev expansion coefficients</param>
+            <param name="x">Evaluation point in [-1, 1]</param>
+            <returns>Interpolated value</returns>
+        </member>
+        <member name="M:Alaris.Double.Spectral.ChebyshevCoefficients(System.Double[])">
+            <summary>
+            Computes Chebyshev expansion coefficients from function values at collocation nodes
+            </summary>
+            <param name="functionValues">Function values at Chebyshev nodes</param>
+            <returns>Chebyshev expansion coefficients</returns>
+        </member>
+        <member name="M:Alaris.Double.Spectral.ApplyBoundaryTransformation(System.Double[],System.Double[],System.Double,System.Double,System.Double)">
+            <summary>
+            Applies the transformation sequence to regularize boundary functions
+            ξ = √(τ/τ_max) → G(ξ) = ln(B̃(ξ²)) → H(ξ) = G(ξ)²
+            </summary>
+            <param name="boundaryValues">Raw boundary values B(τ)</param>
+            <param name="timePoints">Time points τ</param>
+            <param name="strike">Strike price</param>
+            <param name="r">Interest rate</param>
+            <param name="q">Dividend yield</param>
+            <returns>Transformed function values H(ξ)</returns>
+        </member>
+        <member name="M:Alaris.Double.Spectral.InvertBoundaryTransformation(System.Double[],System.Double[],System.Double,System.Double,System.Double)">
+            <summary>
+            Inverts the transformation sequence to recover boundary values
+            H(ξ) → G(ξ) = √H(ξ) → B̃(ξ²) = exp(G(ξ)) → B(τ) = X * B̃(τ)
+            </summary>
+            <param name="transformedValues">Transformed function values H(ξ)</param>
+            <param name="timePoints">Time points τ</param>
+            <param name="strike">Strike price</param>
+            <param name="r">Interest rate</param>
+            <param name="q">Dividend yield</param>
+            <returns>Recovered boundary values B(τ)</returns>
+        </member>
+        <member name="M:Alaris.Double.Spectral.ChebyshevDerivativeCoefficients(System.Double[])">
+            <summary>
+            Computes the spectral derivative of a function represented by Chebyshev coefficients
+            </summary>
+            <param name="coefficients">Chebyshev expansion coefficients</param>
+            <returns>Coefficients of the derivative</returns>
+        </member>
+        <member name="M:Alaris.Double.Spectral.EstimateConvergenceRate(System.Double[])">
+            <summary>
+            Estimates the convergence rate of the spectral approximation
+            </summary>
+            <param name="coefficients">Chebyshev expansion coefficients</param>
+            <returns>Estimated convergence rate (negative exponent)</returns>
+        </member>
+        <member name="T:Alaris.Double.BoundaryFunction">
+            <summary>
+            Represents a boundary function using spectral interpolation
+            Handles the complete transformation sequence for numerical stability
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.BoundaryFunction.#ctor(System.Double[],System.Double[],System.Double[],System.Double,System.Double,System.Double,System.Boolean)">
+            <summary>
+            Constructs a boundary function from collocation data
+            </summary>
+            <param name="nodes">Chebyshev nodes in [-1, 1]</param>
+            <param name="boundaryValues">Boundary values at corresponding time points</param>
+            <param name="timePoints">Time points τ</param>
+            <param name="strike">Strike price</param>
+            <param name="r">Interest rate</param>
+            <param name="q">Dividend yield</param>
+            <param name="applyTransformation">Whether to apply spectral transformation</param>
+        </member>
+        <member name="M:Alaris.Double.BoundaryFunction.Evaluate(System.Double)">
+            <summary>
+            Evaluates the boundary function at a given time point
+            </summary>
+            <param name="tau">Time to maturity</param>
+            <returns>Boundary value B(τ)</returns>
+        </member>
+        <member name="M:Alaris.Double.BoundaryFunction.EvaluateDerivative(System.Double)">
+            <summary>
+            Evaluates the derivative of the boundary function
+            </summary>
+            <param name="tau">Time to maturity</param>
+            <returns>Boundary derivative dB/dτ</returns>
+        </member>
+        <member name="P:Alaris.Double.BoundaryFunction.ChebyshevCoefficients">
+            <summary>
+            Gets the Chebyshev expansion coefficients
+            </summary>
+        </member>
+        <member name="P:Alaris.Double.BoundaryFunction.EstimatedError">
+            <summary>
+            Estimates the accuracy of the spectral approximation
+            </summary>
+        </member>
+        <member name="P:Alaris.Double.BoundaryFunction.NumberOfNodes">
+            <summary>
+            Number of collocation points used
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.UtilityExtensions">
+            <summary>
+            Extension methods and utility functions for the Alaris Double Boundary engine
+            Provides convenience methods for common operations and parameter validation
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.UtilityExtensions.PriceWithOptimalEngine(VanillaOption,GeneralizedBlackScholesProcess,System.Int32,Microsoft.Extensions.Logging.ILogger)">
+            <summary>
+            Prices an American option using the appropriate engine based on market conditions
+            Automatically selects between standard and double boundary engines
+            </summary>
+            <param name="option">The American option to price</param>
+            <param name="process">Market process</param>
+            <param name="spectralNodes">Number of spectral nodes for double boundary cases</param>
+            <param name="logger">Optional logger</param>
+            <returns>Option price and detailed results</returns>
+        </member>
+        <member name="M:Alaris.Double.UtilityExtensions.ValidateParameters(VanillaOption,GeneralizedBlackScholesProcess)">
+            <summary>
+            Validates that option parameters are reasonable for pricing
+            </summary>
+            <param name="option">Option to validate</param>
+            <param name="process">Market process</param>
+            <returns>True if parameters are valid</returns>
+        </member>
+        <member name="M:Alaris.Double.UtilityExtensions.CreateMarketEnvironment(System.Double,System.Double,System.Double,System.Double,System.Double,System.Double)">
+            <summary>
+            Creates a complete market environment for American option pricing
+            </summary>
+            <param name="spot">Current asset price</param>
+            <param name="strike">Strike price</param>
+            <param name="timeToMaturity">Time to maturity in years</param>
+            <param name="volatility">Volatility (annualized)</param>
+            <param name="riskFreeRate">Risk-free interest rate</param>
+            <param name="dividendYield">Dividend yield</param>
+            <returns>Configured Black-Scholes process</returns>
+        </member>
+        <member name="M:Alaris.Double.UtilityExtensions.CreateAmericanOption(Option.Type,System.Double,Date)">
+            <summary>
+            Creates an American option with specified parameters
+            </summary>
+            <param name="optionType">Put or Call</param>
+            <param name="strike">Strike price</param>
+            <param name="maturityDate">Maturity date</param>
+            <returns>Configured American option</returns>
+        </member>
+        <member name="M:Alaris.Double.UtilityExtensions.AnalyzeExerciseRegime(System.Double,System.Double,System.Double,Option.Type)">
+            <summary>
+            Analyzes the exercise regime for given market parameters
+            </summary>
+            <param name="r">Risk-free rate</param>
+            <param name="q">Dividend yield</param>
+            <param name="sigma">Volatility</param>
+            <param name="optionType">Option type</param>
+            <returns>Detailed regime analysis</returns>
+        </member>
+        <member name="M:Alaris.Double.UtilityExtensions.AnalyzeConvergence(VanillaOption,GeneralizedBlackScholesProcess,System.Collections.Generic.IEnumerable{System.Int32},Microsoft.Extensions.Logging.ILogger)">
+            <summary>
+            Performs convergence analysis across different spectral node counts
+            </summary>
+            <param name="option">Option to analyze</param>
+            <param name="process">Market process</param>
+            <param name="nodeRange">Range of spectral nodes to test</param>
+            <param name="logger">Optional logger</param>
+            <returns>Convergence analysis results</returns>
+        </member>
+        <member name="M:Alaris.Double.UtilityExtensions.BenchmarkPerformance(System.Collections.Generic.IEnumerable{Alaris.Double.BenchmarkCase},Microsoft.Extensions.Logging.ILogger)">
+            <summary>
+            Benchmarks engine performance across different parameter sets
+            </summary>
+            <param name="testCases">Test cases to benchmark</param>
+            <param name="logger">Optional logger</param>
+            <returns>Performance benchmark results</returns>
+        </member>
+        <member name="M:Alaris.Double.UtilityExtensions.CreateOptimalEngine(GeneralizedBlackScholesProcess,System.Double,System.Double,Option.Type,System.Int32,Microsoft.Extensions.Logging.ILogger)">
+            <summary>
+            Creates a pricing engine that automatically selects the optimal method
+            For integration with QuantLib's option.setPricingEngine() pattern
+            Note: For double boundary cases, use PriceWithOptimalEngine() extension method instead
+            </summary>
+            <param name="process">Market process</param>
+            <param name="strike">Strike price</param>
+            <param name="timeToMaturity">Time to maturity</param>
+            <param name="optionType">Option type</param>
+            <param name="spectralNodes">Spectral nodes for double boundary cases (unused due to SWIG limitations)</param>
+            <param name="logger">Optional logger</param>
+            <returns>Appropriate pricing engine (falls back to standard engines for double boundary cases)</returns>
+        </member>
+        <member name="M:Alaris.Double.UtilityExtensions.ExtractMarketParametersFromOption(VanillaOption,GeneralizedBlackScholesProcess)">
+            <summary>
+            Alternative method to extract market parameters without using VanillaOption.Arguments
+            Uses reflection and direct property access to get option parameters
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.RegimeAnalysis">
+            <summary>
+            Analysis of exercise regime characteristics
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.ConvergencePoint">
+            <summary>
+            Single point in convergence analysis
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.ConvergenceAnalysis">
+            <summary>
+            Complete convergence analysis results
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.BenchmarkCase">
+            <summary>
+            Test case for benchmarking
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.BenchmarkResult">
+            <summary>
+            Result from a single benchmark test
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.PerformanceBenchmark">
+            <summary>
+            Complete performance benchmark results
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.ValidationBenchmarks">
+            <summary>
+            Comprehensive validation and benchmarking suite for the double boundary engine
+            Tests against known analytical results and literature benchmarks
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.ValidationBenchmarks.ValidationResult">
+            <summary>
+            Results from a validation test
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.ValidationBenchmarks.RunCompleteValidationSuite(Microsoft.Extensions.Logging.ILogger)">
+            <summary>
+            Runs the complete validation suite
+            </summary>
+            <param name="logger">Optional logger for detailed output</param>
+            <returns>Collection of validation results</returns>
+        </member>
+        <member name="M:Alaris.Double.ValidationBenchmarks.ValidateRegimeDetection(Microsoft.Extensions.Logging.ILogger)">
+            <summary>
+            Validates regime detection logic against known parameter combinations
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.ValidationBenchmarks.ValidateCriticalVolatility(Microsoft.Extensions.Logging.ILogger)">
+            <summary>
+            Validates critical volatility calculations against analytical formulas
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.ValidationBenchmarks.ValidateSingleBoundaryBenchmarks(Microsoft.Extensions.Logging.ILogger)">
+            <summary>
+            Validates single boundary cases against QuantLib engines
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.ValidationBenchmarks.ValidateDoubleBoundaryBenchmarks(Microsoft.Extensions.Logging.ILogger)">
+            <summary>
+            Validates double boundary cases under negative interest rates
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.ValidationBenchmarks.ValidateBoundaryAsymptotics(Microsoft.Extensions.Logging.ILogger)">
+            <summary>
+            Validates boundary asymptotic behavior
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.ValidationBenchmarks.ValidateEuropeanConvergence(Microsoft.Extensions.Logging.ILogger)">
+            <summary>
+            Validates convergence to European pricing when early exercise is not optimal
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.ValidationBenchmarks.ValidateGreeksAccuracy(Microsoft.Extensions.Logging.ILogger)">
+            <summary>
+            Validates Greeks (sensitivities) accuracy
+            </summary>
+        </member>
+    </members>
+</doc>

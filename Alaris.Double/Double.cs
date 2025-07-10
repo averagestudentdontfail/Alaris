@@ -23,7 +23,7 @@ public class DoubleBoundaryResults
 
 /// <summary>
 /// Advanced American option pricing engine supporting double boundaries under negative interest rates
-/// Standalone implementation that can integrate with QuantLib pricing framework when needed
+/// Standalone implementation that integrates with QuantLib when possible
 /// </summary>
 public class DoubleBoundaryAmericanEngine
 {
@@ -58,7 +58,9 @@ public class DoubleBoundaryAmericanEngine
         _logger = logger;
     }
 
-    // Method to set option parameters externally since we can't access Arguments directly
+    /// <summary>
+    /// Method to set option parameters externally since we can't access Arguments directly
+    /// </summary>
     public void SetOptionParameters(double strike, double timeToMaturity, Option.Type optionType)
     {
         _strike = strike;
@@ -154,8 +156,9 @@ public class DoubleBoundaryAmericanEngine
     }
 
     /// <summary>
-    /// Creates a QuantLib-compatible pricing engine wrapper
+    /// Creates a QuantLib-compatible pricing engine
     /// Returns the appropriate QuantLib engine based on the detected regime
+    /// Note: For double boundary cases, use PriceAmericanOption() method instead
     /// </summary>
     public static PricingEngine CreateCompatibleEngine(GeneralizedBlackScholesProcess process, 
         double strike, double timeToMaturity, Option.Type optionType,
@@ -173,8 +176,11 @@ public class DoubleBoundaryAmericanEngine
         switch (regime)
         {
             case ExerciseRegimeType.DoubleBoundaryNegativeRates:
-                // For double boundary, we need to use a wrapper that delegates to our custom engine
-                return new DoubleBoundaryEngineWrapper(process, strike, timeToMaturity, optionType, spectralNodes, logger);
+                // For double boundary cases, we cannot return a compatible engine due to SWIG limitations
+                // Users should use DoubleBoundaryAmericanEngine.PriceAmericanOption() instead
+                logger?.LogWarning("Double boundary regime detected. Use DoubleBoundaryAmericanEngine.PriceAmericanOption() for accurate pricing.");
+                // Fall back to standard engine as approximation
+                return new QdFpAmericanEngine(process, QdFpAmericanEngine.accurateScheme());
                 
             case ExerciseRegimeType.NoEarlyExercise:
                 return new AnalyticEuropeanEngine(process);
@@ -646,34 +652,6 @@ public class DoubleBoundaryAmericanEngine
             lowerValues[i] = relaxation * lowerValues[i] + (1 - relaxation) * lowerValues[i];
         }
     }
-}
-
-/// <summary>
-/// Wrapper class that implements PricingEngine interface for QuantLib integration
-/// Delegates to DoubleBoundaryAmericanEngine internally
-/// </summary>
-public class DoubleBoundaryEngineWrapper : PricingEngine
-{
-    private readonly DoubleBoundaryAmericanEngine _engine;
-    private readonly double _strike;
-    private readonly double _timeToMaturity;
-    private readonly Option.Type _optionType;
-
-    public DoubleBoundaryEngineWrapper(GeneralizedBlackScholesProcess process, 
-        double strike, double timeToMaturity, Option.Type optionType,
-        int spectralNodes = 8, ILogger? logger = null)
-        : base()
-    {
-        _engine = new DoubleBoundaryAmericanEngine(process, spectralNodes, logger: logger);
-        _strike = strike;
-        _timeToMaturity = timeToMaturity;
-        _optionType = optionType;
-        
-        _engine.SetOptionParameters(strike, timeToMaturity, optionType);
-    }
-
-    // Note: The actual calculate() method implementation would need to be SWIG-generated
-    // This is a conceptual implementation showing how the wrapper would work
 }
 
 /// <summary>
