@@ -450,6 +450,47 @@
             Integrand for lower boundary dividend term in smooth-pasting condition
             </summary>
         </member>
+        <member name="T:Alaris.Double.NativeLibraryLoader">
+            <summary>
+            Simplified native library loader for Alaris QuantLib bindings
+            Focuses on manual preloading to avoid SWIG binding complications
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.NativeLibraryLoader.Initialize">
+            <summary>
+            Initialize native library loading before using any QuantLib functionality
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.NativeLibraryLoader.TryPreloadLibraries">
+            <summary>
+            Attempts to manually preload all required libraries
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.NativeLibraryLoader.FindLibraryPath(System.String)">
+            <summary>
+            Searches for a library file in common locations
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.NativeLibraryLoader.GetFullPath(System.String)">
+            <summary>
+            Safe wrapper for Path.GetFullPath
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.NativeLibraryLoader.TryLoadLibrary(System.String,System.IntPtr@)">
+            <summary>
+            Attempts to load a library from the specified path
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.NativeLibraryLoader.VerifyLibraries">
+            <summary>
+            Verifies that QuantLib can be used
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.NativeLibraryLoader.DisplayDiagnostics">
+            <summary>
+            Displays diagnostic information about library loading
+            </summary>
+        </member>
         <member name="T:Alaris.Double.Program">
             <summary>
             Comprehensive test program for the Alaris Double Boundary American Options Engine
