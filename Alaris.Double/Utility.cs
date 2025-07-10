@@ -36,23 +36,44 @@ public static class UtilityExtensions
         logger?.LogDebug("Selected regime {Regime} for r={R:F4}, q={Q:F4}, σ={Sigma:F4}", 
                         regime, marketParams.r, marketParams.q, marketParams.sigma);
 
-        PricingEngine engine = regime switch
-        {
-            ExerciseRegimeType.DoubleBoundaryNegativeRates => 
-                CreateDoubleBoundaryEngine(process, marketParams, spectralNodes, logger),
-            ExerciseRegimeType.NoEarlyExercise => 
-                CreateEuropeanEngine(process),
-            _ => new QdFpAmericanEngine(process, QdFpAmericanEngine.accurateScheme())
-        };
-
-        option.setPricingEngine(engine);
-        double price = option.NPV();
-
-        // Get detailed results if available
         DoubleBoundaryResults? details = null;
-        if (engine is DoubleBoundaryAmericanEngine doubleEngine)
+        double price = 0.0;
+
+        switch (regime)
         {
-            details = doubleEngine.GetDetailedResults();
+            case ExerciseRegimeType.DoubleBoundaryNegativeRates:
+                {
+                    var doubleEngine = CreateDoubleBoundaryEngine(process, marketParams, spectralNodes, logger);
+                    price = doubleEngine.CalculatePrice();
+                    details = doubleEngine.GetDetailedResults();
+                }
+                break;
+                
+            case ExerciseRegimeType.NoEarlyExercise:
+                {
+                    var europeanEngine = CreateEuropeanEngine(process);
+                    option.setPricingEngine(europeanEngine);
+                    price = option.NPV();
+                    details = new DoubleBoundaryResults
+                    {
+                        Regime = regime,
+                        OptionPrice = price
+                    };
+                }
+                break;
+                
+            default:
+                {
+                    var standardEngine = new QdFpAmericanEngine(process, QdFpAmericanEngine.accurateScheme());
+                    option.setPricingEngine(standardEngine);
+                    price = option.NPV();
+                    details = new DoubleBoundaryResults
+                    {
+                        Regime = regime,
+                        OptionPrice = price
+                    };
+                }
+                break;
         }
 
         return (price, details);
@@ -182,10 +203,9 @@ public static class UtilityExtensions
             try
             {
                 var engine = CreateDoubleBoundaryEngine(process, marketParams, nodes, logger);
-                option.setPricingEngine(engine);
                 
                 var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-                double price = option.NPV();
+                double price = engine.CalculatePrice();
                 stopwatch.Stop();
                 
                 var details = engine.GetDetailedResults();
@@ -239,7 +259,8 @@ public static class UtilityExtensions
                     testCase.Volatility, testCase.RiskFreeRate, testCase.DividendYield);
                 
                 var option = CreateAmericanOption(testCase.OptionType, testCase.Strike,
-                    Settings.instance().getEvaluationDate().add((int)(testCase.TimeToMaturity * 365)));
+                    QuantLibApiHelper.AddDaysToDate(Settings.instance().getEvaluationDate(), 
+                                                  (int)(testCase.TimeToMaturity * 365)));
                 
                 var stopwatch = System.Diagnostics.Stopwatch.StartNew();
                 var (price, details) = option.PriceWithOptimalEngine(process, logger: logger);
@@ -379,9 +400,9 @@ public static class UtilityExtensions
         }
         
         // Extract market parameters from process
-        double r = process.riskFreeRate().link.zeroRate(tau, Compounding.Continuous).value();
-        double q = process.dividendYield().link.zeroRate(tau, Compounding.Continuous).value();
-        double sigma = process.blackVolatility().link.blackVol(tau, process.x0()).value();
+        double r = QuantLibApiHelper.GetInterestRateValue(QuantLibApiHelper.GetTermStructure(process.riskFreeRate()).zeroRate(tau, Compounding.Continuous));
+        double q = QuantLibApiHelper.GetInterestRateValue(QuantLibApiHelper.GetTermStructure(process.dividendYield()).zeroRate(tau, Compounding.Continuous));
+        double sigma = QuantLibApiHelper.GetVolatilityStructure(process.blackVolatility()).blackVol(tau, process.x0());
         double spot = process.x0();
         
         return (spot, strike, tau, r, q, sigma, optionType);

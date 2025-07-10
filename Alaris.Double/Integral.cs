@@ -86,7 +86,7 @@ public static class IntegralEquationSolvers
         
         try
         {
-            return integrator.value(integrand.value, 0.0, effectiveTau);
+            return QuantLibApiHelper.CallSimpsonIntegral(integrator, integrand.value, 0.0, effectiveTau);
         }
         catch
         {

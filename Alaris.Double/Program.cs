@@ -297,31 +297,35 @@ class Program
         var payoff = new PlainVanillaPayoff(Option.Type.Put, strike);
         var option = new VanillaOption(payoff, exercise);
 
-        PricingEngine engine;
         DoubleBoundaryResults? detailedResults = null;
+        double timeToMaturity = (maturity.serialNumber() - Settings.instance().getEvaluationDate().serialNumber()) / 365.0;
 
         if (useExtendedEngine)
         {
             var extendedEngine = new DoubleBoundaryAmericanEngine(
                 process, spectralNodes, tolerance, maxIterations: 100, useAcceleration: true, _logger);
-            engine = extendedEngine;
-            option.setPricingEngine(engine);
             
-            double price = option.NPV();
+            // Set option parameters for the engine
+            extendedEngine.SetOptionParameters(strike, timeToMaturity, Option.Type.Put);
+            
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            double price = extendedEngine.CalculatePrice();
+            stopwatch.Stop();
+            
             detailedResults = extendedEngine.GetDetailedResults();
             
             return new OptionPricingResults
             {
                 Price = price,
                 Regime = detailedResults?.Regime ?? ExerciseRegimeType.Degenerate,
-                ComputationTime = detailedResults?.ComputationTime ?? TimeSpan.Zero,
+                ComputationTime = detailedResults?.ComputationTime ?? stopwatch.Elapsed,
                 DetailedResults = detailedResults
             };
         }
         else
         {
             // Use standard QuantLib engine
-            engine = new QdFpAmericanEngine(process, QdFpAmericanEngine.accurateScheme());
+            PricingEngine engine = new QdFpAmericanEngine(process, QdFpAmericanEngine.accurateScheme());
             option.setPricingEngine(engine);
             
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();

@@ -23,11 +23,9 @@ public class DoubleBoundaryResults
 
 /// <summary>
 /// Advanced American option pricing engine supporting double boundaries under negative interest rates
-/// Implements the complete Alaris spectral collocation methodology
-/// Note: This class doesn't inherit from PricingEngine due to SWIG binding limitations
-/// Instead, it provides static pricing methods that can be used directly
+/// Inherits from PricingEngine to be compatible with QuantLib option pricing framework
 /// </summary>
-public class DoubleBoundaryAmericanEngine
+public class DoubleBoundaryAmericanEngine : PricingEngine
 {
     private readonly GeneralizedBlackScholesProcess _process;
     private readonly int _spectralNodes;
@@ -50,7 +48,7 @@ public class DoubleBoundaryAmericanEngine
         double tolerance = 1e-12,
         int maxIterations = 100,
         bool useAcceleration = true,
-        ILogger? logger = null)
+        ILogger? logger = null) : base()
     {
         _process = process ?? throw new ArgumentNullException(nameof(process));
         _spectralNodes = Math.Max(3, spectralNodes);
@@ -69,7 +67,7 @@ public class DoubleBoundaryAmericanEngine
     }
 
     /// <summary>
-    /// Main pricing method - replaces the calculate() override
+    /// Main pricing method - calculates option price and stores results
     /// </summary>
     public double CalculatePrice()
     {
@@ -136,7 +134,7 @@ public class DoubleBoundaryAmericanEngine
                     // Use European engine
                     var europeanEngine = new AnalyticEuropeanEngine(process);
                     var today = Settings.instance().getEvaluationDate();
-                    var maturity = today.add((int)(marketParams.Tau * 365));
+                    var maturity = QuantLibApiHelper.AddDaysToDate(today, (int)(marketParams.Tau * 365));
                     var europeanExercise = new EuropeanExercise(maturity);
                     var payoff = new PlainVanillaPayoff(marketParams.OptionType, marketParams.Strike);
                     var europeanOption = new VanillaOption(payoff, europeanExercise);
@@ -367,9 +365,9 @@ public class DoubleBoundaryAmericanEngine
         var today = Settings.instance().getEvaluationDate();
         double tau = _timeToMaturity;
         
-        double r = QuantLibApiHelper.GetTermStructure(_process.riskFreeRate()).zeroRate(tau, Compounding.Continuous).value();
-        double q = QuantLibApiHelper.GetTermStructure(_process.dividendYield()).zeroRate(tau, Compounding.Continuous).value();
-        double sigma = QuantLibApiHelper.GetVolatilityStructure(_process.blackVolatility()).blackVol(tau, _process.x0()).value();
+        double r = QuantLibApiHelper.GetTermStructure(_process.riskFreeRate()).zeroRate(tau, Compounding.Continuous).rate();
+        double q = QuantLibApiHelper.GetTermStructure(_process.dividendYield()).zeroRate(tau, Compounding.Continuous).rate();
+        double sigma = QuantLibApiHelper.GetVolatilityStructure(_process.blackVolatility()).blackVol(tau, _process.x0());
         double spot = _process.x0();
         double strike = _strike;
         var optionType = _optionType;
@@ -478,9 +476,9 @@ public class DoubleBoundaryAmericanEngine
         }
         
         // Extract market parameters from process
-        double r = QuantLibApiHelper.GetTermStructure(process.riskFreeRate()).zeroRate(tau, Compounding.Continuous).value();
-        double q = QuantLibApiHelper.GetTermStructure(process.dividendYield()).zeroRate(tau, Compounding.Continuous).value();
-        double sigma = QuantLibApiHelper.GetVolatilityStructure(process.blackVolatility()).blackVol(tau, process.x0()).value();
+        double r = QuantLibApiHelper.GetTermStructure(process.riskFreeRate()).zeroRate(tau, Compounding.Continuous).rate();
+        double q = QuantLibApiHelper.GetTermStructure(process.dividendYield()).zeroRate(tau, Compounding.Continuous).rate();
+        double sigma = QuantLibApiHelper.GetVolatilityStructure(process.blackVolatility()).blackVol(tau, process.x0());
         double spot = process.x0();
         
         return new MarketParameters

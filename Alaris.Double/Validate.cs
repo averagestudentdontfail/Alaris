@@ -174,13 +174,17 @@ public static class ValidationBenchmarks
         
         var results = new List<ValidationResult>();
 
-        // Classic American put benchmark
-        var benchmark = BenchmarkValues.ClassicAmericanPut;
+        // Classic American put benchmark - access static members correctly
         var result = ValidateAmericanOptionPrice(
             "Classic American Put (Haug 2007)",
-            benchmark.Spot, benchmark.Strike, benchmark.Volatility,
-            benchmark.Rate, benchmark.Dividend, benchmark.TimeToMaturity,
-            benchmark.ExpectedPrice, Option.Type.Put
+            BenchmarkValues.ClassicAmericanPut.Spot, 
+            BenchmarkValues.ClassicAmericanPut.Strike, 
+            BenchmarkValues.ClassicAmericanPut.Volatility,
+            BenchmarkValues.ClassicAmericanPut.Rate, 
+            BenchmarkValues.ClassicAmericanPut.Dividend, 
+            BenchmarkValues.ClassicAmericanPut.TimeToMaturity,
+            BenchmarkValues.ClassicAmericanPut.ExpectedPrice, 
+            Option.Type.Put
         );
         
         results.Add(result);
@@ -263,12 +267,10 @@ public static class ValidationBenchmarks
             // Create very short-term option to test limiting behavior
             var marketParams = CreateMarketData(100.0, K, 0.15, r, q, 0.001); // 1 day
             var engine = new DoubleBoundaryAmericanEngine(marketParams.process, spectralNodes: 12);
-            
-            var option = CreateAmericanOption(marketParams, Option.Type.Put);
-            option.setPricingEngine(engine);
+            engine.SetOptionParameters(K, 0.001, Option.Type.Put);
             
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-            double price = option.NPV();
+            double price = engine.CalculatePrice();
             stopwatch.Stop();
             
             var detailedResults = engine.GetDetailedResults();
@@ -334,8 +336,7 @@ public static class ValidationBenchmarks
                 
                 // Price with American engine
                 var americanEngine = new DoubleBoundaryAmericanEngine(marketParams.process);
-                var americanOption = CreateAmericanOption(marketParams, Option.Type.Put);
-                americanOption.setPricingEngine(americanEngine);
+                americanEngine.SetOptionParameters(test.K, test.T, Option.Type.Put);
                 
                 // Price with European engine
                 var europeanEngine = new AnalyticEuropeanEngine(marketParams.process);
@@ -343,7 +344,7 @@ public static class ValidationBenchmarks
                 europeanOption.setPricingEngine(europeanEngine);
                 
                 var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-                double americanPrice = americanOption.NPV();
+                double americanPrice = americanEngine.CalculatePrice();
                 double europeanPrice = europeanOption.NPV();
                 stopwatch.Stop();
 
@@ -413,10 +414,9 @@ public static class ValidationBenchmarks
             {
                 // Validate against known benchmark
                 var engine = new DoubleBoundaryAmericanEngine(marketParams.process);
-                var option = CreateAmericanOption(marketParams, optionType);
-                option.setPricingEngine(engine);
+                engine.SetOptionParameters(strike, timeToMaturity, optionType);
                 
-                result.ComputedValue = option.NPV();
+                result.ComputedValue = engine.CalculatePrice();
                 result.AbsoluteError = Math.Abs(result.ComputedValue - expectedPrice.Value);
                 result.RelativeError = result.AbsoluteError / Math.Abs(expectedPrice.Value);
                 result.Passed = result.RelativeError < Constants.VALIDATION_TOLERANCE;
@@ -426,15 +426,13 @@ public static class ValidationBenchmarks
                 // Compare extended engine against standard engine
                 var standardEngine = new QdFpAmericanEngine(marketParams.process, QdFpAmericanEngine.accurateScheme());
                 var extendedEngine = new DoubleBoundaryAmericanEngine(marketParams.process);
+                extendedEngine.SetOptionParameters(strike, timeToMaturity, optionType);
                 
                 var option1 = CreateAmericanOption(marketParams, optionType);
-                var option2 = CreateAmericanOption(marketParams, optionType);
-                
                 option1.setPricingEngine(standardEngine);
-                option2.setPricingEngine(extendedEngine);
                 
                 double standardPrice = option1.NPV();
-                double extendedPrice = option2.NPV();
+                double extendedPrice = extendedEngine.CalculatePrice();
                 
                 result.ComputedValue = extendedPrice;
                 result.ExpectedValue = standardPrice;
@@ -467,11 +465,10 @@ public static class ValidationBenchmarks
         {
             var marketParams = CreateMarketData(spot, strike, sigma, r, q, timeToMaturity);
             var engine = new DoubleBoundaryAmericanEngine(marketParams.process, spectralNodes: 10);
-            var option = CreateAmericanOption(marketParams, Option.Type.Put);
-            option.setPricingEngine(engine);
+            engine.SetOptionParameters(strike, timeToMaturity, Option.Type.Put);
             
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-            double price = option.NPV();
+            double price = engine.CalculatePrice();
             stopwatch.Stop();
             
             var detailedResults = engine.GetDetailedResults();
@@ -513,7 +510,7 @@ public static class ValidationBenchmarks
         double spot, double strike, double sigma, double r, double q, double timeToMaturity)
     {
         var today = Settings.instance().getEvaluationDate();
-        var maturity = today.add((int)(timeToMaturity * 365));
+        var maturity = QuantLibApiHelper.AddDaysToDate(today, (int)(timeToMaturity * 365));
         
         var underlying = new SimpleQuote(spot);
         var dividendYield = new FlatForward(today, q, new Actual365Fixed());
