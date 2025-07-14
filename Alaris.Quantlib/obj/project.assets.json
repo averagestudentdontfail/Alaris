@@ -14,7 +14,7 @@
     "version": "1.0.0",
     "restore": {
       "projectUniqueName": "/home/sunny/.project/Alaris/Alaris.Quantlib/Alaris.Quantlib.csproj",
-      "projectName": "Alaris.QuantLib",
+      "projectName": "Alaris.Quantlib",
       "projectPath": "/home/sunny/.project/Alaris/Alaris.Quantlib/Alaris.Quantlib.csproj",
       "packagesPath": "/home/sunny/.nuget/packages/",
       "outputPath": "/home/sunny/.project/Alaris/Alaris.Quantlib/obj/",

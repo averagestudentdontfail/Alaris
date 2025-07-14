@@ -1,9 +1,3 @@
-/home/sunny/.project/Alaris/Alaris.Double/obj/Debug/net9.0/Alaris.Double.csproj.AssemblyReference.cache
-/home/sunny/.project/Alaris/Alaris.Double/obj/Debug/net9.0/Alaris.Double.GeneratedMSBuildEditorConfig.editorconfig
-/home/sunny/.project/Alaris/Alaris.Double/obj/Debug/net9.0/Alaris.Double.AssemblyInfoInputs.cache
-/home/sunny/.project/Alaris/Alaris.Double/obj/Debug/net9.0/Alaris.Double.AssemblyInfo.cs
-/home/sunny/.project/Alaris/Alaris.Double/obj/Debug/net9.0/Alaris.Double.csproj.CoreCompileInputs.cache
-/home/sunny/.project/Alaris/Alaris.Double/obj/Debug/net9.0/Alaris.Double.sourcelink.json
 /home/sunny/.project/Alaris/Alaris.Double/bin/Debug/net9.0/libNQuantLibc.so
 /home/sunny/.project/Alaris/Alaris.Double/bin/Debug/net9.0/libQuantLib.so.1
 /home/sunny/.project/Alaris/Alaris.Double/bin/Debug/net9.0/Alaris.Double
@@ -26,6 +20,12 @@
 /home/sunny/.project/Alaris/Alaris.Double/bin/Debug/net9.0/Microsoft.Extensions.Primitives.dll
 /home/sunny/.project/Alaris/Alaris.Double/bin/Debug/net9.0/Alaris.QuantLib.dll
 /home/sunny/.project/Alaris/Alaris.Double/bin/Debug/net9.0/Alaris.QuantLib.pdb
+/home/sunny/.project/Alaris/Alaris.Double/obj/Debug/net9.0/Alaris.Double.csproj.AssemblyReference.cache
+/home/sunny/.project/Alaris/Alaris.Double/obj/Debug/net9.0/Alaris.Double.GeneratedMSBuildEditorConfig.editorconfig
+/home/sunny/.project/Alaris/Alaris.Double/obj/Debug/net9.0/Alaris.Double.AssemblyInfoInputs.cache
+/home/sunny/.project/Alaris/Alaris.Double/obj/Debug/net9.0/Alaris.Double.AssemblyInfo.cs
+/home/sunny/.project/Alaris/Alaris.Double/obj/Debug/net9.0/Alaris.Double.csproj.CoreCompileInputs.cache
+/home/sunny/.project/Alaris/Alaris.Double/obj/Debug/net9.0/Alaris.Double.sourcelink.json
 /home/sunny/.project/Alaris/Alaris.Double/obj/Debug/net9.0/Alaris.D.422EDF44.Up2Date
 /home/sunny/.project/Alaris/Alaris.Double/obj/Debug/net9.0/Alaris.Double.dll
 /home/sunny/.project/Alaris/Alaris.Double/obj/Debug/net9.0/refint/Alaris.Double.dll

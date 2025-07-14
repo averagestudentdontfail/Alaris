@@ -1,421 +1,120 @@
-using Alaris.Double;
+using Alaris.Quantlib;
 
 namespace Alaris.Double;
 
 /// <summary>
-/// Helper class to handle SWIG binding API differences
-/// Maps common method names to their actual SWIG-generated equivalents
+/// Simplified compatibility layer - eliminates most of the complex SWIG workarounds
+/// Only keeps essential helpers that are actually needed
 /// </summary>
-public static class QuantLibApiHelper
+public static class SimplifiedQuantLibHelper
 {
+    // Cache commonly used objects to avoid repeated instantiation
+    private static readonly CumulativeNormalDistribution _normalCdf = new();
+    
     /// <summary>
-    /// Safely calls CumulativeNormalDistribution with the correct method name
+    /// Simplified normal CDF access - replaces complex reflection-based calls
     /// </summary>
-    public static double CallCumNorm(CumulativeNormalDistribution cnd, double x)
+    public static double NormalCdf(double x)
     {
-        // Try different possible method names based on SWIG conventions
-        try
-        {
-            // Try the most common SWIG convention for operator()
-            var method = cnd.GetType().GetMethod("call");
-            if (method != null)
-            {
-                var result = method.Invoke(cnd, new object[] { x });
-                if (result is double d) return d;
-            }
-        }
-        catch { }
-
-        try
-        {
-            // Try op_call which is another SWIG convention
-            var method = cnd.GetType().GetMethod("op_call");
-            if (method != null)
-            {
-                var result = method.Invoke(cnd, new object[] { x });
-                if (result is double d) return d;
-            }
-        }
-        catch { }
-
-        try
-        {
-            // Try invoke
-            var method = cnd.GetType().GetMethod("invoke");
-            if (method != null)
-            {
-                var result = method.Invoke(cnd, new object[] { x });
-                if (result is double d) return d;
-            }
-        }
-        catch { }
-
-        try
-        {
-            // Try direct invocation as function object
-            var result = cnd.GetType().GetMethod("Invoke")?.Invoke(cnd, new object[] { x });
-            if (result is double d) return d;
-        }
-        catch { }
-
-        // Fallback to manual calculation
-        return 0.5 * (1.0 + Erf(x / Math.Sqrt(2.0)));
+        return _normalCdf.value(x);
     }
 
     /// <summary>
-    /// Safely calls NormalDistribution with the correct method name
+    /// Simplified rate extraction from QuantLib term structures
     /// </summary>
-    public static double CallNormPdf(NormalDistribution nd, double x)
+    public static double ExtractRate(YieldTermStructure termStructure, double timeToMaturity)
     {
         try
         {
-            var method = nd.GetType().GetMethod("call");
-            if (method != null)
-            {
-                var result = method.Invoke(nd, new object[] { x });
-                if (result is double d) return d;
-            }
+            return termStructure.forwardRate(0.0, timeToMaturity, Compounding.Continuous).rate();
         }
-        catch { }
-
-        try
+        catch
         {
-            var method = nd.GetType().GetMethod("op_call");
-            if (method != null)
-            {
-                var result = method.Invoke(nd, new object[] { x });
-                if (result is double d) return d;
-            }
+            // Fallback for edge cases
+            return termStructure.zeroRate(timeToMaturity, Compounding.Continuous).rate();
         }
-        catch { }
-
-        // Fallback to basic normal PDF calculation
-        return Math.Exp(-0.5 * x * x) / Math.Sqrt(2 * Math.PI);
     }
 
     /// <summary>
-    /// Safely integrates using Simpson's rule with correct method name
+    /// Simplified volatility extraction
     /// </summary>
-    public static double CallSimpsonIntegral(SimpsonIntegral integrator, Func<double, double> f, double a, double b)
+    public static double ExtractVolatility(BlackVolTermStructure volStructure, double timeToMaturity, double strike)
     {
-        try
-        {
-            var method = integrator.GetType().GetMethod("call");
-            if (method != null)
-            {
-                var result = method.Invoke(integrator, new object[] { f, a, b });
-                if (result is double d) return d;
-            }
-        }
-        catch { }
-
-        try
-        {
-            var method = integrator.GetType().GetMethod("op_call");
-            if (method != null)
-            {
-                var result = method.Invoke(integrator, new object[] { f, a, b });
-                if (result is double d) return d;
-            }
-        }
-        catch { }
-
-        try
-        {
-            var method = integrator.GetType().GetMethod("integrate");
-            if (method != null)
-            {
-                var result = method.Invoke(integrator, new object[] { f, a, b });
-                if (result is double d) return d;
-            }
-        }
-        catch { }
-
-        // Fallback to simple trapezoidal rule
-        return FallbackIntegration(f, a, b, 1000);
+        return volStructure.blackVol(timeToMaturity, strike);
     }
 
     /// <summary>
-    /// Safely integrates using Gauss-Lobatto with correct method name
+    /// Simple trapezoidal integration - only for absolute fallback cases
     /// </summary>
-    public static double CallGaussLobattoIntegral(GaussLobattoIntegral integrator, Func<double, double> f, double a, double b)
-    {
-        try
-        {
-            var method = integrator.GetType().GetMethod("call");
-            if (method != null)
-            {
-                var result = method.Invoke(integrator, new object[] { f, a, b });
-                if (result is double d) return d;
-            }
-        }
-        catch { }
-
-        try
-        {
-            var method = integrator.GetType().GetMethod("op_call");
-            if (method != null)
-            {
-                var result = method.Invoke(integrator, new object[] { f, a, b });
-                if (result is double d) return d;
-            }
-        }
-        catch { }
-
-        // Fallback to Simpson
-        return FallbackIntegration(f, a, b, 1000);
-    }
-
-    /// <summary>
-    /// Safely adds days to a Date with correct method name
-    /// </summary>
-    public static Date AddDaysToDate(Date date, int days)
-    {
-        try
-        {
-            var method = date.GetType().GetMethod("__add__");
-            if (method != null)
-            {
-                var result = method.Invoke(date, new object[] { days });
-                if (result is Date d) return d;
-            }
-        }
-        catch { }
-
-        try
-        {
-            var method = date.GetType().GetMethod("add");
-            if (method != null)
-            {
-                var result = method.Invoke(date, new object[] { days });
-                if (result is Date d) return d;
-            }
-        }
-        catch { }
-
-        try
-        {
-            var method = date.GetType().GetMethod("addDays");
-            if (method != null)
-            {
-                var result = method.Invoke(date, new object[] { days });
-                if (result is Date d) return d;
-            }
-        }
-        catch { }
-
-        try
-        {
-            var method = date.GetType().GetMethod("AddDays");
-            if (method != null)
-            {
-                var result = method.Invoke(date, new object[] { days });
-                if (result is Date d) return d;
-            }
-        }
-        catch { }
-
-        try
-        {
-            // Try operator+
-            var method = date.GetType().GetMethod("op_Addition");
-            if (method != null)
-            {
-                var result = method.Invoke(null, new object[] { date, days });
-                if (result is Date d) return d;
-            }
-        }
-        catch { }
-
-        try
-        {
-            // Try creating new date from serial number
-            var serialMethod = date.GetType().GetMethod("serialNumber");
-            if (serialMethod != null)
-            {
-                var serial = serialMethod.Invoke(date, null);
-                if (serial is int serialInt)
-                {
-                    var constructor = date.GetType().GetConstructor(new[] { typeof(int) });
-                    if (constructor != null)
-                    {
-                        var result = constructor.Invoke(new object[] { serialInt + days });
-                        if (result is Date d) return d;
-                    }
-                }
-            }
-        }
-        catch { }
-
-        // Return original date if we can't add (better than crashing)
-        return date;
-    }
-
-    /// <summary>
-    /// Safely gets the term structure from a handle
-    /// </summary>
-    public static YieldTermStructure GetTermStructure(YieldTermStructureHandle handle)
-    {
-        try
-        {
-            var property = handle.GetType().GetProperty("currentLink");
-            if (property != null)
-            {
-                var result = property.GetValue(handle);
-                if (result is YieldTermStructure ts) return ts;
-            }
-        }
-        catch { }
-
-        try
-        {
-            var method = handle.GetType().GetMethod("currentLink");
-            if (method != null)
-            {
-                var result = method.Invoke(handle, null);
-                if (result is YieldTermStructure ts) return ts;
-            }
-        }
-        catch { }
-
-        try
-        {
-            var method = handle.GetType().GetMethod("get");
-            if (method != null)
-            {
-                var result = method.Invoke(handle, null);
-                if (result is YieldTermStructure ts) return ts;
-            }
-        }
-        catch { }
-
-        throw new InvalidOperationException("Cannot access YieldTermStructure from handle");
-    }
-
-    /// <summary>
-    /// Safely gets the volatility structure from a handle
-    /// </summary>
-    public static BlackVolTermStructure GetVolatilityStructure(BlackVolTermStructureHandle handle)
-    {
-        try
-        {
-            var property = handle.GetType().GetProperty("currentLink");
-            if (property != null)
-            {
-                var result = property.GetValue(handle);
-                if (result is BlackVolTermStructure vs) return vs;
-            }
-        }
-        catch { }
-
-        try
-        {
-            var method = handle.GetType().GetMethod("currentLink");
-            if (method != null)
-            {
-                var result = method.Invoke(handle, null);
-                if (result is BlackVolTermStructure vs) return vs;
-            }
-        }
-        catch { }
-
-        try
-        {
-            var method = handle.GetType().GetMethod("get");
-            if (method != null)
-            {
-                var result = method.Invoke(handle, null);
-                if (result is BlackVolTermStructure vs) return vs;
-            }
-        }
-        catch { }
-
-        throw new InvalidOperationException("Cannot access BlackVolTermStructure from handle");
-    }
-
-    /// <summary>
-    /// Safely gets the rate value from InterestRate
-    /// </summary>
-    public static double GetInterestRateValue(InterestRate rate)
-    {
-        try
-        {
-            var method = rate.GetType().GetMethod("rate");
-            if (method != null)
-            {
-                var result = method.Invoke(rate, null);
-                if (result is double d) return d;
-            }
-        }
-        catch { }
-
-        try
-        {
-            var property = rate.GetType().GetProperty("rate");
-            if (property != null)
-            {
-                var result = property.GetValue(rate);
-                if (result is double d) return d;
-            }
-        }
-        catch { }
-
-        try
-        {
-            var method = rate.GetType().GetMethod("value");
-            if (method != null)
-            {
-                var result = method.Invoke(rate, null);
-                if (result is double d) return d;
-            }
-        }
-        catch { }
-
-        throw new InvalidOperationException("Cannot access rate value from InterestRate");
-    }
-
-    /// <summary>
-    /// Fallback numerical integration using trapezoidal rule
-    /// </summary>
-    private static double FallbackIntegration(Func<double, double> f, double a, double b, int n)
+    public static double SimpleTrapezoidalIntegration(Func<double, double> f, double a, double b, int n = 1000)
     {
         double h = (b - a) / n;
-        double sum = 0.5 * (f(a) + f(b));
+        double sum = 0.5 * (SafeEvaluate(f, a) + SafeEvaluate(f, b));
 
         for (int i = 1; i < n; i++)
         {
-            try
-            {
-                sum += f(a + i * h);
-            }
-            catch
-            {
-                // Skip problematic points
-            }
+            sum += SafeEvaluate(f, a + i * h);
         }
 
         return h * sum;
     }
 
     /// <summary>
-    /// Error function approximation for CDF fallback
+    /// Safe function evaluation with error handling
     /// </summary>
-    private static double Erf(double x)
+    private static double SafeEvaluate(Func<double, double> f, double x)
     {
-        // Abramowitz and Stegun approximation
-        const double a1 = 0.254829592;
-        const double a2 = -0.284496736;
-        const double a3 = 1.421413741;
-        const double a4 = -1.453152027;
-        const double a5 = 1.061405429;
-        const double p = 0.3275911;
+        try
+        {
+            var result = f(x);
+            return double.IsNaN(result) || double.IsInfinity(result) ? 0.0 : result;
+        }
+        catch
+        {
+            return 0.0;
+        }
+    }
 
-        int sign = x >= 0 ? 1 : -1;
-        x = Math.Abs(x);
+    /// <summary>
+    /// Create QuantLib Date from .NET DateTime
+    /// </summary>
+    public static Date CreateQuantLibDate(DateTime dateTime)
+    {
+        return new Date((uint)dateTime.Day, (Month)(dateTime.Month), (uint)dateTime.Year);
+    }
 
-        double t = 1.0 / (1.0 + p * x);
-        double y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.Exp(-x * x);
+    /// <summary>
+    /// Convert QuantLib Date to .NET DateTime
+    /// </summary>
+    public static DateTime ConvertToDateTime(Date quantLibDate)
+    {
+        return new DateTime((int)quantLibDate.year(), (int)quantLibDate.month(), (int)quantLibDate.dayOfMonth());
+    }
+}
 
-        return sign * y;
+/// <summary>
+/// Minimal parameter validation - replaces complex validation in original files
+/// </summary>
+public static class ParameterValidator
+{
+    public static void ValidateMarketParameters(double spot, double strike, double r, double q, double sigma, double timeToMaturity)
+    {
+        if (spot <= 0) throw new ArgumentException("Spot price must be positive");
+        if (strike <= 0) throw new ArgumentException("Strike price must be positive");
+        if (sigma <= 0) throw new ArgumentException("Volatility must be positive");
+        if (timeToMaturity <= 0) throw new ArgumentException("Time to maturity must be positive");
+        if (sigma > 5.0) throw new ArgumentException("Volatility too high (>500%)");
+        if (Math.Abs(r) > 0.5) throw new ArgumentException("Interest rate too extreme");
+        if (Math.Abs(q) > 0.5) throw new ArgumentException("Dividend yield too extreme");
+    }
+
+    public static void ValidateSpectralParameters(int spectralNodes, double tolerance, int maxIterations)
+    {
+        if (spectralNodes < 3 || spectralNodes > 32) 
+            throw new ArgumentException("Spectral nodes must be between 3 and 32");
+        if (tolerance <= 0 || tolerance > 1e-3) 
+            throw new ArgumentException("Tolerance must be between 0 and 1e-3");
+        if (maxIterations < 1 || maxIterations > 1000) 
+            throw new ArgumentException("Max iterations must be between 1 and 1000");
     }
 }

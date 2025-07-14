@@ -3,14 +3,14 @@
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <AssemblyName>Alaris.QuantLib</AssemblyName>
-    <RootNamespace>Alaris.QuantLib</RootNamespace>
-    <PackageId>Alaris.QuantLib</PackageId>
+    <AssemblyName>Alaris.Quantlib</AssemblyName>
+    <RootNamespace>Alaris.Quantlib</RootNamespace>
+    <PackageId>Alaris.Quantlib</PackageId>
     <Version>1.0.0</Version>
     <Authors>Alaris Team</Authors>
     <Company>Alaris</Company>
-    <Product>Alaris QuantLib</Product>
-    <Description>Professional American option pricing engines and QuantLib C# bindings for financial derivatives</Description>
+    <Product>Alaris Quantlib</Product>
+    <Description>Professional American option pricing engines and Quantlib C# bindings for financial derivatives</Description>
     <Copyright>© Alaris Team</Copyright>
   </PropertyGroup>
 

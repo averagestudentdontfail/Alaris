@@ -1,633 +1,236 @@
-using Alaris.Double;
+using Alaris.Quantlib;
 using Microsoft.Extensions.Logging;
 
 namespace Alaris.Double;
 
 /// <summary>
-/// Extension methods and utility functions for the Alaris Double Boundary engine
-/// Provides convenience methods for common operations and parameter validation
+/// QuantLib-focused utilities - replaces custom utility functions
+/// Leverages QuantLib infrastructure instead of reimplementing mathematical functions
 /// </summary>
-public static class UtilityExtensions
+public static class QuantLibUtilities
 {
-    #region VanillaOption Extensions
-
     /// <summary>
-    /// Prices an American option using the appropriate engine based on market conditions
-    /// Automatically selects between standard and double boundary engines
+    /// Extract complete market parameters from QuantLib process
+    /// Replaces manual parameter extraction throughout the codebase
     /// </summary>
-    /// <param name="option">The American option to price</param>
-    /// <param name="process">Market process</param>
-    /// <param name="spectralNodes">Number of spectral nodes for double boundary cases</param>
-    /// <param name="logger">Optional logger</param>
-    /// <returns>Option price and detailed results</returns>
-    public static (double price, DoubleBoundaryResults? details) PriceWithOptimalEngine(
-        this VanillaOption option, 
-        GeneralizedBlackScholesProcess process,
-        int spectralNodes = Constants.DEFAULT_SPECTRAL_NODES,
-        ILogger? logger = null)
+    public static MarketParameters ExtractMarketParameters(
+        GeneralizedBlackScholesProcess process, 
+        double strike, 
+        double timeToMaturity, 
+        Option.Type optionType)
     {
-        // Use the static method from DoubleBoundaryAmericanEngine
-        double price = DoubleBoundaryAmericanEngine.PriceAmericanOption(option, process, spectralNodes, logger: logger);
-        
-        // Extract market parameters to determine regime for details
-        var marketParams = ExtractMarketParametersFromOption(option, process);
-        var regime = RegimeAnalyzer.DetermineRegime(
-            marketParams.r, marketParams.q, marketParams.sigma, marketParams.optionType);
-
-        var details = new DoubleBoundaryResults
+        return new MarketParameters
         {
-            Regime = regime,
-            OptionPrice = price,
-            CriticalVolatility = RegimeAnalyzer.CriticalVolatility(marketParams.r, marketParams.q)
+            Spot = process.x0(),
+            Strike = strike,
+            R = SimplifiedQuantLibHelper.ExtractRate(process.riskFreeRate().currentLink(), timeToMaturity),
+            Q = SimplifiedQuantLibHelper.ExtractRate(process.dividendYield().currentLink(), timeToMaturity),
+            Sigma = SimplifiedQuantLibHelper.ExtractVolatility(process.blackVolatility().currentLink(), timeToMaturity, strike),
+            TimeToMaturity = timeToMaturity,
+            OptionType = optionType
         };
-
-        // If double boundary regime, get full details
-        if (regime == ExerciseRegimeType.DoubleBoundaryNegativeRates)
-        {
-            try
-            {
-                var engine = new DoubleBoundaryAmericanEngine(process, spectralNodes, logger: logger);
-                engine.SetOptionParameters(marketParams.strike, marketParams.tau, marketParams.optionType);
-                engine.CalculatePrice(); // This will populate the results
-                var fullDetails = engine.GetDetailedResults();
-                if (fullDetails != null)
-                {
-                    details = fullDetails;
-                }
-            }
-            catch (Exception ex)
-            {
-                logger?.LogWarning(ex, "Failed to get detailed results for double boundary option");
-            }
-        }
-
-        return (price, details);
     }
 
     /// <summary>
-    /// Validates that option parameters are reasonable for pricing
+    /// Create QuantLib process from parameters - useful for testing
     /// </summary>
-    /// <param name="option">Option to validate</param>
-    /// <param name="process">Market process</param>
-    /// <returns>True if parameters are valid</returns>
-    public static bool ValidateParameters(this VanillaOption option, GeneralizedBlackScholesProcess process)
-    {
-        try
-        {
-            var marketParams = ExtractMarketParametersFromOption(option, process);
-            
-            return marketParams.tau >= Constants.MIN_TIME_TO_MATURITY &&
-                   marketParams.tau <= Constants.MAX_TIME_TO_MATURITY &&
-                   marketParams.sigma >= Constants.MIN_VOLATILITY &&
-                   marketParams.sigma <= Constants.MAX_VOLATILITY &&
-                   marketParams.r >= Constants.MIN_INTEREST_RATE &&
-                   marketParams.r <= Constants.MAX_INTEREST_RATE &&
-                   marketParams.spot > 0 &&
-                   marketParams.strike > 0;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-    #endregion
-
-    #region Market Parameter Utilities
-
-    /// <summary>
-    /// Creates a complete market environment for American option pricing
-    /// </summary>
-    /// <param name="spot">Current asset price</param>
-    /// <param name="strike">Strike price</param>
-    /// <param name="timeToMaturity">Time to maturity in years</param>
-    /// <param name="volatility">Volatility (annualized)</param>
-    /// <param name="riskFreeRate">Risk-free interest rate</param>
-    /// <param name="dividendYield">Dividend yield</param>
-    /// <returns>Configured Black-Scholes process</returns>
-    public static GeneralizedBlackScholesProcess CreateMarketEnvironment(
-        double spot, double strike, double timeToMaturity,
-        double volatility, double riskFreeRate, double dividendYield)
+    public static GeneralizedBlackScholesProcess CreateProcess(MarketParameters parameters)
     {
         var today = Settings.instance().getEvaluationDate();
         
-        var underlying = new SimpleQuote(spot);
-        var dividendYieldCurve = new FlatForward(today, dividendYield, new Actual365Fixed());
-        var volatilitySurface = new BlackConstantVol(today, new TARGET(), volatility, new Actual365Fixed());
-        var riskFreeRateCurve = new FlatForward(today, riskFreeRate, new Actual365Fixed());
+        var underlying = new SimpleQuote(parameters.Spot);
+        var riskFreeRate = new FlatForward(today, parameters.R, new Actual365Fixed());
+        var dividendYield = new FlatForward(today, parameters.Q, new Actual365Fixed());
+        var volatility = new BlackConstantVol(today, new TARGET(), parameters.Sigma, new Actual365Fixed());
 
         return new BlackScholesMertonProcess(
             new QuoteHandle(underlying),
-            new YieldTermStructureHandle(dividendYieldCurve),
-            new YieldTermStructureHandle(riskFreeRateCurve),
-            new BlackVolTermStructureHandle(volatilitySurface)
+            new YieldTermStructureHandle(dividendYield),
+            new YieldTermStructureHandle(riskFreeRate),
+            new BlackVolTermStructureHandle(volatility)
         );
     }
 
     /// <summary>
-    /// Creates an American option with specified parameters
+    /// Calculate European baseline using QuantLib - eliminates custom implementations
     /// </summary>
-    /// <param name="optionType">Put or Call</param>
-    /// <param name="strike">Strike price</param>
-    /// <param name="maturityDate">Maturity date</param>
-    /// <returns>Configured American option</returns>
-    public static VanillaOption CreateAmericanOption(Option.Type optionType, double strike, Date maturityDate)
-    {
-        var exercise = new AmericanExercise(Settings.instance().getEvaluationDate(), maturityDate);
-        var payoff = new PlainVanillaPayoff(optionType, strike);
-        return new VanillaOption(payoff, exercise);
-    }
-
-    /// <summary>
-    /// Analyzes the exercise regime for given market parameters
-    /// </summary>
-    /// <param name="r">Risk-free rate</param>
-    /// <param name="q">Dividend yield</param>
-    /// <param name="sigma">Volatility</param>
-    /// <param name="optionType">Option type</param>
-    /// <returns>Detailed regime analysis</returns>
-    public static RegimeAnalysis AnalyzeExerciseRegime(double r, double q, double sigma, Option.Type optionType)
-    {
-        var regime = RegimeAnalyzer.DetermineRegime(r, q, sigma, optionType);
-        var criticalVol = RegimeAnalyzer.CriticalVolatility(r, q);
-        
-        return new RegimeAnalysis
-        {
-            Regime = regime,
-            CriticalVolatility = criticalVol,
-            IsDoubleBoundary = regime == ExerciseRegimeType.DoubleBoundaryNegativeRates,
-            RecommendedEngine = GetRecommendedEngine(regime),
-            ParameterConstraints = GetParameterConstraints(regime),
-            EstimatedComplexity = GetComplexityEstimate(regime)
-        };
-    }
-
-    #endregion
-
-    #region Convergence and Performance Utilities
-
-    /// <summary>
-    /// Performs convergence analysis across different spectral node counts
-    /// </summary>
-    /// <param name="option">Option to analyze</param>
-    /// <param name="process">Market process</param>
-    /// <param name="nodeRange">Range of spectral nodes to test</param>
-    /// <param name="logger">Optional logger</param>
-    /// <returns>Convergence analysis results</returns>
-    public static ConvergenceAnalysis AnalyzeConvergence(
-        VanillaOption option, 
-        GeneralizedBlackScholesProcess process,
-        IEnumerable<int> nodeRange,
-        ILogger? logger = null)
-    {
-        var results = new List<ConvergencePoint>();
-        var marketParams = ExtractMarketParametersFromOption(option, process);
-        
-        foreach (int nodes in nodeRange.OrderBy(n => n))
-        {
-            try
-            {
-                var engine = new DoubleBoundaryAmericanEngine(process, nodes, logger: logger);
-                engine.SetOptionParameters(marketParams.strike, marketParams.tau, marketParams.optionType);
-                
-                var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-                double price = engine.CalculatePrice();
-                stopwatch.Stop();
-                
-                var details = engine.GetDetailedResults();
-                
-                results.Add(new ConvergencePoint
-                {
-                    SpectralNodes = nodes,
-                    Price = price,
-                    ComputationTime = stopwatch.Elapsed,
-                    Iterations = details?.IterationsConverged ?? 0,
-                    FinalError = details?.FinalError ?? double.NaN,
-                    EstimatedError = details?.UpperBoundary?.EstimatedError ?? double.NaN
-                });
-                
-                logger?.LogDebug("Convergence point: {Nodes} nodes → {Price:F6} in {Time:F1}ms", 
-                                nodes, price, stopwatch.ElapsedMilliseconds);
-            }
-            catch (Exception ex)
-            {
-                logger?.LogWarning(ex, "Failed convergence test for {Nodes} nodes", nodes);
-            }
-        }
-        
-        return new ConvergenceAnalysis
-        {
-            Points = results,
-            EstimatedConvergenceRate = EstimateConvergenceRate(results),
-            RecommendedNodes = GetOptimalNodeCount(results),
-            RichardsonExtrapolation = ComputeRichardsonExtrapolation(results)
-        };
-    }
-
-    /// <summary>
-    /// Benchmarks engine performance across different parameter sets
-    /// </summary>
-    /// <param name="testCases">Test cases to benchmark</param>
-    /// <param name="logger">Optional logger</param>
-    /// <returns>Performance benchmark results</returns>
-    public static PerformanceBenchmark BenchmarkPerformance(
-        IEnumerable<BenchmarkCase> testCases,
-        ILogger? logger = null)
-    {
-        var results = new List<BenchmarkResult>();
-        
-        foreach (var testCase in testCases)
-        {
-            try
-            {
-                var process = CreateMarketEnvironment(
-                    testCase.Spot, testCase.Strike, testCase.TimeToMaturity,
-                    testCase.Volatility, testCase.RiskFreeRate, testCase.DividendYield);
-                
-                var option = CreateAmericanOption(testCase.OptionType, testCase.Strike,
-                    QuantLibApiHelper.AddDaysToDate(Settings.instance().getEvaluationDate(), 
-                                                  (int)(testCase.TimeToMaturity * 365)));
-                
-                var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-                var (price, details) = option.PriceWithOptimalEngine(process, logger: logger);
-                stopwatch.Stop();
-                
-                results.Add(new BenchmarkResult
-                {
-                    TestCase = testCase,
-                    Price = price,
-                    ComputationTime = stopwatch.Elapsed,
-                    Regime = details?.Regime ?? ExerciseRegimeType.SingleBoundaryPositive,
-                    Success = true
-                });
-                
-                logger?.LogDebug("Benchmark {Name}: {Price:F6} in {Time:F1}ms", 
-                                testCase.Name, price, stopwatch.ElapsedMilliseconds);
-            }
-            catch (Exception ex)
-            {
-                results.Add(new BenchmarkResult
-                {
-                    TestCase = testCase,
-                    Success = false,
-                    ErrorMessage = ex.Message
-                });
-                
-                logger?.LogWarning(ex, "Benchmark {Name} failed", testCase.Name);
-            }
-        }
-        
-        return new PerformanceBenchmark
-        {
-            Results = results,
-            AverageTime = results.Where(r => r.Success).Average(r => r.ComputationTime.TotalMilliseconds),
-            SuccessRate = (double)results.Count(r => r.Success) / results.Count
-        };
-    }
-
-    /// <summary>
-    /// Creates a pricing engine that automatically selects the optimal method
-    /// For integration with QuantLib's option.setPricingEngine() pattern
-    /// Note: For double boundary cases, use PriceWithOptimalEngine() extension method instead
-    /// </summary>
-    /// <param name="process">Market process</param>
-    /// <param name="strike">Strike price</param>
-    /// <param name="timeToMaturity">Time to maturity</param>
-    /// <param name="optionType">Option type</param>
-    /// <param name="spectralNodes">Spectral nodes for double boundary cases (unused due to SWIG limitations)</param>
-    /// <param name="logger">Optional logger</param>
-    /// <returns>Appropriate pricing engine (falls back to standard engines for double boundary cases)</returns>
-    public static PricingEngine CreateOptimalEngine(
-        GeneralizedBlackScholesProcess process,
-        double strike,
-        double timeToMaturity,
-        Option.Type optionType,
-        int spectralNodes = Constants.DEFAULT_SPECTRAL_NODES,
-        ILogger? logger = null)
-    {
-        return DoubleBoundaryAmericanEngine.CreateCompatibleEngine(
-            process, strike, timeToMaturity, optionType, spectralNodes, logger);
-    }
-
-    #endregion
-
-    #region Private Helper Methods
-
-    /// <summary>
-    /// Alternative method to extract market parameters without using VanillaOption.Arguments
-    /// Uses reflection and direct property access to get option parameters
-    /// </summary>
-    private static (double spot, double strike, double tau, double r, double q, double sigma, Option.Type optionType) 
-        ExtractMarketParametersFromOption(VanillaOption option, GeneralizedBlackScholesProcess process)
-    {
-        var today = Settings.instance().getEvaluationDate();
-        
-        // Try to extract parameters using reflection
-        double strike = 100.0; // default value
-        double tau = 1.0; // default value
-        Option.Type optionType = Option.Type.Put; // default value
-        
-        try
-        {
-            // Try to access the payoff to get strike and option type
-            var optionType_obj = option.GetType();
-            
-            // Look for payoff property/field
-            var payoffProperty = optionType_obj.GetProperty("payoff");
-            var payoffField = optionType_obj.GetField("payoff");
-            
-            object? payoff = null;
-            if (payoffProperty != null)
-            {
-                payoff = payoffProperty.GetValue(option);
-            }
-            else if (payoffField != null)
-            {
-                payoff = payoffField.GetValue(option);
-            }
-            
-            if (payoff != null)
-            {
-                var payoffType = payoff.GetType();
-                
-                // Try to get strike
-                var strikeMethod = payoffType.GetMethod("strike");
-                if (strikeMethod != null)
-                {
-                    var strikeResult = strikeMethod.Invoke(payoff, null);
-                    if (strikeResult is double strikeValue)
-                    {
-                        strike = strikeValue;
-                    }
-                }
-                
-                // Try to get option type
-                var optionTypeMethod = payoffType.GetMethod("optionType");
-                if (optionTypeMethod != null)
-                {
-                    var optionTypeResult = optionTypeMethod.Invoke(payoff, null);
-                    if (optionTypeResult is Option.Type typeValue)
-                    {
-                        optionType = typeValue;
-                    }
-                }
-            }
-            
-            // Try to access the exercise to get maturity
-            var exerciseProperty = optionType_obj.GetProperty("exercise");
-            var exerciseField = optionType_obj.GetField("exercise");
-            
-            object? exercise = null;
-            if (exerciseProperty != null)
-            {
-                exercise = exerciseProperty.GetValue(option);
-            }
-            else if (exerciseField != null)
-            {
-                exercise = exerciseField.GetValue(option);
-            }
-            
-            if (exercise != null)
-            {
-                var exerciseType = exercise.GetType();
-                
-                // Try to get last date (maturity)
-                var lastDateMethod = exerciseType.GetMethod("lastDate");
-                if (lastDateMethod != null)
-                {
-                    var lastDateResult = lastDateMethod.Invoke(exercise, null);
-                    if (lastDateResult is Date maturityDate)
-                    {
-                        tau = Math.Max((maturityDate.serialNumber() - today.serialNumber()) / 365.0, Constants.MIN_TIME_TO_MATURITY);
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            // If reflection fails, use default values
-            System.Diagnostics.Debug.WriteLine($"Failed to extract option parameters via reflection: {ex.Message}");
-        }
-        
-        // Extract market parameters from process
-        double r = GetRateFromTermStructure(process.riskFreeRate(), tau);
-        double q = GetRateFromTermStructure(process.dividendYield(), tau);
-        double sigma = GetVolatilityFromStructure(process.blackVolatility(), tau, process.x0());
-        double spot = process.x0();
-        
-        return (spot, strike, tau, r, q, sigma, optionType);
-    }
-
-    // Helper methods for safe rate/volatility extraction
-    private static double GetRateFromTermStructure(YieldTermStructureHandle handle, double tau)
+    public static double CalculateEuropeanBaseline(MarketParameters parameters)
     {
         try
         {
-            var termStructure = QuantLibApiHelper.GetTermStructure(handle);
-            var rate = termStructure.zeroRate(tau, Compounding.Continuous);
-            return QuantLibApiHelper.GetInterestRateValue(rate);
+            var process = CreateProcess(parameters);
+            var today = Settings.instance().getEvaluationDate();
+            var maturity = new Date(today.serialNumber() + (uint)(parameters.TimeToMaturity * 365));
+            
+            var exercise = new EuropeanExercise(maturity);
+            var payoff = new PlainVanillaPayoff(parameters.OptionType, parameters.Strike);
+            var option = new VanillaOption(payoff, exercise);
+            
+            var engine = new AnalyticEuropeanEngine(process);
+            option.setPricingEngine(engine);
+            
+            return option.NPV();
         }
         catch
         {
-            return 0.05; // Default 5% rate
+            // Fallback to manual calculation
+            return CalculateBlackScholes(parameters);
         }
     }
 
-    private static double GetVolatilityFromStructure(BlackVolTermStructureHandle handle, double tau, double spot)
+    /// <summary>
+    /// Manual Black-Scholes calculation as absolute fallback
+    /// </summary>
+    private static double CalculateBlackScholes(MarketParameters mp)
     {
-        try
+        if (mp.TimeToMaturity <= 0) 
+            return Math.Max(mp.OptionType == Option.Type.Call ? mp.Spot - mp.Strike : mp.Strike - mp.Spot, 0.0);
+
+        double d1 = (Math.Log(mp.Spot / mp.Strike) + (mp.R - mp.Q + 0.5 * mp.Sigma * mp.Sigma) * mp.TimeToMaturity) 
+                   / (mp.Sigma * Math.Sqrt(mp.TimeToMaturity));
+        double d2 = d1 - mp.Sigma * Math.Sqrt(mp.TimeToMaturity);
+
+        double nd1 = SimplifiedQuantLibHelper.NormalCdf(d1);
+        double nd2 = SimplifiedQuantLibHelper.NormalCdf(d2);
+        double nmd1 = SimplifiedQuantLibHelper.NormalCdf(-d1);
+        double nmd2 = SimplifiedQuantLibHelper.NormalCdf(-d2);
+
+        if (mp.OptionType == Option.Type.Call)
         {
-            var volStructure = QuantLibApiHelper.GetVolatilityStructure(handle);
-            return volStructure.blackVol(tau, spot);
+            return mp.Spot * Math.Exp(-mp.Q * mp.TimeToMaturity) * nd1 - 
+                   mp.Strike * Math.Exp(-mp.R * mp.TimeToMaturity) * nd2;
         }
-        catch
+        else
         {
-            return 0.20; // Default 20% volatility
+            return mp.Strike * Math.Exp(-mp.R * mp.TimeToMaturity) * nmd2 - 
+                   mp.Spot * Math.Exp(-mp.Q * mp.TimeToMaturity) * nmd1;
         }
     }
 
-    private static string GetRecommendedEngine(ExerciseRegimeType regime)
+    /// <summary>
+    /// Performance profiling utilities
+    /// </summary>
+    public static class Performance
     {
-        return regime switch
+        public static T MeasureTime<T>(Func<T> operation, out TimeSpan elapsed, ILogger? logger = null)
         {
-            ExerciseRegimeType.DoubleBoundaryNegativeRates => "DoubleBoundaryAmericanEngine",
-            ExerciseRegimeType.NoEarlyExercise => "AnalyticEuropeanEngine",
-            _ => "QdFpAmericanEngine"
-        };
-    }
-
-    private static string GetParameterConstraints(ExerciseRegimeType regime)
-    {
-        return regime switch
-        {
-            ExerciseRegimeType.SingleBoundaryPositive => "r ≥ q ≥ 0",
-            ExerciseRegimeType.SingleBoundaryNegativeDividend => "r ≥ 0 > q",
-            ExerciseRegimeType.DoubleBoundaryNegativeRates => "q < r < 0, σ ≤ σ*",
-            ExerciseRegimeType.NoEarlyExercise => "Various conditions where early exercise is never optimal",
-            _ => "Unknown constraints"
-        };
-    }
-
-    private static string GetComplexityEstimate(ExerciseRegimeType regime)
-    {
-        return regime switch
-        {
-            ExerciseRegimeType.DoubleBoundaryNegativeRates => "High (spectral iteration)",
-            ExerciseRegimeType.SingleBoundaryPositive => "Medium (single boundary)",
-            ExerciseRegimeType.NoEarlyExercise => "Low (analytical)",
-            _ => "Variable"
-        };
-    }
-
-    private static double EstimateConvergenceRate(List<ConvergencePoint> points)
-    {
-        if (points.Count < 3) return double.NaN;
-        
-        // Simple exponential fit to price differences
-        var sortedPoints = points.OrderBy(p => p.SpectralNodes).ToList();
-        var priceDiffs = new List<double>();
-        
-        for (int i = 1; i < sortedPoints.Count; i++)
-        {
-            double diff = Math.Abs(sortedPoints[i].Price - sortedPoints[i-1].Price);
-            if (diff > 0) priceDiffs.Add(diff);
-        }
-        
-        if (priceDiffs.Count < 2) return double.NaN;
-        
-        // Estimate exponential decay rate
-        double avgRatio = 0.0;
-        for (int i = 1; i < priceDiffs.Count; i++)
-        {
-            if (priceDiffs[i-1] > 0)
-                avgRatio += priceDiffs[i] / priceDiffs[i-1];
-        }
-        
-        return avgRatio / (priceDiffs.Count - 1);
-    }
-
-    private static int GetOptimalNodeCount(List<ConvergencePoint> points)
-    {
-        // Balance accuracy vs. computation time
-        var validPoints = points.Where(p => !double.IsNaN(p.Price) && p.ComputationTime.TotalMilliseconds > 0).ToList();
-        if (!validPoints.Any()) return Constants.DEFAULT_SPECTRAL_NODES;
-        
-        // Find point with best accuracy/time ratio
-        double bestRatio = 0.0;
-        int bestNodes = Constants.DEFAULT_SPECTRAL_NODES;
-        
-        foreach (var point in validPoints)
-        {
-            double accuracy = 1.0 / Math.Max(point.FinalError, 1e-12);
-            double time = point.ComputationTime.TotalMilliseconds;
-            double ratio = accuracy / time;
-            
-            if (ratio > bestRatio)
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            try
             {
-                bestRatio = ratio;
-                bestNodes = point.SpectralNodes;
+                var result = operation();
+                stopwatch.Stop();
+                elapsed = stopwatch.Elapsed;
+                logger?.LogDebug("Operation completed in {ElapsedMs}ms", elapsed.TotalMilliseconds);
+                return result;
+            }
+            catch
+            {
+                stopwatch.Stop();
+                elapsed = stopwatch.Elapsed;
+                throw;
             }
         }
-        
-        return bestNodes;
+
+        public static void ProfileEnginePerformance(
+            OptimizedDoubleBoundaryEngine engine, 
+            MarketParameters parameters, 
+            ILogger? logger = null)
+        {
+            var iterations = new[] { 5, 10, 25 };
+            
+            foreach (int iter in iterations)
+            {
+                var times = new List<double>();
+                
+                for (int i = 0; i < iter; i++)
+                {
+                    var result = MeasureTime(() => engine.PriceAmericanOption(
+                        parameters.Strike, parameters.TimeToMaturity, parameters.OptionType), 
+                        out var elapsed);
+                    times.Add(elapsed.TotalMilliseconds);
+                }
+                
+                double avgTime = times.Average();
+                double minTime = times.Min();
+                double maxTime = times.Max();
+                
+                logger?.LogInformation("Performance ({Iterations} runs): Avg={AvgTime:F1}ms, Min={MinTime:F1}ms, Max={MaxTime:F1}ms", 
+                                      iter, avgTime, minTime, maxTime);
+            }
+        }
     }
 
-    private static double ComputeRichardsonExtrapolation(List<ConvergencePoint> points)
+    /// <summary>
+    /// Error handling utilities focused on QuantLib integration
+    /// </summary>
+    public static class ErrorHandling
     {
-        if (points.Count < 3) return double.NaN;
-        
-        var sortedPoints = points.OrderByDescending(p => p.SpectralNodes).Take(3).ToList();
-        if (sortedPoints.Count < 3) return double.NaN;
-        
-        // Richardson extrapolation assuming geometric convergence
-        double p1 = sortedPoints[0].Price;
-        double p2 = sortedPoints[1].Price;
-        double p3 = sortedPoints[2].Price;
-        
-        double r = (p1 - p2) / (p2 - p3);
-        if (Math.Abs(r - 1.0) < 1e-10) return p1;
-        
-        return p1 + (p1 - p2) / (r - 1.0);
+        public static T SafeQuantLibOperation<T>(Func<T> operation, T fallbackValue, ILogger? logger = null)
+        {
+            try
+            {
+                return operation();
+            }
+            catch (Exception ex)
+            {
+                logger?.LogWarning(ex, "QuantLib operation failed, using fallback value");
+                return fallbackValue;
+            }
+        }
+
+        public static bool TryQuantLibOperation<T>(Func<T> operation, out T result, ILogger? logger = null)
+        {
+            try
+            {
+                result = operation();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                logger?.LogDebug(ex, "QuantLib operation failed");
+                result = default(T)!;
+                return false;
+            }
+        }
     }
 
-    #endregion
+    /// <summary>
+    /// Engine factory utilities - simplified compared to complex factory patterns
+    /// </summary>
+    public static IPricingEngine CreateOptimalEngine(
+        GeneralizedBlackScholesProcess process,
+        MarketParameters parameters,
+        ILogger? logger = null)
+    {
+        var regime = OptimizedRegimeAnalyzer.DetermineRegime(
+            parameters.R, parameters.Q, parameters.Sigma, parameters.OptionType);
+
+        logger?.LogDebug("Selected {Regime} for r={R:F4}, q={Q:F4}, σ={Sigma:F4}", 
+                        regime, parameters.R, parameters.Q, parameters.Sigma);
+
+        return regime switch
+        {
+            ExerciseRegimeType.NoEarlyExercise => new AnalyticEuropeanEngine(process),
+            ExerciseRegimeType.DoubleBoundaryNegativeRates => new DoubleBoundaryEngineWrapper(process, logger),
+            _ => new QdFpAmericanEngine(process, QdFpAmericanEngine.accurateScheme())
+        };
+    }
+
+    /// <summary>
+    /// Logging utilities for detailed analysis
+    /// </summary>
+    public static void LogMarketParameters(MarketParameters parameters, ILogger logger)
+    {
+        logger.LogInformation("Market Parameters: S={Spot:F2}, K={Strike:F2}, r={R:F4}, q={Q:F4}, σ={Sigma:F4}, T={T:F4}",
+                             parameters.Spot, parameters.Strike, parameters.R, parameters.Q, parameters.Sigma, parameters.TimeToMaturity);
+        
+        var regime = OptimizedRegimeAnalyzer.DetermineRegime(parameters.R, parameters.Q, parameters.Sigma, parameters.OptionType);
+        logger.LogInformation("Detected regime: {Regime}", regime);
+        
+        if (regime == ExerciseRegimeType.DoubleBoundaryNegativeRates)
+        {
+            var criticalVol = OptimizedRegimeAnalyzer.CalculateCriticalVolatility(parameters.R, parameters.Q);
+            logger.LogInformation("Critical volatility: {CriticalVol:F4}, Current: {CurrentVol:F4}", criticalVol, parameters.Sigma);
+        }
+    }
 }
-
-#region Supporting Data Structures
-
-/// <summary>
-/// Analysis of exercise regime characteristics
-/// </summary>
-public class RegimeAnalysis
-{
-    public ExerciseRegimeType Regime { get; set; }
-    public double CriticalVolatility { get; set; } = double.NaN;
-    public bool IsDoubleBoundary { get; set; }
-    public string RecommendedEngine { get; set; } = string.Empty;
-    public string ParameterConstraints { get; set; } = string.Empty;
-    public string EstimatedComplexity { get; set; } = string.Empty;
-}
-
-/// <summary>
-/// Single point in convergence analysis
-/// </summary>
-public class ConvergencePoint
-{
-    public int SpectralNodes { get; set; }
-    public double Price { get; set; }
-    public TimeSpan ComputationTime { get; set; }
-    public int Iterations { get; set; }
-    public double FinalError { get; set; }
-    public double EstimatedError { get; set; }
-}
-
-/// <summary>
-/// Complete convergence analysis results
-/// </summary>
-public class ConvergenceAnalysis
-{
-    public List<ConvergencePoint> Points { get; set; } = new();
-    public double EstimatedConvergenceRate { get; set; }
-    public int RecommendedNodes { get; set; }
-    public double RichardsonExtrapolation { get; set; }
-}
-
-/// <summary>
-/// Test case for benchmarking
-/// </summary>
-public class BenchmarkCase
-{
-    public string Name { get; set; } = string.Empty;
-    public double Spot { get; set; }
-    public double Strike { get; set; }
-    public double TimeToMaturity { get; set; }
-    public double Volatility { get; set; }
-    public double RiskFreeRate { get; set; }
-    public double DividendYield { get; set; }
-    public Option.Type OptionType { get; set; }
-}
-
-/// <summary>
-/// Result from a single benchmark test
-/// </summary>
-public class BenchmarkResult
-{
-    public BenchmarkCase TestCase { get; set; } = new();
-    public double Price { get; set; }
-    public TimeSpan ComputationTime { get; set; }
-    public ExerciseRegimeType Regime { get; set; }
-    public bool Success { get; set; }
-    public string? ErrorMessage { get; set; }
-}
-
-/// <summary>
-/// Complete performance benchmark results
-/// </summary>
-public class PerformanceBenchmark
-{
-    public List<BenchmarkResult> Results { get; set; } = new();
-    public double AverageTime { get; set; }
-    public double SuccessRate { get; set; }
-}
-
-#endregion

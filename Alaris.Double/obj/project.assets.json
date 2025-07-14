@@ -243,14 +243,14 @@
           "buildTransitive/net8.0/_._": {}
         }
       },
-      "Alaris.QuantLib/1.0.0": {
+      "Alaris.Quantlib/1.0.0": {
         "type": "project",
         "framework": ".NETCoreApp,Version=v9.0",
         "compile": {
-          "bin/placeholder/Alaris.QuantLib.dll": {}
+          "bin/placeholder/Alaris.Quantlib.dll": {}
         },
         "runtime": {
-          "bin/placeholder/Alaris.QuantLib.dll": {}
+          "bin/placeholder/Alaris.Quantlib.dll": {}
         }
       }
     }
@@ -668,7 +668,7 @@
         "useSharedDesignerContext.txt"
       ]
     },
-    "Alaris.QuantLib/1.0.0": {
+    "Alaris.Quantlib/1.0.0": {
       "type": "project",
       "path": "../Alaris.Quantlib/Alaris.Quantlib.csproj",
       "msbuildProject": "../Alaris.Quantlib/Alaris.Quantlib.csproj"
@@ -676,7 +676,7 @@
   },
   "projectFileDependencyGroups": {
     "net9.0": [
-      "Alaris.QuantLib >= 1.0.0",
+      "Alaris.Quantlib >= 1.0.0",
       "Microsoft.Extensions.Logging >= 9.0.0",
       "Microsoft.Extensions.Logging.Console >= 9.0.0"
     ]

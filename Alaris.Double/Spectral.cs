@@ -1,101 +1,51 @@
-using Alaris.Double;
-
-
 namespace Alaris.Double;
 
 /// <summary>
-/// Implements spectral collocation methods using Chebyshev polynomials
-/// for boundary function approximation in American option pricing
+/// Simplified spectral methods - keeps essential Chebyshev functionality
+/// Removes complex transformations that can be handled by QuantLib
 /// </summary>
-public static class Spectral
+public static class SimplifiedSpectralMethods
 {
     /// <summary>
-    /// Generates Chebyshev-Gauss-Lobatto collocation nodes on [-1, 1]
+    /// Generate Chebyshev collocation nodes - essential for spectral methods
+    /// This is specialized for option pricing and cannot be easily replaced by QuantLib
     /// </summary>
-    /// <param name="n">Number of nodes</param>
-    /// <returns>Array of collocation points</returns>
-    public static double[] ChebyshevNodes(int n)
+    public static double[] CreateChebyshevNodes(int n)
     {
-        if (n < 2)
-        {
-            throw new ArgumentException("Number of nodes must be at least 2");
-        }
-
         var nodes = new double[n];
         for (int i = 0; i < n; i++)
         {
-            nodes[i] = Math.Cos(Math.PI * i / (n - 1));
+            nodes[i] = -Math.Cos((2 * i + 1) * Math.PI / (2 * n));
         }
         return nodes;
     }
 
     /// <summary>
-    /// Computes Chebyshev polynomial of the first kind T_n(x)
+    /// Evaluate Chebyshev polynomial using Clenshaw recurrence
+    /// Optimized for performance - removes unnecessary complexity
     /// </summary>
-    /// <param name="n">Polynomial degree</param>
-    /// <param name="x">Evaluation point</param>
-    /// <returns>T_n(x)</returns>
-    public static double ChebyshevPolynomial(int n, double x)
+    public static double EvaluateChebyshev(double[] coefficients, double x)
     {
-        if (n == 0) return 1.0;
-        if (n == 1) return x;
+        if (coefficients.Length == 0) return 0.0;
+        if (coefficients.Length == 1) return coefficients[0];
 
-        double T0 = 1.0, T1 = x;
-        for (int k = 2; k <= n; k++)
-        {
-            double T2 = 2.0 * x * T1 - T0;
-            T0 = T1;
-            T1 = T2;
-        }
-        return T1;
-    }
-
-    /// <summary>
-    /// Computes derivative of Chebyshev polynomial U_n(x) = T'_{n+1}(x)/(n+1)
-    /// </summary>
-    /// <param name="n">Polynomial degree</param>
-    /// <param name="x">Evaluation point</param>
-    /// <returns>T'_n(x)</returns>
-    public static double ChebyshevPolynomialDerivative(int n, double x)
-    {
-        if (n == 0) return 0.0;
-        if (n == 1) return 1.0;
-
-        // T'_n(x) = n * U_{n-1}(x) where U_k is Chebyshev polynomial of second kind
-        return n * ChebyshevSecondKind(n - 1, x);
-    }
-
-    /// <summary>
-    /// Interpolates function values at Chebyshev nodes using Clenshaw's algorithm
-    /// </summary>
-    /// <param name="coefficients">Chebyshev expansion coefficients</param>
-    /// <param name="x">Evaluation point in [-1, 1]</param>
-    /// <returns>Interpolated value</returns>
-    public static double ChebyshevInterpolate(double[] coefficients, double x)
-    {
-        int n = coefficients.Length;
-        if (n == 0) return 0.0;
-        if (n == 1) return coefficients[0];
-
-        // Clenshaw's recurrence algorithm for stable evaluation
-        double b_k = 0.0, b_k1 = 0.0;
+        double b_k = 0.0, b_k_plus_1 = 0.0;
         
-        for (int k = n - 1; k >= 1; k--)
+        for (int k = coefficients.Length - 1; k >= 1; k--)
         {
-            double b_k_minus_1 = coefficients[k] + 2.0 * x * b_k - b_k1;
-            b_k1 = b_k;
+            double b_k_minus_1 = coefficients[k] + 2 * x * b_k - b_k_plus_1;
+            b_k_plus_1 = b_k;
             b_k = b_k_minus_1;
         }
         
-        return coefficients[0] + x * b_k - b_k1;
+        return coefficients[0] + x * b_k - b_k_plus_1;
     }
 
     /// <summary>
-    /// Computes Chebyshev expansion coefficients from function values at collocation nodes
+    /// Fit Chebyshev interpolant to function values at collocation points
+    /// Simplified version focusing on boundary functions
     /// </summary>
-    /// <param name="functionValues">Function values at Chebyshev nodes</param>
-    /// <returns>Chebyshev expansion coefficients</returns>
-    public static double[] ChebyshevCoefficients(double[] functionValues)
+    public static double[] FitChebyshevInterpolant(double[] functionValues)
     {
         int n = functionValues.Length;
         var coefficients = new double[n];
@@ -103,319 +53,104 @@ public static class Spectral
         for (int k = 0; k < n; k++)
         {
             double sum = 0.0;
-            double ck = (k == 0 || k == n - 1) ? 2.0 : 1.0;
-            
             for (int j = 0; j < n; j++)
             {
-                double cj = (j == 0 || j == n - 1) ? 2.0 : 1.0;
-                sum += functionValues[j] * Math.Cos(Math.PI * k * j / (n - 1)) / cj;
+                sum += functionValues[j] * Math.Cos(k * (2 * j + 1) * Math.PI / (2 * n));
             }
-            
-            coefficients[k] = 2.0 * sum / ((n - 1) * ck);
+            coefficients[k] = (k == 0 ? 1.0 : 2.0) * sum / n;
         }
         
         return coefficients;
     }
 
     /// <summary>
-    /// Applies the transformation sequence to regularize boundary functions
-    /// ξ = √(τ/τ_max) → G(ξ) = ln(B̃(ξ²)) → H(ξ) = G(ξ)²
+    /// Transform time domain for boundary problems - essential for convergence
+    /// Maps [0, T] to [-1, 1] with concentration near expiry
     /// </summary>
-    /// <param name="boundaryValues">Raw boundary values B(τ)</param>
-    /// <param name="timePoints">Time points τ</param>
-    /// <param name="strike">Strike price</param>
-    /// <param name="r">Interest rate</param>
-    /// <param name="q">Dividend yield</param>
-    /// <returns>Transformed function values H(ξ)</returns>
-    public static double[] ApplyBoundaryTransformation(double[] boundaryValues, double[] timePoints, 
-                                                     double strike, double r, double q)
+    public static double TransformTimeToChebyshev(double tau, double maxTau)
     {
-        if (boundaryValues.Length != timePoints.Length)
-        {
-            throw new ArgumentException("Boundary values and time points must have same length");
-        }
-
-        int n = boundaryValues.Length;
-        var transformedValues = new double[n];
-        double tauMax = timePoints.Max();
+        if (maxTau <= 0) return 0.0;
         
-        // Normalization factor X = K * min(1, r/q)
-        double normalizationFactor = strike * Math.Min(1.0, Math.Abs(r / Math.Max(q, 1e-10)));
-        
-        for (int i = 0; i < n; i++)
-        {
-            // Stage 1: Temporal transformation ξ = √(τ/τ_max)
-            double xi = Math.Sqrt(timePoints[i] / tauMax);
-            
-            // Stage 2: Boundary normalization B̃(τ) = B(τ) / X
-            double normalizedBoundary = boundaryValues[i] / normalizationFactor;
-            
-            // Stage 3: Logarithmic transformation G(ξ) = ln(B̃(ξ²))
-            double G = Math.Log(Math.Max(normalizedBoundary, 1e-10)); // Avoid log(0)
-            
-            // Stage 4: Variance-stabilizing transformation H(ξ) = G(ξ)²
-            transformedValues[i] = G * G;
-        }
-        
-        return transformedValues;
+        // Square root transformation concentrates points near expiry
+        double sqrt_ratio = Math.Sqrt(tau / maxTau);
+        return 2 * sqrt_ratio - 1; // Map to [-1, 1]
     }
 
     /// <summary>
-    /// Inverts the transformation sequence to recover boundary values
-    /// H(ξ) → G(ξ) = √H(ξ) → B̃(ξ²) = exp(G(ξ)) → B(τ) = X * B̃(τ)
+    /// Inverse time transformation
     /// </summary>
-    /// <param name="transformedValues">Transformed function values H(ξ)</param>
-    /// <param name="timePoints">Time points τ</param>
-    /// <param name="strike">Strike price</param>
-    /// <param name="r">Interest rate</param>
-    /// <param name="q">Dividend yield</param>
-    /// <returns>Recovered boundary values B(τ)</returns>
-    public static double[] InvertBoundaryTransformation(double[] transformedValues, double[] timePoints,
-                                                      double strike, double r, double q)
+    public static double TransformChebyshevToTime(double xi, double maxTau)
     {
-        if (transformedValues.Length != timePoints.Length)
-        {
-            throw new ArgumentException("Transformed values and time points must have same length");
-        }
-
-        int n = transformedValues.Length;
-        var boundaryValues = new double[n];
-        
-        // Normalization factor X = K * min(1, r/q)
-        double normalizationFactor = strike * Math.Min(1.0, Math.Abs(r / Math.Max(q, 1e-10)));
-        
-        for (int i = 0; i < n; i++)
-        {
-            // Stage 4⁻¹: G(ξ) = √H(ξ) (take positive square root)
-            double G = Math.Sqrt(Math.Max(transformedValues[i], 0.0));
-            
-            // Stage 3⁻¹: B̃(ξ²) = exp(G(ξ))
-            double normalizedBoundary = Math.Exp(G);
-            
-            // Stage 2⁻¹: B(τ) = X * B̃(τ)
-            boundaryValues[i] = normalizationFactor * normalizedBoundary;
-        }
-        
-        return boundaryValues;
+        double sqrt_ratio = (xi + 1) / 2;
+        return maxTau * sqrt_ratio * sqrt_ratio;
     }
 
     /// <summary>
-    /// Computes the spectral derivative of a function represented by Chebyshev coefficients
+    /// Simplified boundary function representation
+    /// Removes complex transformation sequences in favor of direct approach
     /// </summary>
-    /// <param name="coefficients">Chebyshev expansion coefficients</param>
-    /// <returns>Coefficients of the derivative</returns>
-    public static double[] ChebyshevDerivativeCoefficients(double[] coefficients)
+    public class SimpleBoundaryFunction
     {
-        int n = coefficients.Length;
-        if (n <= 1) return new double[0];
-        
-        var derivativeCoeffs = new double[n - 1];
-        
-        // T'_n(x) = n * U_{n-1}(x), and the coefficients follow a specific recurrence
-        for (int k = 0; k < n - 1; k++)
+        private readonly double[] _coefficients;
+        private readonly double _maxTau;
+
+        public SimpleBoundaryFunction(double[] nodeValues, double[] timePoints, double maxTau)
         {
-            derivativeCoeffs[k] = 0.0;
-            for (int j = k + 1; j < n; j += 2)
-            {
-                derivativeCoeffs[k] += 2.0 * j * coefficients[j];
-            }
-            if (k == 0) derivativeCoeffs[k] /= 2.0;
+            _maxTau = maxTau;
+            
+            // Transform time points to Chebyshev domain
+            var transformedPoints = timePoints.Select(t => TransformTimeToChebyshev(t, maxTau)).ToArray();
+            
+            // Fit Chebyshev interpolant directly to node values
+            _coefficients = FitChebyshevInterpolant(nodeValues);
         }
-        
-        return derivativeCoeffs;
+
+        /// <summary>
+        /// Evaluate boundary at given time
+        /// </summary>
+        public double Evaluate(double tau)
+        {
+            if (tau <= 0) return _coefficients.Length > 0 ? _coefficients[0] : 0.0;
+            if (tau >= _maxTau) return EvaluateChebyshev(_coefficients, 1.0);
+            
+            double xi = TransformTimeToChebyshev(tau, _maxTau);
+            return EvaluateChebyshev(_coefficients, xi);
+        }
+
+        /// <summary>
+        /// Get coefficients for analysis
+        /// </summary>
+        public double[] GetCoefficients() => (double[])_coefficients.Clone();
     }
 
     /// <summary>
-    /// Estimates the convergence rate of the spectral approximation
+    /// Estimate convergence rate from coefficient decay
+    /// Simplified version for practical use
     /// </summary>
-    /// <param name="coefficients">Chebyshev expansion coefficients</param>
-    /// <returns>Estimated convergence rate (negative exponent)</returns>
     public static double EstimateConvergenceRate(double[] coefficients)
     {
-        int n = coefficients.Length;
-        if (n < 5) return double.NaN;
+        if (coefficients.Length < 4) return double.NaN;
         
-        // Look at decay of coefficients for last few terms
-        var lastCoeffs = coefficients.Skip(n - 5).Take(5).Select(Math.Abs).ToArray();
+        // Look at last few coefficients
+        var lastCoeffs = coefficients.Skip(coefficients.Length - 3).Select(Math.Abs).ToArray();
         
-        // Fit exponential decay: |a_k| ≈ C * ρ^(-k)
-        double sumLogK = 0.0, sumLogCoeff = 0.0, sumLogKSq = 0.0, sumLogKLogCoeff = 0.0;
-        int count = 0;
-        
-        for (int i = 0; i < lastCoeffs.Length; i++)
+        // Simple exponential decay estimate
+        if (lastCoeffs[0] > 1e-15 && lastCoeffs[2] > 1e-15)
         {
-            if (lastCoeffs[i] > 1e-16) // Avoid log(0)
-            {
-                double logK = Math.Log(n - 5 + i + 1);
-                double logCoeff = Math.Log(lastCoeffs[i]);
-                
-                sumLogK += logK;
-                sumLogCoeff += logCoeff;
-                sumLogKSq += logK * logK;
-                sumLogKLogCoeff += logK * logCoeff;
-                count++;
-            }
+            return Math.Log(lastCoeffs[0] / lastCoeffs[2]) / 2.0;
         }
         
-        if (count < 2) return double.NaN;
-        
-        // Linear regression slope gives -log(ρ)
-        double slope = (count * sumLogKLogCoeff - sumLogK * sumLogCoeff) / 
-                      (count * sumLogKSq - sumLogK * sumLogK);
-        
-        return -slope; // Return positive convergence rate
+        return double.NaN;
     }
 
-    private static double ChebyshevSecondKind(int n, double x)
+    /// <summary>
+    /// Adaptive node selection based on required accuracy
+    /// </summary>
+    public static int SelectOptimalNodes(double tolerance, double timeToMaturity)
     {
-        if (n < 0) return 0.0;
-        if (n == 0) return 1.0;
-        if (n == 1) return 2.0 * x;
-
-        double U0 = 1.0, U1 = 2.0 * x;
-        for (int k = 2; k <= n; k++)
-        {
-            double U2 = 2.0 * x * U1 - U0;
-            U0 = U1;
-            U1 = U2;
-        }
-        return U1;
+        // Simple heuristic based on tolerance and time
+        if (tolerance >= 1e-6) return Constants.Fast.SpectralNodes;
+        if (tolerance >= 1e-10) return Constants.Standard.SpectralNodes;
+        return Constants.HighPrecision.SpectralNodes;
     }
-}
-
-/// <summary>
-/// Represents a boundary function using spectral interpolation
-/// Handles the complete transformation sequence for numerical stability
-/// </summary>
-public class BoundaryFunction
-{
-    private readonly double[] _chebyshevCoefficients;
-    private readonly double[] _originalNodes;
-    private readonly double _tauMax;
-    private readonly double _strike;
-    private readonly double _r, _q;
-    private readonly bool _isTransformed;
-
-    /// <summary>
-    /// Constructs a boundary function from collocation data
-    /// </summary>
-    /// <param name="nodes">Chebyshev nodes in [-1, 1]</param>
-    /// <param name="boundaryValues">Boundary values at corresponding time points</param>
-    /// <param name="timePoints">Time points τ</param>
-    /// <param name="strike">Strike price</param>
-    /// <param name="r">Interest rate</param>
-    /// <param name="q">Dividend yield</param>
-    /// <param name="applyTransformation">Whether to apply spectral transformation</param>
-    public BoundaryFunction(double[] nodes, double[] boundaryValues, double[] timePoints,
-                          double strike, double r, double q, bool applyTransformation = true)
-    {
-        if (nodes.Length != boundaryValues.Length || nodes.Length != timePoints.Length)
-        {
-            throw new ArgumentException("All arrays must have the same length");
-        }
-
-        _originalNodes = (double[])nodes.Clone();
-        _tauMax = timePoints.Max();
-        _strike = strike;
-        _r = r;
-        _q = q;
-        _isTransformed = applyTransformation;
-
-        if (applyTransformation)
-        {
-            // Apply transformation sequence and compute Chebyshev coefficients
-            var transformedValues = Spectral.ApplyBoundaryTransformation(boundaryValues, timePoints, strike, r, q);
-            _chebyshevCoefficients = Spectral.ChebyshevCoefficients(transformedValues);
-        }
-        else
-        {
-            // Direct Chebyshev interpolation without transformation
-            _chebyshevCoefficients = Spectral.ChebyshevCoefficients(boundaryValues);
-        }
-    }
-
-    /// <summary>
-    /// Evaluates the boundary function at a given time point
-    /// </summary>
-    /// <param name="tau">Time to maturity</param>
-    /// <returns>Boundary value B(τ)</returns>
-    public double Evaluate(double tau)
-    {
-        if (tau < 0) return _strike; // Boundary condition at expiration
-        if (tau > _tauMax) tau = _tauMax; // Extrapolation
-        
-        if (_isTransformed)
-        {
-            // Transform time point: ξ = √(τ/τ_max)
-            double xi = Math.Sqrt(tau / _tauMax);
-            
-            // Map to [-1, 1] for Chebyshev evaluation
-            double x = 2.0 * xi - 1.0;
-            
-            // Evaluate transformed function H(ξ)
-            double H = Spectral.ChebyshevInterpolate(_chebyshevCoefficients, x);
-            
-            // Invert transformation to get boundary value
-            double G = Math.Sqrt(Math.Max(H, 0.0));
-            double normalizedBoundary = Math.Exp(G);
-            double normalizationFactor = _strike * Math.Min(1.0, Math.Abs(_r / Math.Max(_q, 1e-10)));
-            
-            return normalizationFactor * normalizedBoundary;
-        }
-        else
-        {
-            // Direct evaluation without transformation
-            double x = 2.0 * tau / _tauMax - 1.0; // Map [0, τ_max] to [-1, 1]
-            return Spectral.ChebyshevInterpolate(_chebyshevCoefficients, x);
-        }
-    }
-
-    /// <summary>
-    /// Evaluates the derivative of the boundary function
-    /// </summary>
-    /// <param name="tau">Time to maturity</param>
-    /// <returns>Boundary derivative dB/dτ</returns>
-    public double EvaluateDerivative(double tau)
-    {
-        if (tau <= 0 || tau > _tauMax) return 0.0;
-        
-        var derivativeCoeffs = Spectral.ChebyshevDerivativeCoefficients(_chebyshevCoefficients);
-        
-        if (_isTransformed)
-        {
-            double xi = Math.Sqrt(tau / _tauMax);
-            double x = 2.0 * xi - 1.0;
-            
-            // Chain rule for transformation sequence
-            double dH_dx = Spectral.ChebyshevInterpolate(derivativeCoeffs, x);
-            double dx_dxi = 2.0;
-            double dxi_dtau = 1.0 / (2.0 * Math.Sqrt(tau * _tauMax));
-            
-            // Additional derivative terms from transformation inversion would go here
-            return dH_dx * dx_dxi * dxi_dtau; // Simplified
-        }
-        else
-        {
-            double x = 2.0 * tau / _tauMax - 1.0;
-            double dB_dx = Spectral.ChebyshevInterpolate(derivativeCoeffs, x);
-            double dx_dtau = 2.0 / _tauMax;
-            
-            return dB_dx * dx_dtau;
-        }
-    }
-
-    /// <summary>
-    /// Gets the Chebyshev expansion coefficients
-    /// </summary>
-    public double[] ChebyshevCoefficients => (double[])_chebyshevCoefficients.Clone();
-
-    /// <summary>
-    /// Estimates the accuracy of the spectral approximation
-    /// </summary>
-    public double EstimatedError => Spectral.EstimateConvergenceRate(_chebyshevCoefficients);
-
-    /// <summary>
-    /// Number of collocation points used
-    /// </summary>
-    public int NumberOfNodes => _originalNodes.Length;
 }
