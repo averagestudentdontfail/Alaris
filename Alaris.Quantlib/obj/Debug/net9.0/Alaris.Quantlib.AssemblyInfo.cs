@@ -16,7 +16,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyDescriptionAttribute(("Professional American option pricing engines and Quantlib C# bindings for financi" +
     "al derivatives"))]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+2605b8f544349b03e0cf0cd79c71e14fbb960b8f")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ba6811ec07e5b12e2ae9335c476dde6a881e0b53")]
 [assembly: System.Reflection.AssemblyProductAttribute("Alaris Quantlib")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Alaris.Quantlib")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
