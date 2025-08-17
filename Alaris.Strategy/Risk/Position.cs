@@ -68,7 +68,7 @@ namespace Alaris.Strategy.Risk
             double portfolioValue,
             List<TradeResult> historicalTrades,
             double spreadCost,
-            SunnySignal signal)
+            Signal signal)
         {
             if (historicalTrades.Count < 30)
             {

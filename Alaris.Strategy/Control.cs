@@ -10,7 +10,7 @@ namespace Alaris.Strategy
     public class Control
     {
         private readonly SignalGenerator _signalGenerator;
-        private readonly AlarisPricingIntegration _pricingEngine;
+        private readonly Bridge _pricingEngine;
         private readonly KellyPositionSizer _positionSizer;
         private readonly ILogger<Control> _logger;
         
