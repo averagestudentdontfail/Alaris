@@ -9,7 +9,7 @@ namespace Alaris.Strategy
 {
     public class Control
     {
-        private readonly SunnySignalGenerator _signalGenerator;
+        private readonly SignalGenerator _signalGenerator;
         private readonly AlarisPricingIntegration _pricingEngine;
         private readonly KellyPositionSizer _positionSizer;
         private readonly ILogger<Control> _logger;
@@ -71,7 +71,7 @@ namespace Alaris.Strategy
         }
         
         private ExpectedPnL CalculateExpectedPnL(
-            SunnySignal signal,
+            Signal signal,
             CalendarSpreadPricing pricing,
             PositionSize position)
         {
@@ -95,7 +95,7 @@ namespace Alaris.Strategy
         }
         
         private RiskMetrics CalculateRiskMetrics(
-            SunnySignal signal,
+            Signal signal,
             CalendarSpreadPricing pricing,
             PositionSize position)
         {
@@ -119,7 +119,7 @@ namespace Alaris.Strategy
     
     public class TradingRecommendation
     {
-        public SunnySignal Signal { get; set; }
+        public Signal Signal { get; set; }
         public CalendarSpreadPricing Pricing { get; set; }
         public PositionSize PositionSize { get; set; }
         public ExpectedPnL ExpectedPnL { get; set; }
