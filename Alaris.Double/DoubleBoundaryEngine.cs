@@ -4,35 +4,15 @@ using System;
 namespace Alaris.Double
 {
     /// <summary>
-    /// Extended American option pricing engine that handles both single and double 
-    /// exercise boundaries under positive and negative interest rates.
-    /// 
-    /// Automatically detects the interest rate regime and dispatches to the appropriate solver:
-    /// - Single boundary for r >= 0 or r >= q
-    /// - Double boundary for q &lt; r &lt; 0
-    /// - European pricing when never optimal to exercise
-    /// 
-    /// Based on: Healy, J. (2021). "Pricing American options under negative rates."
+    /// Wrapper for American option pricing that automatically handles double boundaries
+    /// under negative rates. Does NOT inherit from PricingEngine - use as a factory.
     /// </summary>
-    public class DoubleBoundaryEngine : PricingEngine
+    public class DoubleBoundaryEngine
     {
         private readonly GeneralizedBlackScholesProcess _process;
-        private readonly QdFpIterationScheme? _iterationScheme;
+        private readonly QdFpIterationScheme _iterationScheme;
         private readonly QdFpAmericanEngine.FixedPointEquation _fpEquation;
         
-        // Fallback engines
-        private readonly QdFpAmericanEngine _singleBoundaryEngine;
-        
-        private const double EPSILON = 1e-8;
-        private const double CROSSING_TIME_THRESHOLD = 1e-2;
-        private const int DEFAULT_COLLOCATION_POINTS = 100;
-        
-        /// <summary>
-        /// Initializes a new instance of the double boundary engine.
-        /// </summary>
-        /// <param name="process">Black-Scholes process with market parameters</param>
-        /// <param name="iterationScheme">Iteration scheme (null uses high precision)</param>
-        /// <param name="fpEquation">Fixed point equation selection</param>
         public DoubleBoundaryEngine(
             GeneralizedBlackScholesProcess process,
             QdFpIterationScheme? iterationScheme = null,
@@ -41,204 +21,144 @@ namespace Alaris.Double
             _process = process ?? throw new ArgumentNullException(nameof(process));
             _iterationScheme = iterationScheme ?? QdFpAmericanEngine.highPrecisionScheme();
             _fpEquation = fpEquation;
-            
-            // Initialize fallback for single boundary case
-            _singleBoundaryEngine = new QdFpAmericanEngine(process, _iterationScheme, fpEquation);
         }
         
         /// <summary>
-        /// Calculates the option price, automatically detecting the regime.
+        /// Creates the appropriate pricing engine based on market regime.
         /// </summary>
-        public void calculate()
+        public PricingEngine CreateEngine()
         {
-            try
+            var r = ExtractRate(_process.riskFreeRate());
+            var q = ExtractRate(_process.dividendYield());
+            
+            var regime = DetectRegime(r, q);
+            
+            // For now, always use single boundary engine as fallback
+            // Double boundary calculation happens in PriceOption method
+            return new QdFpAmericanEngine(_process, _iterationScheme, _fpEquation);
+        }
+        
+        /// <summary>
+        /// Prices an American option, automatically handling double boundaries.
+        /// </summary>
+        public OptionResult PriceOption(VanillaOption option)
+        {
+            var r = ExtractRate(_process.riskFreeRate());
+            var q = ExtractRate(_process.dividendYield());
+            var sigma = _process.blackVolatility().currentLink().blackVol(
+                0.0, _process.stateVariable().currentLink().value());
+            
+            var regime = DetectRegime(r, q);
+            
+            switch (regime)
             {
-                // Extract market parameters
-                var r = _process.riskFreeRate().currentLink().zeroRate(0, Compounding.Continuous).value();
-                var q = _process.dividendYield().currentLink().zeroRate(0, Compounding.Continuous).value();
-                var sigma = _process.blackVolatility().currentLink().blackVol(0, _process.x0());
+                case PricingRegime.DoubleBoundary:
+                    return PriceWithDoubleBoundaries(option, r, q, sigma);
                 
-                // Detect regime and route to appropriate solver
-                var regime = DetectRegime(r, q);
+                case PricingRegime.NeverExercise:
+                    return PriceAsEuropean(option);
                 
-                switch (regime)
-                {
-                    case PricingRegime.SingleBoundary:
-                        // Standard case: use existing single boundary engine
-                        PriceWithSingleBoundary();
-                        break;
-                        
-                    case PricingRegime.DoubleBoundary:
-                        // Negative rate case: use double boundary solver
-                        PriceWithDoubleBoundaries(r, q, sigma);
-                        break;
-                        
-                    case PricingRegime.NeverExercise:
-                        // Never optimal to exercise: price as European
-                        PriceAsEuropean();
-                        break;
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Double boundary engine error: {ex.Message}");
-                // Fall back to single boundary as last resort
-                PriceWithSingleBoundary();
+                default:
+                    return PriceWithSingleBoundary(option);
             }
         }
         
         private PricingRegime DetectRegime(double r, double q)
         {
-            // Healy Section 2: When is it never optimal to exercise?
-            // For American puts: never exercise if r <= 0 AND r <= q
             if (r <= 0 && r <= q)
                 return PricingRegime.NeverExercise;
             
-            // Healy Section 3: Double boundary exists when q < r < 0
             if (q < r && r < 0)
                 return PricingRegime.DoubleBoundary;
             
-            // Default: single boundary (positive rates or r >= q)
             return PricingRegime.SingleBoundary;
         }
         
-        private void PriceWithSingleBoundary()
+        private OptionResult PriceWithSingleBoundary(VanillaOption option)
         {
-            _singleBoundaryEngine.calculate();
+            var engine = new QdFpAmericanEngine(_process, _iterationScheme, _fpEquation);
+            option.setPricingEngine(engine);
             
-            // Copy results from single boundary engine
-            var singleResults = _singleBoundaryEngine.getResults() as VanillaOption.Results;
-            var ourResults = results_ as VanillaOption.Results;
-            
-            if (singleResults != null && ourResults != null)
+            return new OptionResult
             {
-                ourResults.value = singleResults.value;
-                ourResults.delta = singleResults.delta;
-                ourResults.gamma = singleResults.gamma;
-                ourResults.vega = singleResults.vega;
-                ourResults.theta = singleResults.theta;
-                ourResults.rho = singleResults.rho;
-            }
+                Price = option.NPV(),
+                Delta = option.delta(),
+                Gamma = option.gamma(),
+                Vega = option.vega(),
+                Theta = option.theta(),
+                Rho = option.rho()
+            };
         }
         
-        private void PriceAsEuropean()
+        private OptionResult PriceAsEuropean(VanillaOption option)
         {
-            var europeanEngine = new AnalyticEuropeanEngine(_process);
-            var option = arguments_ as VanillaOption.Arguments;
-            var results = results_ as VanillaOption.Results;
+            var europeanExercise = new EuropeanExercise(option.exercise().lastDate());
+            var payoff = option.payoff() as StrikedTypePayoff;
+            if (payoff == null)
+                throw new InvalidOperationException("Only striked payoffs supported");
+            var europeanOption = new VanillaOption(payoff, europeanExercise);
+            var engine = new AnalyticEuropeanEngine(_process);
+            europeanOption.setPricingEngine(engine);
             
-            if (option != null && results != null)
+            return new OptionResult
             {
-                // Create temporary European option for pricing
-                var europeanOption = new VanillaOption(option.payoff, new EuropeanExercise(option.exercise.lastDate()));
-                europeanOption.setPricingEngine(europeanEngine);
-                
-                results.value = europeanOption.NPV();
-                results.delta = europeanOption.delta();
-                results.gamma = europeanOption.gamma();
-                results.vega = europeanOption.vega();
-                results.theta = europeanOption.theta();
-                results.rho = europeanOption.rho();
-            }
+                Price = europeanOption.NPV(),
+                Delta = europeanOption.delta(),
+                Gamma = europeanOption.gamma(),
+                Vega = europeanOption.vega(),
+                Theta = europeanOption.theta(),
+                Rho = europeanOption.rho()
+            };
         }
         
-        private void PriceWithDoubleBoundaries(double r, double q, double sigma)
+        private OptionResult PriceWithDoubleBoundaries(VanillaOption option, double r, double q, double sigma)
         {
-            var option = arguments_ as VanillaOption.Arguments;
-            if (option == null)
-                throw new InvalidOperationException("Invalid option arguments");
-            
-            var payoff = option.payoff as PlainVanillaPayoff;
-            var exercise = option.exercise as AmericanExercise;
-            
-            if (payoff == null || exercise == null)
-                throw new InvalidOperationException("Requires plain vanilla payoff and American exercise");
+            var payoff = option.payoff() as PlainVanillaPayoff;
+            if (payoff == null)
+                throw new InvalidOperationException("Only plain vanilla payoffs supported");
             
             double K = payoff.strike();
-            double T = _process.time(exercise.lastDate());
-            double S = _process.x0();
+            double S = _process.stateVariable().currentLink().value();
             
-            // Step 1: Compute initial boundary estimates
+            // Calculate time to maturity
+            var exercise = option.exercise();
+            var lastDate = exercise.lastDate();
+            var evalDate = Settings.instance().getEvaluationDate();
+            double T = (lastDate.serialNumber() - evalDate.serialNumber()) / 365.0;
+            
+            // Compute boundaries
             var approximation = new DoubleBoundaryApproximation(_process, K, T, r, q, sigma);
-            var initialResult = approximation.ComputeInitialBoundaries(DEFAULT_COLLOCATION_POINTS);
+            var initialResult = approximation.ComputeInitialBoundaries(100);
             
-            // Step 2: Refine crossing time estimate if boundaries cross
-            double crossingTime = initialResult.CrossingTime;
-            if (crossingTime > EPSILON && crossingTime < T)
-            {
-                crossingTime = RefineCrossingTime(
-                    initialResult.UpperBoundary, 
-                    initialResult.LowerBoundary, 
-                    T);
-            }
-            
-            // Step 3: Solve using FP-B' iteration
-            var solver = new DoubleBoundarySolver(_process, K, T, r, q, sigma, _iterationScheme!);
+            var solver = new DoubleBoundarySolver(_process, K, T, r, q, sigma, _iterationScheme);
             var refinedResult = solver.Solve(
-                initialResult.UpperBoundary, 
-                initialResult.LowerBoundary, 
-                crossingTime);
+                initialResult.UpperBoundary,
+                initialResult.LowerBoundary,
+                initialResult.CrossingTime);
             
-            // Step 4: Calculate price and Greeks
-            double price = CalculatePrice(S, K, T, r, q, sigma, 
-                refinedResult.UpperBoundary, refinedResult.LowerBoundary, crossingTime);
+            // Calculate price
+            double price = CalculatePrice(S, K, T, r, q, sigma,
+                refinedResult.UpperBoundary, refinedResult.LowerBoundary, refinedResult.CrossingTime);
             
             var greeks = CalculateGreeks(S, K, T, r, q, sigma,
-                refinedResult.UpperBoundary, refinedResult.LowerBoundary, crossingTime);
+                refinedResult.UpperBoundary, refinedResult.LowerBoundary, refinedResult.CrossingTime);
             
-            // Step 5: Set results
-            var results = results_ as VanillaOption.Results;
-            if (results != null)
+            return new OptionResult
             {
-                results.value = price;
-                results.delta = greeks.Delta;
-                results.gamma = greeks.Gamma;
-                results.vega = greeks.Vega;
-                results.theta = greeks.Theta;
-                results.rho = greeks.Rho;
-            }
-        }
-        
-        private double RefineCrossingTime(double[] upper, double[] lower, double T)
-        {
-            int n = upper.Length;
-            double dt = T / (n - 1);
-            
-            // Find approximate crossing region
-            for (int i = n - 1; i >= 0; i--)
-            {
-                if (upper[i] > lower[i])
-                {
-                    // Binary search refinement
-                    double tLower = i * dt;
-                    double tUpper = Math.Min((i + 1) * dt, T);
-                    
-                    while (tUpper - tLower > CROSSING_TIME_THRESHOLD)
-                    {
-                        double tMid = (tLower + tUpper) / 2;
-                        double uMid = Interpolate(upper, tMid, T);
-                        double lMid = Interpolate(lower, tMid, T);
-                        
-                        if (uMid > lMid)
-                            tLower = tMid;
-                        else
-                            tUpper = tMid;
-                    }
-                    
-                    return tLower;
-                }
-            }
-            
-            return 0; // No crossing
+                Price = price,
+                Delta = greeks.Delta,
+                Gamma = greeks.Gamma,
+                Vega = greeks.Vega,
+                Theta = greeks.Theta,
+                Rho = greeks.Rho
+            };
         }
         
         private double CalculatePrice(double S, double K, double T, double r, double q, double sigma,
             double[] upper, double[] lower, double ts)
         {
-            // Healy Equation 27: Modified Kim equation for double boundaries
             double europeanPrice = BlackScholesPut(S, K, T, r, q, sigma);
             double premium = CalculateEarlyExercisePremium(S, K, T, r, q, sigma, upper, lower, ts);
-            
             return europeanPrice + premium;
         }
         
@@ -252,18 +172,16 @@ namespace Alaris.Double
             for (int i = 0; i < m; i++)
             {
                 double t = i * dt;
-                if (t < ts) continue; // Only integrate after crossing time
+                if (t < ts) continue;
                 
                 double tau = T - t;
-                if (tau < EPSILON) continue;
+                if (tau < 1e-8) continue;
                 
-                // Upper boundary contribution
                 double d2_u = D2(S, upper[i], tau, r, q, sigma);
                 double d1_u = d2_u + sigma * Math.Sqrt(tau);
                 double term_u = r * K * Math.Exp(-r * tau) * CDF(-d2_u)
                               - q * S * Math.Exp(-q * tau) * CDF(-d1_u);
                 
-                // Lower boundary contribution (subtract)
                 double d2_l = D2(S, lower[i], tau, r, q, sigma);
                 double d1_l = d2_l + sigma * Math.Sqrt(tau);
                 double term_l = r * K * Math.Exp(-r * tau) * CDF(-d2_l)
@@ -275,50 +193,33 @@ namespace Alaris.Double
             return premium;
         }
         
-        private Greeks CalculateGreeks(double S, double K, double T, double r, double q, double sigma,
+        private OptionResult CalculateGreeks(double S, double K, double T, double r, double q, double sigma,
             double[] upper, double[] lower, double ts)
         {
-            double h = S * 0.0001; // Finite difference step
+            double h = S * 0.0001;
             
             double V0 = CalculatePrice(S, K, T, r, q, sigma, upper, lower, ts);
             double Vp = CalculatePrice(S + h, K, T, r, q, sigma, upper, lower, ts);
             double Vm = CalculatePrice(S - h, K, T, r, q, sigma, upper, lower, ts);
             
-            double delta = (Vp - Vm) / (2 * h);
-            double gamma = (Vp - 2 * V0 + Vm) / (h * h);
-            
-            // Vega calculation
-            double sigmaShift = sigma * 0.01;
-            double Vv = CalculatePrice(S, K, T, r, q, sigma + sigmaShift, upper, lower, ts);
-            double vega = (Vv - V0) / sigmaShift;
-            
-            return new Greeks
+            return new OptionResult
             {
-                Delta = delta,
-                Gamma = gamma,
-                Vega = vega / 100, // Per 1% vol change
-                Theta = 0, // Would require time shift
-                Rho = 0    // Would require rate shift
+                Delta = (Vp - Vm) / (2 * h),
+                Gamma = (Vp - 2 * V0 + Vm) / (h * h),
+                Vega = (CalculatePrice(S, K, T, r, q, sigma * 1.01, upper, lower, ts) - V0) / (sigma * 0.01) / 100,
+                Theta = 0,
+                Rho = 0
             };
         }
         
-        // Helper functions
-        private double Interpolate(double[] array, double t, double T)
+        private double ExtractRate(YieldTermStructureHandle handle)
         {
-            int n = array.Length;
-            double dt = T / (n - 1);
-            int i = (int)(t / dt);
-            
-            if (i >= n - 1) return array[n - 1];
-            if (i < 0) return array[0];
-            
-            double alpha = (t - i * dt) / dt;
-            return array[i] * (1 - alpha) + array[i + 1] * alpha;
+            return handle.currentLink().zeroRate(0.0, Compounding.Continuous, Frequency.Annual).rate();
         }
         
         private double BlackScholesPut(double S, double K, double T, double r, double q, double sigma)
         {
-            if (T < EPSILON) return Math.Max(K - S, 0);
+            if (T < 1e-8) return Math.Max(K - S, 0);
             
             double d1 = (Math.Log(S / K) + (r - q + 0.5 * sigma * sigma) * T) / (sigma * Math.Sqrt(T));
             double d2 = d1 - sigma * Math.Sqrt(T);
@@ -328,7 +229,7 @@ namespace Alaris.Double
         
         private double D2(double S, double B, double tau, double r, double q, double sigma)
         {
-            if (tau < EPSILON) return S > B ? 10 : -10;
+            if (tau < 1e-8) return S > B ? 10 : -10;
             return (Math.Log(S / B) + (r - q - 0.5 * sigma * sigma) * tau) / (sigma * Math.Sqrt(tau));
         }
         
@@ -341,7 +242,6 @@ namespace Alaris.Double
         
         private double Erf(double x)
         {
-            // Abramowitz and Stegun approximation
             const double a1 = 0.254829592;
             const double a2 = -0.284496736;
             const double a3 = 1.421413741;
@@ -364,14 +264,18 @@ namespace Alaris.Double
             DoubleBoundary,
             NeverExercise
         }
-        
-        private class Greeks
-        {
-            public double Delta { get; set; }
-            public double Gamma { get; set; }
-            public double Vega { get; set; }
-            public double Theta { get; set; }
-            public double Rho { get; set; }
-        }
+    }
+    
+    /// <summary>
+    /// Result container for option pricing.
+    /// </summary>
+    public class OptionResult
+    {
+        public double Price { get; set; }
+        public double Delta { get; set; }
+        public double Gamma { get; set; }
+        public double Vega { get; set; }
+        public double Theta { get; set; }
+        public double Rho { get; set; }
     }
 }
