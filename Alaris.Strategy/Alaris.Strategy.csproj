@@ -33,7 +33,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Project References -->
+    <!-- Project References with correct relative paths -->
     <ProjectReference Include="..\Alaris.Quantlib\Alaris.Quantlib.csproj" />
     <ProjectReference Include="..\Alaris.Double\Alaris.Double.csproj" />
   </ItemGroup>
