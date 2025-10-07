@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 
 namespace Alaris.Double;
@@ -18,11 +20,11 @@ public sealed class DoubleBoundaryEngine : IDisposable
     /// </summary>
     /// <param name="process">The Black-Scholes-Merton process for the underlying.</param>
     /// <param name="scheme">Optional iteration scheme for numerical solver.</param>
-    /// <param name="equation">Fixed point equation type (default: Intrinsic).</param>
+    /// <param name="equation">Fixed point equation type (default: IntrinsicValue).</param>
     public DoubleBoundaryEngine(
         GeneralizedBlackScholesProcess process,
         QdFpIterationScheme? scheme = null,
-        QdFpAmericanEngine.FixedPointEquation equation = QdFpAmericanEngine.FixedPointEquation.Intrinsic)
+        QdFpAmericanEngine.FixedPointEquation equation = QdFpAmericanEngine.FixedPointEquation.IntrinsicValue)
     {
         _process = process ?? throw new ArgumentNullException(nameof(process));
         
