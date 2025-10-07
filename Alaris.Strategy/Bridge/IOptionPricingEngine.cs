@@ -1,4 +1,4 @@
-using Alaris.Strategy.Models;
+using Alaris.Strategy.Model;
 using Alaris.Strategy.Pricing;
 using Alaris.Quantlib;
 

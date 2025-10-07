@@ -1,146 +1,159 @@
-// Alaris.Strategy/Control.cs
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using Alaris.Strategy.Core;
+using Alaris.Strategy.Bridge;
+using Alaris.Strategy.Pricing;
+using Alaris.Strategy.Risk;
 using Microsoft.Extensions.Logging;
 
-namespace Alaris.Strategy
+namespace Alaris.Strategy;
+
+/// <summary>
+/// Main control class for the earnings volatility calendar spread strategy.
+/// Orchestrates signal generation, position sizing, and trade execution.
+/// </summary>
+public sealed class Control
 {
-    public class Control
+    private readonly SignalGenerator _signalGenerator;
+    private readonly IOptionPricingEngine _pricingEngine;
+    private readonly KellyPositionSizer _positionSizer;
+    private readonly ILogger<Control>? _logger;
+
+    public Control(
+        SignalGenerator signalGenerator,
+        IOptionPricingEngine pricingEngine,
+        KellyPositionSizer positionSizer,
+        ILogger<Control>? logger = null)
     {
-        private readonly SignalGenerator _signalGenerator;
-        private readonly Bridge _pricingEngine;
-        private readonly KellyPositionSizer _positionSizer;
-        private readonly ILogger<Control> _logger;
-        
-        public async Task<List<TradingRecommendation>> ScanForOpportunities(
-            List<string> symbols,
-            Dictionary<string, DateTime> earningsDates)
+        _signalGenerator = signalGenerator ?? throw new ArgumentNullException(nameof(signalGenerator));
+        _pricingEngine = pricingEngine ?? throw new ArgumentNullException(nameof(pricingEngine));
+        _positionSizer = positionSizer ?? throw new ArgumentNullException(nameof(positionSizer));
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// Evaluates a trading opportunity for a given symbol.
+    /// </summary>
+    public async Task<TradingOpportunity> EvaluateOpportunity(
+        string symbol,
+        DateTime earningsDate,
+        DateTime evaluationDate,
+        double portfolioValue,
+        List<Trade> historicalTrades)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(symbol);
+
+        _logger?.LogInformation("Evaluating opportunity for {Symbol} with earnings on {EarningsDate}",
+            symbol, earningsDate);
+
+        var opportunity = new TradingOpportunity
         {
-            var recommendations = new List<TradingRecommendation>();
-            
-            foreach (var symbol in symbols)
+            Symbol = symbol,
+            EarningsDate = earningsDate,
+            EvaluationDate = evaluationDate
+        };
+
+        try
+        {
+            // Generate signal
+            var signal = _signalGenerator.Generate(symbol, earningsDate, evaluationDate);
+            opportunity.Signal = signal;
+
+            if (signal.Strength == SignalStrength.Avoid)
             {
-                try
-                {
-                    // Generate signal
-                    var signal = await _signalGenerator.GenerateSignal(
-                        symbol,
-                        earningsDates.GetValueOrDefault(symbol));
-                    
-                    if (signal.Strength == SignalStrength.Avoid)
-                        continue;
-                    
-                    // Price the calendar spread
-                    var pricing = await _pricingEngine.PriceCalendarSpread(
-                        new CalendarSpreadParameters
-                        {
-                            UnderlyingPrice = signal.OptimalStrike,
-                            Strike = signal.OptimalStrike,
-                            ImpliedVolatility = signal.IV30,
-                            // ... other parameters
-                        });
-                    
-                    // Calculate position size
-                    var positionSize = _positionSizer.CalculateFromHistory(
-                        portfolioValue: 100000, // Example
-                        historicalTrades: new List<TradeResult>(),
-                        spreadCost: pricing.SpreadCost,
-                        signal: signal);
-                    
-                    recommendations.Add(new TradingRecommendation
-                    {
-                        Signal = signal,
-                        Pricing = pricing,
-                        PositionSize = positionSize,
-                        ExpectedPnL = CalculateExpectedPnL(signal, pricing, positionSize),
-                        RiskMetrics = CalculateRiskMetrics(signal, pricing, positionSize)
-                    });
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, $"Error processing {symbol}");
-                }
+                _logger?.LogInformation("Signal strength is Avoid for {Symbol}, skipping", symbol);
+                return opportunity;
             }
-            
-            // Rank by expected value
-            return recommendations
-                .OrderByDescending(r => r.ExpectedPnL.ExpectedValue)
-                .ToList();
+
+            // Price the calendar spread
+            var spreadParams = CreateSpreadParameters(signal, evaluationDate);
+            var spreadPricing = await _pricingEngine.PriceCalendarSpread(spreadParams);
+            opportunity.SpreadPricing = spreadPricing;
+
+            // Calculate position size
+            var positionSize = _positionSizer.CalculateFromHistory(
+                portfolioValue,
+                historicalTrades,
+                spreadPricing.SpreadCost,
+                signal);
+            opportunity.PositionSize = positionSize;
+
+            _logger?.LogInformation(
+                "Opportunity evaluated for {Symbol}: Signal={Strength}, Contracts={Contracts}, Cost={Cost:C}",
+                symbol, signal.Strength, positionSize.Contracts, spreadPricing.SpreadCost);
         }
-        
-        private ExpectedPnL CalculateExpectedPnL(
-            Signal signal,
-            CalendarSpreadPricing pricing,
-            PositionSize position)
+        catch (Exception ex)
         {
-            // Historical win rate for similar setups
-            double winRate = 0.68; // Example from backtesting
-            
-            // Expected profit if successful (IV crush scenario)
-            double expectedProfit = pricing.MaxProfit * 0.25; // Conservative 25% of max
-            
-            // Expected loss if unsuccessful  
-            double expectedLoss = pricing.MaxLoss * 0.5; // Typical 50% stop loss
-            
-            return new ExpectedPnL
-            {
-                ExpectedValue = winRate * expectedProfit * position.Contracts - 
-                               (1 - winRate) * expectedLoss * position.Contracts,
-                WinScenario = expectedProfit * position.Contracts,
-                LossScenario = -expectedLoss * position.Contracts,
-                Probability = winRate
-            };
+            _logger?.LogError(ex, "Error evaluating opportunity for {Symbol}", symbol);
         }
-        
-        private RiskMetrics CalculateRiskMetrics(
-            Signal signal,
-            CalendarSpreadPricing pricing,
-            PositionSize position)
+
+        return opportunity;
+    }
+
+    /// <summary>
+    /// Creates calendar spread parameters from a signal.
+    /// </summary>
+    private CalendarSpreadParameters CreateSpreadParameters(Signal signal, DateTime evaluationDate)
+    {
+        // Determine appropriate expiration dates
+        var frontExpiry = FindFrontMonthExpiry(signal.EarningsDate, evaluationDate);
+        var backExpiry = FindBackMonthExpiry(frontExpiry);
+
+        return new CalendarSpreadParameters
         {
-            return new RiskMetrics
-            {
-                MaxDrawdown = pricing.MaxLoss * position.Contracts,
-                DeltaExposure = pricing.SpreadDelta * position.Contracts * 100,
-                GammaExposure = pricing.SpreadGamma * position.Contracts * 100,
-                VegaExposure = pricing.SpreadVega * position.Contracts * 100,
-                ThetaDecay = pricing.SpreadTheta * position.Contracts * 100,
-                StressTestLoss = CalculateStressLoss(pricing, position)
-            };
-        }
-        
-        private double CalculateStressLoss(CalendarSpreadPricing pricing, PositionSize position)
+            UnderlyingPrice = signal.ExpectedMove, // This should be actual price from market data
+            Strike = signal.ExpectedMove, // This should be ATM strike
+            FrontExpiry = ConvertToQuantlibDate(frontExpiry),
+            BackExpiry = ConvertToQuantlibDate(backExpiry),
+            ImpliedVolatility = signal.ImpliedVolatility30,
+            RiskFreeRate = 0.05, // Should come from market data
+            DividendYield = 0.0, // Should come from market data
+            OptionType = Alaris.Quantlib.Option.Type.Call,
+            ValuationDate = ConvertToQuantlibDate(evaluationDate)
+        };
+    }
+
+    private DateTime FindFrontMonthExpiry(DateTime earningsDate, DateTime evaluationDate)
+    {
+        // Find the Friday after earnings (standard monthly expiration)
+        var daysAfterEarnings = 0;
+        while (true)
         {
-            // Stress scenario: 2 standard deviation move + 50% IV spike
-            return pricing.MaxLoss * 1.5 * position.Contracts;
+            var candidate = earningsDate.AddDays(daysAfterEarnings);
+            if (candidate.DayOfWeek == DayOfWeek.Friday && candidate > earningsDate)
+                return candidate;
+            daysAfterEarnings++;
+            if (daysAfterEarnings > 14) // Safety limit
+                return earningsDate.AddDays(7);
         }
     }
-    
-    public class TradingRecommendation
+
+    private DateTime FindBackMonthExpiry(DateTime frontExpiry)
     {
-        public Signal Signal { get; set; }
-        public CalendarSpreadPricing Pricing { get; set; }
-        public PositionSize PositionSize { get; set; }
-        public ExpectedPnL ExpectedPnL { get; set; }
-        public RiskMetrics RiskMetrics { get; set; }
+        // Typically 28-35 days after front month
+        return frontExpiry.AddDays(30);
     }
-    
-    public class ExpectedPnL
+
+    private Alaris.Quantlib.Date ConvertToQuantlibDate(DateTime date)
     {
-        public double ExpectedValue { get; set; }
-        public double WinScenario { get; set; }
-        public double LossScenario { get; set; }
-        public double Probability { get; set; }
+        return new Alaris.Quantlib.Date(date.Day, date.Month, date.Year);
     }
-    
-    public class RiskMetrics
-    {
-        public double MaxDrawdown { get; set; }
-        public double DeltaExposure { get; set; }
-        public double GammaExposure { get; set; }
-        public double VegaExposure { get; set; }
-        public double ThetaDecay { get; set; }
-        public double StressTestLoss { get; set; }
-    }
+}
+
+/// <summary>
+/// Represents a complete trading opportunity evaluation.
+/// </summary>
+public sealed class TradingOpportunity
+{
+    public string Symbol { get; set; } = string.Empty;
+    public DateTime EarningsDate { get; set; }
+    public DateTime EvaluationDate { get; set; }
+    public Signal? Signal { get; set; }
+    public CalendarSpreadPricing? SpreadPricing { get; set; }
+    public PositionSize? PositionSize { get; set; }
+
+    /// <summary>
+    /// Gets whether this opportunity is actionable.
+    /// </summary>
+    public bool IsActionable =>
+        Signal?.Strength != SignalStrength.Avoid &&
+        PositionSize?.Contracts > 0;
 }
