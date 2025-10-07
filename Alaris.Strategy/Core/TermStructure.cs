@@ -1,102 +1,145 @@
-// Alaris.Strategy/Core/TermStructure.cs
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using MathNet.Numerics;
+using MathNet.Numerics.LinearRegression;
 
-namespace Alaris.Strategy.Core
+namespace Alaris.Strategy.Core;
+
+/// <summary>
+/// Analyzes the term structure of implied volatility.
+/// Used to identify inverted term structures that signal trading opportunities.
+/// </summary>
+public sealed class TermStructure
 {
     /// <summary>
-    /// Analyzes implied volatility term structure for backwardation signals
+    /// Analyzes a set of term structure points and calculates slope/intercept.
     /// </summary>
-    public class TermStructure
+    public TermStructureAnalysis Analyze(List<TermStructurePoint> points)
     {
-        public class TermStructurePoint
+        ArgumentNullException.ThrowIfNull(points);
+
+        if (points.Count < 2)
+            throw new ArgumentException("Need at least 2 points for term structure analysis", nameof(points));
+
+        // Sort by days to expiry
+        var sortedPoints = points.OrderBy(p => p.DaysToExpiry).ToList();
+
+        // Extract arrays for regression
+        var dte = sortedPoints.Select(p => (double)p.DaysToExpiry).ToArray();
+        var iv = sortedPoints.Select(p => p.ImpliedVolatility).ToArray();
+
+        // Perform linear regression: IV = intercept + slope * DTE
+        var (intercept, slope) = SimpleRegression.Fit(dte, iv);
+
+        return new TermStructureAnalysis
         {
-            public int DaysToExpiry { get; set; }
-            public double ImpliedVolatility { get; set; }
-            public double Strike { get; set; }
-            public DateTime ExpiryDate { get; set; }
-        }
+            Intercept = intercept,
+            Slope = slope,
+            Points = sortedPoints,
+            RSquared = CalculateRSquared(dte, iv, intercept, slope)
+        };
+    }
+
+    /// <summary>
+    /// Calculates R-squared for the linear fit.
+    /// </summary>
+    private static double CalculateRSquared(double[] x, double[] y, double intercept, double slope)
+    {
+        var yMean = y.Average();
+        var ssTotal = y.Sum(yi => Math.Pow(yi - yMean, 2));
         
-        public class TermStructureAnalysis
+        var ssResidual = 0.0;
+        for (int i = 0; i < x.Length; i++)
         {
-            public double Slope { get; set; }
-            public double Intercept { get; set; }
-            public double RSquared { get; set; }
-            public double StandardError { get; set; }
-            public bool IsBackwardated => Slope <= -0.00406;
-            public List<TermStructurePoint> DataPoints { get; set; }
+            var predicted = intercept + slope * x[i];
+            ssResidual += Math.Pow(y[i] - predicted, 2);
         }
-        
-        /// <summary>
-        /// Perform OLS regression on IV term structure
-        /// IV_i = β₀ + β₁ · DTE_i + ε_i
-        /// </summary>
-        public TermStructureAnalysis Analyze(List<TermStructurePoint> points)
-        {
-            if (points.Count < 3)
-                throw new ArgumentException("Need at least 3 points for term structure analysis");
-            
-            // Extract arrays for regression
-            var x = points.Select(p => (double)p.DaysToExpiry).ToArray();
-            var y = points.Select(p => p.ImpliedVolatility).ToArray();
-            
-            // Calculate regression coefficients
-            var (intercept, slope) = Fit.Line(x, y);
-            
-            // Calculate R-squared
-            double yMean = y.Average();
-            double totalSS = y.Sum(yi => Math.Pow(yi - yMean, 2));
-            double residualSS = points.Sum(p => 
-            {
-                double predicted = intercept + slope * p.DaysToExpiry;
-                return Math.Pow(p.ImpliedVolatility - predicted, 2);
-            });
-            double rSquared = 1 - (residualSS / totalSS);
-            
-            // Calculate standard error
-            double standardError = Math.Sqrt(residualSS / (points.Count - 2));
-            
-            return new TermStructureAnalysis
-            {
-                Slope = slope,
-                Intercept = intercept,
-                RSquared = rSquared,
-                StandardError = standardError,
-                DataPoints = points
-            };
-        }
-        
-        /// <summary>
-        /// Interpolate IV at specific DTE using cubic spline
-        /// </summary>
-        public double InterpolateIV(List<TermStructurePoint> points, int targetDTE)
-        {
-            if (points.Count < 2)
-                throw new ArgumentException("Need at least 2 points for interpolation");
-            
-            var sortedPoints = points.OrderBy(p => p.DaysToExpiry).ToList();
-            
-            // If target is outside range, use linear extrapolation
-            if (targetDTE <= sortedPoints.First().DaysToExpiry)
-                return sortedPoints.First().ImpliedVolatility;
-            
-            if (targetDTE >= sortedPoints.Last().DaysToExpiry)
-                return sortedPoints.Last().ImpliedVolatility;
-            
-            // Find bracketing points
-            var lower = sortedPoints.LastOrDefault(p => p.DaysToExpiry <= targetDTE);
-            var upper = sortedPoints.FirstOrDefault(p => p.DaysToExpiry > targetDTE);
-            
-            if (lower == null || upper == null)
-                return sortedPoints.First().ImpliedVolatility;
-            
-            // Linear interpolation
-            double weight = (targetDTE - lower.DaysToExpiry) / 
-                          (double)(upper.DaysToExpiry - lower.DaysToExpiry);
-            
-            return lower.ImpliedVolatility * (1 - weight) + upper.ImpliedVolatility * weight;
-        }
+
+        return 1.0 - (ssResidual / ssTotal);
+    }
+}
+
+/// <summary>
+/// Represents a single point in the implied volatility term structure.
+/// </summary>
+public sealed class TermStructurePoint
+{
+    /// <summary>
+    /// Gets or sets the number of days until option expiration.
+    /// </summary>
+    public int DaysToExpiry { get; set; }
+
+    /// <summary>
+    /// Gets or sets the implied volatility (annual, as a decimal).
+    /// </summary>
+    public double ImpliedVolatility { get; set; }
+
+    /// <summary>
+    /// Gets or sets the strike price of the option.
+    /// </summary>
+    public double Strike { get; set; }
+
+    /// <summary>
+    /// Gets or sets optional metadata about the option contract.
+    /// </summary>
+    public string? Metadata { get; set; }
+}
+
+/// <summary>
+/// Results of term structure analysis including slope and intercept.
+/// </summary>
+public sealed class TermStructureAnalysis
+{
+    /// <summary>
+    /// Gets or sets the intercept of the linear regression (IV at DTE=0).
+    /// </summary>
+    public double Intercept { get; set; }
+
+    /// <summary>
+    /// Gets or sets the slope of the term structure.
+    /// Negative slope indicates inverted term structure (backwardation).
+    /// </summary>
+    public double Slope { get; set; }
+
+    /// <summary>
+    /// Gets or sets the R-squared value of the linear fit.
+    /// </summary>
+    public double RSquared { get; set; }
+
+    /// <summary>
+    /// Gets or sets the original data points used in the analysis.
+    /// </summary>
+    public List<TermStructurePoint> Points { get; set; } = new();
+
+    /// <summary>
+    /// Gets the implied volatility at a specific number of days to expiry.
+    /// </summary>
+    public double GetIVAt(int daysToExpiry)
+    {
+        return Intercept + Slope * daysToExpiry;
+    }
+
+    /// <summary>
+    /// Determines if the term structure is inverted (negative slope).
+    /// </summary>
+    public bool IsInverted => Slope < 0;
+
+    /// <summary>
+    /// Determines if the slope meets the trading criterion (slope <= -0.00406).
+    /// </summary>
+    public bool MeetsTradingCriterion => Slope <= -0.00406;
+}
+
+/// <summary>
+/// Helper class for term structure analysis.
+/// </summary>
+public sealed class TermStructureAnalyzer
+{
+    private readonly TermStructure _termStructure = new();
+
+    /// <summary>
+    /// Analyzes term structure points.
+    /// </summary>
+    public TermStructureAnalysis Analyze(List<TermStructurePoint> points)
+    {
+        return _termStructure.Analyze(points);
     }
 }

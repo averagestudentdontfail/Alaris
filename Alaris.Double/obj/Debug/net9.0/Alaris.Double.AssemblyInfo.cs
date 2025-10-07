@@ -15,7 +15,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyDescriptionAttribute(("American option pricing engine with double boundary support for negative interest" +
     " rate regimes"))]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f207d5a1109e9b5dccace5e4eae504a59c2e3588")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+124add605807e09e9196029425433e418210ca73")]
 [assembly: System.Reflection.AssemblyProductAttribute("Alaris.Double")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Alaris.Double")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
