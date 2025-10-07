@@ -136,7 +136,7 @@ public class DoubleBoundaryEngineTests
 
         // Assert
         result.Price.Should().BeGreaterThan(spot - strike); // Should exceed intrinsic value
-        result.Delta.Should().BeCloseTo(1.0, 0.15); // Deep ITM call has delta near 1
+        result.Delta.Should().BeInRange(0.85, 1.0); // Deep ITM call has delta near 1
     }
 
     [Fact]
@@ -177,7 +177,7 @@ public class DoubleBoundaryEngineTests
 
         // Assert
         result.Price.Should().BeGreaterThan(0).And.BeLessThan(1.0); // OTM put has small value
-        result.Delta.Should().BeCloseTo(0, 0.1); // OTM put has delta near 0
+        result.Delta.Should().BeInRange(-0.1, 0.0); // OTM put has delta near 0
     }
 
     [Fact]

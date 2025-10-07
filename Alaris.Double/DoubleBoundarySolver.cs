@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+
 namespace Alaris.Double;
 
 /// <summary>
@@ -9,11 +12,10 @@ public sealed class DoubleBoundarySolver : IDisposable
 {
     private readonly GeneralizedBlackScholesProcess _process;
     private readonly DoubleBoundaryApproximation _approximation;
-    private readonly QdFpIterationScheme _scheme;
     private bool _disposed;
 
     /// <summary>
-    /// Initializes a new instance of the DoubleBoundarySolver with custom iteration scheme.
+    /// Initializes a new instance of the DoubleBoundarySolver.
     /// </summary>
     /// <param name="process">The Black-Scholes-Merton stochastic process.</param>
     /// <param name="strike">The strike price of the option.</param>
@@ -21,7 +23,6 @@ public sealed class DoubleBoundarySolver : IDisposable
     /// <param name="riskFreeRate">The risk-free interest rate (can be negative).</param>
     /// <param name="dividendYield">The continuous dividend yield.</param>
     /// <param name="volatility">The volatility of the underlying asset.</param>
-    /// <param name="scheme">Optional custom iteration scheme for solver convergence.</param>
     /// <exception cref="ArgumentNullException">Thrown when process is null.</exception>
     /// <exception cref="ArgumentException">Thrown when parameters are invalid.</exception>
     public DoubleBoundarySolver(
@@ -30,8 +31,7 @@ public sealed class DoubleBoundarySolver : IDisposable
         double maturity,
         double riskFreeRate,
         double dividendYield,
-        double volatility,
-        QdFpIterationScheme? scheme = null)
+        double volatility)
     {
         _process = process ?? throw new ArgumentNullException(nameof(process));
         
@@ -39,8 +39,6 @@ public sealed class DoubleBoundarySolver : IDisposable
 
         _approximation = new DoubleBoundaryApproximation(
             process, strike, maturity, riskFreeRate, dividendYield, volatility);
-
-        _scheme = scheme ?? CreateDefaultScheme();
     }
 
     /// <summary>
@@ -168,16 +166,6 @@ public sealed class DoubleBoundarySolver : IDisposable
         
         if (volatility > 5.0)
             throw new ArgumentException("Volatility appears unreasonably high (>500%)", nameof(volatility));
-    }
-
-    /// <summary>
-    /// Creates the default iteration scheme with standard convergence criteria.
-    /// </summary>
-    private static QdFpIterationScheme CreateDefaultScheme()
-    {
-        return new QdFpIterationScheme(
-            threshold: 1e-6,
-            maxIterations: 1000);
     }
 
     /// <summary>

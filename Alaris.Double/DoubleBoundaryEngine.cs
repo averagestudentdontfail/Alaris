@@ -13,6 +13,7 @@ public sealed class DoubleBoundaryEngine : IDisposable
 {
     private readonly GeneralizedBlackScholesProcess _process;
     private readonly QdFpAmericanEngine _engine;
+    private readonly SimpleQuote? _underlyingQuote;
     private bool _disposed;
 
     /// <summary>
@@ -20,21 +21,24 @@ public sealed class DoubleBoundaryEngine : IDisposable
     /// </summary>
     /// <param name="process">The Black-Scholes-Merton process for the underlying.</param>
     /// <param name="scheme">Optional iteration scheme for numerical solver.</param>
-    /// <param name="equation">Fixed point equation type (default: IntrinsicValue).</param>
     public DoubleBoundaryEngine(
         GeneralizedBlackScholesProcess process,
-        QdFpIterationScheme? scheme = null,
-        QdFpAmericanEngine.FixedPointEquation equation = QdFpAmericanEngine.FixedPointEquation.IntrinsicValue)
+        QdFpIterationScheme? scheme = null)
     {
         _process = process ?? throw new ArgumentNullException(nameof(process));
         
+        // Extract the underlying quote for sensitivity analysis
+        var stateVariable = _process.stateVariable();
+        var quote = stateVariable.currentLink();
+        _underlyingQuote = quote as SimpleQuote;
+        
         if (scheme is null)
         {
-            _engine = new QdFpAmericanEngine(_process, equation);
+            _engine = new QdFpAmericanEngine(_process);
         }
         else
         {
-            _engine = new QdFpAmericanEngine(_process, scheme, equation);
+            _engine = new QdFpAmericanEngine(_process, scheme);
         }
     }
 
@@ -114,22 +118,19 @@ public sealed class DoubleBoundaryEngine : IDisposable
         if (steps < 2)
             throw new ArgumentException("steps must be at least 2", nameof(steps));
 
+        if (_underlyingQuote is null)
+            throw new InvalidOperationException("Cannot perform sensitivity analysis: underlying quote not available");
+
         var results = new List<(double, OptionResult)>();
         var spotStep = (spotMax - spotMin) / (steps - 1);
-        
-        // Get the underlying quote from the process
-        var underlyingQuote = _process.stateVariable() as SimpleQuote;
-        if (underlyingQuote is null)
-            throw new InvalidOperationException("Process must use SimpleQuote for spot price");
-
-        var originalSpot = underlyingQuote.value();
+        var originalSpot = _underlyingQuote.value();
 
         try
         {
             for (int i = 0; i < steps; i++)
             {
                 var spot = spotMin + i * spotStep;
-                underlyingQuote.setValue(spot);
+                _underlyingQuote.setValue(spot);
                 
                 var result = Calculate(option);
                 results.Add((spot, result));
@@ -138,7 +139,7 @@ public sealed class DoubleBoundaryEngine : IDisposable
         finally
         {
             // Restore original spot price
-            underlyingQuote.setValue(originalSpot);
+            _underlyingQuote.setValue(originalSpot);
         }
 
         return results;

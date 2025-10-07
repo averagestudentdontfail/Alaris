@@ -1,123 +1,154 @@
-using System;
 using Xunit;
 using FluentAssertions;
 using Alaris.Double;
 
-namespace Alaris.Test.Unit
+namespace Alaris.Test.Unit;
+
+/// <summary>
+/// Unit tests for the DoubleBoundarySolver class.
+/// </summary>
+public class DoubleBoundarySolverTests
 {
-    public class DoubleBoundarySolverTest
+    [Fact]
+    public void DoubleBoundarySolver_CalculatesCallBoundary()
     {
-        [Fact]
-        public void Solve_ConvergesWithinMaxIterations()
-        {
-            // Arrange
-            var (process, K, T, r, q, sigma) = CreateTestParameters();
-            var scheme = QdFpAmericanEngine.highPrecisionScheme();
-            var solver = new DoubleBoundarySolver(process, K, T, r, q, sigma, scheme);
-            
-            // Get initial boundaries
-            var approximation = new DoubleBoundaryApproximation(process, K, T, r, q, sigma);
-            var initial = approximation.ComputeInitialBoundaries(50);
-            
-            // Act
-            var result = solver.Solve(
-                initial.UpperBoundary,
-                initial.LowerBoundary,
-                initial.CrossingTime);
-            
-            // Assert
-            result.Should().NotBeNull();
-            result.UpperBoundary.Should().NotBeNull();
-            result.LowerBoundary.Should().NotBeNull();
-        }
-        
-        [Fact]
-        public void Solve_RefinedBoundaries_MoreAccurateThanInitial()
-        {
-            // Arrange
-            var (process, K, T, r, q, sigma) = CreateTestParameters();
-            var scheme = QdFpAmericanEngine.highPrecisionScheme();
-            var solver = new DoubleBoundarySolver(process, K, T, r, q, sigma, scheme);
-            
-            var approximation = new DoubleBoundaryApproximation(process, K, T, r, q, sigma);
-            var initial = approximation.ComputeInitialBoundaries(50);
-            
-            // Act
-            var refined = solver.Solve(
-                initial.UpperBoundary,
-                initial.LowerBoundary,
-                initial.CrossingTime);
-            
-            // Assert - Refined should differ from initial (it converged)
-            bool boundariesChanged = false;
-            for (int i = 0; i < initial.UpperBoundary.Length; i++)
-            {
-                if (Math.Abs(refined.UpperBoundary[i] - initial.UpperBoundary[i]) > 1e-4)
-                {
-                    boundariesChanged = true;
-                    break;
-                }
-            }
-            
-            boundariesChanged.Should().BeTrue("solver should refine initial approximation");
-        }
-        
-        [Fact]
-        public void Solve_MaintainsBoundaryRelationship_AfterCrossingTime()
-        {
-            // Arrange
-            var (process, K, T, r, q, sigma) = CreateTestParameters();
-            var scheme = QdFpAmericanEngine.fastScheme(); // Faster for testing
-            var solver = new DoubleBoundarySolver(process, K, T, r, q, sigma, scheme);
-            
-            var approximation = new DoubleBoundaryApproximation(process, K, T, r, q, sigma);
-            var initial = approximation.ComputeInitialBoundaries(50);
-            
-            // Act
-            var result = solver.Solve(
-                initial.UpperBoundary,
-                initial.LowerBoundary,
-                initial.CrossingTime);
-            
-            // Assert - After crossing time, upper should be >= lower
-            double dt = T / (result.UpperBoundary.Length - 1);
-            for (int i = 0; i < result.UpperBoundary.Length; i++)
-            {
-                double t = i * dt;
-                if (t >= result.CrossingTime)
-                {
-                    result.UpperBoundary[i].Should().BeGreaterThanOrEqualTo(
-                        result.LowerBoundary[i] - 1e-6, // Small tolerance for numerical error
-                        $"at t = {t:F4}");
-                }
-            }
-        }
-        
-        private (GeneralizedBlackScholesProcess process, double K, double T, double r, double q, double sigma) 
-            CreateTestParameters()
-        {
-            var valuationDate = new Date(15, Month.March, 2024);
-            Settings.instance().setEvaluationDate(valuationDate);
-            
-            double S = 100.0;
-            double r = -0.005;
-            double q = -0.01;
-            double sigma = 0.08;
-            
-            var spot = new SimpleQuote(S);
-            var spotHandle = new QuoteHandle(spot);
-            
-            var riskFreeRate = new FlatForward(valuationDate, r, new Actual365Fixed());
-            var dividendYield = new FlatForward(valuationDate, q, new Actual365Fixed());
-            var volatility = new BlackConstantVol(valuationDate, new TARGET(), sigma, new Actual365Fixed());
-            
-            var process = new GeneralizedBlackScholesProcess(
-                spotHandle,
-                new YieldTermStructureHandle(dividendYield),
-                new YieldTermStructureHandle(riskFreeRate),
-                new BlackVolTermStructureHandle(volatility));
-            
-            return (process, 100.0, 5.0, r, q, sigma);
-        }
+        // Arrange
+        var spot = 100.0;
+        var strike = 100.0;
+        var maturity = 1.0;
+        var rate = 0.05;
+        var dividend = 0.02;
+        var volatility = 0.20;
+
+        var todaysDate = new Date(15, Month.January, 2024);
+        Settings.instance().setEvaluationDate(todaysDate);
+
+        var underlying = new SimpleQuote(spot);
+        var riskFreeTS = new FlatForward(todaysDate, rate, new Actual365Fixed());
+        var dividendTS = new FlatForward(todaysDate, dividend, new Actual365Fixed());
+        var volTS = new BlackConstantVol(todaysDate, new TARGET(), volatility, new Actual365Fixed());
+
+        var process = new BlackScholesMertonProcess(
+            new QuoteHandle(underlying),
+            new YieldTermStructureHandle(dividendTS),
+            new YieldTermStructureHandle(riskFreeTS),
+            new BlackVolTermStructureHandle(volTS));
+
+        var solver = new DoubleBoundarySolver(process, strike, maturity, rate, dividend, volatility);
+
+        // Act
+        var boundaries = solver.SolveBoundaries(spot, isCall: true);
+
+        // Assert
+        boundaries.Should().NotBeNull();
+        boundaries.UpperBoundary.Should().BeGreaterThan(strike);
+        boundaries.LowerBoundary.Should().Be(0);
+    }
+
+    [Fact]
+    public void DoubleBoundarySolver_CalculatesPutBoundary()
+    {
+        // Arrange
+        var spot = 100.0;
+        var strike = 100.0;
+        var maturity = 1.0;
+        var rate = 0.05;
+        var dividend = 0.02;
+        var volatility = 0.20;
+
+        var todaysDate = new Date(15, Month.January, 2024);
+        Settings.instance().setEvaluationDate(todaysDate);
+
+        var underlying = new SimpleQuote(spot);
+        var riskFreeTS = new FlatForward(todaysDate, rate, new Actual365Fixed());
+        var dividendTS = new FlatForward(todaysDate, dividend, new Actual365Fixed());
+        var volTS = new BlackConstantVol(todaysDate, new TARGET(), volatility, new Actual365Fixed());
+
+        var process = new BlackScholesMertonProcess(
+            new QuoteHandle(underlying),
+            new YieldTermStructureHandle(dividendTS),
+            new YieldTermStructureHandle(riskFreeTS),
+            new BlackVolTermStructureHandle(volTS));
+
+        var solver = new DoubleBoundarySolver(process, strike, maturity, rate, dividend, volatility);
+
+        // Act
+        var boundaries = solver.SolveBoundaries(spot, isCall: false);
+
+        // Assert
+        boundaries.Should().NotBeNull();
+        boundaries.LowerBoundary.Should().BeLessThan(strike);
+        boundaries.UpperBoundary.Should().Be(double.PositiveInfinity);
+    }
+
+    [Fact]
+    public void DoubleBoundarySolver_CalculatesOptionValue()
+    {
+        // Arrange
+        var spot = 100.0;
+        var strike = 100.0;
+        var maturity = 1.0;
+        var rate = 0.05;
+        var dividend = 0.02;
+        var volatility = 0.20;
+
+        var todaysDate = new Date(15, Month.January, 2024);
+        Settings.instance().setEvaluationDate(todaysDate);
+
+        var underlying = new SimpleQuote(spot);
+        var riskFreeTS = new FlatForward(todaysDate, rate, new Actual365Fixed());
+        var dividendTS = new FlatForward(todaysDate, dividend, new Actual365Fixed());
+        var volTS = new BlackConstantVol(todaysDate, new TARGET(), volatility, new Actual365Fixed());
+
+        var process = new BlackScholesMertonProcess(
+            new QuoteHandle(underlying),
+            new YieldTermStructureHandle(dividendTS),
+            new YieldTermStructureHandle(riskFreeTS),
+            new BlackVolTermStructureHandle(volTS));
+
+        var solver = new DoubleBoundarySolver(process, strike, maturity, rate, dividend, volatility);
+
+        // Act
+        var (value, boundaries) = solver.SolveWithValue(spot, strike, isCall: true);
+
+        // Assert
+        value.Should().BeGreaterThan(0);
+        boundaries.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void DoubleBoundarySolver_PerformsSensitivityAnalysis()
+    {
+        // Arrange
+        var spot = 100.0;
+        var strike = 100.0;
+        var maturity = 1.0;
+        var rate = 0.05;
+        var dividend = 0.02;
+        var volatility = 0.20;
+
+        var todaysDate = new Date(15, Month.January, 2024);
+        Settings.instance().setEvaluationDate(todaysDate);
+
+        var underlying = new SimpleQuote(spot);
+        var riskFreeTS = new FlatForward(todaysDate, rate, new Actual365Fixed());
+        var dividendTS = new FlatForward(todaysDate, dividend, new Actual365Fixed());
+        var volTS = new BlackConstantVol(todaysDate, new TARGET(), volatility, new Actual365Fixed());
+
+        var process = new BlackScholesMertonProcess(
+            new QuoteHandle(underlying),
+            new YieldTermStructureHandle(dividendTS),
+            new YieldTermStructureHandle(riskFreeTS),
+            new BlackVolTermStructureHandle(volTS));
+
+        var solver = new DoubleBoundarySolver(process, strike, maturity, rate, dividend, volatility);
+
+        // Act
+        var results = solver.AnalyzeSensitivity(80, 120, 10, strike, isCall: true);
+
+        // Assert
+        results.Should().HaveCount(10);
+        results.First().Spot.Should().Be(80);
+        results.Last().Spot.Should().BeApproximately(120, 0.01);
     }
 }

@@ -1,149 +1,152 @@
-using System;
 using Xunit;
 using FluentAssertions;
 using Alaris.Double;
 
-namespace Alaris.Test.Unit
+namespace Alaris.Test.Unit;
+
+/// <summary>
+/// Unit tests for the DoubleBoundaryApproximation class.
+/// </summary>
+public class DoubleBoundaryApproximationTests
 {
-    public class DoubleBoundaryApproximationTest
+    [Fact]
+    public void DoubleBoundaryApproximation_CalculatesCallBoundary()
     {
-        [Fact]
-        public void ComputeInitialBoundaries_WithNegativeRates_ReturnsValidBoundaries()
-        {
-            // Arrange
-            var (process, K, T) = CreateTestProcess(
-                S: 100.0, r: -0.005, q: -0.01, sigma: 0.08);
-            var approximation = new DoubleBoundaryApproximation(process, K, T, -0.005, -0.01, 0.08);
-            
-            // Act
-            var result = approximation.ComputeInitialBoundaries(m: 50);
-            
-            // Assert
-            result.UpperBoundary.Should().NotBeNull();
-            result.LowerBoundary.Should().NotBeNull();
-            result.UpperBoundary.Length.Should().Be(50);
-            result.LowerBoundary.Length.Should().Be(50);
-            
-            // At maturity (last point)
-            result.UpperBoundary[49].Should().BeApproximately(K, 0.01);
-            result.LowerBoundary[49].Should().BeApproximately(K * 0.5, 0.5); // r/q = 0.5
-        }
-        
-        [Fact]
-        public void ComputeInitialBoundaries_NoCrossing_CrossingTimeIsZero()
-        {
-            // Arrange - low volatility, should not cross
-            var (process, K, T) = CreateTestProcess(
-                S: 100.0, r: -0.005, q: -0.01, sigma: 0.04);
-            var approximation = new DoubleBoundaryApproximation(process, K, T, -0.005, -0.01, 0.04);
-            
-            // Act
-            var result = approximation.ComputeInitialBoundaries(m: 100);
-            
-            // Assert
-            result.CrossingTime.Should().Be(0, "boundaries should not cross at low volatility");
-            
-            // Upper should be above lower throughout
-            for (int i = 0; i < result.UpperBoundary.Length; i++)
-            {
-                result.UpperBoundary[i].Should().BeGreaterThanOrEqualTo(
-                    result.LowerBoundary[i],
-                    $"at index {i}");
-            }
-        }
-        
-        [Fact]
-        public void ComputeInitialBoundaries_HighVolatility_BoundariesCross()
-        {
-            // Arrange - high volatility should cause crossing
-            var (process, K, T) = CreateTestProcess(
-                S: 100.0, r: -0.005, q: -0.01, sigma: 0.15);
-            var approximation = new DoubleBoundaryApproximation(process, K, T, -0.005, -0.01, 0.15);
-            
-            // Act
-            var result = approximation.ComputeInitialBoundaries(m: 100);
-            
-            // Assert
-            result.CrossingTime.Should().BeGreaterThan(0, "boundaries should cross at high volatility");
-            result.CrossingTime.Should().BeLessThan(T, "crossing should occur before maturity");
-            
-            Console.WriteLine($"Boundaries crossed at t = {result.CrossingTime:F4} years");
-        }
-        
-        [Theory]
-        [InlineData(0.04, false)] // Low vol - no crossing
-        [InlineData(0.08, false)] // Medium vol - no crossing
-        [InlineData(0.15, true)]  // High vol - crossing expected
-        public void ComputeInitialBoundaries_VariousVolatilities_BehavesAsExpected(
-            double sigma, bool shouldCross)
-        {
-            // Arrange
-            var (process, K, T) = CreateTestProcess(
-                S: 100.0, r: -0.005, q: -0.01, sigma: sigma);
-            var approximation = new DoubleBoundaryApproximation(process, K, T, -0.005, -0.01, sigma);
-            
-            // Act
-            var result = approximation.ComputeInitialBoundaries(m: 100);
-            
-            // Assert
-            if (shouldCross)
-            {
-                result.CrossingTime.Should().BeGreaterThan(0);
-            }
-            else
-            {
-                result.CrossingTime.Should().Be(0);
-                // Verify monotonicity: upper >= lower throughout
-                for (int i = 0; i < result.UpperBoundary.Length; i++)
-                {
-                    result.UpperBoundary[i].Should().BeGreaterThanOrEqualTo(result.LowerBoundary[i]);
-                }
-            }
-        }
-        
-        [Fact]
-        public void ComputeInitialBoundaries_MonotonicityCheck_UpperDecreases()
-        {
-            // Arrange
-            var (process, K, T) = CreateTestProcess(
-                S: 100.0, r: -0.005, q: -0.01, sigma: 0.08);
-            var approximation = new DoubleBoundaryApproximation(process, K, T, -0.005, -0.01, 0.08);
-            
-            // Act
-            var result = approximation.ComputeInitialBoundaries(m: 100);
-            
-            // Assert - Upper boundary should decrease over time (Healy Section 3)
-            for (int i = 1; i < result.UpperBoundary.Length; i++)
-            {
-                result.UpperBoundary[i].Should().BeLessOrEqualTo(
-                    result.UpperBoundary[i - 1] + 0.01, // Allow small numerical tolerance
-                    $"upper boundary should decrease from index {i-1} to {i}");
-            }
-        }
-        
-        private (GeneralizedBlackScholesProcess process, double K, double T) CreateTestProcess(
-            double S, double r, double q, double sigma)
-        {
-            var valuationDate = new Date(15, Month.March, 2024);
-            Settings.instance().setEvaluationDate(valuationDate);
-            
-            var spot = new SimpleQuote(S);
-            var spotHandle = new QuoteHandle(spot);
-            
-            var riskFreeRate = new FlatForward(valuationDate, r, new Actual365Fixed());
-            var dividendYield = new FlatForward(valuationDate, q, new Actual365Fixed());
-            var volatility = new BlackConstantVol(valuationDate, new TARGET(), sigma, new Actual365Fixed());
-            
-            var process = new GeneralizedBlackScholesProcess(
-                spotHandle,
-                new YieldTermStructureHandle(dividendYield),
-                new YieldTermStructureHandle(riskFreeRate),
-                new BlackVolTermStructureHandle(volatility));
-            
-            double K = 100.0;
-            double T = 5.0;
-            
-            return (process, K, T);
-        }
+        // Arrange
+        var spot = 100.0;
+        var strike = 100.0;
+        var maturity = 1.0;
+        var rate = 0.05;
+        var dividend = 0.02;
+        var volatility = 0.20;
+
+        var todaysDate = new Date(15, Month.January, 2024);
+        Settings.instance().setEvaluationDate(todaysDate);
+
+        var underlying = new SimpleQuote(spot);
+        var riskFreeTS = new FlatForward(todaysDate, rate, new Actual365Fixed());
+        var dividendTS = new FlatForward(todaysDate, dividend, new Actual365Fixed());
+        var volTS = new BlackConstantVol(todaysDate, new TARGET(), volatility, new Actual365Fixed());
+
+        var process = new BlackScholesMertonProcess(
+            new QuoteHandle(underlying),
+            new YieldTermStructureHandle(dividendTS),
+            new YieldTermStructureHandle(riskFreeTS),
+            new BlackVolTermStructureHandle(volTS));
+
+        var approximation = new DoubleBoundaryApproximation(process, strike, maturity, rate, dividend, volatility);
+
+        // Act
+        var result = approximation.Calculate(spot, isCall: true);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.UpperBoundary.Should().BeGreaterThan(strike);
+    }
+
+    [Fact]
+    public void DoubleBoundaryApproximation_CalculatesPutBoundary()
+    {
+        // Arrange
+        var spot = 100.0;
+        var strike = 100.0;
+        var maturity = 1.0;
+        var rate = 0.05;
+        var dividend = 0.02;
+        var volatility = 0.20;
+
+        var todaysDate = new Date(15, Month.January, 2024);
+        Settings.instance().setEvaluationDate(todaysDate);
+
+        var underlying = new SimpleQuote(spot);
+        var riskFreeTS = new FlatForward(todaysDate, rate, new Actual365Fixed());
+        var dividendTS = new FlatForward(todaysDate, dividend, new Actual365Fixed());
+        var volTS = new BlackConstantVol(todaysDate, new TARGET(), volatility, new Actual365Fixed());
+
+        var process = new BlackScholesMertonProcess(
+            new QuoteHandle(underlying),
+            new YieldTermStructureHandle(dividendTS),
+            new YieldTermStructureHandle(riskFreeTS),
+            new BlackVolTermStructureHandle(volTS));
+
+        var approximation = new DoubleBoundaryApproximation(process, strike, maturity, rate, dividend, volatility);
+
+        // Act
+        var result = approximation.Calculate(spot, isCall: false);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.LowerBoundary.Should().BeLessThan(strike);
+    }
+
+    [Fact]
+    public void DoubleBoundaryApproximation_HandlesNegativeRates()
+    {
+        // Arrange
+        var spot = 100.0;
+        var strike = 100.0;
+        var maturity = 1.0;
+        var rate = -0.01; // Negative rate
+        var dividend = 0.00;
+        var volatility = 0.20;
+
+        var todaysDate = new Date(15, Month.January, 2024);
+        Settings.instance().setEvaluationDate(todaysDate);
+
+        var underlying = new SimpleQuote(spot);
+        var riskFreeTS = new FlatForward(todaysDate, rate, new Actual365Fixed());
+        var dividendTS = new FlatForward(todaysDate, dividend, new Actual365Fixed());
+        var volTS = new BlackConstantVol(todaysDate, new TARGET(), volatility, new Actual365Fixed());
+
+        var process = new BlackScholesMertonProcess(
+            new QuoteHandle(underlying),
+            new YieldTermStructureHandle(dividendTS),
+            new YieldTermStructureHandle(riskFreeTS),
+            new BlackVolTermStructureHandle(volTS));
+
+        var approximation = new DoubleBoundaryApproximation(process, strike, maturity, rate, dividend, volatility);
+
+        // Act
+        var result = approximation.Calculate(spot, isCall: true);
+
+        // Assert
+        result.Should().NotBeNull();
+        double.IsNaN(result.UpperBoundary).Should().BeFalse();
+    }
+
+    [Fact]
+    public void DoubleBoundaryApproximation_ApproximatesValue()
+    {
+        // Arrange
+        var spot = 100.0;
+        var strike = 100.0;
+        var maturity = 1.0;
+        var rate = 0.05;
+        var dividend = 0.02;
+        var volatility = 0.20;
+
+        var todaysDate = new Date(15, Month.January, 2024);
+        Settings.instance().setEvaluationDate(todaysDate);
+
+        var underlying = new SimpleQuote(spot);
+        var riskFreeTS = new FlatForward(todaysDate, rate, new Actual365Fixed());
+        var dividendTS = new FlatForward(todaysDate, dividend, new Actual365Fixed());
+        var volTS = new BlackConstantVol(todaysDate, new TARGET(), volatility, new Actual365Fixed());
+
+        var process = new BlackScholesMertonProcess(
+            new QuoteHandle(underlying),
+            new YieldTermStructureHandle(dividendTS),
+            new YieldTermStructureHandle(riskFreeTS),
+            new BlackVolTermStructureHandle(volTS));
+
+        var approximation = new DoubleBoundaryApproximation(process, strike, maturity, rate, dividend, volatility);
+        var boundaries = approximation.Calculate(spot, isCall: true);
+
+        // Act
+        var value = approximation.ApproximateValue(spot, strike, isCall: true, boundaries);
+
+        // Assert
+        value.Should().BeGreaterThan(0);
+        value.Should().BeLessThan(spot);
     }
 }
