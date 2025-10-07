@@ -1,209 +1,236 @@
-using System;
-using System.Diagnostics;
 using Xunit;
 using Xunit.Abstractions;
+using System.Diagnostics;
 using Alaris.Double;
 
-namespace Alaris.Test.Benchmarks
+namespace Alaris.Test.Benchmark;
+
+/// <summary>
+/// Performance benchmarks for DoubleBoundaryEngine.
+/// Measures pricing speed, memory usage, and scaling characteristics.
+/// </summary>
+public class PerformanceBenchmarks
 {
-    /// <summary>
-    /// Performance benchmarks comparing single vs double boundary engines.
-    /// </summary>
-    public class PerformanceTests
+    private readonly ITestOutputHelper _output;
+
+    public PerformanceBenchmarks(ITestOutputHelper output)
     {
-        private readonly ITestOutputHelper _output;
-        
-        public PerformanceTests(ITestOutputHelper output)
+        _output = output;
+    }
+
+    [Fact]
+    public void Benchmark_SingleOptionPricing_MeasuresSpeed()
+    {
+        // Arrange
+        var iterations = 1000;
+        var spot = 100.0;
+        var strike = 100.0;
+        var rate = 0.05;
+        var volatility = 0.20;
+        var maturity = 1.0;
+
+        var todaysDate = new Date(15, Month.January, 2024);
+        Settings.instance().setEvaluationDate(todaysDate);
+
+        var exerciseDate = todaysDate.Add(new Period((int)(maturity * 365), TimeUnit.Days));
+        var exercise = new AmericanExercise(todaysDate, exerciseDate);
+        var payoff = new PlainVanillaPayoff(Option.Type.Call, strike);
+        var option = new VanillaOption(payoff, exercise);
+
+        var underlying = new SimpleQuote(spot);
+        var riskFreeTS = new FlatForward(todaysDate, rate, new Actual365Fixed());
+        var dividendTS = new FlatForward(todaysDate, 0.0, new Actual365Fixed());
+        var volTS = new BlackConstantVol(todaysDate, new TARGET(), volatility, new Actual365Fixed());
+
+        var process = new BlackScholesMertonProcess(
+            new QuoteHandle(underlying),
+            new YieldTermStructureHandle(dividendTS),
+            new YieldTermStructureHandle(riskFreeTS),
+            new BlackVolTermStructureHandle(volTS));
+
+        var engine = new DoubleBoundaryEngine(process);
+        option.setPricingEngine(engine);
+
+        // Warm-up
+        for (int i = 0; i < 10; i++)
         {
-            _output = output;
+            engine.Calculate(option);
         }
-        
-        [Fact]
-        public void Benchmark_SingleVsDoubleBoundary_Throughput()
+
+        // Act
+        var sw = Stopwatch.StartNew();
+        for (int i = 0; i < iterations; i++)
         {
-            // Arrange
-            var testCases = new[]
-            {
-                new { S = 100.0, K = 100.0, T = 1.0, r = 0.05, q = 0.02, sigma = 0.2, Name = "Positive Rates" },
-                new { S = 100.0, K = 100.0, T = 5.0, r = -0.005, q = -0.01, sigma = 0.08, Name = "Negative Rates (Low Vol)" },
-                new { S = 100.0, K = 100.0, T = 5.0, r = -0.005, q = -0.01, sigma = 0.15, Name = "Negative Rates (High Vol)" }
-            };
-            
-            _output.WriteLine("=== Performance Benchmark ===\n");
-            _output.WriteLine($"{"Scenario",-30} {"Engine",-20} {"Time (ms)",-15} {"Options/sec",-15}");
-            _output.WriteLine(new string('-', 80));
-            
-            foreach (var tc in testCases)
-            {
-                // Single boundary engine
-                var singleTime = BenchmarkEngine(
-                    () => CreateSingleEngine(tc.S, tc.K, tc.T, tc.r, tc.q, tc.sigma),
-                    iterations: 100);
-                
-                // Double boundary engine
-                var doubleTime = BenchmarkEngine(
-                    () => CreateDoubleEngine(tc.S, tc.K, tc.T, tc.r, tc.q, tc.sigma),
-                    iterations: 100);
-                
-                _output.WriteLine($"{tc.Name,-30} {"Single",-20} {singleTime,-15:F2} {100000.0 / singleTime,-15:F0}");
-                _output.WriteLine($"{tc.Name,-30} {"Double",-20} {doubleTime,-15:F2} {100000.0 / doubleTime,-15:F0}");
-                _output.WriteLine($"{tc.Name,-30} {"Ratio",-20} {doubleTime / singleTime,-15:F2}x");
-                _output.WriteLine("");
-            }
+            engine.Calculate(option);
         }
+        sw.Stop();
+
+        // Assert & Report
+        var avgTime = sw.ElapsedMilliseconds / (double)iterations;
+        _output.WriteLine($"Average pricing time: {avgTime:F3} ms");
+        _output.WriteLine($"Total time for {iterations} iterations: {sw.ElapsedMilliseconds} ms");
         
-        [Fact]
-        public void Benchmark_VariousSchemes_Accuracy()
-        {
-            // Arrange
-            var schemes = new[]
-            {
-                new { Scheme = QdFpAmericanEngine.fastScheme(), Name = "Fast" },
-                new { Scheme = QdFpAmericanEngine.accurateScheme(), Name = "Accurate" },
-                new { Scheme = QdFpAmericanEngine.highPrecisionScheme(), Name = "High Precision" }
-            };
-            
-            _output.WriteLine("=== Accuracy vs Performance ===\n");
-            _output.WriteLine($"{"Scheme",-20} {"Time (ms)",-15} {"Price",-15} {"Delta",-15}");
-            _output.WriteLine(new string('-', 65));
-            
-            foreach (var scheme in schemes)
-            {
-                var (time, price, delta) = BenchmarkScheme(
-                    S: 100.0, K: 100.0, T: 5.0,
-                    r: -0.005, q: -0.01, sigma: 0.08,
-                    scheme: scheme.Scheme,
-                    iterations: 50);
-                
-                _output.WriteLine($"{scheme.Name,-20} {time,-15:F2} {price,-15:F4} {delta,-15:F4}");
-            }
-        }
+        avgTime.Should().BeLessThan(10); // Should be fast
+    }
+
+    [Fact]
+    public void Benchmark_SensitivityAnalysis_MeasuresScaling()
+    {
+        // Arrange
+        var spot = 100.0;
+        var strike = 100.0;
+        var rate = 0.05;
+        var volatility = 0.20;
+        var maturity = 1.0;
+
+        var todaysDate = new Date(15, Month.January, 2024);
+        Settings.instance().setEvaluationDate(todaysDate);
+
+        var exerciseDate = todaysDate.Add(new Period((int)(maturity * 365), TimeUnit.Days));
+        var exercise = new AmericanExercise(todaysDate, exerciseDate);
+        var payoff = new PlainVanillaPayoff(Option.Type.Call, strike);
+        var option = new VanillaOption(payoff, exercise);
+
+        var underlying = new SimpleQuote(spot);
+        var riskFreeTS = new FlatForward(todaysDate, rate, new Actual365Fixed());
+        var dividendTS = new FlatForward(todaysDate, 0.0, new Actual365Fixed());
+        var volTS = new BlackConstantVol(todaysDate, new TARGET(), volatility, new Actual365Fixed());
+
+        var process = new BlackScholesMertonProcess(
+            new QuoteHandle(underlying),
+            new YieldTermStructureHandle(dividendTS),
+            new YieldTermStructureHandle(riskFreeTS),
+            new BlackVolTermStructureHandle(volTS));
+
+        var engine = new DoubleBoundaryEngine(process);
+
+        // Act
+        var sw = Stopwatch.StartNew();
+        var results = engine.SensitivityAnalysis(option, 80, 120, 100);
+        sw.Stop();
+
+        // Assert & Report
+        _output.WriteLine($"Sensitivity analysis (100 points): {sw.ElapsedMilliseconds} ms");
+        _output.WriteLine($"Average per point: {sw.ElapsedMilliseconds / 100.0:F2} ms");
         
-        [Fact]
-        public void Benchmark_CollocationPoints_Convergence()
-        {
-            // Test convergence with different numbers of collocation points
-            _output.WriteLine("=== Convergence Analysis ===\n");
-            _output.WriteLine($"{"Points",-15} {"Time (ms)",-15} {"Price",-15} {"Δ from prev",-15}");
-            _output.WriteLine(new string('-', 60));
-            
-            double prevPrice = 0;
-            var pointCounts = new[] { 25, 50, 100, 150, 200 };
-            
-            foreach (var m in pointCounts)
-            {
-                var sw = Stopwatch.StartNew();
-                
-                var (process, option) = CreateTestOption(
-                    S: 100.0, K: 100.0, T: 5.0,
-                    r: -0.005, q: -0.01, sigma: 0.08);
-                
-                var approximation = new DoubleBoundaryApproximation(
-                    process, 100.0, 5.0, -0.005, -0.01, 0.08);
-                
-                var result = approximation.ComputeInitialBoundaries(m);
-                
-                var engine = new DoubleBoundaryEngine(process);
-                option.setPricingEngine(engine);
-                double price = option.NPV();
-                
-                sw.Stop();
-                
-                double delta = prevPrice == 0 ? 0 : Math.Abs(price - prevPrice);
-                
-                _output.WriteLine($"{m,-15} {sw.Elapsed.TotalMilliseconds,-15:F2} {price,-15:F4} {delta,-15:F6}");
-                
-                prevPrice = price;
-            }
-        }
+        results.Should().HaveCount(100);
+        sw.ElapsedMilliseconds.Should().BeLessThan(2000); // Should complete in reasonable time
+    }
+
+    [Theory]
+    [InlineData(10)]
+    [InlineData(50)]
+    [InlineData(100)]
+    public void Benchmark_VariableSteps_MeasuresLinearScaling(int steps)
+    {
+        // Arrange
+        var spot = 100.0;
+        var strike = 100.0;
+        var rate = 0.05;
+        var volatility = 0.20;
+        var maturity = 1.0;
+
+        var todaysDate = new Date(15, Month.January, 2024);
+        Settings.instance().setEvaluationDate(todaysDate);
+
+        var exerciseDate = todaysDate.Add(new Period((int)(maturity * 365), TimeUnit.Days));
+        var exercise = new AmericanExercise(todaysDate, exerciseDate);
+        var payoff = new PlainVanillaPayoff(Option.Type.Call, strike);
+        var option = new VanillaOption(payoff, exercise);
+
+        var underlying = new SimpleQuote(spot);
+        var riskFreeTS = new FlatForward(todaysDate, rate, new Actual365Fixed());
+        var dividendTS = new FlatForward(todaysDate, 0.0, new Actual365Fixed());
+        var volTS = new BlackConstantVol(todaysDate, new TARGET(), volatility, new Actual365Fixed());
+
+        var process = new BlackScholesMertonProcess(
+            new QuoteHandle(underlying),
+            new YieldTermStructureHandle(dividendTS),
+            new YieldTermStructureHandle(riskFreeTS),
+            new BlackVolTermStructureHandle(volTS));
+
+        var engine = new DoubleBoundaryEngine(process);
+
+        // Act
+        var sw = Stopwatch.StartNew();
+        var results = engine.SensitivityAnalysis(option, 80, 120, steps);
+        sw.Stop();
+
+        // Report
+        _output.WriteLine($"Steps: {steps}, Time: {sw.ElapsedMilliseconds} ms, " +
+                         $"Avg: {sw.ElapsedMilliseconds / (double)steps:F2} ms/step");
         
-        private double BenchmarkEngine(Func<VanillaOption> createOption, int iterations)
+        results.Should().HaveCount(steps);
+    }
+
+    [Fact]
+    public void Benchmark_NegativeRates_ComparesWithPositiveRates()
+    {
+        // Compare performance between negative and positive rates
+        var iterations = 100;
+        var spot = 100.0;
+        var strike = 100.0;
+        var volatility = 0.20;
+        var maturity = 1.0;
+
+        var todaysDate = new Date(15, Month.January, 2024);
+        Settings.instance().setEvaluationDate(todaysDate);
+
+        var exerciseDate = todaysDate.Add(new Period((int)(maturity * 365), TimeUnit.Days));
+        var exercise = new AmericanExercise(todaysDate, exerciseDate);
+        var payoff = new PlainVanillaPayoff(Option.Type.Call, strike);
+
+        // Test with positive rate
+        var positiveRate = 0.05;
+        var option1 = new VanillaOption(payoff, exercise);
+        var underlying1 = new SimpleQuote(spot);
+        var riskFreeTS1 = new FlatForward(todaysDate, positiveRate, new Actual365Fixed());
+        var dividendTS1 = new FlatForward(todaysDate, 0.0, new Actual365Fixed());
+        var volTS1 = new BlackConstantVol(todaysDate, new TARGET(), volatility, new Actual365Fixed());
+        var process1 = new BlackScholesMertonProcess(
+            new QuoteHandle(underlying1),
+            new YieldTermStructureHandle(dividendTS1),
+            new YieldTermStructureHandle(riskFreeTS1),
+            new BlackVolTermStructureHandle(volTS1));
+        var engine1 = new DoubleBoundaryEngine(process1);
+        option1.setPricingEngine(engine1);
+
+        var sw1 = Stopwatch.StartNew();
+        for (int i = 0; i < iterations; i++)
         {
-            // Warmup
-            for (int i = 0; i < 10; i++)
-            {
-                var warmup = createOption();
-                _ = warmup.NPV();
-            }
-            
-            // Actual benchmark
-            var sw = Stopwatch.StartNew();
-            
-            for (int i = 0; i < iterations; i++)
-            {
-                var option = createOption();
-                _ = option.NPV();
-            }
-            
-            sw.Stop();
-            return sw.Elapsed.TotalMilliseconds;
+            engine1.Calculate(option1);
         }
+        sw1.Stop();
+
+        // Test with negative rate
+        var negativeRate = -0.01;
+        var option2 = new VanillaOption(payoff, exercise);
+        var underlying2 = new SimpleQuote(spot);
+        var riskFreeTS2 = new FlatForward(todaysDate, negativeRate, new Actual365Fixed());
+        var dividendTS2 = new FlatForward(todaysDate, 0.0, new Actual365Fixed());
+        var volTS2 = new BlackConstantVol(todaysDate, new TARGET(), volatility, new Actual365Fixed());
+        var process2 = new BlackScholesMertonProcess(
+            new QuoteHandle(underlying2),
+            new YieldTermStructureHandle(dividendTS2),
+            new YieldTermStructureHandle(riskFreeTS2),
+            new BlackVolTermStructureHandle(volTS2));
+        var engine2 = new DoubleBoundaryEngine(process2);
+        option2.setPricingEngine(engine2);
+
+        var sw2 = Stopwatch.StartNew();
+        for (int i = 0; i < iterations; i++)
+        {
+            engine2.Calculate(option2);
+        }
+        sw2.Stop();
+
+        // Report
+        _output.WriteLine($"Positive rate (+5%): {sw1.ElapsedMilliseconds} ms");
+        _output.WriteLine($"Negative rate (-1%): {sw2.ElapsedMilliseconds} ms");
+        _output.WriteLine($"Performance ratio: {sw2.ElapsedMilliseconds / (double)sw1.ElapsedMilliseconds:F2}x");
         
-        private (double time, double price, double delta) BenchmarkScheme(
-            double S, double K, double T, double r, double q, double sigma,
-            QdFpIterationScheme scheme, int iterations)
-        {
-            var sw = Stopwatch.StartNew();
-            
-            double price = 0, delta = 0;
-            
-            for (int i = 0; i < iterations; i++)
-            {
-                var (process, option) = CreateTestOption(S, K, T, r, q, sigma);
-                var engine = new DoubleBoundaryEngine(process, scheme);
-                option.setPricingEngine(engine);
-                
-                price = option.NPV();
-                delta = option.delta();
-            }
-            
-            sw.Stop();
-            return (sw.Elapsed.TotalMilliseconds, price, delta);
-        }
-        
-        private VanillaOption CreateSingleEngine(
-            double S, double K, double T, double r, double q, double sigma)
-        {
-            var (process, option) = CreateTestOption(S, K, T, r, q, sigma);
-            var engine = new QdFpAmericanEngine(process);
-            option.setPricingEngine(engine);
-            return option;
-        }
-        
-        private VanillaOption CreateDoubleEngine(
-            double S, double K, double T, double r, double q, double sigma)
-        {
-            var (process, option) = CreateTestOption(S, K, T, r, q, sigma);
-            var engine = new DoubleBoundaryEngine(process);
-            option.setPricingEngine(engine);
-            return option;
-        }
-        
-        private (GeneralizedBlackScholesProcess process, VanillaOption option) CreateTestOption(
-            double S, double K, double T, double r, double q, double sigma)
-        {
-            var valuationDate = new Date(15, Month.March, 2024);
-            Settings.instance().setEvaluationDate(valuationDate);
-            
-            var spot = new SimpleQuote(S);
-            var spotHandle = new QuoteHandle(spot);
-            
-            var riskFreeRate = new FlatForward(valuationDate, r, new Actual365Fixed());
-            var dividendYield = new FlatForward(valuationDate, q, new Actual365Fixed());
-            var volatility = new BlackConstantVol(valuationDate, new TARGET(), sigma, new Actual365Fixed());
-            
-            var process = new GeneralizedBlackScholesProcess(
-                spotHandle,
-                new YieldTermStructureHandle(dividendYield),
-                new YieldTermStructureHandle(riskFreeRate),
-                new BlackVolTermStructureHandle(volatility));
-            
-            var maturityDate = new Date(valuationDate.serialNumber() + (int)(T * 365));
-            var exercise = new AmericanExercise(valuationDate, maturityDate);
-            var payoff = new PlainVanillaPayoff(Option.Type.Put, K);
-            var option = new VanillaOption(payoff, exercise);
-            
-            return (process, option);
-        }
+        // Performance should be comparable
+        var ratio = sw2.ElapsedMilliseconds / (double)sw1.ElapsedMilliseconds;
+        ratio.Should().BeLessThan(2.0); // Negative rates shouldn't be more than 2x slower
     }
 }

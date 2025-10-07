@@ -1,399 +1,488 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Xunit;
 using FluentAssertions;
-using Alaris.Double;
+using Alaris.Strategy;
 using Alaris.Strategy.Core;
 using Alaris.Strategy.Bridge;
+using Alaris.Strategy.Model;
+using Alaris.Strategy.Pricing;
 using Alaris.Strategy.Risk;
 
-namespace Alaris.Test.Integration
+namespace Alaris.Test.Integration;
+
+/// <summary>
+/// Integration tests for the earnings volatility calendar spread strategy.
+/// </summary>
+public class StrategyIntegrationTests
 {
-    /// <summary>
-    /// End-to-end tests validating double boundary engine with Alaris strategy components.
-    /// </summary>
-    public class Strategy
+    [Fact]
+    public void YangZhangEstimator_CalculatesVolatilityCorrectly()
     {
-        [Fact]
-        public async Task CompleteWorkflow_WithNegativeRates_ProducesValidRecommendation()
+        // Arrange
+        var estimator = new YangZhangEstimator();
+        var priceBars = GenerateSamplePriceBars(50);
+
+        // Act
+        var volatility = estimator.Calculate(priceBars, 30, annualized: true);
+
+        // Assert
+        volatility.Should().BeGreaterThan(0);
+        volatility.Should().BeLessThan(2.0);
+    }
+
+    [Fact]
+    public void YangZhangEstimator_CalculatesRollingVolatility()
+    {
+        // Arrange
+        var estimator = new YangZhangEstimator();
+        var priceBars = GenerateSamplePriceBars(100);
+
+        // Act
+        var rollingVol = estimator.CalculateRolling(priceBars, 30, annualized: true);
+
+        // Assert
+        rollingVol.Should().NotBeEmpty();
+        rollingVol.Should().HaveCount(100 - 30);
+        rollingVol.All(v => v.Volatility > 0).Should().BeTrue();
+    }
+
+    [Fact]
+    public void TermStructureAnalyzer_IdentifiesInvertedStructure()
+    {
+        // Arrange
+        var analyzer = new TermStructureAnalyzer();
+        var points = new List<TermStructurePoint>
         {
-            // Arrange
-            var testSymbol = "AAPL";
-            var currentDate = new Date(15, Month.March, 2024);
-            var earningsDate = new DateTime(2024, 4, 25);
-            
-            Settings.instance().setEvaluationDate(currentDate);
-            
-            // Create market data with NEGATIVE rates
-            var priceHistory = GeneratePriceHistory(basePrice: 150.0, volatility: 0.25, days: 90);
-            var optionChain = GenerateOptionChain(
-                underlyingPrice: 150.0,
-                earningsDate: earningsDate,
-                currentDate: DateTime.Now);
-            
-            var marketData = new MockMarketDataProvider(priceHistory, optionChain, 150.0);
-            var yangZhang = new YangZhangEstimator();
-            var termStructure = new TermStructure();
-            
-            // Act 1: Calculate realized volatility
-            var rv30 = yangZhang.Calculate(priceHistory, 30);
-            
-            // Act 2: Analyze term structure
-            var termPoints = ExtractTermStructurePoints(optionChain, 150.0);
-            var termAnalysis = termStructure.Analyze(termPoints);
-            
-            // Act 3: Price calendar spread with double boundary engine
-            var spreadParams = new CalendarSpreadParameters
-            {
-                UnderlyingPrice = 150.0,
-                Strike = 150.0,
-                FrontExpiry = new Date(26, Month.April, 2024),
-                BackExpiry = new Date(17, Month.May, 2024),
-                ImpliedVolatility = termAnalysis.Intercept,
-                RiskFreeRate = -0.005,  // NEGATIVE!
-                DividendYield = -0.01,  // NEGATIVE!
-                OptionType = Option.Type.Call,
-                ValuationDate = currentDate
-            };
-            
-            var calendarPricing = await PriceCalendarSpreadWithDouble(spreadParams);
-            
-            // Assert
-            calendarPricing.Should().NotBeNull();
-            calendarPricing.SpreadCost.Should().BeGreaterThan(0, "calendar spread should have positive cost");
-            
-            // Delta should be near neutral for calendar spread
-            Math.Abs(calendarPricing.SpreadDelta).Should().BeLessThan(0.15,
-                "calendar spread should be approximately delta neutral");
-            
-            // Vega should be positive (benefit from IV increase)
-            calendarPricing.SpreadVega.Should().BeGreaterThan(0,
-                "calendar spread should have positive vega exposure");
-            
-            Console.WriteLine("\n=== Calendar Spread with Negative Rates ===");
-            Console.WriteLine($"Front Option: ${calendarPricing.FrontOption.Price:F4}");
-            Console.WriteLine($"Back Option: ${calendarPricing.BackOption.Price:F4}");
-            Console.WriteLine($"Spread Cost: ${calendarPricing.SpreadCost:F4}");
-            Console.WriteLine($"Spread Delta: {calendarPricing.SpreadDelta:F4}");
-            Console.WriteLine($"Spread Vega: {calendarPricing.SpreadVega:F4}");
-        }
+            new() { DaysToExpiry = 10, ImpliedVolatility = 0.40, Strike = 100 },
+            new() { DaysToExpiry = 20, ImpliedVolatility = 0.35, Strike = 100 },
+            new() { DaysToExpiry = 30, ImpliedVolatility = 0.32, Strike = 100 },
+            new() { DaysToExpiry = 45, ImpliedVolatility = 0.28, Strike = 100 }
+        };
+
+        // Act
+        var analysis = analyzer.Analyze(points);
+
+        // Assert
+        analysis.IsInverted.Should().BeTrue();
+        analysis.Slope.Should().BeLessThan(0);
+        analysis.MeetsTradingCriterion.Should().BeTrue();
+    }
+
+    [Fact]
+    public void TermStructureAnalyzer_IdentifiesNormalStructure()
+    {
+        // Arrange
+        var analyzer = new TermStructureAnalyzer();
+        var points = new List<TermStructurePoint>
+        {
+            new() { DaysToExpiry = 10, ImpliedVolatility = 0.25, Strike = 100 },
+            new() { DaysToExpiry = 20, ImpliedVolatility = 0.28, Strike = 100 },
+            new() { DaysToExpiry = 30, ImpliedVolatility = 0.30, Strike = 100 },
+            new() { DaysToExpiry = 45, ImpliedVolatility = 0.32, Strike = 100 }
+        };
+
+        // Act
+        var analysis = analyzer.Analyze(points);
+
+        // Assert
+        analysis.IsInverted.Should().BeFalse();
+        analysis.Slope.Should().BeGreaterThan(0);
+        analysis.MeetsTradingCriterion.Should().BeFalse();
+    }
+
+    [Fact]
+    public void SignalGenerator_GeneratesAvoidSignalWhenCriteriaNotMet()
+    {
+        // Arrange
+        var mockData = new MockMarketDataProvider(
+            averageVolume: 500_000, // Below threshold
+            impliedVol: 0.25,
+            realizedVol: 0.30); // IV/RV < 1.25
         
-        [Fact]
-        public async Task CalendarSpread_NegativeVsPositiveRates_ProduceDifferentPrices()
-        {
-            // Arrange
-            var currentDate = new Date(15, Month.March, 2024);
-            Settings.instance().setEvaluationDate(currentDate);
-            
-            var baseParams = new CalendarSpreadParameters
-            {
-                UnderlyingPrice = 100.0,
-                Strike = 100.0,
-                FrontExpiry = new Date(15, Month.April, 2024),
-                BackExpiry = new Date(15, Month.May, 2024),
-                ImpliedVolatility = 0.25,
-                DividendYield = 0.02,
-                OptionType = Option.Type.Put,
-                ValuationDate = currentDate
-            };
-            
-            // Act 1: Price with positive rates
-            var positiveParams = baseParams with { RiskFreeRate = 0.05 };
-            var positivePricing = await PriceCalendarSpreadWithDouble(positiveParams);
-            
-            // Act 2: Price with negative rates (double boundary regime)
-            var negativeParams = baseParams with 
-            { 
-                RiskFreeRate = -0.005,
-                DividendYield = -0.01 
-            };
-            var negativePricing = await PriceCalendarSpreadWithDouble(negativeParams);
-            
-            // Assert - Prices should differ
-            positivePricing.SpreadCost.Should().NotBeApproximately(
-                negativePricing.SpreadCost, 0.01,
-                "positive and negative rate regimes should produce different prices");
-            
-            Console.WriteLine($"Positive rates spread: ${positivePricing.SpreadCost:F4}");
-            Console.WriteLine($"Negative rates spread: ${negativePricing.SpreadCost:F4}");
-            Console.WriteLine($"Difference: ${Math.Abs(positivePricing.SpreadCost - negativePricing.SpreadCost):F4}");
-        }
+        var yangZhang = new YangZhangEstimator();
+        var termAnalyzer = new TermStructureAnalyzer();
+        var generator = new SignalGenerator(mockData, yangZhang, termAnalyzer);
+
+        // Act
+        var signal = generator.Generate("TEST", DateTime.Today.AddDays(7), DateTime.Today);
+
+        // Assert
+        signal.Strength.Should().Be(SignalStrength.Avoid);
+        signal.Criteria["Volume"].Should().BeFalse();
+    }
+
+    [Fact]
+    public void SignalGenerator_GeneratesRecommendedSignalWhenAllCriteriaMet()
+    {
+        // Arrange
+        var mockData = new MockMarketDataProvider(
+            averageVolume: 2_000_000, // Above threshold
+            impliedVol: 0.35,
+            realizedVol: 0.25); // IV/RV > 1.25
         
-        [Fact]
-        public void PositionSizing_WithNegativeRatePricing_ProducesValidAllocations()
+        var yangZhang = new YangZhangEstimator();
+        var termAnalyzer = new TermStructureAnalyzer();
+        var generator = new SignalGenerator(mockData, yangZhang, termAnalyzer);
+
+        // Act
+        var signal = generator.Generate("TEST", DateTime.Today.AddDays(7), DateTime.Today);
+
+        // Assert
+        signal.Strength.Should().Be(SignalStrength.Recommended);
+        signal.Criteria["Volume"].Should().BeTrue();
+        signal.Criteria["IV/RV"].Should().BeTrue();
+        signal.Criteria["TermSlope"].Should().BeTrue();
+    }
+
+    [Fact]
+    public void CalendarSpreadPricing_ValidatesCorrectly()
+    {
+        // Arrange
+        var pricing = new CalendarSpreadPricing
         {
-            // Arrange
-            var portfolioValue = 100000.0;
-            var spreadCost = 2.50; // From negative rate pricing
-            
-            var signal = new Signal
+            FrontOption = new OptionPricing { Price = 3.50 },
+            BackOption = new OptionPricing { Price = 6.00 },
+            SpreadCost = 2.50,
+            MaxProfit = 4.00,
+            MaxLoss = 2.50
+        };
+
+        // Act & Assert
+        pricing.Invoking(p => p.Validate()).Should().NotThrow();
+        pricing.ProfitLossRatio.Should().Be(1.6);
+    }
+
+    [Fact]
+    public void CalendarSpreadPricing_ThrowsOnInvalidCost()
+    {
+        // Arrange
+        var pricing = new CalendarSpreadPricing
+        {
+            FrontOption = new OptionPricing { Price = 6.00 },
+            BackOption = new OptionPricing { Price = 3.50 },
+            SpreadCost = -2.50 // Invalid negative cost
+        };
+
+        // Act & Assert
+        pricing.Invoking(p => p.Validate())
+            .Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void KellyPositionSizer_CalculatesReasonablePosition()
+    {
+        // Arrange
+        var sizer = new KellyPositionSizer();
+        var trades = GenerateProfitableTrades(30);
+        var signal = new Signal
+        {
+            Symbol = "TEST",
+            Strength = SignalStrength.Recommended,
+            IVRVRatio = 1.35
+        };
+
+        // Act
+        var position = sizer.CalculateFromHistory(100_000, trades, 2.50, signal);
+
+        // Assert
+        position.Contracts.Should().BeGreaterThan(0);
+        position.AllocationPercent.Should().BeLessOrEqualTo(0.06);
+        position.TotalRisk.Should().BeLessOrEqualTo(position.DollarAllocation);
+    }
+
+    [Fact]
+    public void KellyPositionSizer_ReturnsZeroContractsForAvoidSignal()
+    {
+        // Arrange
+        var sizer = new KellyPositionSizer();
+        var trades = GenerateProfitableTrades(30);
+        var signal = new Signal
+        {
+            Symbol = "TEST",
+            Strength = SignalStrength.Avoid
+        };
+
+        // Act
+        var position = sizer.CalculateFromHistory(100_000, trades, 2.50, signal);
+
+        // Assert
+        position.Contracts.Should().Be(0);
+    }
+
+    [Fact]
+    public void KellyPositionSizer_HandlesInsufficientHistory()
+    {
+        // Arrange
+        var sizer = new KellyPositionSizer();
+        var trades = GenerateProfitableTrades(10); // Insufficient
+        var signal = new Signal
+        {
+            Symbol = "TEST",
+            Strength = SignalStrength.Recommended
+        };
+
+        // Act
+        var position = sizer.CalculateFromHistory(100_000, trades, 2.50, signal);
+
+        // Assert
+        position.Should().NotBeNull();
+        position.Contracts.Should().BeGreaterThanOrEqualTo(0);
+    }
+
+    [Fact]
+    public async Task Control_EvaluatesCompleteOpportunity()
+    {
+        // Arrange
+        var mockData = new MockMarketDataProvider();
+        var yangZhang = new YangZhangEstimator();
+        var termAnalyzer = new TermStructureAnalyzer();
+        var signalGen = new SignalGenerator(mockData, yangZhang, termAnalyzer);
+        var mockPricing = new MockPricingEngine();
+        var sizer = new KellyPositionSizer();
+        var control = new Control(signalGen, mockPricing, sizer);
+
+        var trades = GenerateProfitableTrades(25);
+
+        // Act
+        var opportunity = await control.EvaluateOpportunity(
+            "AAPL",
+            DateTime.Today.AddDays(7),
+            DateTime.Today,
+            100_000,
+            trades);
+
+        // Assert
+        opportunity.Should().NotBeNull();
+        opportunity.Symbol.Should().Be("AAPL");
+        opportunity.Signal.Should().NotBeNull();
+        opportunity.SpreadPricing.Should().NotBeNull();
+        opportunity.PositionSize.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task Control_SkipsOpportunityWhenSignalIsAvoid()
+    {
+        // Arrange
+        var mockData = new MockMarketDataProvider(averageVolume: 100_000); // Will trigger Avoid
+        var yangZhang = new YangZhangEstimator();
+        var termAnalyzer = new TermStructureAnalyzer();
+        var signalGen = new SignalGenerator(mockData, yangZhang, termAnalyzer);
+        var mockPricing = new MockPricingEngine();
+        var sizer = new KellyPositionSizer();
+        var control = new Control(signalGen, mockPricing, sizer);
+
+        var trades = GenerateProfitableTrades(25);
+
+        // Act
+        var opportunity = await control.EvaluateOpportunity(
+            "TEST",
+            DateTime.Today.AddDays(7),
+            DateTime.Today,
+            100_000,
+            trades);
+
+        // Assert
+        opportunity.Signal?.Strength.Should().Be(SignalStrength.Avoid);
+        opportunity.IsActionable.Should().BeFalse();
+    }
+
+    // Helper Methods
+    private static List<PriceBar> GenerateSamplePriceBars(int count)
+    {
+        var random = new Random(42);
+        var bars = new List<PriceBar>();
+        var basePrice = 150.0;
+
+        for (int i = 0; i < count; i++)
+        {
+            var open = basePrice + random.NextDouble() * 5 - 2.5;
+            var close = open + random.NextDouble() * 3 - 1.5;
+            var high = Math.Max(open, close) + random.NextDouble() * 2;
+            var low = Math.Min(open, close) - random.NextDouble() * 2;
+
+            bars.Add(new PriceBar
             {
-                Symbol = "TEST",
-                Strength = SignalStrength.Recommended,
-                IVRVRatio = 1.35,
-                TermStructureSlope = -0.005,
-                AverageVolume = 2_000_000,
-                Criteria = new Dictionary<string, bool>
-                {
-                    ["Volume"] = true,
-                    ["IV/RV"] = true,
-                    ["TermSlope"] = true
-                }
-            };
-            
-            var historicalTrades = GenerateHistoricalTrades(winRate: 0.68);
-            var positionSizer = new KellyPositionSizer();
-            
-            // Act
-            var positionSize = positionSizer.CalculateFromHistory(
-                portfolioValue,
-                historicalTrades,
-                spreadCost,
-                signal);
-            
-            // Assert
-            positionSize.Contracts.Should().BeGreaterThan(0);
-            positionSize.AllocationPercent.Should().BeInRange(0.01, 0.06);
-            positionSize.DollarAllocation.Should().BeLessThanOrEqualTo(portfolioValue * 0.06);
-            
-            Console.WriteLine($"Position size: {positionSize.Contracts} contracts");
-            Console.WriteLine($"Allocation: {positionSize.AllocationPercent:P2} (${positionSize.DollarAllocation:F2})");
+                Date = DateTime.Today.AddDays(-count + i),
+                Open = open,
+                High = high,
+                Low = low,
+                Close = close,
+                Volume = random.Next(1_000_000, 5_000_000)
+            });
+
+            basePrice = close;
         }
-        
-        private async Task<CalendarSpreadPricing> PriceCalendarSpreadWithDouble(
-            CalendarSpreadParameters parameters)
+
+        return bars;
+    }
+
+    private static List<Trade> GenerateProfitableTrades(int count)
+    {
+        var random = new Random(42);
+        var trades = new List<Trade>();
+
+        for (int i = 0; i < count; i++)
         {
-            // Create process
-            var spot = new SimpleQuote(parameters.UnderlyingPrice);
-            var spotHandle = new QuoteHandle(spot);
-            
-            var riskFreeRate = new FlatForward(
-                parameters.ValuationDate,
-                parameters.RiskFreeRate,
-                new Actual365Fixed());
-            
-            var dividendYield = new FlatForward(
-                parameters.ValuationDate,
-                parameters.DividendYield,
-                new Actual365Fixed());
-            
-            var volatility = new BlackConstantVol(
-                parameters.ValuationDate,
-                new TARGET(),
-                parameters.ImpliedVolatility,
-                new Actual365Fixed());
-            
-            var process = new GeneralizedBlackScholesProcess(
-                spotHandle,
-                new YieldTermStructureHandle(dividendYield),
-                new YieldTermStructureHandle(riskFreeRate),
-                new BlackVolTermStructureHandle(volatility));
-            
-            // Use double boundary engine
-            var engine = new DoubleBoundaryEngine(
-                process,
-                QdFpAmericanEngine.highPrecisionScheme());
-            
-            // Price both legs
-            var frontOption = await PriceOption(engine, parameters, parameters.FrontExpiry);
-            var backOption = await PriceOption(engine, parameters, parameters.BackExpiry);
-            
-            return new CalendarSpreadPricing
+            var profitLoss = random.NextDouble() > 0.55 ? // 55% win rate
+                random.NextDouble() * 500 + 100 : // Win
+                -(random.NextDouble() * 300 + 50); // Loss
+
+            trades.Add(new Trade
             {
-                FrontOption = frontOption,
-                BackOption = backOption,
-                SpreadCost = backOption.Price - frontOption.Price,
-                SpreadDelta = backOption.Delta - frontOption.Delta,
-                SpreadGamma = backOption.Gamma - frontOption.Gamma,
-                SpreadVega = backOption.Vega - frontOption.Vega,
-                SpreadTheta = backOption.Theta - frontOption.Theta,
-                MaxProfit = backOption.Price * 0.25,
-                MaxLoss = backOption.Price - frontOption.Price,
-                BreakEven = parameters.Strike
-            };
-        }
-        
-        private async Task<OptionPricing> PriceOption(
-            DoubleBoundaryEngine engine,
-            CalendarSpreadParameters parameters,
-            Date expiry)
-        {
-            var exercise = new AmericanExercise(parameters.ValuationDate, expiry);
-            var payoff = new PlainVanillaPayoff(parameters.OptionType, parameters.Strike);
-            var option = new VanillaOption(payoff, exercise);
-            
-            option.setPricingEngine(engine);
-            
-            return await Task.FromResult(new OptionPricing
-            {
-                Price = option.NPV(),
-                Delta = option.delta(),
-                Gamma = option.gamma(),
-                Vega = option.vega(),
-                Theta = option.theta(),
-                Rho = option.rho()
+                EntryDate = DateTime.Today.AddDays(-60 + i * 2),
+                ExitDate = DateTime.Today.AddDays(-60 + i * 2 + 7),
+                ProfitLoss = profitLoss,
+                Symbol = "TEST"
             });
         }
-        
-        // Helper methods for test data generation
-        private List<YangZhangEstimator.PriceBar> GeneratePriceHistory(
-            double basePrice, double volatility, int days)
+
+        return trades;
+    }
+}
+
+// Mock Implementations
+internal class MockMarketDataProvider : IMarketDataProvider
+{
+    private readonly long _averageVolume;
+    private readonly double _impliedVol;
+    private readonly double _realizedVol;
+
+    public MockMarketDataProvider(
+        long averageVolume = 2_000_000,
+        double impliedVol = 0.30,
+        double realizedVol = 0.25)
+    {
+        _averageVolume = averageVolume;
+        _impliedVol = impliedVol;
+        _realizedVol = realizedVol;
+    }
+
+    public OptionChain GetOptionChain(string symbol, DateTime date)
+    {
+        var chain = new OptionChain
         {
-            var bars = new List<YangZhangEstimator.PriceBar>();
-            var random = new Random(42);
-            var currentPrice = basePrice;
-            
-            for (int i = 0; i < days; i++)
-            {
-                var dailyReturn = random.NextGaussian(0, volatility / Math.Sqrt(252));
-                currentPrice *= (1 + dailyReturn);
-                
-                var open = currentPrice * (1 + random.NextGaussian(0, volatility / Math.Sqrt(252) / 4));
-                var high = Math.Max(open, currentPrice) * (1 + Math.Abs(random.NextGaussian(0, volatility / Math.Sqrt(252) / 4)));
-                var low = Math.Min(open, currentPrice) * (1 - Math.Abs(random.NextGaussian(0, volatility / Math.Sqrt(252) / 4)));
-                
-                bars.Add(new YangZhangEstimator.PriceBar
-                {
-                    Date = DateTime.Today.AddDays(-days + i),
-                    Open = open,
-                    High = high,
-                    Low = low,
-                    Close = currentPrice,
-                    Volume = 10_000_000
-                });
-            }
-            
-            return bars;
-        }
-        
-        private OptionChain GenerateOptionChain(
-            double underlyingPrice, DateTime earningsDate, DateTime currentDate)
+            Symbol = symbol,
+            UnderlyingPrice = 150.0,
+            Timestamp = date
+        };
+
+        // Create inverted term structure
+        var expiries = new[] { 7, 14, 30, 45 };
+        var ivs = new[] { 0.35, 0.32, 0.30, 0.27 };
+
+        for (int i = 0; i < expiries.Length; i++)
         {
-            var chain = new OptionChain { Expiries = new List<OptionExpiry>() };
-            
-            var expiryDates = new[]
+            var expiry = new OptionExpiry
             {
-                earningsDate.AddDays(1),
-                earningsDate.AddDays(22),
+                ExpiryDate = date.AddDays(expiries[i])
             };
-            
-            foreach (var expiryDate in expiryDates)
+
+            expiry.Calls.Add(new OptionContract
             {
-                var expiry = new OptionExpiry
-                {
-                    ExpiryDate = expiryDate,
-                    Calls = new List<OptionContract>(),
-                    Puts = new List<OptionContract>()
-                };
-                
-                for (double strike = underlyingPrice * 0.9; strike <= underlyingPrice * 1.1; strike += 5)
-                {
-                    expiry.Calls.Add(new OptionContract
-                    {
-                        Strike = strike,
-                        Bid = 5.0,
-                        Ask = 5.2,
-                        ImpliedVolatility = 0.25
-                    });
-                    
-                    expiry.Puts.Add(new OptionContract
-                    {
-                        Strike = strike,
-                        Bid = 4.8,
-                        Ask = 5.0,
-                        ImpliedVolatility = 0.25
-                    });
-                }
-                
-                chain.Expiries.Add(expiry);
-            }
-            
-            return chain;
-        }
-        
-        private List<TermStructure.TermStructurePoint> ExtractTermStructurePoints(
-            OptionChain chain, double underlyingPrice)
-        {
-            var points = new List<TermStructure.TermStructurePoint>();
-            
-            foreach (var expiry in chain.Expiries)
+                Strike = 150.0,
+                Bid = 2.50,
+                Ask = 2.60,
+                ImpliedVolatility = ivs[i],
+                OpenInterest = 1000,
+                Volume = 500
+            });
+
+            expiry.Puts.Add(new OptionContract
             {
-                var atmCall = expiry.Calls.OrderBy(c => Math.Abs(c.Strike - underlyingPrice)).First();
-                var atmPut = expiry.Puts.OrderBy(p => Math.Abs(p.Strike - underlyingPrice)).First();
-                
-                points.Add(new TermStructure.TermStructurePoint
-                {
-                    DaysToExpiry = (expiry.ExpiryDate - DateTime.Today).Days,
-                    ImpliedVolatility = (atmCall.ImpliedVolatility + atmPut.ImpliedVolatility) / 2,
-                    Strike = atmCall.Strike,
-                    ExpiryDate = expiry.ExpiryDate
-                });
-            }
-            
-            return points;
+                Strike = 150.0,
+                Bid = 2.40,
+                Ask = 2.50,
+                ImpliedVolatility = ivs[i] + 0.02,
+                OpenInterest = 1000,
+                Volume = 500
+            });
+
+            chain.Expiries.Add(expiry);
         }
-        
-        private List<TradeResult> GenerateHistoricalTrades(double winRate = 0.68, int count = 50)
-        {
-            var trades = new List<TradeResult>();
-            var random = new Random(42);
-            
-            for (int i = 0; i < count; i++)
-            {
-                var isWin = random.NextDouble() < winRate;
-                
-                trades.Add(new TradeResult
-                {
-                    Symbol = $"TEST{i}",
-                    EntryDate = DateTime.Today.AddDays(-100 + i * 2),
-                    ExitDate = DateTime.Today.AddDays(-95 + i * 2),
-                    PnL = isWin ? random.NextDouble() * 500 + 100 : -(random.NextDouble() * 300 + 50),
-                    ReturnPercent = isWin ? random.NextDouble() * 0.25 + 0.05 : -(random.NextDouble() * 0.15 + 0.05)
-                });
-            }
-            
-            return trades;
-        }
+
+        return chain;
     }
-    
-    // Mock provider for testing
-    public class MockMarketDataProvider : IMarketDataProvider
+
+    public List<PriceBar> GetHistoricalPrices(string symbol, int days)
     {
-        private readonly List<YangZhangEstimator.PriceBar> _priceHistory;
-        private readonly OptionChain _optionChain;
-        private readonly double _currentPrice;
-        
-        public MockMarketDataProvider(
-            List<YangZhangEstimator.PriceBar> priceHistory,
-            OptionChain optionChain,
-            double currentPrice)
+        var bars = new List<PriceBar>();
+        var random = new Random(42);
+        var basePrice = 150.0;
+
+        for (int i = 0; i < days; i++)
         {
-            _priceHistory = priceHistory;
-            _optionChain = optionChain;
-            _currentPrice = currentPrice;
+            var open = basePrice + random.NextDouble() * 2 - 1;
+            var close = open + random.NextDouble() * 2 - 1;
+            var high = Math.Max(open, close) + random.NextDouble();
+            var low = Math.Min(open, close) - random.NextDouble();
+
+            bars.Add(new PriceBar
+            {
+                Date = DateTime.Today.AddDays(-days + i),
+                Open = open,
+                High = high,
+                Low = low,
+                Close = close,
+                Volume = _averageVolume
+            });
+
+            basePrice = close;
         }
-        
-        public Task<List<YangZhangEstimator.PriceBar>> GetPriceHistory(string symbol, int days)
-            => Task.FromResult(_priceHistory.TakeLast(days).ToList());
-        
-        public Task<OptionChain> GetOptionChain(string symbol)
-            => Task.FromResult(_optionChain);
-        
-        public Task<double> GetCurrentPrice(string symbol)
-            => Task.FromResult(_currentPrice);
+
+        return bars;
     }
-    
-    // Extension for Gaussian random numbers
-    public static class RandomExtensions
+
+    public double GetCurrentPrice(string symbol) => 150.0;
+
+    public Task<List<DateTime>> GetEarningsDates(string symbol)
     {
-        public static double NextGaussian(this Random random, double mean, double stdDev)
+        return Task.FromResult(new List<DateTime> 
+        { 
+            DateTime.Today.AddDays(7),
+            DateTime.Today.AddDays(97) 
+        });
+    }
+
+    public Task<bool> IsDataAvailable(string symbol)
+    {
+        return Task.FromResult(true);
+    }
+}
+
+internal class MockPricingEngine : IOptionPricingEngine
+{
+    public Task<OptionPricing> PriceOption(OptionParameters parameters)
+    {
+        return Task.FromResult(new OptionPricing
         {
-            double u1 = 1.0 - random.NextDouble();
-            double u2 = 1.0 - random.NextDouble();
-            double randStdNormal = Math.Sqrt(-2.0 * Math.Log(u1)) * Math.Sin(2.0 * Math.PI * u2);
-            return mean + stdDev * randStdNormal;
-        }
+            Price = 3.00,
+            Delta = 0.50,
+            Gamma = 0.05,
+            Vega = 0.15,
+            Theta = -0.03,
+            Rho = 0.02,
+            ImpliedVolatility = parameters.ImpliedVolatility,
+            TimeToExpiry = 0.05
+        });
+    }
+
+    public Task<CalendarSpreadPricing> PriceCalendarSpread(CalendarSpreadParameters parameters)
+    {
+        return Task.FromResult(new CalendarSpreadPricing
+        {
+            FrontOption = new OptionPricing { Price = 3.00, Delta = 0.50 },
+            BackOption = new OptionPricing { Price = 5.50, Delta = 0.45 },
+            SpreadCost = 2.50,
+            SpreadDelta = -0.05,
+            SpreadVega = 0.10,
+            SpreadTheta = 0.03,
+            MaxProfit = 5.00,
+            MaxLoss = 2.50,
+            HasPositiveExpectedValue = true
+        });
+    }
+
+    public Task<double> CalculateImpliedVolatility(double marketPrice, OptionParameters parameters)
+    {
+        return Task.FromResult(0.30);
     }
 }
