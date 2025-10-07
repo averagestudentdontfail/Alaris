@@ -5,9 +5,8 @@ using Alaris.Strategy.Bridge;
 using Alaris.Strategy.Model;
 using Alaris.Strategy.Pricing;
 using Alaris.Strategy.Risk;
-using Alaris.Quantlib;
 
-namespace Alaris.Strategy.Tests;
+namespace Alaris.Strategy.Test;
 
 public class StrategyTests
 {
@@ -30,7 +29,7 @@ public class StrategyTests
     public void TermStructure_CalculatesSlope()
     {
         // Arrange
-        var termStructure = new TermStructure();
+        var termAnalyzer = new TermStructureAnalyzer();
         var points = new List<TermStructurePoint>
         {
             new() { DaysToExpiry = 10, ImpliedVolatility = 0.35, Strike = 100 },
@@ -40,7 +39,7 @@ public class StrategyTests
         };
 
         // Act
-        var analysis = termStructure.Analyze(points);
+        var analysis = termAnalyzer.Analyze(points);
 
         // Assert
         analysis.Slope.Should().BeLessThan(0); // Inverted term structure

@@ -106,7 +106,7 @@ public sealed class Control
             ImpliedVolatility = signal.ImpliedVolatility30,
             RiskFreeRate = 0.05, // Should come from market data
             DividendYield = 0.0, // Should come from market data
-            OptionType = Alaris.Quantlib.Option.Type.Call,
+            OptionType = Option.Type.Call,
             ValuationDate = ConvertToQuantlibDate(evaluationDate)
         };
     }
@@ -132,9 +132,11 @@ public sealed class Control
         return frontExpiry.AddDays(30);
     }
 
-    private Alaris.Quantlib.Date ConvertToQuantlibDate(DateTime date)
+    private Date ConvertToQuantlibDate(DateTime date)
     {
-        return new Alaris.Quantlib.Date(date.Day, date.Month, date.Year);
+        // SWIG-generated Date constructor: Date(int day, Month month, int year)
+        var month = (Month)date.Month;
+        return new Date(date.Day, month, date.Year);
     }
 }
 

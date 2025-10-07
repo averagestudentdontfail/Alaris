@@ -1,5 +1,3 @@
-using Alaris.Quantlib;
-
 namespace Alaris.Strategy.Model;
 
 /// <summary>
