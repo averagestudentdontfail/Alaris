@@ -70,25 +70,14 @@ public sealed class QdPlusApproximation
         double dLambda1Dh = CalculateLambdaDerivative(lambda1, alpha, beta, h);
         double dLambda2Dh = CalculateLambdaDerivative(lambda2, alpha, beta, h);
         
-        // For put: upper boundary uses lambda1 (negative), lower boundary uses lambda2 (positive)
-        // For call: lower boundary uses lambda1 (negative), upper boundary uses lambda2 (positive)
+        // S₁* (upper) always uses λ₁ (negative root)
+        // S₂* (lower) always uses λ₂ (positive root)
+        // This is true for both calls and puts
         double upperInitial = GetUpperBoundaryInitialGuess();
         double lowerInitial = GetLowerBoundaryInitialGuess();
         
-        double upperBoundary, lowerBoundary;
-        
-        if (_isCall)
-        {
-            // Call: upper uses lambda2 (positive), lower uses lambda1 (negative)
-            upperBoundary = SolveBoundary(upperInitial, lambda2, dLambda2Dh, h, alpha, beta);
-            lowerBoundary = SolveBoundary(lowerInitial, lambda1, dLambda1Dh, h, alpha, beta);
-        }
-        else
-        {
-            // Put: upper uses lambda1 (negative), lower uses lambda2 (positive)
-            upperBoundary = SolveBoundary(upperInitial, lambda1, dLambda1Dh, h, alpha, beta);
-            lowerBoundary = SolveBoundary(lowerInitial, lambda2, dLambda2Dh, h, alpha, beta);
-        }
+        double upperBoundary = SolveBoundary(upperInitial, lambda1, dLambda1Dh, h, alpha, beta);
+        double lowerBoundary = SolveBoundary(lowerInitial, lambda2, dLambda2Dh, h, alpha, beta);
         
         // Check if boundaries cross
         if (BoundariesCross(upperBoundary, lowerBoundary))
@@ -140,42 +129,18 @@ public sealed class QdPlusApproximation
     }
     
     /// <summary>
-    /// Gets the initial guess for the upper boundary from Healy (2021) page 5.
+    /// Gets the initial guess for the upper boundary (S₁*) from Healy (2021) page 5.
     /// </summary>
     /// <remarks>
-    /// For put: K * min(1, r/q)
-    /// For call: K
+    /// S₁* is solved first with initial guess:
+    /// - Put: K
+    /// - Call: K × max(1, r/q)
     /// </remarks>
     private double GetUpperBoundaryInitialGuess()
     {
         if (_isCall)
         {
-            // Call upper boundary starts at strike
-            return _strike;
-        }
-        else
-        {
-            // Put upper boundary: K * min(1, r/q)
-            if (System.Math.Abs(_dividendYield) < NUMERICAL_EPSILON)
-                return _strike;
-            
-            double ratio = _rate / _dividendYield;
-            return _strike * System.Math.Min(1.0, ratio);
-        }
-    }
-    
-    /// <summary>
-    /// Gets the initial guess for the lower boundary from Healy (2021) page 5.
-    /// </summary>
-    /// <remarks>
-    /// For put: K
-    /// For call: K * max(1, r/q)
-    /// </remarks>
-    private double GetLowerBoundaryInitialGuess()
-    {
-        if (_isCall)
-        {
-            // Call lower boundary: K * max(1, r/q)
+            // Call S₁*: K × max(1, r/q)
             if (System.Math.Abs(_dividendYield) < NUMERICAL_EPSILON)
                 return _strike;
             
@@ -184,8 +149,34 @@ public sealed class QdPlusApproximation
         }
         else
         {
-            // Put lower boundary starts at strike
+            // Put S₁*: K
             return _strike;
+        }
+    }
+    
+    /// <summary>
+    /// Gets the initial guess for the lower boundary (S₂*) from Healy (2021) page 5.
+    /// </summary>
+    /// <remarks>
+    /// S₂* is solved second with initial guess:
+    /// - Put: K × min(1, r/q)
+    /// - Call: K
+    /// </remarks>
+    private double GetLowerBoundaryInitialGuess()
+    {
+        if (_isCall)
+        {
+            // Call S₂*: K
+            return _strike;
+        }
+        else
+        {
+            // Put S₂*: K × min(1, r/q)
+            if (System.Math.Abs(_dividendYield) < NUMERICAL_EPSILON)
+                return _strike;
+            
+            double ratio = _rate / _dividendYield;
+            return _strike * System.Math.Min(1.0, ratio);
         }
     }
     

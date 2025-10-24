@@ -116,23 +116,38 @@ public sealed class DoubleBoundaryApproximation
     
     /// <summary>
     /// Calculates early exercise premium using QD+ approximation.
+    /// Uses region-based logic according to Healy (2021) Equation 13.
     /// </summary>
+    /// <remarks>
+    /// Premium formula: <c>e(S) = a1 * S^lambda1 * 1_{S &gt;= S1*} + a2 * S^lambda2 * 1_{S &lt;= S2*}</c>
+    ///
+    /// Three regions (same for both calls and puts):
+    /// - <c>S &gt;= S1*</c> (upper): Use <c>a1</c> term with <c>lambda1</c>
+    /// - <c>S &lt;= S2*</c> (lower): Use <c>a2</c> term with <c>lambda2</c>
+    /// - <c>S2* &lt; S &lt; S1*</c> (between): No early exercise premium
+    /// </remarks>
     private double CalculateEarlyExercisePremium(BoundaryResult boundaries)
     {
         var (lambda1, lambda2) = CalculateLambdas();
         
-        bool useUpperBoundary = _isCall ? (_spot >= boundaries.UpperBoundary) 
-                                         : (_spot <= boundaries.LowerBoundary);
-        
-        if (useUpperBoundary)
+        // Check which region the spot price falls into
+        if (_spot >= boundaries.UpperBoundary)
         {
+            // Above upper boundary: use a₁ term with λ₁
             double a1 = CalculateBoundaryCoefficient(boundaries.UpperBoundary, lambda1);
             return a1 * System.Math.Pow(_spot, lambda1);
         }
-        else
+        else if (_spot <= boundaries.LowerBoundary)
         {
+            // Below lower boundary: use a₂ term with λ₂
             double a2 = CalculateBoundaryCoefficient(boundaries.LowerBoundary, lambda2);
             return a2 * System.Math.Pow(_spot, lambda2);
+        }
+        else
+        {
+            // Between boundaries: no early exercise premium
+            // American value = European value
+            return 0.0;
         }
     }
     
