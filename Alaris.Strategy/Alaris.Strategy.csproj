@@ -4,10 +4,13 @@
     <TargetFramework>net9.0</TargetFramework>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <Description>Earnings volatility calendar spread trading strategies based on academic research</Description>
     <Authors>Kiran K. Nath</Authors>
     <Version>1.0.0</Version>
+    <!-- Suppress XML documentation warnings for missing comments -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
   <!-- Project Dependencies -->
@@ -15,10 +18,21 @@
     <ProjectReference Include="..\Alaris.Quantlib\Alaris.Quantlib.csproj" />
   </ItemGroup>
 
-  <!-- 
-    IMPORTANT: FluentAssertions should NOT be referenced here.
-    It is a testing library and should only be referenced by test projects.
-    If you previously had FluentAssertions here, it has been removed.
-  -->
+  <!-- NuGet Package Dependencies -->
+  <ItemGroup>
+    <!-- Mathematical and statistical computations -->
+    <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
+    
+    <!-- Logging infrastructure -->
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.0" />
+    
+    <!-- NOTE: FluentAssertions and xUnit are intentionally NOT included here.
+         They are testing libraries and should only be referenced by test projects. -->
+  </ItemGroup>
+
+  <!-- Exclude test files that shouldn't be in production library -->
+  <ItemGroup>
+    <Compile Remove="Test.cs" Condition="Exists('Test.cs')" />
+  </ItemGroup>
 
 </Project>

@@ -14,6 +14,9 @@
       "Alaris.Quantlib/1.0.0": {
         "type": "project",
         "framework": ".NETCoreApp,Version=v9.0",
+        "dependencies": {
+          "System.Memory": "4.5.5"
+        },
         "compile": {
           "bin/placeholder/Alaris.Quantlib.dll": {}
         },

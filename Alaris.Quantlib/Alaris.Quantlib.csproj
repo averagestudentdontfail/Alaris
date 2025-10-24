@@ -9,6 +9,8 @@
     <Description>QuantLib C# bindings via SWIG for derivatives pricing</Description>
     <Authors>Kiran K. Nath</Authors>
     <Version>1.0.0</Version>
+    <!-- Suppress XML documentation warnings for missing comments (auto-generated SWIG code) -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
   <!-- Native Library Configuration -->

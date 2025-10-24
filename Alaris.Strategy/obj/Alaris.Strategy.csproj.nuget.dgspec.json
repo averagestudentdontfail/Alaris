@@ -4,14 +4,14 @@
     "/home/sunny/.project/Alaris/Alaris.Strategy/Alaris.Strategy.csproj": {}
   },
   "projects": {
-    "/home/sunny/.project/Alaris/Alaris.Double/Alaris.Double.csproj": {
+    "/home/sunny/.project/Alaris/Alaris.Quantlib/Alaris.Quantlib.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/home/sunny/.project/Alaris/Alaris.Double/Alaris.Double.csproj",
-        "projectName": "Alaris.Double",
-        "projectPath": "/home/sunny/.project/Alaris/Alaris.Double/Alaris.Double.csproj",
+        "projectUniqueName": "/home/sunny/.project/Alaris/Alaris.Quantlib/Alaris.Quantlib.csproj",
+        "projectName": "Alaris.Quantlib",
+        "projectPath": "/home/sunny/.project/Alaris/Alaris.Quantlib/Alaris.Quantlib.csproj",
         "packagesPath": "/home/sunny/.nuget/packages/",
-        "outputPath": "/home/sunny/.project/Alaris/Alaris.Double/obj/",
+        "outputPath": "/home/sunny/.project/Alaris/Alaris.Quantlib/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "/home/sunny/.nuget/NuGet/NuGet.Config"
@@ -25,11 +25,7 @@
         "frameworks": {
           "net9.0": {
             "targetAlias": "net9.0",
-            "projectReferences": {
-              "/home/sunny/.project/Alaris/Alaris.Quantlib/Alaris.Quantlib.csproj": {
-                "projectPath": "/home/sunny/.project/Alaris/Alaris.Quantlib/Alaris.Quantlib.csproj"
-              }
-            }
+            "projectReferences": {}
           }
         },
         "warningProperties": {
@@ -73,65 +69,6 @@
         }
       }
     },
-    "/home/sunny/.project/Alaris/Alaris.Quantlib/Alaris.Quantlib.csproj": {
-      "version": "1.0.0",
-      "restore": {
-        "projectUniqueName": "/home/sunny/.project/Alaris/Alaris.Quantlib/Alaris.Quantlib.csproj",
-        "projectName": "Alaris.Quantlib",
-        "projectPath": "/home/sunny/.project/Alaris/Alaris.Quantlib/Alaris.Quantlib.csproj",
-        "packagesPath": "/home/sunny/.nuget/packages/",
-        "outputPath": "/home/sunny/.project/Alaris/Alaris.Quantlib/obj/",
-        "projectStyle": "PackageReference",
-        "configFilePaths": [
-          "/home/sunny/.nuget/NuGet/NuGet.Config"
-        ],
-        "originalTargetFrameworks": [
-          "net9.0"
-        ],
-        "sources": {
-          "https://api.nuget.org/v3/index.json": {}
-        },
-        "frameworks": {
-          "net9.0": {
-            "targetAlias": "net9.0",
-            "projectReferences": {}
-          }
-        },
-        "warningProperties": {
-          "warnAsError": [
-            "NU1605"
-          ]
-        },
-        "restoreAuditProperties": {
-          "enableAudit": "true",
-          "auditLevel": "low",
-          "auditMode": "direct"
-        },
-        "SdkAnalysisLevel": "9.0.200"
-      },
-      "frameworks": {
-        "net9.0": {
-          "targetAlias": "net9.0",
-          "imports": [
-            "net461",
-            "net462",
-            "net47",
-            "net471",
-            "net472",
-            "net48",
-            "net481"
-          ],
-          "assetTargetFallback": true,
-          "warn": true,
-          "frameworkReferences": {
-            "Microsoft.NETCore.App": {
-              "privateAssets": "all"
-            }
-          },
-          "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/9.0.203/PortableRuntimeIdentifierGraph.json"
-        }
-      }
-    },
     "/home/sunny/.project/Alaris/Alaris.Strategy/Alaris.Strategy.csproj": {
       "version": "1.0.0",
       "restore": {
@@ -154,9 +91,6 @@
           "net9.0": {
             "targetAlias": "net9.0",
             "projectReferences": {
-              "/home/sunny/.project/Alaris/Alaris.Double/Alaris.Double.csproj": {
-                "projectPath": "/home/sunny/.project/Alaris/Alaris.Double/Alaris.Double.csproj"
-              },
               "/home/sunny/.project/Alaris/Alaris.Quantlib/Alaris.Quantlib.csproj": {
                 "projectPath": "/home/sunny/.project/Alaris/Alaris.Quantlib/Alaris.Quantlib.csproj"
               }
@@ -179,51 +113,13 @@
         "net9.0": {
           "targetAlias": "net9.0",
           "dependencies": {
-            "FluentAssertions": {
-              "target": "Package",
-              "version": "[6.11.0, )"
-            },
             "MathNet.Numerics": {
               "target": "Package",
               "version": "[5.0.0, )"
             },
-            "Microsoft.Extensions.Configuration": {
-              "target": "Package",
-              "version": "[9.0.0, )"
-            },
-            "Microsoft.Extensions.Configuration.Json": {
-              "target": "Package",
-              "version": "[9.0.0, )"
-            },
-            "Microsoft.Extensions.DependencyInjection": {
-              "target": "Package",
-              "version": "[9.0.0, )"
-            },
-            "Microsoft.Extensions.DependencyInjection.Abstractions": {
-              "target": "Package",
-              "version": "[9.0.0, )"
-            },
-            "Microsoft.Extensions.Logging": {
-              "target": "Package",
-              "version": "[9.0.0, )"
-            },
             "Microsoft.Extensions.Logging.Abstractions": {
               "target": "Package",
               "version": "[9.0.0, )"
-            },
-            "System.Linq.Async": {
-              "target": "Package",
-              "version": "[6.0.1, )"
-            },
-            "xunit": {
-              "target": "Package",
-              "version": "[2.4.2, )"
-            },
-            "xunit.runner.visualstudio": {
-              "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
-              "suppressParent": "All",
-              "target": "Package",
-              "version": "[2.4.5, )"
             }
           },
           "imports": [

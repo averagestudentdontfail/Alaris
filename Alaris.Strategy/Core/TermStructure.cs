@@ -123,7 +123,7 @@ public sealed class TermStructureAnalysis
     public bool IsInverted => Slope < 0;
 
     /// <summary>
-    /// Determines if the slope meets the trading criterion (slope <= -0.00406).
+    /// Determines if the slope meets the trading criterion (slope &lt;= -0.00406).
     /// </summary>
     public bool MeetsTradingCriterion => Slope <= -0.00406;
 }

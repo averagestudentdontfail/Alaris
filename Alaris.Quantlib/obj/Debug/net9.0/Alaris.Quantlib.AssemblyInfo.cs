@@ -10,14 +10,12 @@
 using System;
 using System.Reflection;
 
-[assembly: System.Reflection.AssemblyCompanyAttribute("Alaris")]
+[assembly: System.Reflection.AssemblyCompanyAttribute("Kiran K. Nath")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
-[assembly: System.Reflection.AssemblyCopyrightAttribute("© Alaris Team")]
-[assembly: System.Reflection.AssemblyDescriptionAttribute(("Professional American option pricing engines and Quantlib C# bindings for financi" +
-    "al derivatives"))]
+[assembly: System.Reflection.AssemblyDescriptionAttribute("QuantLib C# bindings via SWIG for derivatives pricing")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+1473f84aa9f1b55a150c2d3973c0fbb24f7d8d13")]
-[assembly: System.Reflection.AssemblyProductAttribute("Alaris Quantlib")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ae74e45c61f388d1a633e605d1bd586ac482e3e9")]
+[assembly: System.Reflection.AssemblyProductAttribute("Alaris.Quantlib")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Alaris.Quantlib")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
 

@@ -24,13 +24,13 @@ public sealed class Signal
 
     /// <summary>
     /// Gets or sets the term structure slope (0-45 days).
-    /// Entry criterion: Slope <= -0.00406
+    /// Entry criterion: Slope &lt;= -0.00406
     /// </summary>
     public double TermStructureSlope { get; set; }
 
     /// <summary>
     /// Gets or sets the average trading volume.
-    /// Entry criterion: >= 1,500,000 shares
+    /// Entry criterion: &gt;= 1,500,000 shares
     /// </summary>
     public long AverageVolume { get; set; }
 

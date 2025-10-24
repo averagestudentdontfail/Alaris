@@ -17,6 +17,9 @@
       },
       "System.Memory/4.5.5": {},
       "Alaris.Quantlib/1.0.0": {
+        "dependencies": {
+          "System.Memory": "4.5.5"
+        },
         "runtime": {
           "Alaris.Quantlib.dll": {
             "assemblyVersion": "1.0.0.0",

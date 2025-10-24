@@ -1,17 +1,10 @@
-/home/sunny/.project/Alaris/Alaris.Strategy/bin/Debug/net9.0/libNQuantLibc.so
-/home/sunny/.project/Alaris/Alaris.Strategy/bin/Debug/net9.0/libQuantLib.so.1
-/home/sunny/.project/Alaris/Alaris.Strategy/bin/Debug/net9.0/xunit.runner.visualstudio.dotnetcore.testadapter.dll
-/home/sunny/.project/Alaris/Alaris.Strategy/bin/Debug/net9.0/xunit.runner.reporters.netcoreapp10.dll
-/home/sunny/.project/Alaris/Alaris.Strategy/bin/Debug/net9.0/xunit.runner.utility.netcoreapp10.dll
 /home/sunny/.project/Alaris/Alaris.Strategy/bin/Debug/net9.0/Alaris.Strategy.deps.json
-/home/sunny/.project/Alaris/Alaris.Strategy/bin/Debug/net9.0/Alaris.Strategy.runtimeconfig.json
 /home/sunny/.project/Alaris/Alaris.Strategy/bin/Debug/net9.0/Alaris.Strategy.dll
 /home/sunny/.project/Alaris/Alaris.Strategy/bin/Debug/net9.0/Alaris.Strategy.pdb
-/home/sunny/.project/Alaris/Alaris.Strategy/bin/Debug/net9.0/Alaris.Double.dll
+/home/sunny/.project/Alaris/Alaris.Strategy/bin/Debug/net9.0/Alaris.Strategy.xml
 /home/sunny/.project/Alaris/Alaris.Strategy/bin/Debug/net9.0/Alaris.Quantlib.dll
 /home/sunny/.project/Alaris/Alaris.Strategy/bin/Debug/net9.0/Alaris.Quantlib.pdb
-/home/sunny/.project/Alaris/Alaris.Strategy/bin/Debug/net9.0/Alaris.Double.pdb
-/home/sunny/.project/Alaris/Alaris.Strategy/bin/Debug/net9.0/Alaris.Double.xml
+/home/sunny/.project/Alaris/Alaris.Strategy/bin/Debug/net9.0/Alaris.Quantlib.xml
 /home/sunny/.project/Alaris/Alaris.Strategy/obj/Debug/net9.0/Alaris.Strategy.csproj.AssemblyReference.cache
 /home/sunny/.project/Alaris/Alaris.Strategy/obj/Debug/net9.0/Alaris.Strategy.GeneratedMSBuildEditorConfig.editorconfig
 /home/sunny/.project/Alaris/Alaris.Strategy/obj/Debug/net9.0/Alaris.Strategy.AssemblyInfoInputs.cache
@@ -21,6 +14,6 @@
 /home/sunny/.project/Alaris/Alaris.Strategy/obj/Debug/net9.0/Alaris.S.BDDBAABA.Up2Date
 /home/sunny/.project/Alaris/Alaris.Strategy/obj/Debug/net9.0/Alaris.Strategy.dll
 /home/sunny/.project/Alaris/Alaris.Strategy/obj/Debug/net9.0/refint/Alaris.Strategy.dll
+/home/sunny/.project/Alaris/Alaris.Strategy/obj/Debug/net9.0/Alaris.Strategy.xml
 /home/sunny/.project/Alaris/Alaris.Strategy/obj/Debug/net9.0/Alaris.Strategy.pdb
-/home/sunny/.project/Alaris/Alaris.Strategy/obj/Debug/net9.0/Alaris.Strategy.genruntimeconfig.cache
 /home/sunny/.project/Alaris/Alaris.Strategy/obj/Debug/net9.0/ref/Alaris.Strategy.dll
