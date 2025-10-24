@@ -1,442 +1,342 @@
 using System;
 
-namespace Alaris.Double;
-
-/// <summary>
-/// Implements the quadratic approximation method for American option exercise boundaries.
-/// Based on Ju and Zhong (1999): "An Approximate Formula for Pricing American Options"
-/// Provides accurate boundary estimation with support for negative interest rates.
-/// </summary>
-public sealed class DoubleBoundaryApproximation : IDisposable
+namespace Alaris.Double
 {
-    private readonly GeneralizedBlackScholesProcess _process;
-    private readonly double _strike;
-    private readonly double _maturity;
-    private readonly double _riskFreeRate;
-    private readonly double _dividendYield;
-    private readonly double _volatility;
-    private bool _disposed;
-
     /// <summary>
-    /// Initializes a new instance of the DoubleBoundaryApproximation with market parameters.
+    /// Provides analytical approximations for American option early exercise boundaries 
+    /// under negative interest rate regimes using the QD+ algorithm.
     /// </summary>
-    /// <param name="process">The underlying stochastic process.</param>
-    /// <param name="strike">Strike price of the option.</param>
-    /// <param name="maturity">Time to maturity in years.</param>
-    /// <param name="riskFreeRate">Risk-free interest rate (supports negative values).</param>
-    /// <param name="dividendYield">Continuous dividend yield.</param>
-    /// <param name="volatility">Volatility of the underlying asset.</param>
-    public DoubleBoundaryApproximation(
-        GeneralizedBlackScholesProcess process,
-        double strike,
-        double maturity,
-        double riskFreeRate,
-        double dividendYield,
-        double volatility)
+    /// <remarks>
+    /// <para>
+    /// This class implements the double boundary approximation methodology from:
+    /// Healy, J. (2021). "Pricing American Options Under Negative Rates"
+    /// Specifically adapts the Li (2005) QD+ algorithm for negative rate environments.
+    /// </para>
+    /// <para>
+    /// The approximation is valid when q &lt; r &lt; 0, where two exercise boundaries exist.
+    /// For other regimes, use single boundary methods or European pricing.
+    /// </para>
+    /// </remarks>
+    public sealed class DoubleBoundaryApproximation
     {
-        _process = process ?? throw new ArgumentNullException(nameof(process));
-        _strike = strike;
-        _maturity = maturity;
-        _riskFreeRate = riskFreeRate;
-        _dividendYield = dividendYield;
-        _volatility = volatility;
-
-        ValidateParameters();
-    }
-
-    /// <summary>
-    /// Calculates the exercise boundaries using the quadratic approximation method.
-    /// </summary>
-    /// <param name="spot">Current spot price of the underlying.</param>
-    /// <param name="isCall">True for call option, false for put option.</param>
-    /// <returns>The boundary result containing upper and lower boundaries.</returns>
-    public BoundaryResult Calculate(double spot, bool isCall)
-    {
-        if (spot <= 0)
-            throw new ArgumentException("Spot price must be positive", nameof(spot));
-
-        // Calculate the cost of carry
-        var b = _riskFreeRate - _dividendYield;
-
-        if (isCall)
+        private readonly double _spot;
+        private readonly double _strike;
+        private readonly double _maturity;
+        private readonly double _rate;
+        private readonly double _dividendYield;
+        private readonly double _volatility;
+        private readonly bool _isCall;
+        
+        /// <summary>
+        /// Initializes a new instance of the DoubleBoundaryApproximation class.
+        /// </summary>
+        /// <param name="spot">Current asset price S₀</param>
+        /// <param name="strike">Strike price K</param>
+        /// <param name="maturity">Time to maturity T (in years)</param>
+        /// <param name="rate">Risk-free interest rate r</param>
+        /// <param name="dividendYield">Continuous dividend yield q</param>
+        /// <param name="volatility">Volatility σ</param>
+        /// <param name="isCall">True for call options, false for put options</param>
+        /// <exception cref="ArgumentException">Thrown when parameters are invalid</exception>
+        public DoubleBoundaryApproximation(
+            double spot,
+            double strike,
+            double maturity,
+            double rate,
+            double dividendYield,
+            double volatility,
+            bool isCall)
         {
-            return CalculateCallBoundary(spot, b);
+            if (spot <= 0)
+                throw new ArgumentException("Spot price must be positive", nameof(spot));
+            if (strike <= 0)
+                throw new ArgumentException("Strike price must be positive", nameof(strike));
+            if (maturity <= 0)
+                throw new ArgumentException("Maturity must be positive", nameof(maturity));
+            if (volatility <= 0)
+                throw new ArgumentException("Volatility must be positive", nameof(volatility));
+            
+            _spot = spot;
+            _strike = strike;
+            _maturity = maturity;
+            _rate = rate;
+            _dividendYield = dividendYield;
+            _volatility = volatility;
+            _isCall = isCall;
         }
-        else
+        
+        /// <summary>
+        /// Calculates both exercise boundaries using the QD+ approximation method.
+        /// </summary>
+        /// <returns>
+        /// A result containing the upper and lower boundaries, or indication if boundaries cross.
+        /// When boundaries cross, the approximation is invalid and European pricing should be used.
+        /// </returns>
+        /// <remarks>
+        /// Implements Healy (2021) Equations 9-14 using Super Halley's method for convergence.
+        /// The two boundaries are solved independently as separate systems.
+        /// </remarks>
+        public BoundaryResult CalculateBoundaries()
         {
-            return CalculatePutBoundary(spot, b);
-        }
-    }
-
-    /// <summary>
-    /// Calculates the approximate option value given the boundaries.
-    /// </summary>
-    /// <param name="spot">Current spot price.</param>
-    /// <param name="strike">Strike price.</param>
-    /// <param name="isCall">True for call, false for put.</param>
-    /// <param name="boundaries">The calculated exercise boundaries.</param>
-    /// <returns>Approximate option value.</returns>
-    public double ApproximateValue(
-        double spot,
-        double strike,
-        bool isCall,
-        BoundaryResult boundaries)
-    {
-        // Calculate d1 and d2 for Black-Scholes
-        var d1 = CalculateD1(spot, strike, _maturity);
-        var d2 = d1 - _volatility * Math.Sqrt(_maturity);
-
-        // Standard normal CDF
-        var nd1 = NormalCDF(d1);
-        var nd2 = NormalCDF(d2);
-
-        // Discount factor
-        var discountFactor = Math.Exp(-_riskFreeRate * _maturity);
-        var dividendDiscount = Math.Exp(-_dividendYield * _maturity);
-
-        if (isCall)
-        {
-            // European call value
-            var europeanValue = spot * dividendDiscount * nd1 - strike * discountFactor * nd2;
-
-            // Early exercise premium
-            var earlyExercisePremium = CalculateEarlyExercisePremium(
-                spot, strike, boundaries.UpperBoundary, true);
-
-            return europeanValue + earlyExercisePremium;
-        }
-        else
-        {
-            // European put value
-            var europeanValue = strike * discountFactor * NormalCDF(-d2) - 
-                               spot * dividendDiscount * NormalCDF(-d1);
-
-            // Early exercise premium
-            var earlyExercisePremium = CalculateEarlyExercisePremium(
-                spot, strike, boundaries.LowerBoundary, false);
-
-            return europeanValue + earlyExercisePremium;
-        }
-    }
-
-    /// <summary>
-    /// Calculates the call option exercise boundary.
-    /// </summary>
-    private BoundaryResult CalculateCallBoundary(double spot, double costOfCarry)
-    {
-        // For calls, never exercise early if no dividends (American = European)
-        if (_dividendYield <= 0)
-        {
+            var solver = new QdPlusApproximation(
+                _spot, _strike, _maturity, _rate, _dividendYield, _volatility, _isCall);
+            
+            var (upper, lower) = solver.CalculateBoundaries();
+            
+            // Check if boundaries are valid (didn't cross)
+            bool boundariesCross = _isCall ? (upper <= lower) : (lower >= upper);
+            
             return new BoundaryResult
             {
-                UpperBoundary = double.PositiveInfinity,
-                LowerBoundary = 0,
-                CrossingTime = _maturity
+                UpperBoundary = upper,
+                LowerBoundary = lower,
+                BoundariesCross = boundariesCross,
+                IsValid = !boundariesCross
             };
         }
-
-        // Calculate q1 and q2 parameters from the paper
-        var q1 = CalculateQ1(costOfCarry);
-        var q2 = CalculateQ2(costOfCarry);
-
-        // Critical stock price (seed value)
-        var criticalPrice = CalculateCriticalPrice(_strike, true, q2);
-
-        // Iterative refinement
-        var boundary = RefineCallBoundary(criticalPrice, q1, q2);
-
-        return new BoundaryResult
-        {
-            UpperBoundary = boundary,
-            LowerBoundary = 0,
-            CrossingTime = EstimateCrossingTime(spot, boundary, true)
-        };
-    }
-
-    /// <summary>
-    /// Calculates the put option exercise boundary.
-    /// </summary>
-    private BoundaryResult CalculatePutBoundary(double spot, double costOfCarry)
-    {
-        // Calculate q1 and q2 parameters
-        var q1 = CalculateQ1(costOfCarry);
-        var q2 = CalculateQ2(costOfCarry);
-
-        // Critical stock price (seed value)
-        var criticalPrice = CalculateCriticalPrice(_strike, false, q1);
-
-        // Iterative refinement
-        var boundary = RefinePutBoundary(criticalPrice, q1, q2);
-
-        return new BoundaryResult
-        {
-            UpperBoundary = double.PositiveInfinity,
-            LowerBoundary = boundary,
-            CrossingTime = EstimateCrossingTime(spot, boundary, false)
-        };
-    }
-
-    /// <summary>
-    /// Calculates the q1 parameter from the Ju-Zhong formula.
-    /// </summary>
-    private double CalculateQ1(double costOfCarry)
-    {
-        var term = Math.Sqrt(Math.Pow(costOfCarry - _volatility * _volatility / 2, 2) + 
-                            2 * _riskFreeRate * _volatility * _volatility);
-        return (-(costOfCarry - _volatility * _volatility / 2) - term) / (_volatility * _volatility);
-    }
-
-    /// <summary>
-    /// Calculates the q2 parameter from the Ju-Zhong formula.
-    /// </summary>
-    private double CalculateQ2(double costOfCarry)
-    {
-        var term = Math.Sqrt(Math.Pow(costOfCarry - _volatility * _volatility / 2, 2) + 
-                            2 * _riskFreeRate * _volatility * _volatility);
-        return (-(costOfCarry - _volatility * _volatility / 2) + term) / (_volatility * _volatility);
-    }
-
-    /// <summary>
-    /// Calculates the initial critical price estimate.
-    /// </summary>
-    private double CalculateCriticalPrice(double strike, bool isCall, double q)
-    {
-        if (isCall)
-        {
-            return strike * (1 + 1.0 / q);
-        }
-        else
-        {
-            return strike * q / (1 + q);
-        }
-    }
-
-    /// <summary>
-    /// Refines the call boundary using iterative methods.
-    /// </summary>
-    private double RefineCallBoundary(double initialBoundary, double q1, double q2)
-    {
-        const int maxIterations = 100;
-        const double tolerance = 1e-6;
-
-        var boundary = initialBoundary;
-
-        for (int i = 0; i < maxIterations; i++)
-        {
-            var d1 = CalculateD1(boundary, _strike, _maturity);
-            var nd1 = NormalCDF(d1);
-
-            // Refined boundary calculation
-            var numerator = _strike * (1 - Math.Exp(-_dividendYield * _maturity) * nd1);
-            var denominator = 1 - nd1 / q2;
-
-            var newBoundary = numerator / denominator;
-
-            if (Math.Abs(newBoundary - boundary) < tolerance)
-                return newBoundary;
-
-            boundary = newBoundary;
-        }
-
-        return boundary;
-    }
-
-    /// <summary>
-    /// Refines the put boundary using iterative methods.
-    /// </summary>
-    private double RefinePutBoundary(double initialBoundary, double q1, double q2)
-    {
-        const int maxIterations = 100;
-        const double tolerance = 1e-6;
-
-        var boundary = initialBoundary;
-
-        for (int i = 0; i < maxIterations; i++)
-        {
-            var d1 = CalculateD1(boundary, _strike, _maturity);
-            var nMinusD1 = NormalCDF(-d1);
-
-            // Refined boundary calculation
-            var numerator = _strike * (1 - Math.Exp(-_dividendYield * _maturity) * nMinusD1);
-            var denominator = 1 + nMinusD1 / q1;
-
-            var newBoundary = numerator / denominator;
-
-            if (Math.Abs(newBoundary - boundary) < tolerance)
-                return newBoundary;
-
-            boundary = newBoundary;
-        }
-
-        return boundary;
-    }
-
-    /// <summary>
-    /// Calculates the early exercise premium component.
-    /// </summary>
-    private double CalculateEarlyExercisePremium(
-        double spot,
-        double strike,
-        double boundary,
-        bool isCall)
-    {
-        if (double.IsInfinity(boundary))
-            return 0;
-
-        // Simplified early exercise premium calculation
-        var moneyness = spot / strike;
-        var boundaryRatio = boundary / strike;
-
-        if (isCall)
-        {
-            if (spot >= boundary)
-                return spot - strike;
-            
-            var premium = (boundaryRatio - 1) * Math.Pow(moneyness / boundaryRatio, 2);
-            return Math.Max(0, strike * premium);
-        }
-        else
-        {
-            if (spot <= boundary)
-                return strike - spot;
-            
-            var premium = (1 - boundaryRatio) * Math.Pow(boundaryRatio / moneyness, 2);
-            return Math.Max(0, strike * premium);
-        }
-    }
-
-    /// <summary>
-    /// Estimates the expected time until the spot price crosses the boundary.
-    /// </summary>
-    private double EstimateCrossingTime(double spot, double boundary, bool isCall)
-    {
-        if (double.IsInfinity(boundary))
-            return _maturity;
-
-        // Use drift and volatility to estimate crossing time
-        var drift = _riskFreeRate - _dividendYield - 0.5 * _volatility * _volatility;
-        var logRatio = Math.Log(boundary / spot);
-
-        if (isCall && spot >= boundary)
-            return 0;
         
-        if (!isCall && spot <= boundary)
-            return 0;
-
-        // Expected crossing time (rough approximation)
-        if (Math.Abs(drift) < 1e-10)
-            return _maturity / 2; // Random walk case
-
-        var expectedTime = logRatio / drift;
-        return Math.Max(0, Math.Min(expectedTime, _maturity));
+        /// <summary>
+        /// Approximates the American option value using the calculated boundaries.
+        /// </summary>
+        /// <returns>
+        /// The approximate American option value, or European value if approximation fails.
+        /// </returns>
+        /// <remarks>
+        /// Uses Healy (2021) Equation 13 for the early exercise premium:
+        /// e(S) = a₁·S^λ₁·1_{S≥S*₁} + a₂·S^λ₂·1_{S≤S*₂}
+        /// </remarks>
+        public double ApproximateValue()
+        {
+            var boundaries = CalculateBoundaries();
+            
+            // If boundaries cross or are invalid, return European value
+            if (boundaries.BoundariesCross || !boundaries.IsValid)
+            {
+                return CalculateEuropeanValue();
+            }
+            
+            // Check immediate exercise conditions
+            if (ShouldExerciseImmediately(boundaries))
+            {
+                return CalculateIntrinsicValue();
+            }
+            
+            // Calculate early exercise premium and add to European value
+            double europeanValue = CalculateEuropeanValue();
+            double earlyExercisePremium = CalculateEarlyExercisePremium(boundaries);
+            
+            return europeanValue + earlyExercisePremium;
+        }
+        
+        /// <summary>
+        /// Determines if the option should be exercised immediately based on boundaries.
+        /// </summary>
+        private bool ShouldExerciseImmediately(BoundaryResult boundaries)
+        {
+            if (_isCall)
+            {
+                // For calls: exercise if S ≥ upper boundary
+                return _spot >= boundaries.UpperBoundary;
+            }
+            else
+            {
+                // For puts: exercise if S ≤ lower boundary
+                return _spot <= boundaries.LowerBoundary;
+            }
+        }
+        
+        /// <summary>
+        /// Calculates the early exercise premium using the QD+ approximation.
+        /// </summary>
+        /// <remarks>
+        /// Implements Healy (2021) Equation 13 with coefficients determined by
+        /// the continuity conditions at the boundaries (Equations 11-12).
+        /// </remarks>
+        private double CalculateEarlyExercisePremium(BoundaryResult boundaries)
+        {
+            // Calculate lambdas
+            var (lambda1, lambda2) = CalculateLambdas();
+            
+            // Determine which boundary is relevant for premium calculation
+            bool useUpperBoundary = _isCall ? (_spot >= boundaries.UpperBoundary) 
+                                             : (_spot <= boundaries.LowerBoundary);
+            
+            if (useUpperBoundary)
+            {
+                // Calculate coefficient a₁ for upper boundary
+                double a1 = CalculateUpperBoundaryCoefficient(boundaries.UpperBoundary, lambda1);
+                return a1 * Math.Pow(_spot, lambda1);
+            }
+            else
+            {
+                // Calculate coefficient a₂ for lower boundary
+                double a2 = CalculateLowerBoundaryCoefficient(boundaries.LowerBoundary, lambda2);
+                return a2 * Math.Pow(_spot, lambda2);
+            }
+        }
+        
+        /// <summary>
+        /// Calculates the lambda values from Healy (2021) Equation 9.
+        /// </summary>
+        private (double lambda1, double lambda2) CalculateLambdas()
+        {
+            double h = 1.0 - Math.Exp(-_rate * _maturity);
+            double sigma2 = _volatility * _volatility;
+            double alpha = 2.0 * _rate / sigma2;
+            double beta = 2.0 * (_rate - _dividendYield) / sigma2;
+            
+            double discriminant = Math.Sqrt((beta - 1) * (beta - 1) + 4.0 * alpha / h);
+            double lambda1 = (-(beta - 1) - discriminant) / 2.0;  // Negative root
+            double lambda2 = (-(beta - 1) + discriminant) / 2.0;  // Positive root
+            
+            return (lambda1, lambda2);
+        }
+        
+        /// <summary>
+        /// Calculates the coefficient a₁ using boundary continuity conditions.
+        /// </summary>
+        private double CalculateUpperBoundaryCoefficient(double boundary, double lambda)
+        {
+            double eta = _isCall ? 1.0 : -1.0;
+            double intrinsic = eta * (boundary - _strike);
+            double europeanValue = CalculateEuropeanValue(boundary);
+            
+            // From continuity: η(S* - K) = VE(S*) + a₁(S*)^λ₁
+            // Therefore: a₁ = [η(S* - K) - VE(S*)] / (S*)^λ₁
+            double numerator = intrinsic - europeanValue;
+            double denominator = Math.Pow(boundary, lambda);
+            
+            return denominator != 0 ? numerator / denominator : 0.0;
+        }
+        
+        /// <summary>
+        /// Calculates the coefficient a₂ using boundary continuity conditions.
+        /// </summary>
+        private double CalculateLowerBoundaryCoefficient(double boundary, double lambda)
+        {
+            double eta = _isCall ? 1.0 : -1.0;
+            double intrinsic = eta * (boundary - _strike);
+            double europeanValue = CalculateEuropeanValue(boundary);
+            
+            // From continuity: η(S* - K) = VE(S*) + a₂(S*)^λ₂
+            // Therefore: a₂ = [η(S* - K) - VE(S*)] / (S*)^λ₂
+            double numerator = intrinsic - europeanValue;
+            double denominator = Math.Pow(boundary, lambda);
+            
+            return denominator != 0 ? numerator / denominator : 0.0;
+        }
+        
+        /// <summary>
+        /// Calculates European option value using Black-Scholes formula.
+        /// </summary>
+        private double CalculateEuropeanValue(double? spot = null)
+        {
+            double S = spot ?? _spot;
+            double d1 = CalculateD1(S);
+            double d2 = d1 - _volatility * Math.Sqrt(_maturity);
+            
+            double discountFactor = Math.Exp(-_rate * _maturity);
+            double dividendFactor = Math.Exp(-_dividendYield * _maturity);
+            
+            if (_isCall)
+            {
+                return S * dividendFactor * NormalCDF(d1) 
+                     - _strike * discountFactor * NormalCDF(d2);
+            }
+            else
+            {
+                return _strike * discountFactor * NormalCDF(-d2) 
+                     - S * dividendFactor * NormalCDF(-d1);
+            }
+        }
+        
+        /// <summary>
+        /// Calculates intrinsic value (immediate exercise value).
+        /// </summary>
+        private double CalculateIntrinsicValue()
+        {
+            return _isCall 
+                ? Math.Max(_spot - _strike, 0.0) 
+                : Math.Max(_strike - _spot, 0.0);
+        }
+        
+        /// <summary>
+        /// Calculates d₁ from Black-Scholes formula.
+        /// </summary>
+        private double CalculateD1(double S)
+        {
+            double numerator = Math.Log(S / _strike) 
+                             + (_rate - _dividendYield + 0.5 * _volatility * _volatility) * _maturity;
+            return numerator / (_volatility * Math.Sqrt(_maturity));
+        }
+        
+        /// <summary>
+        /// Standard normal cumulative distribution function.
+        /// </summary>
+        private double NormalCDF(double x)
+        {
+            if (x > 8.0) return 1.0;
+            if (x < -8.0) return 0.0;
+            return 0.5 * (1.0 + Erf(x / Math.Sqrt(2.0)));
+        }
+        
+        /// <summary>
+        /// Error function approximation (Abramowitz and Stegun).
+        /// </summary>
+        private double Erf(double x)
+        {
+            const double a1 = 0.254829592;
+            const double a2 = -0.284496736;
+            const double a3 = 1.421413741;
+            const double a4 = -1.453152027;
+            const double a5 = 1.061405429;
+            const double p = 0.3275911;
+            
+            int sign = x < 0 ? -1 : 1;
+            x = Math.Abs(x);
+            
+            double t = 1.0 / (1.0 + p * x);
+            double y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.Exp(-x * x);
+            
+            return sign * y;
+        }
     }
-
+    
     /// <summary>
-    /// Calculates d1 for the Black-Scholes formula.
+    /// Represents the result of a boundary calculation for double boundary options.
     /// </summary>
-    private double CalculateD1(double spot, double strike, double time)
+    public sealed class BoundaryResult
     {
-        var numerator = Math.Log(spot / strike) + 
-                       (_riskFreeRate - _dividendYield + 0.5 * _volatility * _volatility) * time;
-        var denominator = _volatility * Math.Sqrt(time);
-        return numerator / denominator;
+        /// <summary>
+        /// The upper exercise boundary S*₁.
+        /// </summary>
+        public double UpperBoundary { get; init; }
+        
+        /// <summary>
+        /// The lower exercise boundary S*₂.
+        /// </summary>
+        public double LowerBoundary { get; init; }
+        
+        /// <summary>
+        /// Indicates whether the boundaries cross (making the approximation invalid).
+        /// </summary>
+        public bool BoundariesCross { get; init; }
+        
+        /// <summary>
+        /// Indicates whether the boundary calculation is valid.
+        /// </summary>
+        /// <remarks>
+        /// When false, European pricing should be used instead.
+        /// </remarks>
+        public bool IsValid { get; init; }
+        
+        /// <summary>
+        /// Returns a string representation of the boundary result.
+        /// </summary>
+        public override string ToString()
+        {
+            return $"Upper: {UpperBoundary:F4}, Lower: {LowerBoundary:F4}, " +
+                   $"Valid: {IsValid}, Cross: {BoundariesCross}";
+        }
     }
-
-    /// <summary>
-    /// Standard normal cumulative distribution function.
-    /// </summary>
-    private static double NormalCDF(double x)
-    {
-        // Using the error function approximation
-        return 0.5 * (1 + Erf(x / Math.Sqrt(2)));
-    }
-
-    /// <summary>
-    /// Error function approximation (Abramowitz and Stegun).
-    /// </summary>
-    private static double Erf(double x)
-    {
-        // Constants for the approximation
-        const double a1 = 0.254829592;
-        const double a2 = -0.284496736;
-        const double a3 = 1.421413741;
-        const double a4 = -1.453152027;
-        const double a5 = 1.061405429;
-        const double p = 0.3275911;
-
-        var sign = x >= 0 ? 1 : -1;
-        x = Math.Abs(x);
-
-        var t = 1.0 / (1.0 + p * x);
-        var y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.Exp(-x * x);
-
-        return sign * y;
-    }
-
-    /// <summary>
-    /// Validates all input parameters for the approximation.
-    /// </summary>
-    private void ValidateParameters()
-    {
-        if (_strike <= 0)
-            throw new ArgumentException("Strike must be positive", nameof(_strike));
-
-        if (_maturity <= 0)
-            throw new ArgumentException("Maturity must be positive", nameof(_maturity));
-
-        if (_volatility < 0)
-            throw new ArgumentException("Volatility cannot be negative", nameof(_volatility));
-
-        if (_volatility > 5.0)
-            throw new ArgumentException("Volatility appears unreasonably high", nameof(_volatility));
-    }
-
-    /// <summary>
-    /// Disposes of unmanaged resources.
-    /// </summary>
-    public void Dispose()
-    {
-        if (_disposed) return;
-        _disposed = true;
-    }
-}
-
-/// <summary>
-/// Contains the results of boundary calculations including upper and lower exercise boundaries.
-/// </summary>
-public sealed class BoundaryResult
-{
-    /// <summary>
-    /// Gets or sets the upper exercise boundary (relevant for call options).
-    /// For American calls with dividends, this is the price above which immediate exercise is optimal.
-    /// </summary>
-    public double UpperBoundary { get; set; }
-
-    /// <summary>
-    /// Gets or sets the lower exercise boundary (relevant for put options).
-    /// For American puts, this is the price below which immediate exercise is optimal.
-    /// </summary>
-    public double LowerBoundary { get; set; }
-
-    /// <summary>
-    /// Gets or sets the estimated time until the spot price crosses the boundary.
-    /// Measured in years from the current evaluation date.
-    /// </summary>
-    public double CrossingTime { get; set; }
-
-    /// <summary>
-    /// Determines if immediate exercise is optimal for a call option at the given spot price.
-    /// </summary>
-    public bool ShouldExerciseCall(double spot) => spot >= UpperBoundary;
-
-    /// <summary>
-    /// Determines if immediate exercise is optimal for a put option at the given spot price.
-    /// </summary>
-    public bool ShouldExercisePut(double spot) => spot <= LowerBoundary;
-
-    /// <summary>
-    /// Gets the distance to the exercise boundary as a percentage of spot.
-    /// </summary>
-    public double DistanceToBoundaryPercent(double spot, bool isCall) =>
-        isCall ? (UpperBoundary - spot) / spot : (spot - LowerBoundary) / spot;
 }
