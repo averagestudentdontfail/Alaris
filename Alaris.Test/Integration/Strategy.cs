@@ -1,5 +1,6 @@
 using Xunit;
 using FluentAssertions;
+using Alaris.Strategy;
 using Alaris.Strategy.Core;
 using Alaris.Strategy.Bridge;
 using Alaris.Strategy.Model;

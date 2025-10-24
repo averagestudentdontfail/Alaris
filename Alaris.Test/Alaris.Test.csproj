@@ -29,4 +29,27 @@
     <ProjectReference Include="..\Alaris.Quantlib\Alaris.Quantlib.csproj" />
   </ItemGroup>
 
+  <!-- Copy native QuantLib libraries from Alaris.Library to output directory -->
+  <ItemGroup>
+    <!-- SWIG wrapper library -->
+    <None Include="..\Alaris.Library\Native\libNQuantLibc.so" Condition="Exists('..\Alaris.Library\Native\libNQuantLibc.so')">
+      <Link>libNQuantLibc.so</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    
+    <!-- QuantLib runtime libraries -->
+    <None Include="..\Alaris.Library\Runtime\libQuantLib.so" Condition="Exists('..\Alaris.Library\Runtime\libQuantLib.so')">
+      <Link>libQuantLib.so</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\Alaris.Library\Runtime\libQuantLib.so.1" Condition="Exists('..\Alaris.Library\Runtime\libQuantLib.so.1')">
+      <Link>libQuantLib.so.1</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\Alaris.Library\Runtime\libQuantLib.so.1.39.0" Condition="Exists('..\Alaris.Library\Runtime\libQuantLib.so.1.39.0')">
+      <Link>libQuantLib.so.1.39.0</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
