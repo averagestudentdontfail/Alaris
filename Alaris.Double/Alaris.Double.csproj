@@ -15,5 +15,6 @@
 
   <ItemGroup>
     <PackageReference Include="System.Memory" Version="4.5.5" />
+    <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
   </ItemGroup>
 </Project>

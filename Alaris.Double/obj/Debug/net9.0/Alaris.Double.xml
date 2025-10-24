@@ -152,7 +152,8 @@
             <summary>
             Advanced American option pricing engine using the double boundary method.
             Supports negative interest rates and provides accurate pricing with Greeks.
-            Based on the Ju-Zhong (1999) quadratic approximation method.
+            Based on the Ju-Zhong (1999) quadratic approximation method via QdFpAmericanEngine.
+            Greeks are computed using central finite differences from MathNet.Numerics.
             </summary>
         </member>
         <member name="M:Alaris.Double.DoubleBoundaryEngine.#ctor(GeneralizedBlackScholesProcess,QdFpIterationScheme)">
@@ -176,10 +177,32 @@
         </member>
         <member name="M:Alaris.Double.DoubleBoundaryEngine.Calculate(VanillaOption)">
             <summary>
-            Calculates the option price and Greeks for an American option.
+            Calculates the option price and Greeks for an American option using central finite differences.
+            All Greeks are computed using symmetric (central) finite difference schemes for maximum accuracy.
             </summary>
             <param name="option">The vanilla option to price.</param>
             <returns>Complete option pricing results including all Greeks.</returns>
+            <exception cref="T:System.InvalidOperationException">Thrown when required quotes are unavailable.</exception>
+        </member>
+        <member name="M:Alaris.Double.DoubleBoundaryEngine.CalculateVega(VanillaOption)">
+            <summary>
+            Calculates vega using central finite differences by reconstructing the process with bumped volatility.
+            Uses symmetric bumping (up and down) for accurate derivative estimation.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DoubleBoundaryEngine.CalculateTheta(VanillaOption)">
+            <summary>
+            Calculates theta using central finite differences by shifting the evaluation date.
+            Returns theta per day (negative for time decay).
+            Uses symmetric date shifts (forward and backward) for accuracy.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DoubleBoundaryEngine.CalculateRho(VanillaOption)">
+            <summary>
+            Calculates rho using central finite differences by reconstructing the process with bumped risk-free rate.
+            Returns rho per 0.01 (1% change in rate).
+            Uses symmetric rate bumps (up and down) for accurate derivative.
+            </summary>
         </member>
         <member name="M:Alaris.Double.DoubleBoundaryEngine.CalculateWithTiming(VanillaOption)">
             <summary>
@@ -191,40 +214,64 @@
         <member name="M:Alaris.Double.DoubleBoundaryEngine.SensitivityAnalysis(VanillaOption,System.Double,System.Double,System.Int32)">
             <summary>
             Performs sensitivity analysis by varying the underlying spot price.
+            Generates a price-Greek profile across a range of spot prices.
+            All Greeks at each point are calculated using central finite differences.
             </summary>
-            <param name="option">The vanilla option to analyze.</param>
+            <param name="option">The vanilla option to analyse.</param>
             <param name="spotMin">Minimum spot price for analysis.</param>
             <param name="spotMax">Maximum spot price for analysis.</param>
-            <param name="steps">Number of steps in the spot price range.</param>
-            <returns>List of tuples containing spot prices and corresponding option results.</returns>
+            <param name="steps">Number of steps in the spot range (minimum 2).</param>
+            <returns>Dictionary mapping spot prices to option results.</returns>
+            <exception cref="T:System.ArgumentException">Thrown when parameters are invalid.</exception>
+            <exception cref="T:System.InvalidOperationException">Thrown when underlying quote is unavailable.</exception>
         </member>
         <member name="M:Alaris.Double.DoubleBoundaryEngine.Dispose">
             <summary>
-            Disposes of managed resources.
+            Disposes of the pricing engine resources.
             </summary>
         </member>
         <member name="T:Alaris.Double.OptionResult">
             <summary>
             Complete option pricing results including price and all Greeks.
+            All Greeks are computed using central finite differences for maximum accuracy.
             </summary>
         </member>
         <member name="P:Alaris.Double.OptionResult.Price">
             <summary>Gets or sets the option price (NPV).</summary>
         </member>
         <member name="P:Alaris.Double.OptionResult.Delta">
-            <summary>Gets or sets delta: rate of change of option value with respect to underlying price.</summary>
+            <summary>
+            Gets or sets delta: rate of change of option value with respect to underlying price.
+            Computed using central finite differences: (V(S+h) - V(S-h)) / (2h).
+            </summary>
         </member>
         <member name="P:Alaris.Double.OptionResult.Gamma">
-            <summary>Gets or sets gamma: rate of change of delta with respect to underlying price.</summary>
+            <summary>
+            Gets or sets gamma: rate of change of delta with respect to underlying price (convexity).
+            Represents the second derivative of option value with respect to spot.
+            Computed using central finite differences for maximum accuracy.
+            </summary>
         </member>
         <member name="P:Alaris.Double.OptionResult.Vega">
-            <summary>Gets or sets vega: sensitivity to volatility changes.</summary>
+            <summary>
+            Gets or sets vega: sensitivity to volatility changes.
+            Represents derivative of option value with respect to volatility (in decimal form).
+            Computed using central finite differences with volatility bumps.
+            </summary>
         </member>
         <member name="P:Alaris.Double.OptionResult.Theta">
-            <summary>Gets or sets theta: rate of time decay.</summary>
+            <summary>
+            Gets or sets theta: rate of time decay (per day).
+            Conventionally negative, representing value loss as time passes.
+            Computed using central finite differences with symmetric date shifts.
+            </summary>
         </member>
         <member name="P:Alaris.Double.OptionResult.Rho">
-            <summary>Gets or sets rho: sensitivity to interest rate changes.</summary>
+            <summary>
+            Gets or sets rho: sensitivity to interest rate changes.
+            Scaled to represent change per 1% (0.01) change in interest rate.
+            Computed using central finite differences with rate bumps.
+            </summary>
         </member>
         <member name="T:Alaris.Double.DoubleBoundarySolver">
             <summary>
