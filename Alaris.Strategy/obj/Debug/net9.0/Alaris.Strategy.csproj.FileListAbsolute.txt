@@ -1,3 +1,8 @@
+/home/sunny/.project/Alaris/Alaris.Strategy/bin/Debug/net9.0/libNQuantLibc.so
+/home/sunny/.project/Alaris/Alaris.Strategy/bin/Debug/net9.0/NQuantLibc.so
+/home/sunny/.project/Alaris/Alaris.Strategy/bin/Debug/net9.0/libQuantLib.so
+/home/sunny/.project/Alaris/Alaris.Strategy/bin/Debug/net9.0/libQuantLib.so.1
+/home/sunny/.project/Alaris/Alaris.Strategy/bin/Debug/net9.0/libQuantLib.so.1.39.0
 /home/sunny/.project/Alaris/Alaris.Strategy/bin/Debug/net9.0/Alaris.Strategy.deps.json
 /home/sunny/.project/Alaris/Alaris.Strategy/bin/Debug/net9.0/Alaris.Strategy.dll
 /home/sunny/.project/Alaris/Alaris.Strategy/bin/Debug/net9.0/Alaris.Strategy.pdb

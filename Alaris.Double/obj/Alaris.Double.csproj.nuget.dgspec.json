@@ -112,12 +112,6 @@
       "frameworks": {
         "net9.0": {
           "targetAlias": "net9.0",
-          "dependencies": {
-            "System.Memory": {
-              "target": "Package",
-              "version": "[4.5.5, )"
-            }
-          },
           "imports": [
             "net461",
             "net462",

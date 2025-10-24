@@ -67,11 +67,17 @@ public sealed class DoubleBoundaryEngine : IDisposable
     {
         ArgumentNullException.ThrowIfNull(option);
 
+        // Set the pricing engine
         option.setPricingEngine(_engine);
 
+        // Trigger calculation by accessing NPV first
+        // This ensures QuantLib's lazy evaluation completes before accessing Greeks
+        double price = option.NPV();
+
+        // Now Greeks should be available
         var result = new OptionResult
         {
-            Price = option.NPV(),
+            Price = price,
             Delta = option.delta(),
             Gamma = option.gamma(),
             Vega = option.vega(),
@@ -86,24 +92,26 @@ public sealed class DoubleBoundaryEngine : IDisposable
     /// Calculates option price and Greeks with performance timing.
     /// </summary>
     /// <param name="option">The vanilla option to price.</param>
-    /// <returns>Pricing results with elapsed time in milliseconds.</returns>
-    public (OptionResult Result, long ElapsedMs) CalculateWithTiming(VanillaOption option)
+    /// <returns>Tuple containing results and elapsed time in milliseconds.</returns>
+    public (OptionResult Result, long ElapsedMilliseconds) CalculateWithTiming(VanillaOption option)
     {
-        var sw = Stopwatch.StartNew();
+        ArgumentNullException.ThrowIfNull(option);
+
+        var stopwatch = Stopwatch.StartNew();
         var result = Calculate(option);
-        sw.Stop();
-        
-        return (result, sw.ElapsedMilliseconds);
+        stopwatch.Stop();
+
+        return (result, stopwatch.ElapsedMilliseconds);
     }
 
     /// <summary>
-    /// Performs sensitivity analysis by calculating option values across a range of spot prices.
+    /// Performs sensitivity analysis by varying the underlying spot price.
     /// </summary>
     /// <param name="option">The vanilla option to analyze.</param>
-    /// <param name="spotMin">Minimum spot price.</param>
-    /// <param name="spotMax">Maximum spot price.</param>
-    /// <param name="steps">Number of steps in the range.</param>
-    /// <returns>List of spot prices and corresponding option results.</returns>
+    /// <param name="spotMin">Minimum spot price for analysis.</param>
+    /// <param name="spotMax">Maximum spot price for analysis.</param>
+    /// <param name="steps">Number of steps in the spot price range.</param>
+    /// <returns>List of tuples containing spot prices and corresponding option results.</returns>
     public List<(double Spot, OptionResult Result)> SensitivityAnalysis(
         VanillaOption option,
         double spotMin,
@@ -111,28 +119,32 @@ public sealed class DoubleBoundaryEngine : IDisposable
         int steps)
     {
         ArgumentNullException.ThrowIfNull(option);
-        
+
         if (spotMin >= spotMax)
             throw new ArgumentException("spotMin must be less than spotMax");
-        
+
         if (steps < 2)
             throw new ArgumentException("steps must be at least 2", nameof(steps));
 
         if (_underlyingQuote is null)
             throw new InvalidOperationException("Cannot perform sensitivity analysis: underlying quote not available");
 
-        var results = new List<(double, OptionResult)>();
-        var spotStep = (spotMax - spotMin) / (steps - 1);
-        var originalSpot = _underlyingQuote.value();
+        var results = new List<(double, OptionResult)>(steps);
+        double spotStep = (spotMax - spotMin) / (steps - 1);
+        double originalSpot = _underlyingQuote.value();
 
         try
         {
             for (int i = 0; i < steps; i++)
             {
-                var spot = spotMin + i * spotStep;
-                _underlyingQuote.setValue(spot);
+                double spot = spotMin + i * spotStep;
                 
+                // Update the underlying spot price
+                _underlyingQuote.setValue(spot);
+
+                // Calculate option value at this spot price
                 var result = Calculate(option);
+                
                 results.Add((spot, result));
             }
         }
@@ -146,11 +158,12 @@ public sealed class DoubleBoundaryEngine : IDisposable
     }
 
     /// <summary>
-    /// Disposes of unmanaged resources.
+    /// Disposes of managed resources.
     /// </summary>
     public void Dispose()
     {
-        if (_disposed) return;
+        if (_disposed)
+            return;
 
         _engine?.Dispose();
         _disposed = true;
@@ -158,53 +171,25 @@ public sealed class DoubleBoundaryEngine : IDisposable
 }
 
 /// <summary>
-/// Contains the complete pricing results for an American option including all Greeks.
+/// Complete option pricing results including price and all Greeks.
 /// </summary>
 public sealed class OptionResult
 {
-    /// <summary>
-    /// Gets or sets the option price (Net Present Value).
-    /// </summary>
-    public double Price { get; set; }
+    /// <summary>Gets or sets the option price (NPV).</summary>
+    public double Price { get; init; }
 
-    /// <summary>
-    /// Gets or sets Delta: sensitivity to underlying price (∂V/∂S).
-    /// </summary>
-    public double Delta { get; set; }
+    /// <summary>Gets or sets delta: rate of change of option value with respect to underlying price.</summary>
+    public double Delta { get; init; }
 
-    /// <summary>
-    /// Gets or sets Gamma: rate of change of Delta (∂²V/∂S²).
-    /// </summary>
-    public double Gamma { get; set; }
+    /// <summary>Gets or sets gamma: rate of change of delta with respect to underlying price.</summary>
+    public double Gamma { get; init; }
 
-    /// <summary>
-    /// Gets or sets Vega: sensitivity to volatility (∂V/∂σ).
-    /// </summary>
-    public double Vega { get; set; }
+    /// <summary>Gets or sets vega: sensitivity to volatility changes.</summary>
+    public double Vega { get; init; }
 
-    /// <summary>
-    /// Gets or sets Theta: time decay (∂V/∂t).
-    /// </summary>
-    public double Theta { get; set; }
+    /// <summary>Gets or sets theta: rate of time decay.</summary>
+    public double Theta { get; init; }
 
-    /// <summary>
-    /// Gets or sets Rho: sensitivity to interest rate (∂V/∂r).
-    /// </summary>
-    public double Rho { get; set; }
-
-    /// <summary>
-    /// Gets the intrinsic value for a call option.
-    /// </summary>
-    public double IntrinsicValueCall(double spot, double strike) => Math.Max(spot - strike, 0);
-
-    /// <summary>
-    /// Gets the intrinsic value for a put option.
-    /// </summary>
-    public double IntrinsicValuePut(double spot, double strike) => Math.Max(strike - spot, 0);
-
-    /// <summary>
-    /// Gets the time value of the option.
-    /// </summary>
-    public double TimeValue(double spot, double strike, bool isCall) =>
-        isCall ? Price - IntrinsicValueCall(spot, strike) : Price - IntrinsicValuePut(spot, strike);
+    /// <summary>Gets or sets rho: sensitivity to interest rate changes.</summary>
+    public double Rho { get; init; }
 }

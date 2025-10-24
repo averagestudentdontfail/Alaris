@@ -10,11 +10,12 @@
 using System;
 using System.Reflection;
 
-[assembly: System.Reflection.AssemblyCompanyAttribute("Kiran K. Nath")]
+[assembly: System.Reflection.AssemblyCompanyAttribute("Alaris")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
-[assembly: System.Reflection.AssemblyDescriptionAttribute("QuantLib C# bindings via SWIG for derivatives pricing")]
+[assembly: System.Reflection.AssemblyCopyrightAttribute("Copyright © 2025")]
+[assembly: System.Reflection.AssemblyDescriptionAttribute("QuantLib C# bindings via SWIG for the Alaris quantitative finance system")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+5c6c387887cad4667efb5b59a6875761bc79b336")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0ad6cbe856687f2827a4d6f410ab57be70a97e8f")]
 [assembly: System.Reflection.AssemblyProductAttribute("Alaris.Quantlib")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Alaris.Quantlib")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

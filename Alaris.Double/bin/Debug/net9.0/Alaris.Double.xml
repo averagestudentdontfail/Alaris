@@ -186,72 +186,45 @@
             Calculates option price and Greeks with performance timing.
             </summary>
             <param name="option">The vanilla option to price.</param>
-            <returns>Pricing results with elapsed time in milliseconds.</returns>
+            <returns>Tuple containing results and elapsed time in milliseconds.</returns>
         </member>
         <member name="M:Alaris.Double.DoubleBoundaryEngine.SensitivityAnalysis(VanillaOption,System.Double,System.Double,System.Int32)">
             <summary>
-            Performs sensitivity analysis by calculating option values across a range of spot prices.
+            Performs sensitivity analysis by varying the underlying spot price.
             </summary>
             <param name="option">The vanilla option to analyze.</param>
-            <param name="spotMin">Minimum spot price.</param>
-            <param name="spotMax">Maximum spot price.</param>
-            <param name="steps">Number of steps in the range.</param>
-            <returns>List of spot prices and corresponding option results.</returns>
+            <param name="spotMin">Minimum spot price for analysis.</param>
+            <param name="spotMax">Maximum spot price for analysis.</param>
+            <param name="steps">Number of steps in the spot price range.</param>
+            <returns>List of tuples containing spot prices and corresponding option results.</returns>
         </member>
         <member name="M:Alaris.Double.DoubleBoundaryEngine.Dispose">
             <summary>
-            Disposes of unmanaged resources.
+            Disposes of managed resources.
             </summary>
         </member>
         <member name="T:Alaris.Double.OptionResult">
             <summary>
-            Contains the complete pricing results for an American option including all Greeks.
+            Complete option pricing results including price and all Greeks.
             </summary>
         </member>
         <member name="P:Alaris.Double.OptionResult.Price">
-            <summary>
-            Gets or sets the option price (Net Present Value).
-            </summary>
+            <summary>Gets or sets the option price (NPV).</summary>
         </member>
         <member name="P:Alaris.Double.OptionResult.Delta">
-            <summary>
-            Gets or sets Delta: sensitivity to underlying price (∂V/∂S).
-            </summary>
+            <summary>Gets or sets delta: rate of change of option value with respect to underlying price.</summary>
         </member>
         <member name="P:Alaris.Double.OptionResult.Gamma">
-            <summary>
-            Gets or sets Gamma: rate of change of Delta (∂²V/∂S²).
-            </summary>
+            <summary>Gets or sets gamma: rate of change of delta with respect to underlying price.</summary>
         </member>
         <member name="P:Alaris.Double.OptionResult.Vega">
-            <summary>
-            Gets or sets Vega: sensitivity to volatility (∂V/∂σ).
-            </summary>
+            <summary>Gets or sets vega: sensitivity to volatility changes.</summary>
         </member>
         <member name="P:Alaris.Double.OptionResult.Theta">
-            <summary>
-            Gets or sets Theta: time decay (∂V/∂t).
-            </summary>
+            <summary>Gets or sets theta: rate of time decay.</summary>
         </member>
         <member name="P:Alaris.Double.OptionResult.Rho">
-            <summary>
-            Gets or sets Rho: sensitivity to interest rate (∂V/∂r).
-            </summary>
-        </member>
-        <member name="M:Alaris.Double.OptionResult.IntrinsicValueCall(System.Double,System.Double)">
-            <summary>
-            Gets the intrinsic value for a call option.
-            </summary>
-        </member>
-        <member name="M:Alaris.Double.OptionResult.IntrinsicValuePut(System.Double,System.Double)">
-            <summary>
-            Gets the intrinsic value for a put option.
-            </summary>
-        </member>
-        <member name="M:Alaris.Double.OptionResult.TimeValue(System.Double,System.Double,System.Boolean)">
-            <summary>
-            Gets the time value of the option.
-            </summary>
+            <summary>Gets or sets rho: sensitivity to interest rate changes.</summary>
         </member>
         <member name="T:Alaris.Double.DoubleBoundarySolver">
             <summary>

@@ -41,7 +41,6 @@ public class DoubleBoundaryEngineTests
             new BlackVolTermStructureHandle(volTS));
 
         var engine = new DoubleBoundaryEngine(process);
-        option.setPricingEngine(engine); // Uses implicit conversion
 
         // Act
         var result = engine.Calculate(option);
@@ -86,7 +85,6 @@ public class DoubleBoundaryEngineTests
             new BlackVolTermStructureHandle(volTS));
 
         var engine = new DoubleBoundaryEngine(process);
-        option.setPricingEngine(engine);
 
         // Act
         var result = engine.Calculate(option);
@@ -129,7 +127,6 @@ public class DoubleBoundaryEngineTests
             new BlackVolTermStructureHandle(volTS));
 
         var engine = new DoubleBoundaryEngine(process);
-        option.setPricingEngine(engine);
 
         // Act
         var result = engine.Calculate(option);
@@ -170,7 +167,6 @@ public class DoubleBoundaryEngineTests
             new BlackVolTermStructureHandle(volTS));
 
         var engine = new DoubleBoundaryEngine(process);
-        option.setPricingEngine(engine);
 
         // Act
         var result = engine.Calculate(option);
@@ -211,7 +207,6 @@ public class DoubleBoundaryEngineTests
             new BlackVolTermStructureHandle(volTS));
 
         var engine = new DoubleBoundaryEngine(process);
-        option.setPricingEngine(engine);
 
         // Act
         var result = engine.Calculate(option);
@@ -252,7 +247,6 @@ public class DoubleBoundaryEngineTests
             new BlackVolTermStructureHandle(volTS));
 
         var engine = new DoubleBoundaryEngine(process);
-        option.setPricingEngine(engine);
 
         // Act
         var result = engine.Calculate(option);

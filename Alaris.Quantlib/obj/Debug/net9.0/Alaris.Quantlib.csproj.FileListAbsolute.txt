@@ -1,7 +1,12 @@
+/home/sunny/.project/Alaris/Alaris.Quantlib/bin/Debug/net9.0/libNQuantLibc.so
+/home/sunny/.project/Alaris/Alaris.Quantlib/bin/Debug/net9.0/NQuantLibc.so
+/home/sunny/.project/Alaris/Alaris.Quantlib/bin/Debug/net9.0/libQuantLib.so
+/home/sunny/.project/Alaris/Alaris.Quantlib/bin/Debug/net9.0/libQuantLib.so.1
+/home/sunny/.project/Alaris/Alaris.Quantlib/bin/Debug/net9.0/libQuantLib.so.1.39.0
+/home/sunny/.project/Alaris/Alaris.Quantlib/bin/Debug/net9.0/Alaris.Quantlib.xml
 /home/sunny/.project/Alaris/Alaris.Quantlib/bin/Debug/net9.0/Alaris.Quantlib.deps.json
 /home/sunny/.project/Alaris/Alaris.Quantlib/bin/Debug/net9.0/Alaris.Quantlib.dll
 /home/sunny/.project/Alaris/Alaris.Quantlib/bin/Debug/net9.0/Alaris.Quantlib.pdb
-/home/sunny/.project/Alaris/Alaris.Quantlib/bin/Debug/net9.0/Alaris.Quantlib.xml
 /home/sunny/.project/Alaris/Alaris.Quantlib/obj/Debug/net9.0/Alaris.Quantlib.GeneratedMSBuildEditorConfig.editorconfig
 /home/sunny/.project/Alaris/Alaris.Quantlib/obj/Debug/net9.0/Alaris.Quantlib.AssemblyInfoInputs.cache
 /home/sunny/.project/Alaris/Alaris.Quantlib/obj/Debug/net9.0/Alaris.Quantlib.AssemblyInfo.cs
@@ -9,6 +14,5 @@
 /home/sunny/.project/Alaris/Alaris.Quantlib/obj/Debug/net9.0/Alaris.Quantlib.sourcelink.json
 /home/sunny/.project/Alaris/Alaris.Quantlib/obj/Debug/net9.0/Alaris.Quantlib.dll
 /home/sunny/.project/Alaris/Alaris.Quantlib/obj/Debug/net9.0/refint/Alaris.Quantlib.dll
-/home/sunny/.project/Alaris/Alaris.Quantlib/obj/Debug/net9.0/Alaris.Quantlib.xml
 /home/sunny/.project/Alaris/Alaris.Quantlib/obj/Debug/net9.0/Alaris.Quantlib.pdb
 /home/sunny/.project/Alaris/Alaris.Quantlib/obj/Debug/net9.0/ref/Alaris.Quantlib.dll

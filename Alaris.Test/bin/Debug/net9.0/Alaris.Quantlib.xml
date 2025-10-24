@@ -154,6 +154,29 @@
             collection but not when one of the elements of the collection is modified as it is a bit
             tricky to detect unmanaged code that modifies the collection under our feet.
         </member>
+        <member name="T:Alaris.Quantlib.Native">
+            <summary>
+            Initializes native library loading for QuantLib dependencies.
+            This ensures that libQuantLib.so.1 can be found when libNQuantLibc.so is loaded.
+            </summary>
+        </member>
+        <member name="M:Alaris.Quantlib.Native.Initialize">
+            <summary>
+            Module initializer that runs before any other code in the assembly.
+            Configures the native library resolver to search in the assembly directory.
+            </summary>
+        </member>
+        <member name="M:Alaris.Quantlib.Native.ResolveDllImport(System.String,System.Reflection.Assembly,System.Nullable{System.Runtime.InteropServices.DllImportSearchPath})">
+            <summary>
+            Custom DLL import resolver that searches for native libraries in the assembly directory.
+            </summary>
+        </member>
+        <member name="M:Alaris.Quantlib.Native.PreloadDependencies">
+            <summary>
+            Preloads QuantLib dependencies to ensure they're available when NQuantLibc is loaded.
+            Call this before any QuantLib functionality is used.
+            </summary>
+        </member>
         <member name="T:NodeVector.NodeVectorEnumerator">
             Note that the IEnumerator documentation requires an InvalidOperationException to be thrown
             whenever the collection is modified. This has been done for changes in the size of the
