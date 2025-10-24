@@ -1,59 +1,77 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-  
+
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
-    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <Description>QuantLib C# bindings via SWIG for derivatives pricing</Description>
-    <Authors>Kiran K. Nath</Authors>
-    <Version>1.0.0</Version>
-    <!-- Suppress XML documentation warnings for missing comments (auto-generated SWIG code) -->
-    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
   </PropertyGroup>
 
-  <!-- Native Library Configuration -->
-  <!-- These entries ensure native libraries are copied to output directories -->
-  <!-- and subsequently to any referencing projects including test projects -->
+  <PropertyGroup>
+    <Description>QuantLib C# bindings via SWIG for the Alaris quantitative finance system</Description>
+    <Company>Alaris</Company>
+    <Product>Alaris.Quantlib</Product>
+    <Copyright>Copyright © 2025</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+  </PropertyGroup>
+
+  <!-- Native library configuration for SWIG wrapper and QuantLib runtime -->
   <ItemGroup>
-    <!-- Primary SWIG wrapper library on Linux -->
-    <Content Include="libNQuantLibc.so" Condition="Exists('libNQuantLibc.so')">
+    <!-- SWIG wrapper library (NQuantLibc) -->
+    <Content Include="../Alaris.Library/Native/libNQuantLibc.so">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>libNQuantLibc.so</Link>
+      <PackagePath>runtimes/linux-x64/native</PackagePath>
+      <Pack>true</Pack>
       <Visible>false</Visible>
     </Content>
     
-    <!-- Alternative naming for SWIG wrapper -->
-    <Content Include="NQuantLibc.so" Condition="Exists('NQuantLibc.so')">
+    <!-- Also copy with alternate name that .NET might search for -->
+    <Content Include="../Alaris.Library/Native/libNQuantLibc.so">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>NQuantLibc.so</Link>
+      <PackagePath>runtimes/linux-x64/native</PackagePath>
+      <Pack>true</Pack>
       <Visible>false</Visible>
     </Content>
     
-    <!-- QuantLib C++ library dependency -->
-    <Content Include="libQuantLib.so.1" Condition="Exists('libQuantLib.so.1')">
+    <!-- QuantLib runtime libraries -->
+    <Content Include="../Alaris.Library/Runtime/libQuantLib.so">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>libQuantLib.so</Link>
+      <PackagePath>runtimes/linux-x64/native</PackagePath>
+      <Pack>true</Pack>
+      <Visible>false</Visible>
+    </Content>
+    
+    <Content Include="../Alaris.Library/Runtime/libQuantLib.so.1">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>libQuantLib.so.1</Link>
+      <PackagePath>runtimes/linux-x64/native</PackagePath>
+      <Pack>true</Pack>
       <Visible>false</Visible>
     </Content>
     
-    <!-- Windows support if you're cross-platform -->
-    <Content Include="NQuantLibc.dll" Condition="Exists('NQuantLibc.dll')">
+    <Content Include="../Alaris.Library/Runtime/libQuantLib.so.1.39.0">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Link>NQuantLibc.dll</Link>
-      <Visible>false</Visible>
-    </Content>
-    
-    <Content Include="QuantLib-x64.dll" Condition="Exists('QuantLib-x64.dll')">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Link>QuantLib-x64.dll</Link>
+      <Link>libQuantLib.so.1.39.0</Link>
+      <PackagePath>runtimes/linux-x64/native</PackagePath>
+      <Pack>true</Pack>
       <Visible>false</Visible>
     </Content>
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="System.Memory" Version="4.5.5" />
-  </ItemGroup>
+  <!-- Fallback: Post-build event to ensure native libraries are copied -->
+  <Target Name="CopyNativeLibraries" AfterTargets="Build">
+    <ItemGroup>
+      <NativeLibs Include="$(MSBuildProjectDirectory)/../Alaris.Library/Native/*.so" />
+      <RuntimeLibs Include="$(MSBuildProjectDirectory)/../Alaris.Library/Runtime/*.so*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(NativeLibs)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(RuntimeLibs)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" />
+    <Message Text="Copied native libraries from Alaris.Library to $(OutputPath)" Importance="High" />
+  </Target>
 
 </Project>

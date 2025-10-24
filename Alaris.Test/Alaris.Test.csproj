@@ -6,50 +6,82 @@
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
-    <RootNamespace>Alaris.Test</RootNamespace>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
   </PropertyGroup>
 
+  <!-- Test framework packages -->
   <ItemGroup>
-    <PackageReference Include="coverlet.collector" Version="6.0.0">
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
-    <PackageReference Include="xunit" Version="2.4.2" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="2.4.5">
+    <PackageReference Include="coverlet.collector" Version="6.0.2">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="FluentAssertions" Version="6.11.0" />
   </ItemGroup>
 
+  <!-- Project references -->
   <ItemGroup>
-    <ProjectReference Include="..\Alaris.Double\Alaris.Double.csproj" />
-    <ProjectReference Include="..\Alaris.Strategy\Alaris.Strategy.csproj" />
-    <ProjectReference Include="..\Alaris.Quantlib\Alaris.Quantlib.csproj" />
+    <ProjectReference Include="../Alaris.Quantlib/Alaris.Quantlib.csproj" />
+    <ProjectReference Include="../Alaris.Double/Alaris.Double.csproj" />
+    <ProjectReference Include="../Alaris.Strategy/Alaris.Strategy.csproj" />
   </ItemGroup>
 
-  <!-- Copy native QuantLib libraries from Alaris.Library to output directory -->
+  <!-- Explicitly copy native libraries to test output directory -->
   <ItemGroup>
     <!-- SWIG wrapper library -->
-    <None Include="..\Alaris.Library\Native\libNQuantLibc.so" Condition="Exists('..\Alaris.Library\Native\libNQuantLibc.so')">
-      <Link>libNQuantLibc.so</Link>
+    <Content Include="../Alaris.Library/Native/libNQuantLibc.so">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+      <Link>libNQuantLibc.so</Link>
+      <Visible>false</Visible>
+    </Content>
+    
+    <!-- Alternate name for SWIG wrapper -->
+    <Content Include="../Alaris.Library/Native/libNQuantLibc.so">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>NQuantLibc.so</Link>
+      <Visible>false</Visible>
+    </Content>
     
     <!-- QuantLib runtime libraries -->
-    <None Include="..\Alaris.Library\Runtime\libQuantLib.so" Condition="Exists('..\Alaris.Library\Runtime\libQuantLib.so')">
+    <Content Include="../Alaris.Library/Runtime/libQuantLib.so">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>libQuantLib.so</Link>
+      <Visible>false</Visible>
+    </Content>
+    
+    <Content Include="../Alaris.Library/Runtime/libQuantLib.so.1">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="..\Alaris.Library\Runtime\libQuantLib.so.1" Condition="Exists('..\Alaris.Library\Runtime\libQuantLib.so.1')">
       <Link>libQuantLib.so.1</Link>
+      <Visible>false</Visible>
+    </Content>
+    
+    <Content Include="../Alaris.Library/Runtime/libQuantLib.so.1.39.0">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="..\Alaris.Library\Runtime\libQuantLib.so.1.39.0" Condition="Exists('..\Alaris.Library\Runtime\libQuantLib.so.1.39.0')">
       <Link>libQuantLib.so.1.39.0</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+      <Visible>false</Visible>
+    </Content>
   </ItemGroup>
+
+  <!-- Additional post-build step to ensure libraries are present -->
+  <Target Name="CopyNativeLibrariesForTests" AfterTargets="Build">
+    <ItemGroup>
+      <NativeLibs Include="$(MSBuildProjectDirectory)/../Alaris.Library/Native/*.so" />
+      <RuntimeLibs Include="$(MSBuildProjectDirectory)/../Alaris.Library/Runtime/*.so*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(NativeLibs)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(RuntimeLibs)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" />
+    <Message Text="Copied native libraries to test output: $(OutputPath)" Importance="High" />
+  </Target>
+
+  <!-- Display library paths for debugging -->
+  <Target Name="DisplayNativeLibraryInfo" BeforeTargets="Build">
+    <Message Text="Native library source: $(MSBuildProjectDirectory)/../Alaris.Library/Native/" Importance="High" />
+    <Message Text="Runtime library source: $(MSBuildProjectDirectory)/../Alaris.Library/Runtime/" Importance="High" />
+    <Message Text="Test output path: $(OutputPath)" Importance="High" />
+  </Target>
 
 </Project>
