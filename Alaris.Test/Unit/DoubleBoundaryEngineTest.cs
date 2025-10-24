@@ -1,6 +1,7 @@
 using Xunit;
 using FluentAssertions;
 using Alaris.Double;
+using System.Linq;
 
 namespace Alaris.Test.Unit;
 
@@ -40,7 +41,7 @@ public class DoubleBoundaryEngineTests
             new YieldTermStructureHandle(riskFreeTS),
             new BlackVolTermStructureHandle(volTS));
 
-        var engine = new DoubleBoundaryEngine(process);
+        var engine = new DoubleBoundaryEngine(process, underlying);
 
         // Act
         var result = engine.Calculate(option);
@@ -84,7 +85,7 @@ public class DoubleBoundaryEngineTests
             new YieldTermStructureHandle(riskFreeTS),
             new BlackVolTermStructureHandle(volTS));
 
-        var engine = new DoubleBoundaryEngine(process);
+        var engine = new DoubleBoundaryEngine(process, underlying);
 
         // Act
         var result = engine.Calculate(option);
@@ -126,7 +127,7 @@ public class DoubleBoundaryEngineTests
             new YieldTermStructureHandle(riskFreeTS),
             new BlackVolTermStructureHandle(volTS));
 
-        var engine = new DoubleBoundaryEngine(process);
+        var engine = new DoubleBoundaryEngine(process, underlying);
 
         // Act
         var result = engine.Calculate(option);
@@ -166,7 +167,7 @@ public class DoubleBoundaryEngineTests
             new YieldTermStructureHandle(riskFreeTS),
             new BlackVolTermStructureHandle(volTS));
 
-        var engine = new DoubleBoundaryEngine(process);
+        var engine = new DoubleBoundaryEngine(process, underlying);
 
         // Act
         var result = engine.Calculate(option);
@@ -206,7 +207,7 @@ public class DoubleBoundaryEngineTests
             new YieldTermStructureHandle(riskFreeTS),
             new BlackVolTermStructureHandle(volTS));
 
-        var engine = new DoubleBoundaryEngine(process);
+        var engine = new DoubleBoundaryEngine(process, underlying);
 
         // Act
         var result = engine.Calculate(option);
@@ -246,7 +247,7 @@ public class DoubleBoundaryEngineTests
             new YieldTermStructureHandle(riskFreeTS),
             new BlackVolTermStructureHandle(volTS));
 
-        var engine = new DoubleBoundaryEngine(process);
+        var engine = new DoubleBoundaryEngine(process, underlying);
 
         // Act
         var result = engine.Calculate(option);
@@ -288,7 +289,7 @@ public class DoubleBoundaryEngineTests
             new YieldTermStructureHandle(riskFreeTS),
             new BlackVolTermStructureHandle(volTS));
 
-        var engine = new DoubleBoundaryEngine(process);
+        var engine = new DoubleBoundaryEngine(process, underlying);
 
         // Act
         var (result, elapsed) = engine.CalculateWithTiming(option);
@@ -327,20 +328,21 @@ public class DoubleBoundaryEngineTests
             new YieldTermStructureHandle(riskFreeTS),
             new BlackVolTermStructureHandle(volTS));
 
-        var engine = new DoubleBoundaryEngine(process);
+        var engine = new DoubleBoundaryEngine(process, underlying);
 
         // Act
         var results = engine.SensitivityAnalysis(option, 80, 120, 10);
 
         // Assert
         results.Should().HaveCount(10);
-        results.First().Spot.Should().Be(80);
-        results.Last().Spot.Should().BeApproximately(120, 0.01);
+        results.First().Key.Should().Be(80);
+        results.Last().Key.Should().BeApproximately(120, 0.01);
         
         // Prices should increase with spot for a call
-        for (int i = 1; i < results.Count; i++)
+        var sortedResults = results.OrderBy(kvp => kvp.Key).ToList();
+        for (int i = 1; i < sortedResults.Count; i++)
         {
-            results[i].Result.Price.Should().BeGreaterThan(results[i - 1].Result.Price);
+            sortedResults[i].Value.Price.Should().BeGreaterThan(sortedResults[i - 1].Value.Price);
         }
     }
 }

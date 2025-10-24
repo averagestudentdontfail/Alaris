@@ -26,17 +26,15 @@ public sealed class DoubleBoundaryEngine : IDisposable
     /// Initializes a new instance of the DoubleBoundaryEngine.
     /// </summary>
     /// <param name="process">The Black-Scholes-Merton process for the underlying.</param>
+    /// <param name="underlyingQuote">Optional SimpleQuote for Greek calculations. If not provided, Greeks will not be calculated.</param>
     /// <param name="scheme">Optional iteration scheme for numerical solver.</param>
     public DoubleBoundaryEngine(
         GeneralizedBlackScholesProcess process,
+        SimpleQuote? underlyingQuote = null,
         QdFpIterationScheme? scheme = null)
     {
         _process = process ?? throw new ArgumentNullException(nameof(process));
-        
-        // Extract the underlying quote for Greek calculations
-        var stateVariable = _process.stateVariable();
-        var quote = stateVariable.currentLink();
-        _underlyingQuote = quote as SimpleQuote;
+        _underlyingQuote = underlyingQuote;
         
         // Initialize numerical differentiator for central finite differences
         // center = 0 for adaptive centering, points = 5 for good accuracy
@@ -83,7 +81,7 @@ public sealed class DoubleBoundaryEngine : IDisposable
         {
             throw new InvalidOperationException(
                 "Cannot calculate Greeks: underlying quote not available. " +
-                "Ensure the process is constructed with a QuoteHandle wrapping a SimpleQuote.");
+                "Ensure the engine is constructed with a SimpleQuote parameter.");
         }
 
         // Set the pricing engine
@@ -142,28 +140,32 @@ public sealed class DoubleBoundaryEngine : IDisposable
     {
         try
         {
-            var blackVolTS = _process.blackVolatility();
-            var referenceDate = Settings.instance().getEvaluationDate();
-            
-            // Extract current volatility
-            double currentVol = blackVolTS.blackVol(
-                referenceDate.Add(new Period(1, TimeUnit.Years)), 
-                100.0);
+            const double volBump = 0.001; // 0.1% bump in volatility
 
-            // Define vega calculation function for central differences
+            // Get current volatility term structure
+            var volTS = _process.blackVolatility();
+            var currentVol = volTS.currentLink();
+
+            // Vega calculation function with process reconstruction
             Func<double, double> vegaFunc = (volShift) =>
             {
-                var bumpedVolTS = new BlackConstantVol(
-                    referenceDate,
+                // Get reference date and day counter from original vol structure
+                var refDate = currentVol.referenceDate();
+                var dayCounter = currentVol.dayCounter();
+                
+                // Create bumped volatility (add shift to original volatility)
+                var bumpedVol = new BlackConstantVol(
+                    refDate,
                     new TARGET(),
-                    currentVol + volShift,
-                    new Actual365Fixed());
+                    currentVol.blackVol(refDate, 0.0) + volShift,
+                    dayCounter);
 
+                // Create new process with bumped volatility
                 var bumpedProcess = new BlackScholesMertonProcess(
-                    new QuoteHandle(_underlyingQuote!),
+                    _process.stateVariable(),
                     _process.dividendYield(),
                     _process.riskFreeRate(),
-                    new BlackVolTermStructureHandle(bumpedVolTS));
+                    new BlackVolTermStructureHandle(bumpedVol));
 
                 var bumpedEngine = new QdFpAmericanEngine(bumpedProcess);
                 option.setPricingEngine(bumpedEngine);
@@ -172,12 +174,12 @@ public sealed class DoubleBoundaryEngine : IDisposable
                 // Clean up
                 bumpedEngine.Dispose();
                 bumpedProcess.Dispose();
-                bumpedVolTS.Dispose();
+                bumpedVol.Dispose();
 
                 return price;
             };
 
-            // Use central finite differences (symmetric bumping)
+            // Use central finite differences
             double vega = _differentiator.EvaluateDerivative(vegaFunc, 0.0, 1);
 
             // Restore original engine
@@ -193,31 +195,36 @@ public sealed class DoubleBoundaryEngine : IDisposable
     }
 
     /// <summary>
-    /// Calculates theta using central finite differences by shifting the evaluation date.
-    /// Returns theta per day (negative for time decay).
-    /// Uses symmetric date shifts (forward and backward) for accuracy.
+    /// Calculates theta using central finite differences by shifting evaluation date.
+    /// Uses symmetric time shifts for accurate time decay estimation.
     /// </summary>
     private double CalculateTheta(VanillaOption option)
     {
         try
         {
+            const double timeBump = 1.0 / 365.0; // 1 day in years
+
             var originalDate = Settings.instance().getEvaluationDate();
 
-            // Define theta calculation function using central differences
-            Func<double, double> thetaFunc = (dayShift) =>
+            Func<double, double> thetaFunc = (timeShift) =>
             {
-                int days = (int)Math.Round(dayShift);
-                var newDate = originalDate.Add(new Period(days, TimeUnit.Days));
-                Settings.instance().setEvaluationDate(newDate);
+                // Shift evaluation date
+                int daysShift = (int)(timeShift * 365);
+                var shiftedDate = originalDate.Add(new Period(daysShift, TimeUnit.Days));
+                Settings.instance().setEvaluationDate(shiftedDate);
+
                 double price = option.NPV();
-                Settings.instance().setEvaluationDate(originalDate);
+
                 return price;
             };
 
-            // Calculate theta using central finite differences
-            // Note: theta is conventionally negative (time decay)
+            // Use central finite differences
             double theta = _differentiator.EvaluateDerivative(thetaFunc, 0.0, 1);
 
+            // Restore original date
+            Settings.instance().setEvaluationDate(originalDate);
+
+            // Convert to per-day theta (conventionally negative)
             return theta;
         }
         catch (Exception ex)
@@ -228,34 +235,33 @@ public sealed class DoubleBoundaryEngine : IDisposable
     }
 
     /// <summary>
-    /// Calculates rho using central finite differences by reconstructing the process with bumped risk-free rate.
-    /// Returns rho per 0.01 (1% change in rate).
-    /// Uses symmetric rate bumps (up and down) for accurate derivative.
+    /// Calculates rho using central finite differences by reconstructing the process with bumped rates.
+    /// Uses symmetric rate bumping for accurate sensitivity estimation.
     /// </summary>
     private double CalculateRho(VanillaOption option)
     {
         try
         {
-            var referenceDate = Settings.instance().getEvaluationDate();
-            var riskFreeTS = _process.riskFreeRate();
-            
-            // Get current rate - extract the double value from InterestRate
-            var interestRate = riskFreeTS.zeroRate(
-                referenceDate.Add(new Period(1, TimeUnit.Years)),
-                new Actual365Fixed(), 
-                Compounding.Continuous);
-            double currentRate = interestRate.rate();
+            const double rateBump = 0.0001; // 1 basis point
 
-            // Define rho calculation function for central differences
+            // Get current rate term structure
+            var rateTS = _process.riskFreeRate();
+            var currentRate = rateTS.currentLink();
+
             Func<double, double> rhoFunc = (rateShift) =>
             {
-                var bumpedRateTS = new FlatForward(
-                    referenceDate, 
-                    currentRate + rateShift, 
-                    new Actual365Fixed());
+                var refDate = currentRate.referenceDate();
+                var dayCounter = currentRate.dayCounter();
                 
+                // Create bumped rate structure
+                var bumpedRateTS = new FlatForward(
+                    refDate,
+                    currentRate.zeroRate(refDate, dayCounter, Compounding.Continuous, Frequency.Annual) + rateShift,
+                    dayCounter);
+
+                // Create new process with bumped rate
                 var bumpedProcess = new BlackScholesMertonProcess(
-                    new QuoteHandle(_underlyingQuote!),
+                    _process.stateVariable(),
                     _process.dividendYield(),
                     new YieldTermStructureHandle(bumpedRateTS),
                     _process.blackVolatility());
