@@ -140,8 +140,6 @@ public sealed class DoubleBoundaryEngine : IDisposable
     {
         try
         {
-            const double volBump = 0.001; // 0.1% bump in volatility
-
             // Get current volatility term structure
             var volTS = _process.blackVolatility();
             var currentVol = volTS.currentLink();
@@ -202,8 +200,6 @@ public sealed class DoubleBoundaryEngine : IDisposable
     {
         try
         {
-            const double timeBump = 1.0 / 365.0; // 1 day in years
-
             var originalDate = Settings.instance().getEvaluationDate();
 
             Func<double, double> thetaFunc = (timeShift) =>
@@ -242,8 +238,6 @@ public sealed class DoubleBoundaryEngine : IDisposable
     {
         try
         {
-            const double rateBump = 0.0001; // 1 basis point
-
             // Get current rate term structure
             var rateTS = _process.riskFreeRate();
             var currentRate = rateTS.currentLink();
@@ -254,9 +248,10 @@ public sealed class DoubleBoundaryEngine : IDisposable
                 var dayCounter = currentRate.dayCounter();
                 
                 // Create bumped rate structure
+                // Extract the rate value using .rate() method from InterestRate object
                 var bumpedRateTS = new FlatForward(
                     refDate,
-                    currentRate.zeroRate(refDate, dayCounter, Compounding.Continuous, Frequency.Annual) + rateShift,
+                    currentRate.zeroRate(refDate, dayCounter, Compounding.Continuous, Frequency.Annual).rate() + rateShift,
                     dayCounter);
 
                 // Create new process with bumped rate

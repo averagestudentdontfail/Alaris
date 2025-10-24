@@ -156,11 +156,12 @@
             Greeks are computed using central finite differences from MathNet.Numerics.
             </summary>
         </member>
-        <member name="M:Alaris.Double.DoubleBoundaryEngine.#ctor(GeneralizedBlackScholesProcess,QdFpIterationScheme)">
+        <member name="M:Alaris.Double.DoubleBoundaryEngine.#ctor(GeneralizedBlackScholesProcess,SimpleQuote,QdFpIterationScheme)">
             <summary>
             Initializes a new instance of the DoubleBoundaryEngine.
             </summary>
             <param name="process">The Black-Scholes-Merton process for the underlying.</param>
+            <param name="underlyingQuote">Optional SimpleQuote for Greek calculations. If not provided, Greeks will not be calculated.</param>
             <param name="scheme">Optional iteration scheme for numerical solver.</param>
         </member>
         <member name="M:Alaris.Double.DoubleBoundaryEngine.op_Implicit(Alaris.Double.DoubleBoundaryEngine)~PricingEngine">
@@ -192,16 +193,14 @@
         </member>
         <member name="M:Alaris.Double.DoubleBoundaryEngine.CalculateTheta(VanillaOption)">
             <summary>
-            Calculates theta using central finite differences by shifting the evaluation date.
-            Returns theta per day (negative for time decay).
-            Uses symmetric date shifts (forward and backward) for accuracy.
+            Calculates theta using central finite differences by shifting evaluation date.
+            Uses symmetric time shifts for accurate time decay estimation.
             </summary>
         </member>
         <member name="M:Alaris.Double.DoubleBoundaryEngine.CalculateRho(VanillaOption)">
             <summary>
-            Calculates rho using central finite differences by reconstructing the process with bumped risk-free rate.
-            Returns rho per 0.01 (1% change in rate).
-            Uses symmetric rate bumps (up and down) for accurate derivative.
+            Calculates rho using central finite differences by reconstructing the process with bumped rates.
+            Uses symmetric rate bumping for accurate sensitivity estimation.
             </summary>
         </member>
         <member name="M:Alaris.Double.DoubleBoundaryEngine.CalculateWithTiming(VanillaOption)">
