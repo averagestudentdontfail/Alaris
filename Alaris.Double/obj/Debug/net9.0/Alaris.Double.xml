@@ -470,57 +470,35 @@
             <summary>
             Calculates ∂λ/∂h needed for c₀ in Healy (2021) Equation 14.
             </summary>
-            <remarks>
-            Derivative computed from: λ = (-(β-1) ± sqrt((β-1)² + 4α/h)) / 2
-            ∂λ/∂h = ±(-2α/h²) / (2*sqrt((β-1)² + 4α/h))
-            </remarks>
         </member>
         <member name="M:Alaris.Double.QdPlusApproximation.GetUpperBoundaryInitialGuess">
             <summary>
             Gets the initial guess for the upper boundary (S₁*) from Healy (2021) page 5.
             </summary>
-            <remarks>
-            S₁* is solved first with initial guess:
-            - Put: K
-            - Call: K × max(1, r/q)
-            </remarks>
         </member>
         <member name="M:Alaris.Double.QdPlusApproximation.GetLowerBoundaryInitialGuess">
             <summary>
             Gets the initial guess for the lower boundary (S₂*) from Healy (2021) page 5.
             </summary>
-            <remarks>
-            S₂* is solved second with initial guess:
-            - Put: K × min(1, r/q)
-            - Call: K
-            </remarks>
         </member>
         <member name="M:Alaris.Double.QdPlusApproximation.SolveBoundary(System.Double,System.Double,System.Double,System.Double,System.Double,System.Double)">
             <summary>
             Solves for a single boundary using Super Halley's method (Healy 2021 Equation 17).
             </summary>
-            <remarks>
-            Super Halley iteration: S*_{n+1} = S*_n - (1 + 0.5*Lf/(1-Lf)) * f/f'
-            where Lf = f*f''/(f')²
-            </remarks>
         </member>
         <member name="M:Alaris.Double.QdPlusApproximation.EvaluateRefinementEquation(System.Double,System.Double,System.Double,System.Double,System.Double,System.Double)">
             <summary>
             Evaluates the QD+ refinement equation from Healy (2021) Equation 14.
             </summary>
             <remarks>
-            Equation 14: η = η*exp(-qT)*Φ(η*d1) + (λ + c0) * (η(S* - K) - VE) / S*
-            Rearranged to: f(S*) = η - η*exp(-qT)*Φ(η*d1) - (λ + c0) * (η(S* - K) - VE) / S* = 0
+            Healy uses Θ = dV/dτ (time-to-maturity derivative) in the c₀ formula,
+            where τ = T - t. The relationship is: dV/dτ = -dV/dt.
             </remarks>
         </member>
         <member name="M:Alaris.Double.QdPlusApproximation.CalculateC0(System.Double,System.Double,System.Double,System.Double,System.Double,System.Double,System.Double,System.Double,System.Double)">
             <summary>
             Calculates c₀ from Healy (2021) page 6 after Equation 14.
             </summary>
-            <remarks>
-            c0 = -((1-h)α)/(2λ + β - 1) * (1/h - Θ(S*)/(r(η(S* - K) - VE))) + λ'(h)/(2λ + β - 1)
-            where Θ is the time derivative (theta) of the European option price.
-            </remarks>
         </member>
         <member name="M:Alaris.Double.QdPlusApproximation.EvaluateRefinementDerivative(System.Double,System.Double,System.Double,System.Double,System.Double,System.Double)">
             <summary>
@@ -542,17 +520,13 @@
             Calculates theta (time derivative) of European option price.
             </summary>
             <remarks>
-            Theta = -S*exp(-qT)*φ(d1)*σ/(2√T) + q*S*exp(-qT)*Φ(±d1) - r*K*exp(-rT)*Φ(±d2)
-            where + is for call, - is for put in the Φ terms.
+            Returns dV/dt (standard financial theta, negative for time decay).
             </remarks>
         </member>
         <member name="M:Alaris.Double.QdPlusApproximation.CalculateD1(System.Double,System.Double,System.Double)">
             <summary>
             Calculates d₁ from Black-Scholes formula.
             </summary>
-            <remarks>
-            d1 = (ln(S/K) + (r - q + 0.5σ²)T) / (σ√T)
-            </remarks>
         </member>
         <member name="M:Alaris.Double.QdPlusApproximation.BoundariesCross(System.Double,System.Double)">
             <summary>
