@@ -49,7 +49,7 @@ public class PerformanceBenchmarks
             new YieldTermStructureHandle(riskFreeTS),
             new BlackVolTermStructureHandle(volTS));
 
-        var engine = new DoubleBoundaryEngine(process);
+        var engine = new DoubleBoundaryEngine(process, underlying);
         option.setPricingEngine(engine);
 
         // Warm-up
@@ -103,7 +103,7 @@ public class PerformanceBenchmarks
             new YieldTermStructureHandle(riskFreeTS),
             new BlackVolTermStructureHandle(volTS));
 
-        var engine = new DoubleBoundaryEngine(process);
+        var engine = new DoubleBoundaryEngine(process, underlying);
 
         // Act
         var sw = Stopwatch.StartNew();
@@ -150,7 +150,7 @@ public class PerformanceBenchmarks
             new YieldTermStructureHandle(riskFreeTS),
             new BlackVolTermStructureHandle(volTS));
 
-        var engine = new DoubleBoundaryEngine(process);
+        var engine = new DoubleBoundaryEngine(process, underlying);
 
         // Act
         var sw = Stopwatch.StartNew();
@@ -193,7 +193,7 @@ public class PerformanceBenchmarks
             new YieldTermStructureHandle(dividendTS1),
             new YieldTermStructureHandle(riskFreeTS1),
             new BlackVolTermStructureHandle(volTS1));
-        var engine1 = new DoubleBoundaryEngine(process1);
+        var engine1 = new DoubleBoundaryEngine(process1, underlying1);
         option1.setPricingEngine(engine1);
 
         var sw1 = Stopwatch.StartNew();
@@ -215,7 +215,7 @@ public class PerformanceBenchmarks
             new YieldTermStructureHandle(dividendTS2),
             new YieldTermStructureHandle(riskFreeTS2),
             new BlackVolTermStructureHandle(volTS2));
-        var engine2 = new DoubleBoundaryEngine(process2);
+        var engine2 = new DoubleBoundaryEngine(process2, underlying2);
         option2.setPricingEngine(engine2);
 
         var sw2 = Stopwatch.StartNew();

@@ -42,7 +42,7 @@ public class HealyIntegrationTests
             new YieldTermStructureHandle(riskFreeTS),
             new BlackVolTermStructureHandle(volTS));
 
-        var engine = new DoubleBoundaryEngine(process);
+        var engine = new DoubleBoundaryEngine(process, underlying);
         option.setPricingEngine(engine);
 
         // Act
@@ -89,7 +89,7 @@ public class HealyIntegrationTests
             new YieldTermStructureHandle(riskFreeTS),
             new BlackVolTermStructureHandle(volTS));
 
-        var engine = new DoubleBoundaryEngine(process);
+        var engine = new DoubleBoundaryEngine(process, underlying);
         option.setPricingEngine(engine);
 
         // Act
@@ -133,7 +133,7 @@ public class HealyIntegrationTests
             new YieldTermStructureHandle(riskFreeTS),
             new BlackVolTermStructureHandle(volTS));
 
-        var engine = new DoubleBoundaryEngine(process);
+        var engine = new DoubleBoundaryEngine(process, underlying);
         option.setPricingEngine(engine);
 
         // Act
@@ -181,7 +181,7 @@ public class HealyIntegrationTests
             new YieldTermStructureHandle(riskFreeTS),
             new BlackVolTermStructureHandle(volTS));
 
-        var engine = new DoubleBoundaryEngine(process);
+        var engine = new DoubleBoundaryEngine(process, underlying);
         callOption.setPricingEngine(engine);
         putOption.setPricingEngine(engine);
 
