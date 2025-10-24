@@ -1,41 +1,24 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
+  
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
-    <RootNamespace>Alaris.Strategy</RootNamespace>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <Description>Earnings volatility calendar spread trading strategies based on academic research</Description>
+    <Authors>Kiran K. Nath</Authors>
+    <Version>1.0.0</Version>
   </PropertyGroup>
 
+  <!-- Project Dependencies -->
   <ItemGroup>
-    <!-- Testing Framework -->
-    <PackageReference Include="xunit" Version="2.4.2" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="2.4.5">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-    <PackageReference Include="FluentAssertions" Version="6.11.0" />
-    
-    <!-- Microsoft Extensions -->
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.0" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.0" />
-    
-    <!-- Mathematical Libraries -->
-    <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
-    
-    <!-- Additional Utilities -->
-    <PackageReference Include="System.Linq.Async" Version="6.0.1" />
+    <ProjectReference Include="..\Alaris.Quantlib\Alaris.Quantlib.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <!-- Project References with correct relative paths -->
-    <ProjectReference Include="..\Alaris.Quantlib\Alaris.Quantlib.csproj" />
-    <ProjectReference Include="..\Alaris.Double\Alaris.Double.csproj" />
-  </ItemGroup>
+  <!-- 
+    IMPORTANT: FluentAssertions should NOT be referenced here.
+    It is a testing library and should only be referenced by test projects.
+    If you previously had FluentAssertions here, it has been removed.
+  -->
 
 </Project>
