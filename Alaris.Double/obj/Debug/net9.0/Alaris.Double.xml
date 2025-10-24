@@ -6,116 +6,84 @@
     <members>
         <member name="T:Alaris.Double.DoubleBoundaryApproximation">
             <summary>
-            Provides analytical approximations for American option early exercise boundaries 
-            under negative interest rate regimes using the QD+ algorithm.
+            High-level API for American option double boundary approximation under negative rates.
+            Combines QD+ approximation with optional Kim solver refinement.
             </summary>
             <remarks>
             <para>
-            This class implements the double boundary approximation methodology from:
-            Healy, J. (2021). "Pricing American Options Under Negative Rates"
-            Specifically adapts the Li (2005) QD+ algorithm for negative rate environments.
+            Provides a simple interface to the double boundary pricing methodology:
+            1. QdPlusApproximation - Fast initial boundary estimate
+            2. DoubleBoundaryKimSolver - Accurate refinement (optional)
             </para>
             <para>
-            The approximation is valid when q &lt; r &lt; 0, where two exercise boundaries exist.
-            For other regimes, use single boundary methods or European pricing.
+            This class mirrors the QuantLib structure for single boundary options,
+            adapted for the double boundary regime where q &lt; r &lt; 0.
             </para>
             </remarks>
         </member>
         <member name="M:Alaris.Double.DoubleBoundaryApproximation.#ctor(System.Double,System.Double,System.Double,System.Double,System.Double,System.Double,System.Boolean)">
             <summary>
-            Initializes a new instance of the DoubleBoundaryApproximation class.
+            Initializes the double boundary approximation.
             </summary>
-            <param name="spot">Current asset price S₀</param>
-            <param name="strike">Strike price K</param>
-            <param name="maturity">Time to maturity T (in years)</param>
-            <param name="rate">Risk-free interest rate r</param>
-            <param name="dividendYield">Continuous dividend yield q</param>
-            <param name="volatility">Volatility σ</param>
-            <param name="isCall">True for call options, false for put options</param>
-            <exception cref="T:System.ArgumentException">Thrown when parameters are invalid</exception>
         </member>
         <member name="M:Alaris.Double.DoubleBoundaryApproximation.CalculateBoundaries">
             <summary>
-            Calculates both exercise boundaries using the QD+ approximation method.
+            Calculates boundaries using QD+ approximation (fast).
             </summary>
-            <returns>
-            A result containing the upper and lower boundaries, or indication if boundaries cross.
-            When boundaries cross, the approximation is invalid and European pricing should be used.
-            </returns>
-            <remarks>
-            Implements Healy (2021) Equations 9-14 using Super Halley's method for convergence.
-            The two boundaries are solved independently as separate systems.
-            </remarks>
         </member>
         <member name="M:Alaris.Double.DoubleBoundaryApproximation.ApproximateValue">
             <summary>
-            Approximates the American option value using the calculated boundaries.
+            Approximates option value using QD+ boundaries.
             </summary>
-            <returns>
-            The approximate American option value, or European value if approximation fails.
-            </returns>
-            <remarks>
-            Uses Healy (2021) Equation 13 for the early exercise premium:
-            e(S) = a₁·S^λ₁·1_{S≥S*₁} + a₂·S^λ₂·1_{S≤S*₂}
-            </remarks>
         </member>
         <member name="M:Alaris.Double.DoubleBoundaryApproximation.ShouldExerciseImmediately(Alaris.Double.BoundaryResult)">
             <summary>
-            Determines if the option should be exercised immediately based on boundaries.
+            Checks if option should be exercised immediately.
             </summary>
         </member>
         <member name="M:Alaris.Double.DoubleBoundaryApproximation.CalculateEarlyExercisePremium(Alaris.Double.BoundaryResult)">
             <summary>
-            Calculates the early exercise premium using the QD+ approximation.
+            Calculates early exercise premium using QD+ approximation.
             </summary>
-            <remarks>
-            Implements Healy (2021) Equation 13 with coefficients determined by
-            the continuity conditions at the boundaries (Equations 11-12).
-            </remarks>
         </member>
         <member name="M:Alaris.Double.DoubleBoundaryApproximation.CalculateLambdas">
             <summary>
-            Calculates the lambda values from Healy (2021) Equation 9.
+            Calculates lambda values.
             </summary>
         </member>
-        <member name="M:Alaris.Double.DoubleBoundaryApproximation.CalculateUpperBoundaryCoefficient(System.Double,System.Double)">
+        <member name="M:Alaris.Double.DoubleBoundaryApproximation.CalculateBoundaryCoefficient(System.Double,System.Double)">
             <summary>
-            Calculates the coefficient a₁ using boundary continuity conditions.
-            </summary>
-        </member>
-        <member name="M:Alaris.Double.DoubleBoundaryApproximation.CalculateLowerBoundaryCoefficient(System.Double,System.Double)">
-            <summary>
-            Calculates the coefficient a₂ using boundary continuity conditions.
+            Calculates boundary coefficient from continuity condition.
             </summary>
         </member>
         <member name="M:Alaris.Double.DoubleBoundaryApproximation.CalculateEuropeanValue(System.Nullable{System.Double})">
             <summary>
-            Calculates European option value using Black-Scholes formula.
+            Calculates European option value.
             </summary>
         </member>
         <member name="M:Alaris.Double.DoubleBoundaryApproximation.CalculateIntrinsicValue">
             <summary>
-            Calculates intrinsic value (immediate exercise value).
+            Calculates intrinsic value.
             </summary>
         </member>
         <member name="M:Alaris.Double.DoubleBoundaryApproximation.CalculateD1(System.Double)">
             <summary>
-            Calculates d₁ from Black-Scholes formula.
+            Calculates d₁.
             </summary>
         </member>
         <member name="M:Alaris.Double.DoubleBoundaryApproximation.NormalCDF(System.Double)">
             <summary>
-            Standard normal cumulative distribution function.
+            Standard normal CDF.
             </summary>
         </member>
         <member name="M:Alaris.Double.DoubleBoundaryApproximation.Erf(System.Double)">
             <summary>
-            Error function approximation (Abramowitz and Stegun).
+            Error function.
             </summary>
         </member>
         <member name="T:Alaris.Double.BoundaryResult">
             <summary>
-            Represents the result of a boundary calculation for double boundary options.
+            Result of boundary calculation for double boundary options.
             </summary>
         </member>
         <member name="P:Alaris.Double.BoundaryResult.UpperBoundary">
@@ -130,20 +98,17 @@
         </member>
         <member name="P:Alaris.Double.BoundaryResult.BoundariesCross">
             <summary>
-            Indicates whether the boundaries cross (making the approximation invalid).
+            Indicates whether boundaries cross (invalid approximation).
             </summary>
         </member>
         <member name="P:Alaris.Double.BoundaryResult.IsValid">
             <summary>
             Indicates whether the boundary calculation is valid.
             </summary>
-            <remarks>
-            When false, European pricing should be used instead.
-            </remarks>
         </member>
         <member name="M:Alaris.Double.BoundaryResult.ToString">
             <summary>
-            Returns a string representation of the boundary result.
+            String representation.
             </summary>
         </member>
         <member name="T:Alaris.Double.DoubleBoundaryEngine">
@@ -270,106 +235,161 @@
             Computed using central finite differences with rate bumps.
             </summary>
         </member>
-        <member name="T:Alaris.Double.DoubleBoundarySolver">
+        <member name="T:Alaris.Double.DoubleBoundaryKimSolver">
             <summary>
-            Solves the Kim integral equation for American option early exercise boundaries
-            under negative interest rate regimes with double boundaries.
+            Refines QD+ boundary approximations using the Kim integral equation with fixed point iteration.
+            Analogous to QuantLib's QdFp algorithm but for double boundaries under negative rates.
             </summary>
             <remarks>
             <para>
-            Implements the double boundary integral equation from Healy (2021) Equation 27:
-            VA = VE + ∫[rK·exp(-rt)Φ(-d₂(S,u(t),t)) - qS·exp(-qt)Φ(-d₁(S,u(t),t))]dt
-                    - ∫[rK·exp(-rt)Φ(-d₂(S,l(t),t)) - qS·exp(-qt)Φ(-d₁(S,l(t),t))]dt
+            Implements Healy (2021) Equations 27-29 for the double boundary integral equation.
+            Uses QD+ approximation as initial guess and refines via fixed point iteration.
             </para>
             <para>
-            Uses the QD+ approximation as initial guess and refines via Gauss-Newton method.
-            Valid for the regime q &lt; r &lt; 0 where two exercise boundaries exist.
+            Architecture:
+            - Single boundary: QdFp uses Chebyshev polynomials
+            - Double boundary: KimSolver uses collocation with fixed point iteration
             </para>
             <para>
-            Reference: Healy, J. (2021). Pricing American Options Under Negative Rates. 
-            Section 5, Equations 27-29.
+            Reference: Healy, J. (2021). Section 5.3, Equations 27-29.
             </para>
             </remarks>
         </member>
-        <member name="M:Alaris.Double.DoubleBoundarySolver.#ctor(System.Double,System.Double,System.Double,System.Double,System.Double,System.Double,System.Boolean,System.Int32)">
+        <member name="M:Alaris.Double.DoubleBoundaryKimSolver.#ctor(System.Double,System.Double,System.Double,System.Double,System.Double,System.Double,System.Boolean,System.Int32)">
             <summary>
-            Initializes a new instance of the DoubleBoundarySolver.
+            Initializes a new Kim solver for double boundaries.
             </summary>
-            <param name="spot">Current asset price S₀</param>
-            <param name="strike">Strike price K</param>
-            <param name="maturity">Time to maturity T (in years)</param>
-            <param name="rate">Risk-free interest rate r</param>
-            <param name="dividendYield">Continuous dividend yield q</param>
-            <param name="volatility">Volatility σ</param>
-            <param name="isCall">True for call options, false for put options</param>
-            <param name="collocationPoints">Number of time points for boundary discretization (default: 50)</param>
+            <param name="spot">Current asset price</param>
+            <param name="strike">Strike price</param>
+            <param name="maturity">Time to maturity</param>
+            <param name="rate">Risk-free rate</param>
+            <param name="dividendYield">Dividend yield</param>
+            <param name="volatility">Volatility</param>
+            <param name="isCall">True for call, false for put</param>
+            <param name="collocationPoints">Number of time discretization points</param>
         </member>
-        <member name="M:Alaris.Double.DoubleBoundarySolver.SolveBoundaries">
+        <member name="M:Alaris.Double.DoubleBoundaryKimSolver.SolveBoundaries(System.Double,System.Double)">
             <summary>
-            Solves for the exercise boundaries using the Kim integral equation.
+            Solves for refined boundaries using Kim's integral equation with fixed point iteration.
             </summary>
-            <returns>
-            Tuple of (upper boundary array, lower boundary array, crossing time).
-            Each array contains boundary values at collocation points from t=0 to t=T.
-            </returns>
+            <param name="upperInitial">Initial upper boundary from QD+</param>
+            <param name="lowerInitial">Initial lower boundary from QD+</param>
+            <returns>Refined (upper, lower) boundaries and crossing time</returns>
         </member>
-        <member name="M:Alaris.Double.DoubleBoundarySolver.CalculateValue">
+        <member name="M:Alaris.Double.DoubleBoundaryKimSolver.RefineUsingFixedPoint(System.Double[],System.Double[],System.Double)">
             <summary>
-            Calculates the American option value using the solved boundaries.
-            </summary>
-        </member>
-        <member name="M:Alaris.Double.DoubleBoundarySolver.GetInitialGuess">
-            <summary>
-            Gets the initial guess for boundaries from QD+ approximation.
+            Refines boundaries using fixed point iteration on Kim's integral equations.
             </summary>
         </member>
-        <member name="M:Alaris.Double.DoubleBoundarySolver.RefineUsingGaussNewton(System.Double[],System.Double[],System.Double)">
+        <member name="M:Alaris.Double.DoubleBoundaryKimSolver.SolveSinglePoint(System.Double,System.Double[],System.Double[],System.Double,System.Boolean)">
             <summary>
-            Refines the boundary guess using Gauss-Newton method on the Kim integral equations.
-            </summary>
-            <remarks>
-            Implements Healy (2021) Equations 28-29 for the two boundaries.
-            Uses a 2m-dimensional Gauss-Newton solver where m is the number of collocation points.
-            </remarks>
-        </member>
-        <member name="M:Alaris.Double.DoubleBoundarySolver.EvaluateUpperBoundaryEquation(System.Double,System.Double[],System.Double[],System.Double)">
-            <summary>
-            Evaluates the Kim integral equation for the upper boundary at time ti.
-            Implements Healy (2021) Equation 28.
+            Solves Kim equation at a single collocation point (Healy 2021 Equations 28-29).
             </summary>
         </member>
-        <member name="M:Alaris.Double.DoubleBoundarySolver.EvaluateLowerBoundaryEquation(System.Double,System.Double[],System.Double[],System.Double)">
+        <member name="M:Alaris.Double.DoubleBoundaryKimSolver.CalculateIntegralTerm(System.Double,System.Double,System.Double[],System.Double[],System.Double,System.Boolean)">
             <summary>
-            Evaluates the Kim integral equation for the lower boundary at time ti.
-            Implements Healy (2021) Equation 29.
+            Calculates the integral term in Kim's equation.
             </summary>
         </member>
-        <member name="M:Alaris.Double.DoubleBoundarySolver.CalculateIntegralTerm(System.Double,System.Double,System.Double[],System.Double[],System.Double,System.Boolean)">
-            <summary>
-            Calculates the integral term in the Kim equation.
-            </summary>
-        </member>
-        <member name="M:Alaris.Double.DoubleBoundarySolver.CalculateEarlyExercisePremium(System.Double[],System.Double[],System.Double)">
-            <summary>
-            Calculates the early exercise premium using the solved boundaries.
-            </summary>
-        </member>
-        <member name="M:Alaris.Double.DoubleBoundarySolver.InterpolateBoundary(System.Double[],System.Double)">
+        <member name="M:Alaris.Double.DoubleBoundaryKimSolver.InterpolateBoundary(System.Double[],System.Double)">
             <summary>
             Interpolates boundary value at a given time.
             </summary>
         </member>
-        <member name="M:Alaris.Double.DoubleBoundarySolver.FindCrossingTime(System.Double[],System.Double[])">
+        <member name="M:Alaris.Double.DoubleBoundaryKimSolver.FindCrossingTime(System.Double[],System.Double[])">
             <summary>
-            Finds the time when boundaries cross.
+            Finds crossing time of boundaries.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DoubleBoundaryKimSolver.CalculateEuropeanValue(System.Double,System.Double)">
+            <summary>
+            Calculates European option value.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DoubleBoundaryKimSolver.CalculateD1(System.Double,System.Double,System.Double)">
+            <summary>
+            Calculates d₁ for Black-Scholes.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DoubleBoundaryKimSolver.CalculateD2(System.Double,System.Double,System.Double)">
+            <summary>
+            Calculates d₂ for Black-Scholes.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DoubleBoundaryKimSolver.NormalCDF(System.Double)">
+            <summary>
+            Standard normal CDF.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DoubleBoundaryKimSolver.Erf(System.Double)">
+            <summary>
+            Error function.
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.DoubleBoundarySolver">
+            <summary>
+            Complete solver for American options with double boundaries under negative rates.
+            Combines QD+ approximation with Kim integral equation refinement.
+            </summary>
+            <remarks>
+            <para>
+            Two-stage solving process:
+            1. QD+ approximation provides fast initial boundaries
+            2. Kim solver refines using fixed point iteration on integral equations
+            </para>
+            <para>
+            Architecture mirrors QuantLib's approach:
+            - Single boundary: QdPlus → QdFp (Chebyshev)
+            - Double boundary: QdPlus → Kim (collocation + fixed point)
+            </para>
+            </remarks>
+        </member>
+        <member name="M:Alaris.Double.DoubleBoundarySolver.#ctor(System.Double,System.Double,System.Double,System.Double,System.Double,System.Double,System.Boolean,System.Int32,System.Boolean)">
+            <summary>
+            Initializes the double boundary solver.
+            </summary>
+            <param name="spot">Current asset price</param>
+            <param name="strike">Strike price</param>
+            <param name="maturity">Time to maturity</param>
+            <param name="rate">Risk-free rate</param>
+            <param name="dividendYield">Dividend yield</param>
+            <param name="volatility">Volatility</param>
+            <param name="isCall">True for call, false for put</param>
+            <param name="collocationPoints">Number of time points (default 50)</param>
+            <param name="useRefinement">Use Kim refinement (default true)</param>
+        </member>
+        <member name="M:Alaris.Double.DoubleBoundarySolver.SolveBoundaries">
+            <summary>
+            Solves for both boundaries.
+            </summary>
+            <returns>Upper and lower boundaries at t=0, and crossing time</returns>
+        </member>
+        <member name="M:Alaris.Double.DoubleBoundarySolver.CalculateValue">
+            <summary>
+            Calculates the American option value.
             </summary>
         </member>
         <member name="M:Alaris.Double.DoubleBoundarySolver.ShouldExerciseImmediately(System.Double,System.Double)">
             <summary>
-            Checks if option should be exercised immediately.
+            Checks if immediate exercise is optimal.
             </summary>
         </member>
-        <member name="M:Alaris.Double.DoubleBoundarySolver.CalculateEuropeanValue(System.Double,System.Nullable{System.Double})">
+        <member name="M:Alaris.Double.DoubleBoundarySolver.CalculateEarlyExercisePremium(System.Double[],System.Double[],System.Double)">
+            <summary>
+            Calculates early exercise premium from boundaries.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DoubleBoundarySolver.CalculateIntegral(System.Double,System.Double,System.Double[],System.Double)">
+            <summary>
+            Calculates Kim integral for early exercise premium.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DoubleBoundarySolver.InterpolateBoundary(System.Double[],System.Double)">
+            <summary>
+            Interpolates boundary at given time.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DoubleBoundarySolver.CalculateEuropeanValue">
             <summary>
             Calculates European option value.
             </summary>
@@ -381,34 +401,37 @@
         </member>
         <member name="M:Alaris.Double.DoubleBoundarySolver.CalculateD1(System.Double,System.Double,System.Double)">
             <summary>
-            Calculates d₁ for Black-Scholes formula.
-            </summary>
-        </member>
-        <member name="M:Alaris.Double.DoubleBoundarySolver.CalculateD2(System.Double,System.Double,System.Double)">
-            <summary>
-            Calculates d₂ for Black-Scholes formula.
+            Calculates d₁.
             </summary>
         </member>
         <member name="M:Alaris.Double.DoubleBoundarySolver.NormalCDF(System.Double)">
             <summary>
-            Standard normal cumulative distribution function.
+            Standard normal CDF.
             </summary>
         </member>
         <member name="M:Alaris.Double.DoubleBoundarySolver.Erf(System.Double)">
             <summary>
-            Error function approximation.
+            Error function.
             </summary>
         </member>
         <member name="T:Alaris.Double.QdPlusApproximation">
             <summary>
             QD+ approximation for American option early exercise boundaries under negative interest rates.
-            Implements the double boundary algorithm from Healy (2021): "Pricing American Options Under Negative Rates"
-            specifically for the regime q &lt; r &lt; 0 where two exercise boundaries exist.
+            Provides initial boundary estimates for the double boundary regime where q &lt; r &lt; 0.
             </summary>
             <remarks>
-            This implementation follows Healy's modifications of the Li (2005) QD+ algorithm for negative rates.
-            The algorithm solves two independent systems to find the upper boundary S*₁ and lower boundary S*₂.
-            Reference: Healy, J. (2021). Pricing American options under negative rates. Equations 8-17.
+            <para>
+            Implements Healy (2021) adaptation of Li (2005) QD+ algorithm for negative rates.
+            This class provides initial boundary approximations that can be refined using Kim's integral equation.
+            </para>
+            <para>
+            Architecture parallel to QuantLib:
+            - Single boundary (r ≥ 0): QdPlus → QdFp with Chebyshev polynomials
+            - Double boundary (q &lt; r &lt; 0): QdPlusApproximation → Kim solver with fixed point iteration
+            </para>
+            <para>
+            Reference: Healy, J. (2021). "Pricing American Options Under Negative Rates", Equations 8-17.
+            </para>
             </remarks>
         </member>
         <member name="M:Alaris.Double.QdPlusApproximation.#ctor(System.Double,System.Double,System.Double,System.Double,System.Double,System.Double,System.Boolean)">
@@ -458,10 +481,6 @@
             <summary>
             Evaluates the QD+ refinement equation from Healy (2021) Equation 14.
             </summary>
-            <remarks>
-            For call (η=1): 1 = exp(-qT)Φ(d₁) + (λ + c₀)(S* - K - VE(S*))/S*
-            For put (η=-1): -1 = -exp(-qT)Φ(-d₁) + (λ + c₀)(-S* + K + VE(S*))/S*
-            </remarks>
         </member>
         <member name="M:Alaris.Double.QdPlusApproximation.CalculateC0(System.Double,System.Double,System.Double,System.Double,System.Double,System.Double,System.Double,System.Double,System.Double)">
             <summary>
@@ -470,12 +489,12 @@
         </member>
         <member name="M:Alaris.Double.QdPlusApproximation.EvaluateRefinementDerivative(System.Double,System.Double,System.Double,System.Double,System.Double,System.Double)">
             <summary>
-            First derivative of the refinement equation (needed for Super Halley).
+            First derivative of the refinement equation.
             </summary>
         </member>
         <member name="M:Alaris.Double.QdPlusApproximation.EvaluateRefinementSecondDerivative(System.Double,System.Double,System.Double,System.Double,System.Double,System.Double)">
             <summary>
-            Second derivative of the refinement equation (needed for Super Halley).
+            Second derivative of the refinement equation.
             </summary>
         </member>
         <member name="M:Alaris.Double.QdPlusApproximation.CalculateEuropeanPrice(System.Double)">
@@ -487,10 +506,6 @@
             <summary>
             Calculates theta (time derivative) of European option price.
             </summary>
-            <remarks>
-            Θ is the time derivative of the European option price, needed for c₀ calculation.
-            This is the Black-Scholes theta formula.
-            </remarks>
         </member>
         <member name="M:Alaris.Double.QdPlusApproximation.CalculateD1(System.Double,System.Double,System.Double)">
             <summary>

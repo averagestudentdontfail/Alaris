@@ -96,13 +96,6 @@ public sealed class DoubleBoundarySolver
     /// </summary>
     public double CalculateValue()
     {
-        var (upper, lower, crossingTime) = SolveBoundaries();
-        
-        if (ShouldExerciseImmediately(upper, lower))
-        {
-            return CalculateIntrinsicValue();
-        }
-        
         if (!_useRefinement)
         {
             var approximation = new DoubleBoundaryApproximation(
@@ -110,6 +103,14 @@ public sealed class DoubleBoundarySolver
             return approximation.ApproximateValue();
         }
         
+        var (upper, lower, crossingTime) = SolveBoundaries();
+        
+        if (ShouldExerciseImmediately(upper, lower))
+        {
+            return CalculateIntrinsicValue();
+        }
+        
+        // Get refined boundary arrays for integration
         var kimSolver = new DoubleBoundaryKimSolver(
             _spot, _strike, _maturity, _rate, _dividendYield, _volatility, _isCall, _collocationPoints);
         
@@ -117,10 +118,10 @@ public sealed class DoubleBoundarySolver
             _spot, _strike, _maturity, _rate, _dividendYield, _volatility, _isCall);
         
         var (upperInitial, lowerInitial) = qdPlus.CalculateBoundaries();
-        var (upperArray, lowerArray, crossingTime) = kimSolver.SolveBoundaries(upperInitial, lowerInitial);
+        var (upperArray, lowerArray, refinedCrossingTime) = kimSolver.SolveBoundaries(upperInitial, lowerInitial);
         
         double europeanValue = CalculateEuropeanValue();
-        double earlyExercisePremium = CalculateEarlyExercisePremium(upperArray, lowerArray, crossingTime);
+        double earlyExercisePremium = CalculateEarlyExercisePremium(upperArray, lowerArray, refinedCrossingTime);
         
         return europeanValue + earlyExercisePremium;
     }
