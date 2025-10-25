@@ -16,6 +16,7 @@ namespace Alaris.Double;
 /// </para>
 /// <para>
 /// Reference: Healy, J. (2021). "Pricing American Options Under Negative Rates", Equations 8-17.
+/// Uses Super Halley's method (Equation 17) for robust convergence.
 /// </para>
 /// </remarks>
 public sealed class QdPlusApproximation
@@ -35,13 +36,6 @@ public sealed class QdPlusApproximation
     /// <summary>
     /// Initializes the QD+ approximation solver for double boundaries.
     /// </summary>
-    /// <param name="spot">Current asset price S</param>
-    /// <param name="strike">Strike price K</param>
-    /// <param name="maturity">Time to maturity T</param>
-    /// <param name="rate">Risk-free interest rate r</param>
-    /// <param name="dividendYield">Dividend yield q</param>
-    /// <param name="volatility">Volatility σ</param>
-    /// <param name="isCall">True for call options, false for put options</param>
     public QdPlusApproximation(
         double spot,
         double strike,
@@ -63,129 +57,116 @@ public sealed class QdPlusApproximation
     /// <summary>
     /// Computes both exercise boundaries using the QD+ approximation.
     /// </summary>
-    /// <returns>Tuple of (upper boundary, lower boundary). Returns (K, K) if boundaries cross.</returns>
+    /// <returns>Tuple of (upper boundary, lower boundary) at t=0</returns>
     public (double Upper, double Lower) CalculateBoundaries()
     {
-        var (lambda1, lambda2, h, alpha, beta) = CalculateLambdas();
-        double dLambda1Dh = CalculateLambdaDerivative(lambda1, alpha, beta, h);
-        double dLambda2Dh = CalculateLambdaDerivative(lambda2, alpha, beta, h);
+        // Calculate characteristic equation roots
+        double h = 1.0 - System.Math.Exp(-_rate * _maturity);
+        double omega = 2.0 * (_rate - _dividendYield) / (_volatility * _volatility);
         
-        // S₁* (upper) always uses λ₁ (negative root)
-        // S₂* (lower) always uses λ₂ (positive root)
-        // This is true for both calls and puts
-        double upperInitial = GetUpperBoundaryInitialGuess();
-        double lowerInitial = GetLowerBoundaryInitialGuess();
+        // Lambda values from characteristic equation (Healy Equation 9)
+        double lambda1 = CalculateLambda1(h, omega);
+        double lambda2 = CalculateLambda2(h, omega);
         
+        // Derivatives of lambda w.r.t. h
+        double dLambda1Dh = CalculateLambdaDerivative(h, omega, lambda1);
+        double dLambda2Dh = CalculateLambdaDerivative(h, omega, lambda2);
+        
+        // Alpha and beta parameters
+        double alpha = 0.5 - (_rate - _dividendYield) / (_volatility * _volatility);
+        double beta = alpha * alpha + 2.0 * _rate / (_volatility * _volatility);
+        
+        // Initial guesses from Ju-Zhong formula
+        double upperInitial = CalculateJuZhongInitialGuess(true, lambda1);
+        double lowerInitial = CalculateJuZhongInitialGuess(false, lambda2);
+        
+        // Solve for both boundaries using Super Halley's method
         double upperBoundary = SolveBoundary(upperInitial, lambda1, dLambda1Dh, h, alpha, beta);
         double lowerBoundary = SolveBoundary(lowerInitial, lambda2, dLambda2Dh, h, alpha, beta);
-        
-        // Check if boundaries cross
-        if (BoundariesCross(upperBoundary, lowerBoundary))
-        {
-            return (_strike, _strike);
-        }
         
         return (upperBoundary, lowerBoundary);
     }
     
     /// <summary>
-    /// Calculates λ₁ (negative) and λ₂ (positive) from Healy (2021) Equation 9.
+    /// Calculates lambda1 (upper boundary characteristic root) from Healy (2021) Equation 9.
     /// </summary>
-    private (double lambda1, double lambda2, double h, double alpha, double beta) CalculateLambdas()
+    private double CalculateLambda1(double h, double omega)
     {
-        double h = 1.0 - System.Math.Exp(-_rate * _maturity);
-        double sigma2 = _volatility * _volatility;
+        double discriminant = (omega - 1.0) * (omega - 1.0) + 8.0 * _rate / (_volatility * _volatility * h);
+        double sqrtDiscriminant = System.Math.Sqrt(System.Math.Max(0.0, discriminant));
         
-        // Equation 10: α = 2r/σ², β = 2(r-q)/σ²
-        double alpha = 2.0 * _rate / sigma2;
-        double beta = 2.0 * (_rate - _dividendYield) / sigma2;
-        
-        // Equation 9: λ = (-(β-1) ± sqrt((β-1)² + 4α/h)) / 2
-        double discriminant = System.Math.Sqrt((beta - 1.0) * (beta - 1.0) + 4.0 * alpha / h);
-        
-        double lambda1 = (-(beta - 1.0) - discriminant) / 2.0;  // Negative root
-        double lambda2 = (-(beta - 1.0) + discriminant) / 2.0;  // Positive root
-        
-        return (lambda1, lambda2, h, alpha, beta);
+        double lambda1 = (-(omega - 1.0) + sqrtDiscriminant) / 2.0;
+        return lambda1;
     }
     
     /// <summary>
-    /// Calculates ∂λ/∂h needed for c₀ in Healy (2021) Equation 14.
+    /// Calculates lambda2 (lower boundary characteristic root) from Healy (2021) Equation 9.
     /// </summary>
-    /// <remarks>
-    /// Derivative computed from: λ = (-(β-1) ± sqrt((β-1)² + 4α/h)) / 2
-    /// ∂λ/∂h = ±(-2α/h²) / (2*sqrt((β-1)² + 4α/h))
-    /// </remarks>
-    private double CalculateLambdaDerivative(double lambda, double alpha, double beta, double h)
+    private double CalculateLambda2(double h, double omega)
     {
-        double discriminant = System.Math.Sqrt((beta - 1.0) * (beta - 1.0) + 4.0 * alpha / h);
+        double discriminant = (omega - 1.0) * (omega - 1.0) + 8.0 * _rate / (_volatility * _volatility * h);
+        double sqrtDiscriminant = System.Math.Sqrt(System.Math.Max(0.0, discriminant));
         
-        if (System.Math.Abs(discriminant) < NUMERICAL_EPSILON)
+        double lambda2 = (-(omega - 1.0) - sqrtDiscriminant) / 2.0;
+        return lambda2;
+    }
+    
+    /// <summary>
+    /// Calculates derivative of lambda w.r.t. h for lambda'(h) term in c0.
+    /// </summary>
+    private double CalculateLambdaDerivative(double h, double omega, double lambda)
+    {
+        if (System.Math.Abs(h) < NUMERICAL_EPSILON)
             return 0.0;
         
-        // Sign: negative for lambda1 (negative root), positive for lambda2 (positive root)
-        double sign = lambda < 0 ? -1.0 : 1.0;
-        return -sign * alpha / (h * h * discriminant);
+        double discriminant = (omega - 1.0) * (omega - 1.0) + 8.0 * _rate / (_volatility * _volatility * h);
+        
+        if (discriminant < NUMERICAL_EPSILON)
+            return 0.0;
+        
+        double sqrtDiscriminant = System.Math.Sqrt(discriminant);
+        
+        // d(lambda)/dh = -4r/(σ²h² * sqrt(discriminant))
+        double derivative = -4.0 * _rate / (_volatility * _volatility * h * h * sqrtDiscriminant);
+        
+        return derivative;
     }
     
     /// <summary>
-    /// Gets the initial guess for the upper boundary (S₁*) from Healy (2021) page 5.
+    /// Calculates initial guess using Ju-Zhong formula (Healy Equation 11-12).
     /// </summary>
-    /// <remarks>
-    /// S₁* is solved first with initial guess:
-    /// - Put: K
-    /// - Call: K × max(1, r/q)
-    /// </remarks>
-    private double GetUpperBoundaryInitialGuess()
+    private double CalculateJuZhongInitialGuess(bool isUpper, double lambda)
     {
-        if (_isCall)
-        {
-            // Call S₁*: K × max(1, r/q)
-            if (System.Math.Abs(_dividendYield) < NUMERICAL_EPSILON)
-                return _strike;
-            
-            double ratio = _rate / _dividendYield;
-            return _strike * System.Math.Max(1.0, ratio);
-        }
+        double h = 1.0 - System.Math.Exp(-_rate * _maturity);
+        
+        // A_∞ calculation
+        double AInf = _strike * lambda / (lambda - 1.0);
+        
+        if (System.Math.Abs(h) < NUMERICAL_EPSILON)
+            return AInf;
+        
+        // Ju-Zhong formula coefficients
+        double term1 = (1.0 - System.Math.Exp(-_dividendYield * _maturity)) * _strike / _dividendYield;
+        double term2 = (1.0 - System.Math.Exp(-_rate * _maturity)) * _strike * lambda / (_rate * (lambda - 1.0));
+        
+        double guess = AInf + (term1 - term2);
+        
+        // Ensure reasonable bounds
+        if (isUpper)
+            guess = System.Math.Max(guess, _strike);
         else
-        {
-            // Put S₁*: K
-            return _strike;
-        }
+            guess = System.Math.Min(guess, _strike);
+        
+        return guess;
     }
     
     /// <summary>
-    /// Gets the initial guess for the lower boundary (S₂*) from Healy (2021) page 5.
-    /// </summary>
-    /// <remarks>
-    /// S₂* is solved second with initial guess:
-    /// - Put: K × min(1, r/q)
-    /// - Call: K
-    /// </remarks>
-    private double GetLowerBoundaryInitialGuess()
-    {
-        if (_isCall)
-        {
-            // Call S₂*: K
-            return _strike;
-        }
-        else
-        {
-            // Put S₂*: K × min(1, r/q)
-            if (System.Math.Abs(_dividendYield) < NUMERICAL_EPSILON)
-                return _strike;
-            
-            double ratio = _rate / _dividendYield;
-            return _strike * System.Math.Min(1.0, ratio);
-        }
-    }
-    
-    /// <summary>
-    /// Solves for a single boundary using Super Halley's method (Healy 2021 Equation 17).
+    /// Solves for boundary using Super Halley's method (Healy 2021 Equation 17).
     /// </summary>
     /// <remarks>
     /// Super Halley iteration: S*_{n+1} = S*_n - (1 + 0.5*Lf/(1-Lf)) * f/f'
     /// where Lf = f*f''/(f')²
+    /// This is more stable than standard Halley's method for negative rates.
     /// </remarks>
     private double SolveBoundary(double initialGuess, double lambda, double dLambdaDh, 
         double h, double alpha, double beta)
@@ -203,9 +184,12 @@ public sealed class QdPlusApproximation
             double fPrimePrime = EvaluateRefinementSecondDerivative(S, lambda, dLambdaDh, h, alpha, beta);
             
             if (System.Math.Abs(fPrime) < NUMERICAL_EPSILON)
+            {
+                // Fall back to bisection if derivative too small
                 break;
+            }
             
-            // Super Halley's method
+            // Super Halley's method (Equation 17)
             double Lf = f * fPrimePrime / (fPrime * fPrime);
             double correction = f / fPrime;
             
@@ -289,21 +273,25 @@ public sealed class QdPlusApproximation
         double intrinsic = eta * (S - _strike);
         double denominator = intrinsic - VE;
         
-        // When at-the-money or denominator near zero, c0 simplifies
-        if (System.Math.Abs(denominator) < NUMERICAL_EPSILON)
-            return dLambdaDh / (2.0 * lambda + beta - 1.0);
-        
-        // Avoid division by zero in rate term
-        if (System.Math.Abs(_rate) < NUMERICAL_EPSILON)
-            return dLambdaDh / (2.0 * lambda + beta - 1.0);
-        
-        // First part: -((1-h)α)/(2λ + β - 1) * (1/h - Θ/(r*(intrinsic - VE)))
         double lambdaDenom = 2.0 * lambda + beta - 1.0;
         
         // Prevent division by zero
         if (System.Math.Abs(lambdaDenom) < NUMERICAL_EPSILON)
             return 0.0;
         
+        // When at-the-money or denominator near zero, c0 simplifies
+        if (System.Math.Abs(denominator) < NUMERICAL_EPSILON || System.Math.Abs(_rate) < NUMERICAL_EPSILON)
+        {
+            return dLambdaDh / lambdaDenom;
+        }
+        
+        // Prevent division by zero in h
+        if (System.Math.Abs(h) < NUMERICAL_EPSILON)
+        {
+            return dLambdaDh / lambdaDenom;
+        }
+        
+        // First part: -((1-h)α)/(2λ + β - 1) * (1/h - Θ/(r*(intrinsic - VE)))
         double factor1 = -((1.0 - h) * alpha) / lambdaDenom;
         double term1 = 1.0 / h;
         double term2 = theta / (_rate * denominator);
@@ -433,23 +421,6 @@ public sealed class QdPlusApproximation
     }
     
     /// <summary>
-    /// Checks if boundaries cross (invalid configuration).
-    /// </summary>
-    private bool BoundariesCross(double upper, double lower)
-    {
-        if (_isCall)
-        {
-            // For call: upper must be above lower (both above strike)
-            return upper <= lower;
-        }
-        else
-        {
-            // For put: lower must be below upper (both below strike)
-            return lower >= upper;
-        }
-    }
-    
-    /// <summary>
     /// Standard normal cumulative distribution function.
     /// </summary>
     private double NormalCDF(double x)
@@ -468,17 +439,17 @@ public sealed class QdPlusApproximation
     }
     
     /// <summary>
-    /// Error function approximation using Abramowitz and Stegun method.
+    /// Error function approximation.
     /// </summary>
     private double Erf(double x)
     {
-        // Constants from Abramowitz and Stegun 7.1.26
-        const double a1 = 0.254829592;
-        const double a2 = -0.284496736;
-        const double a3 = 1.421413741;
-        const double a4 = -1.453152027;
-        const double a5 = 1.061405429;
-        const double p = 0.3275911;
+        // Abramowitz and Stegun approximation
+        double a1 =  0.254829592;
+        double a2 = -0.284496736;
+        double a3 =  1.421413741;
+        double a4 = -1.453152027;
+        double a5 =  1.061405429;
+        double p  =  0.3275911;
         
         int sign = x < 0 ? -1 : 1;
         x = System.Math.Abs(x);

@@ -246,21 +246,23 @@
         </member>
         <member name="T:Alaris.Double.DoubleBoundaryKimSolver">
             <summary>
-            Refines QD+ boundary approximations using the Kim integral equation with fixed point iteration.
-            Analogous to QuantLib's QdFp algorithm but for double boundaries under negative rates.
+            Refines QD+ boundary approximations using the Kim integral equation with FP-B' stabilized fixed point iteration.
+            Implements Healy (2021) Equations 27-29 with the stabilized FP-B' method (Equations 33-35).
             </summary>
             <remarks>
             <para>
-            Implements Healy (2021) Equations 27-29 for the double boundary integral equation.
-            Uses QD+ approximation as initial guess and refines via fixed point iteration.
+            CRITICAL: Uses FP-B' stabilized iteration instead of basic FP-B to prevent oscillations
+            in the lower boundary for longer maturities. The key difference is that the lower boundary
+            update uses the JUST-COMPUTED upper boundary from the same iteration.
             </para>
             <para>
             Architecture:
             - Single boundary: QdFp uses Chebyshev polynomials
-            - Double boundary: KimSolver uses collocation with fixed point iteration
+            - Double boundary: KimSolver uses collocation with FP-B' fixed point iteration
             </para>
             <para>
-            Reference: Healy, J. (2021). Section 5.3, Equations 27-29.
+            Reference: Healy, J. (2021). Section 5.3, Equations 27-29 (Kim equation for double boundaries)
+            and Equations 33-35 (FP-B' stabilized iteration).
             </para>
             </remarks>
         </member>
@@ -268,88 +270,159 @@
             <summary>
             Initializes a new Kim solver for double boundaries.
             </summary>
-            <param name="spot">Current asset price</param>
-            <param name="strike">Strike price</param>
-            <param name="maturity">Time to maturity</param>
-            <param name="rate">Risk-free rate</param>
-            <param name="dividendYield">Dividend yield</param>
-            <param name="volatility">Volatility</param>
-            <param name="isCall">True for call, false for put</param>
-            <param name="collocationPoints">Number of time discretization points</param>
         </member>
         <member name="M:Alaris.Double.DoubleBoundaryKimSolver.SolveBoundaries(System.Double,System.Double)">
             <summary>
-            Solves for refined boundaries using Kim's integral equation with fixed point iteration.
+            Solves for refined boundaries using Kim's integral equation with FP-B' stabilized fixed point iteration.
             </summary>
             <param name="upperInitial">Initial upper boundary from QD+</param>
             <param name="lowerInitial">Initial lower boundary from QD+</param>
             <returns>Refined (upper, lower) boundaries and crossing time</returns>
         </member>
-        <member name="M:Alaris.Double.DoubleBoundaryKimSolver.RefineUsingFixedPoint(System.Double[],System.Double[],System.Double)">
+        <member name="M:Alaris.Double.DoubleBoundaryKimSolver.RefineUsingFpbPrime(System.Double[],System.Double[],System.Double)">
             <summary>
-            Refines boundaries using fixed point iteration on Kim's integral equations.
+            Refines boundaries using FP-B' stabilized fixed point iteration (Healy Equations 33-35).
+            </summary>
+            <remarks>
+            FP-B' differs from FP-B in that the lower boundary update uses the JUST-COMPUTED
+            upper boundary from the same iteration: l^j_i = f(l^(j-1), u^j) not f(l^(j-1), u^(j-1)).
+            This prevents oscillations and ensures convergence for longer maturities.
+            </remarks>
+        </member>
+        <member name="M:Alaris.Double.DoubleBoundaryKimSolver.SolveUpperBoundaryPoint(System.Double,System.Double[],System.Double[],System.Double)">
+            <summary>
+            Solves for upper boundary at single point using FP-B (Healy Equations 30-32).
+            </summary>
+            <remarks>
+            u^j_i = K * N(t_i, u^(j-1), l^(j-1)) / D(t_i, u^(j-1), l^(j-1))
+            </remarks>
+        </member>
+        <member name="M:Alaris.Double.DoubleBoundaryKimSolver.SolveLowerBoundaryPointStabilized(System.Double,System.Double[],System.Double[],System.Double,System.Double)">
+            <summary>
+            Solves for lower boundary using FP-B' stabilized method (Healy Equations 33-35).
+            </summary>
+            <remarks>
+            CRITICAL: l^j_i = K * N'(t_i, l^(j-1), u^j) / D'(t_i, l^(j-1), u^j)
+            Note the use of u^j (just-computed upper) instead of u^(j-1).
+            
+            N' and D' are modified (Equations 34-35):
+            - N' includes additional term: + (B^u_i/K) * ∫ q*exp(-q(t-ti)) * [Φ(...) - Φ(...)] dt
+            - D' is simplified: = 1 - exp(-q(T-ti)) * Φ(-d1(B^u_i, K, T-ti))
+            </remarks>
+        </member>
+        <member name="M:Alaris.Double.DoubleBoundaryKimSolver.CalculateNumerator(System.Double,System.Double[],System.Double[],System.Double,System.Boolean)">
+            <summary>
+            Calculates numerator N for FP-B (Healy Equation 31).
+            </summary>
+            <remarks>
+            N(t_i, B^u, B^l) = 1 - exp(-r(T-t_i))*Φ(-d2(B^u_i, K, T-t_i))
+                               - ∫[max(t_i,t_s) to T] r*exp(-r(t-t_i)) * [Φ(-d2(B^u_i, B^u_t, t-t_i)) - Φ(-d2(B^u_i, B^l_t, t-t_i))] dt
+            </remarks>
+        </member>
+        <member name="M:Alaris.Double.DoubleBoundaryKimSolver.CalculateDenominator(System.Double,System.Double[],System.Double[],System.Double,System.Boolean)">
+            <summary>
+            Calculates denominator D for FP-B (Healy Equation 32).
+            </summary>
+            <remarks>
+            D(t_i, B^u, B^l) = 1 - exp(-q(T-t_i))*Φ(-d1(B^u_i, K, T-t_i))
+                               - ∫[max(t_i,t_s) to T] q*exp(-q(t-t_i)) * [Φ(-d1(B^u_i, B^u_t, t-t_i)) - Φ(-d1(B^u_i, B^l_t, t-t_i))] dt
+            </remarks>
+        </member>
+        <member name="M:Alaris.Double.DoubleBoundaryKimSolver.CalculateNumeratorPrime(System.Double,System.Double[],System.Double[],System.Double)">
+            <summary>
+            Calculates modified numerator N' for FP-B' (Healy Equation 34).
+            </summary>
+            <remarks>
+            N'(t_i, B^u, B^l) = N(t_i, B^u, B^l) 
+                                + (B^u_i/K) * ∫[max(t_i,t_s) to T] q*exp(-q(t-t_i)) * [Φ(-d1(B^u_i, B^u_t, t-t_i)) - Φ(-d1(B^u_i, B^l_t, t-t_i))] dt
+            
+            The additional term restores stability for the lower boundary update.
+            </remarks>
+        </member>
+        <member name="M:Alaris.Double.DoubleBoundaryKimSolver.CalculateDenominatorPrime(System.Double,System.Double[],System.Double)">
+            <summary>
+            Calculates simplified denominator D' for FP-B' (Healy Equation 35).
+            </summary>
+            <remarks>
+            D'(t_i, B^u, B^l) = 1 - exp(-q(T-t_i)) * Φ(-d1(B^u_i, K, T-t_i))
+            
+            Notice the integral term is REMOVED in the FP-B' formulation.
+            </remarks>
+        </member>
+        <member name="M:Alaris.Double.DoubleBoundaryKimSolver.CalculateIntegralTermN(System.Double,System.Double,System.Double[],System.Double[],System.Double)">
+            <summary>
+            Calculates integral term for numerator (r-weighted).
             </summary>
         </member>
-        <member name="M:Alaris.Double.DoubleBoundaryKimSolver.SolveSinglePoint(System.Double,System.Double[],System.Double[],System.Double,System.Boolean)">
+        <member name="M:Alaris.Double.DoubleBoundaryKimSolver.CalculateIntegralTermD(System.Double,System.Double,System.Double[],System.Double[],System.Double)">
             <summary>
-            Solves Kim equation at a single collocation point (Healy 2021 Equations 28-29).
-            </summary>
-        </member>
-        <member name="M:Alaris.Double.DoubleBoundaryKimSolver.CalculateIntegralTerm(System.Double,System.Double,System.Double[],System.Double[],System.Double,System.Boolean)">
-            <summary>
-            Calculates the integral term in Kim's equation.
-            </summary>
-        </member>
-        <member name="M:Alaris.Double.DoubleBoundaryKimSolver.InterpolateBoundary(System.Double[],System.Double)">
-            <summary>
-            Interpolates boundary value at a given time.
+            Calculates integral term for denominator (q-weighted).
             </summary>
         </member>
         <member name="M:Alaris.Double.DoubleBoundaryKimSolver.FindCrossingTime(System.Double[],System.Double[])">
             <summary>
-            Finds crossing time of boundaries.
+            Finds initial crossing time estimate.
             </summary>
         </member>
-        <member name="M:Alaris.Double.DoubleBoundaryKimSolver.CalculateEuropeanValue(System.Double,System.Double)">
+        <member name="M:Alaris.Double.DoubleBoundaryKimSolver.RefineCrossingTime(System.Double[],System.Double[],System.Double)">
             <summary>
-            Calculates European option value.
+            Refines crossing time by subdivision (Healy p.12: Δt &lt; 10^-2).
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DoubleBoundaryKimSolver.AdjustCrossingInitialGuess(System.Double[],System.Double[],System.Double)">
+            <summary>
+            Adjusts initial guess when boundaries cross (Healy p.12 procedure).
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DoubleBoundaryKimSolver.EnforceConstraints(System.Double,System.Double,System.Double)">
+            <summary>
+            Enforces monotonicity and ordering constraints.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DoubleBoundaryKimSolver.InterpolateBoundary(System.Double[],System.Double)">
+            <summary>
+            Interpolates boundary value at arbitrary time.
             </summary>
         </member>
         <member name="M:Alaris.Double.DoubleBoundaryKimSolver.CalculateD1(System.Double,System.Double,System.Double)">
             <summary>
-            Calculates d₁ for Black-Scholes.
+            Calculates d₁ = (ln(S/K) + (r - q + 0.5σ²)τ) / (σ√τ)
             </summary>
         </member>
         <member name="M:Alaris.Double.DoubleBoundaryKimSolver.CalculateD2(System.Double,System.Double,System.Double)">
             <summary>
-            Calculates d₂ for Black-Scholes.
+            Calculates d₂ = d₁ - σ√τ
             </summary>
         </member>
         <member name="M:Alaris.Double.DoubleBoundaryKimSolver.NormalCDF(System.Double)">
             <summary>
-            Standard normal CDF.
+            Standard normal cumulative distribution function.
             </summary>
         </member>
         <member name="M:Alaris.Double.DoubleBoundaryKimSolver.Erf(System.Double)">
             <summary>
-            Error function.
+            Error function approximation.
             </summary>
         </member>
         <member name="T:Alaris.Double.DoubleBoundarySolver">
             <summary>
             Complete solver for American options with double boundaries under negative rates.
-            Combines QD+ approximation with Kim integral equation refinement.
+            Combines QD+ approximation with FP-B' stabilized Kim integral equation refinement.
             </summary>
             <remarks>
             <para>
             Two-stage solving process:
-            1. QD+ approximation provides fast initial boundaries
-            2. Kim solver refines using fixed point iteration on integral equations
+            1. QD+ approximation with Super Halley's method provides fast initial boundaries
+            2. FP-B' stabilized Kim solver refines using fixed point iteration
             </para>
             <para>
             Architecture mirrors QuantLib's approach:
-            - Single boundary: QdPlus → QdFp (Chebyshev)
-            - Double boundary: QdPlus → Kim (collocation + fixed point)
+            - Single boundary (r ≥ 0): QdPlus → QdFp (Chebyshev)
+            - Double boundary (q &lt; r &lt; 0): QdPlus → FP-B' Kim (collocation + stabilized fixed point)
+            </para>
+            <para>
+            Key improvement: Uses FP-B' (Healy Equations 33-35) instead of basic FP-B to prevent
+            oscillations in longer maturity options.
             </para>
             </remarks>
         </member>
@@ -359,68 +432,78 @@
             </summary>
             <param name="spot">Current asset price</param>
             <param name="strike">Strike price</param>
-            <param name="maturity">Time to maturity</param>
-            <param name="rate">Risk-free rate</param>
-            <param name="dividendYield">Dividend yield</param>
+            <param name="maturity">Time to maturity (years)</param>
+            <param name="rate">Risk-free rate (negative for negative rate regime)</param>
+            <param name="dividendYield">Dividend yield (negative for negative rate regime)</param>
             <param name="volatility">Volatility</param>
             <param name="isCall">True for call, false for put</param>
             <param name="collocationPoints">Number of time points (default 50)</param>
-            <param name="useRefinement">Use Kim refinement (default true)</param>
+            <param name="useRefinement">Use FP-B' Kim refinement (default true)</param>
         </member>
-        <member name="M:Alaris.Double.DoubleBoundarySolver.SolveBoundaries">
+        <member name="M:Alaris.Double.DoubleBoundarySolver.Solve">
             <summary>
             Solves for both boundaries.
             </summary>
-            <returns>Upper and lower boundaries at t=0, and crossing time</returns>
+            <returns>Result containing upper and lower boundaries at t=0, crossing time, and metadata</returns>
         </member>
-        <member name="M:Alaris.Double.DoubleBoundarySolver.CalculateValue">
+        <member name="M:Alaris.Double.DoubleBoundarySolver.IsValidBoundaryPair(System.Double,System.Double)">
             <summary>
-            Calculates the American option value.
+            Validates that boundaries don't cross.
             </summary>
         </member>
-        <member name="M:Alaris.Double.DoubleBoundarySolver.ShouldExerciseImmediately(System.Double,System.Double)">
+        <member name="T:Alaris.Double.DoubleBoundaryResult">
             <summary>
-            Checks if immediate exercise is optimal.
+            Result from double boundary solver containing boundaries and diagnostic information.
             </summary>
         </member>
-        <member name="M:Alaris.Double.DoubleBoundarySolver.CalculateEarlyExercisePremium(System.Double[],System.Double[],System.Double)">
+        <member name="P:Alaris.Double.DoubleBoundaryResult.UpperBoundary">
             <summary>
-            Calculates early exercise premium from boundaries.
+            Upper exercise boundary at t=0.
             </summary>
         </member>
-        <member name="M:Alaris.Double.DoubleBoundarySolver.CalculateIntegral(System.Double,System.Double,System.Double[],System.Double)">
+        <member name="P:Alaris.Double.DoubleBoundaryResult.LowerBoundary">
             <summary>
-            Calculates Kim integral for early exercise premium.
+            Lower exercise boundary at t=0.
             </summary>
         </member>
-        <member name="M:Alaris.Double.DoubleBoundarySolver.InterpolateBoundary(System.Double[],System.Double)">
+        <member name="P:Alaris.Double.DoubleBoundaryResult.CrossingTime">
             <summary>
-            Interpolates boundary at given time.
+            Estimated crossing time (0 if boundaries don't cross).
             </summary>
         </member>
-        <member name="M:Alaris.Double.DoubleBoundarySolver.CalculateEuropeanValue">
+        <member name="P:Alaris.Double.DoubleBoundaryResult.Method">
             <summary>
-            Calculates European option value.
+            Method used: "QD+ only" or "QD+ with FP-B' refinement".
             </summary>
         </member>
-        <member name="M:Alaris.Double.DoubleBoundarySolver.CalculateIntrinsicValue">
+        <member name="P:Alaris.Double.DoubleBoundaryResult.IsRefined">
             <summary>
-            Calculates intrinsic value.
+            Whether Kim FP-B' refinement was applied.
             </summary>
         </member>
-        <member name="M:Alaris.Double.DoubleBoundarySolver.CalculateD1(System.Double,System.Double,System.Double)">
+        <member name="P:Alaris.Double.DoubleBoundaryResult.IsValid">
             <summary>
-            Calculates d₁.
+            Whether the boundaries are valid (don't cross at t=0).
             </summary>
         </member>
-        <member name="M:Alaris.Double.DoubleBoundarySolver.NormalCDF(System.Double)">
+        <member name="P:Alaris.Double.DoubleBoundaryResult.QdUpperBoundary">
             <summary>
-            Standard normal CDF.
+            QD+ upper boundary (before refinement).
             </summary>
         </member>
-        <member name="M:Alaris.Double.DoubleBoundarySolver.Erf(System.Double)">
+        <member name="P:Alaris.Double.DoubleBoundaryResult.QdLowerBoundary">
             <summary>
-            Error function.
+            QD+ lower boundary (before refinement).
+            </summary>
+        </member>
+        <member name="P:Alaris.Double.DoubleBoundaryResult.UpperImprovement">
+            <summary>
+            Improvement from QD+ to refined (upper boundary).
+            </summary>
+        </member>
+        <member name="P:Alaris.Double.DoubleBoundaryResult.LowerImprovement">
+            <summary>
+            Improvement from QD+ to refined (lower boundary).
             </summary>
         </member>
         <member name="T:Alaris.Double.QdPlusApproximation">
@@ -440,6 +523,7 @@
             </para>
             <para>
             Reference: Healy, J. (2021). "Pricing American Options Under Negative Rates", Equations 8-17.
+            Uses Super Halley's method (Equation 17) for robust convergence.
             </para>
             </remarks>
         </member>
@@ -447,61 +531,41 @@
             <summary>
             Initializes the QD+ approximation solver for double boundaries.
             </summary>
-            <param name="spot">Current asset price S</param>
-            <param name="strike">Strike price K</param>
-            <param name="maturity">Time to maturity T</param>
-            <param name="rate">Risk-free interest rate r</param>
-            <param name="dividendYield">Dividend yield q</param>
-            <param name="volatility">Volatility σ</param>
-            <param name="isCall">True for call options, false for put options</param>
         </member>
         <member name="M:Alaris.Double.QdPlusApproximation.CalculateBoundaries">
             <summary>
             Computes both exercise boundaries using the QD+ approximation.
             </summary>
-            <returns>Tuple of (upper boundary, lower boundary). Returns (K, K) if boundaries cross.</returns>
+            <returns>Tuple of (upper boundary, lower boundary) at t=0</returns>
         </member>
-        <member name="M:Alaris.Double.QdPlusApproximation.CalculateLambdas">
+        <member name="M:Alaris.Double.QdPlusApproximation.CalculateLambda1(System.Double,System.Double)">
             <summary>
-            Calculates λ₁ (negative) and λ₂ (positive) from Healy (2021) Equation 9.
+            Calculates lambda1 (upper boundary characteristic root) from Healy (2021) Equation 9.
             </summary>
         </member>
-        <member name="M:Alaris.Double.QdPlusApproximation.CalculateLambdaDerivative(System.Double,System.Double,System.Double,System.Double)">
+        <member name="M:Alaris.Double.QdPlusApproximation.CalculateLambda2(System.Double,System.Double)">
             <summary>
-            Calculates ∂λ/∂h needed for c₀ in Healy (2021) Equation 14.
+            Calculates lambda2 (lower boundary characteristic root) from Healy (2021) Equation 9.
             </summary>
-            <remarks>
-            Derivative computed from: λ = (-(β-1) ± sqrt((β-1)² + 4α/h)) / 2
-            ∂λ/∂h = ±(-2α/h²) / (2*sqrt((β-1)² + 4α/h))
-            </remarks>
         </member>
-        <member name="M:Alaris.Double.QdPlusApproximation.GetUpperBoundaryInitialGuess">
+        <member name="M:Alaris.Double.QdPlusApproximation.CalculateLambdaDerivative(System.Double,System.Double,System.Double)">
             <summary>
-            Gets the initial guess for the upper boundary (S₁*) from Healy (2021) page 5.
+            Calculates derivative of lambda w.r.t. h for lambda'(h) term in c0.
             </summary>
-            <remarks>
-            S₁* is solved first with initial guess:
-            - Put: K
-            - Call: K × max(1, r/q)
-            </remarks>
         </member>
-        <member name="M:Alaris.Double.QdPlusApproximation.GetLowerBoundaryInitialGuess">
+        <member name="M:Alaris.Double.QdPlusApproximation.CalculateJuZhongInitialGuess(System.Boolean,System.Double)">
             <summary>
-            Gets the initial guess for the lower boundary (S₂*) from Healy (2021) page 5.
+            Calculates initial guess using Ju-Zhong formula (Healy Equation 11-12).
             </summary>
-            <remarks>
-            S₂* is solved second with initial guess:
-            - Put: K × min(1, r/q)
-            - Call: K
-            </remarks>
         </member>
         <member name="M:Alaris.Double.QdPlusApproximation.SolveBoundary(System.Double,System.Double,System.Double,System.Double,System.Double,System.Double)">
             <summary>
-            Solves for a single boundary using Super Halley's method (Healy 2021 Equation 17).
+            Solves for boundary using Super Halley's method (Healy 2021 Equation 17).
             </summary>
             <remarks>
             Super Halley iteration: S*_{n+1} = S*_n - (1 + 0.5*Lf/(1-Lf)) * f/f'
             where Lf = f*f''/(f')²
+            This is more stable than standard Halley's method for negative rates.
             </remarks>
         </member>
         <member name="M:Alaris.Double.QdPlusApproximation.EvaluateRefinementEquation(System.Double,System.Double,System.Double,System.Double,System.Double,System.Double)">
@@ -554,11 +618,6 @@
             d1 = (ln(S/K) + (r - q + 0.5σ²)T) / (σ√T)
             </remarks>
         </member>
-        <member name="M:Alaris.Double.QdPlusApproximation.BoundariesCross(System.Double,System.Double)">
-            <summary>
-            Checks if boundaries cross (invalid configuration).
-            </summary>
-        </member>
         <member name="M:Alaris.Double.QdPlusApproximation.NormalCDF(System.Double)">
             <summary>
             Standard normal cumulative distribution function.
@@ -571,7 +630,7 @@
         </member>
         <member name="M:Alaris.Double.QdPlusApproximation.Erf(System.Double)">
             <summary>
-            Error function approximation using Abramowitz and Stegun method.
+            Error function approximation.
             </summary>
         </member>
     </members>
