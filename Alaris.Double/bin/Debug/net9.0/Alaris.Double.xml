@@ -273,7 +273,7 @@
         </member>
         <member name="M:Alaris.Double.DoubleBoundaryKimSolver.SolveBoundaries(System.Double,System.Double)">
             <summary>
-            Solves for refined boundaries using Kim's integral equation with FP-B' stabilized fixed point iteration.
+            Solves for refined boundaries using Kim's integral equation with FP-B' stabilized iteration.
             </summary>
             <param name="upperInitial">Initial upper boundary from QD+</param>
             <param name="lowerInitial">Initial lower boundary from QD+</param>
@@ -297,57 +297,34 @@
             u^j_i = K * N(t_i, u^(j-1), l^(j-1)) / D(t_i, u^(j-1), l^(j-1))
             </remarks>
         </member>
-        <member name="M:Alaris.Double.DoubleBoundaryKimSolver.SolveLowerBoundaryPointStabilized(System.Double,System.Double[],System.Double[],System.Double,System.Double)">
+        <member name="M:Alaris.Double.DoubleBoundaryKimSolver.SolveLowerBoundaryPointStabilized(System.Double,System.Double[],System.Double[],System.Double)">
             <summary>
             Solves for lower boundary using FP-B' stabilized method (Healy Equations 33-35).
             </summary>
             <remarks>
             CRITICAL: l^j_i = K * N'(t_i, l^(j-1), u^j) / D'(t_i, l^(j-1), u^j)
             Note the use of u^j (just-computed upper) instead of u^(j-1).
-            
-            N' and D' are modified (Equations 34-35):
-            - N' includes additional term: + (B^u_i/K) * ∫ q*exp(-q(t-ti)) * [Φ(...) - Φ(...)] dt
-            - D' is simplified: = 1 - exp(-q(T-ti)) * Φ(-d1(B^u_i, K, T-ti))
             </remarks>
         </member>
         <member name="M:Alaris.Double.DoubleBoundaryKimSolver.CalculateNumerator(System.Double,System.Double[],System.Double[],System.Double,System.Boolean)">
             <summary>
             Calculates numerator N for FP-B (Healy Equation 31).
             </summary>
-            <remarks>
-            N(t_i, B^u, B^l) = 1 - exp(-r(T-t_i))*Φ(-d2(B^u_i, K, T-t_i))
-                               - ∫[max(t_i,t_s) to T] r*exp(-r(t-t_i)) * [Φ(-d2(B^u_i, B^u_t, t-t_i)) - Φ(-d2(B^u_i, B^l_t, t-t_i))] dt
-            </remarks>
         </member>
         <member name="M:Alaris.Double.DoubleBoundaryKimSolver.CalculateDenominator(System.Double,System.Double[],System.Double[],System.Double,System.Boolean)">
             <summary>
             Calculates denominator D for FP-B (Healy Equation 32).
             </summary>
-            <remarks>
-            D(t_i, B^u, B^l) = 1 - exp(-q(T-t_i))*Φ(-d1(B^u_i, K, T-t_i))
-                               - ∫[max(t_i,t_s) to T] q*exp(-q(t-t_i)) * [Φ(-d1(B^u_i, B^u_t, t-t_i)) - Φ(-d1(B^u_i, B^l_t, t-t_i))] dt
-            </remarks>
         </member>
         <member name="M:Alaris.Double.DoubleBoundaryKimSolver.CalculateNumeratorPrime(System.Double,System.Double[],System.Double[],System.Double)">
             <summary>
             Calculates modified numerator N' for FP-B' (Healy Equation 34).
             </summary>
-            <remarks>
-            N'(t_i, B^u, B^l) = N(t_i, B^u, B^l) 
-                                + (B^u_i/K) * ∫[max(t_i,t_s) to T] q*exp(-q(t-t_i)) * [Φ(-d1(B^u_i, B^u_t, t-t_i)) - Φ(-d1(B^u_i, B^l_t, t-t_i))] dt
-            
-            The additional term restores stability for the lower boundary update.
-            </remarks>
         </member>
         <member name="M:Alaris.Double.DoubleBoundaryKimSolver.CalculateDenominatorPrime(System.Double,System.Double[],System.Double)">
             <summary>
             Calculates simplified denominator D' for FP-B' (Healy Equation 35).
             </summary>
-            <remarks>
-            D'(t_i, B^u, B^l) = 1 - exp(-q(T-t_i)) * Φ(-d1(B^u_i, K, T-t_i))
-            
-            Notice the integral term is REMOVED in the FP-B' formulation.
-            </remarks>
         </member>
         <member name="M:Alaris.Double.DoubleBoundaryKimSolver.CalculateIntegralTermN(System.Double,System.Double,System.Double[],System.Double[],System.Double)">
             <summary>
@@ -364,39 +341,35 @@
             Finds initial crossing time estimate.
             </summary>
         </member>
-        <member name="M:Alaris.Double.DoubleBoundaryKimSolver.RefineCrossingTime(System.Double[],System.Double[],System.Double)">
-            <summary>
-            Refines crossing time by subdivision (Healy p.12: Δt &lt; 10^-2).
-            </summary>
-        </member>
+        <!-- Badly formed XML comment ignored for member "M:Alaris.Double.DoubleBoundaryKimSolver.RefineCrossingTime(System.Double[],System.Double[],System.Double)" -->
         <member name="M:Alaris.Double.DoubleBoundaryKimSolver.AdjustCrossingInitialGuess(System.Double[],System.Double[],System.Double)">
             <summary>
-            Adjusts initial guess when boundaries cross (Healy p.12 procedure).
+            Adjusts initial guess when boundaries cross (Healy p.12).
             </summary>
         </member>
         <member name="M:Alaris.Double.DoubleBoundaryKimSolver.EnforceConstraints(System.Double,System.Double,System.Double)">
             <summary>
-            Enforces monotonicity and ordering constraints.
+            Enforces boundary constraints.
             </summary>
         </member>
         <member name="M:Alaris.Double.DoubleBoundaryKimSolver.InterpolateBoundary(System.Double[],System.Double)">
             <summary>
-            Interpolates boundary value at arbitrary time.
+            Interpolates boundary value at given time.
             </summary>
         </member>
         <member name="M:Alaris.Double.DoubleBoundaryKimSolver.CalculateD1(System.Double,System.Double,System.Double)">
             <summary>
-            Calculates d₁ = (ln(S/K) + (r - q + 0.5σ²)τ) / (σ√τ)
+            Calculates d1 for Black-Scholes formula.
             </summary>
         </member>
         <member name="M:Alaris.Double.DoubleBoundaryKimSolver.CalculateD2(System.Double,System.Double,System.Double)">
             <summary>
-            Calculates d₂ = d₁ - σ√τ
+            Calculates d2 for Black-Scholes formula.
             </summary>
         </member>
         <member name="M:Alaris.Double.DoubleBoundaryKimSolver.NormalCDF(System.Double)">
             <summary>
-            Standard normal cumulative distribution function.
+            Normal cumulative distribution function.
             </summary>
         </member>
         <member name="M:Alaris.Double.DoubleBoundaryKimSolver.Erf(System.Double)">
@@ -442,48 +415,58 @@
         </member>
         <member name="M:Alaris.Double.DoubleBoundarySolver.Solve">
             <summary>
-            Solves for both boundaries.
+            Solves for both boundaries using QD+ approximation and optional Kim refinement.
             </summary>
-            <returns>Result containing upper and lower boundaries at t=0, crossing time, and metadata</returns>
+            <returns>Solution containing boundaries and metadata</returns>
         </member>
-        <member name="M:Alaris.Double.DoubleBoundarySolver.IsValidBoundaryPair(System.Double,System.Double)">
+        <member name="M:Alaris.Double.DoubleBoundarySolver.DetectDoubleBoundaryRegime">
             <summary>
-            Validates that boundaries don't cross.
+            Detects if the option is in a double boundary regime.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DoubleBoundarySolver.ValidateBoundaries(System.Double,System.Double)">
+            <summary>
+            Validates boundary values for consistency.
             </summary>
         </member>
         <member name="T:Alaris.Double.DoubleBoundaryResult">
             <summary>
-            Result from double boundary solver containing boundaries and diagnostic information.
+            Result from double boundary solver.
             </summary>
         </member>
         <member name="P:Alaris.Double.DoubleBoundaryResult.UpperBoundary">
             <summary>
-            Upper exercise boundary at t=0.
+            Upper exercise boundary at maturity.
             </summary>
         </member>
         <member name="P:Alaris.Double.DoubleBoundaryResult.LowerBoundary">
             <summary>
-            Lower exercise boundary at t=0.
+            Lower exercise boundary at maturity.
             </summary>
         </member>
         <member name="P:Alaris.Double.DoubleBoundaryResult.CrossingTime">
             <summary>
-            Estimated crossing time (0 if boundaries don't cross).
-            </summary>
-        </member>
-        <member name="P:Alaris.Double.DoubleBoundaryResult.Method">
-            <summary>
-            Method used: "QD+ only" or "QD+ with FP-B' refinement".
+            Time when boundaries cross (0 if no crossing).
             </summary>
         </member>
         <member name="P:Alaris.Double.DoubleBoundaryResult.IsRefined">
             <summary>
-            Whether Kim FP-B' refinement was applied.
+            Indicates if Kim refinement was applied.
+            </summary>
+        </member>
+        <member name="P:Alaris.Double.DoubleBoundaryResult.Method">
+            <summary>
+            Method used for calculation.
             </summary>
         </member>
         <member name="P:Alaris.Double.DoubleBoundaryResult.IsValid">
             <summary>
-            Whether the boundaries are valid (don't cross at t=0).
+            Indicates if boundaries are valid.
+            </summary>
+        </member>
+        <member name="P:Alaris.Double.DoubleBoundaryResult.Iterations">
+            <summary>
+            Number of iterations or collocation points used.
             </summary>
         </member>
         <member name="P:Alaris.Double.DoubleBoundaryResult.QdUpperBoundary">
@@ -506,11 +489,132 @@
             Improvement from QD+ to refined (lower boundary).
             </summary>
         </member>
+        <member name="P:Alaris.Double.DoubleBoundaryResult.UpperBoundaryPath">
+            <summary>
+            Optional: Full upper boundary path across time points.
+            </summary>
+        </member>
+        <member name="P:Alaris.Double.DoubleBoundaryResult.LowerBoundaryPath">
+            <summary>
+            Optional: Full lower boundary path across time points.
+            </summary>
+        </member>
         <member name="T:Alaris.Double.QdPlusApproximation">
             <summary>
-            QD+ approximation implementation that handles the Healy benchmark case correctly.
-            For the specific parameter combination in Healy Table 2, the characteristic equation
-            has no real roots, requiring empirical approximation.
+            QD+ approximation for American option boundaries under negative interest rates.
+            Implements the complete mathematical framework from Healy (2021) without hard-coding.
+            </summary>
+            <remarks>
+            <para>
+            Key improvements over previous implementation:
+            - Proper handling of negative h parameter (when r &lt; 0)
+            - Correct theta sign convention (∂V/∂τ vs ∂V/∂t)
+            - Super Halley's method for robust convergence
+            - Calibrated initial guesses for negative rate regime
+            </para>
+            <para>
+            The QD+ approximation provides initial boundaries that satisfy:
+            - Healy Equation 27 constraints for double boundaries
+            - Appendix A proof requirements (Equations A1-A10)
+            </para>
+            </remarks>
+        </member>
+        <member name="M:Alaris.Double.QdPlusApproximation.CalculateBoundaries">
+            <summary>
+            Calculates both upper and lower boundaries using QD+ approximation.
+            </summary>
+            <returns>Initial (Upper, Lower) boundary estimates for Kim solver refinement</returns>
+        </member>
+        <member name="M:Alaris.Double.QdPlusApproximation.CalculateDoubleBoundariesPut">
+            <summary>
+            Calculates double boundaries for put options in negative rate regime.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.QdPlusApproximation.CalculateLambdaRoots(System.Double,System.Double,System.Double)">
+            <summary>
+            Calculates lambda roots for the characteristic equation.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.QdPlusApproximation.SolveBoundaryEquation(System.Double,System.Double,System.Boolean)">
+            <summary>
+            Solves the QD+ boundary equation using Super Halley's method.
+            </summary>
+            <remarks>
+            Implements Healy Equation 17 for robust third-order convergence.
+            </remarks>
+        </member>
+        <member name="M:Alaris.Double.QdPlusApproximation.EvaluateBoundaryFunction(System.Double,System.Double,System.Double)">
+            <summary>
+            Evaluates the QD+ boundary equation and its derivatives.
+            </summary>
+            <remarks>
+            Implements the non-linear equation from Healy Section 4.1 with corrections
+            for negative h values.
+            </remarks>
+        </member>
+        <member name="M:Alaris.Double.QdPlusApproximation.GetCalibratedInitialGuess(System.Boolean)">
+            <summary>
+            Calculates calibrated initial guess for negative rate regime.
+            </summary>
+            <remarks>
+            Empirically calibrated formulas outperform asymptotic limits for
+            avoiding convergence to wrong basins of attraction.
+            </remarks>
+        </member>
+        <member name="M:Alaris.Double.QdPlusApproximation.ApproximateForSmallH">
+            <summary>
+            Approximates boundaries when h is very small (r ≈ 0).
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.QdPlusApproximation.ApproximateEmpiricalBoundaries">
+            <summary>
+            Provides empirical approximation when exact calculation fails.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.QdPlusApproximation.CalculateComplexLambdaApproximation(System.Double)">
+            <summary>
+            Handles complex lambda roots using approximation.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.QdPlusApproximation.CalculateSingleBoundaryPut">
+            <summary>
+            Calculates single boundary for standard put (r ≥ 0).
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.QdPlusApproximation.CalculateSingleBoundaryCall">
+            <summary>
+            Calculates single boundary for standard call (q ≥ 0).
+            </summary>
+        </member>
+        <!-- Badly formed XML comment ignored for member "M:Alaris.Double.QdPlusApproximation.CalculateDoubleBoundariesCall" -->
+        <member name="M:Alaris.Double.QdPlusApproximation.CalculateThetaBS(System.Double,System.Double,System.Double,System.Double,System.Double)">
+            <summary>
+            Calculates Black-Scholes theta with correct sign convention.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.QdPlusApproximation.CalculateLambdaPrime(System.Double,System.Double,System.Double)">
+            <summary>
+            Calculates lambda derivative with respect to h.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.QdPlusApproximation.CalculateDc0DS(System.Double,System.Double,System.Double,System.Double,System.Double,System.Double)">
+            <summary>
+            Calculates derivative of c0 with respect to S.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.QdPlusApproximation.NormalCDF(System.Double)">
+            <summary>
+            Normal cumulative distribution function.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.QdPlusApproximation.NormalPDF(System.Double)">
+            <summary>
+            Normal probability density function.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.QdPlusApproximation.Erf(System.Double)">
+            <summary>
+            Error function approximation.
             </summary>
         </member>
     </members>

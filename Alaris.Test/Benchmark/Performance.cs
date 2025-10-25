@@ -1,237 +1,324 @@
-using Xunit;
-using Xunit.Abstractions;
-using FluentAssertions;
+using System;
 using System.Diagnostics;
+using System.Linq;
+using Xunit;
+using FluentAssertions;
 using Alaris.Double;
 
 namespace Alaris.Test.Benchmark;
 
 /// <summary>
-/// Performance benchmarks for DoubleBoundaryEngine.
-/// Measures pricing speed, memory usage, and scaling characteristics.
+/// Performance benchmark tests for the double boundary solver.
+/// Validates computation speed and scalability.
 /// </summary>
-public class PerformanceBenchmarks
+public class DoubleBoundaryBenchmarkTests
 {
-    private readonly ITestOutputHelper _output;
-
-    public PerformanceBenchmarks(ITestOutputHelper output)
-    {
-        _output = output;
-    }
-
-    [Fact]
-    public void Benchmark_SingleOptionPricing_MeasuresSpeed()
+    [Theory]
+    [InlineData(10, 100)]   // 10 points, expect < 100ms
+    [InlineData(50, 500)]   // 50 points, expect < 500ms
+    [InlineData(100, 2000)] // 100 points, expect < 2000ms
+    public void QdPlusApproximation_PerformanceScaling(int iterations, int maxMilliseconds)
     {
         // Arrange
-        var iterations = 1000;
-        var spot = 100.0;
-        var strike = 100.0;
-        var rate = 0.05;
-        var volatility = 0.20;
-        var maturity = 1.0;
-
-        var todaysDate = new Date(15, Month.January, 2024);
-        Settings.instance().setEvaluationDate(todaysDate);
-
-        var exerciseDate = todaysDate.Add(new Period((int)(maturity * 365), TimeUnit.Days));
-        var exercise = new AmericanExercise(todaysDate, exerciseDate);
-        var payoff = new PlainVanillaPayoff(Option.Type.Call, strike);
-        var option = new VanillaOption(payoff, exercise);
-
-        var underlying = new SimpleQuote(spot);
-        var riskFreeTS = new FlatForward(todaysDate, rate, new Actual365Fixed());
-        var dividendTS = new FlatForward(todaysDate, 0.0, new Actual365Fixed());
-        var volTS = new BlackConstantVol(todaysDate, new TARGET(), volatility, new Actual365Fixed());
-
-        var process = new BlackScholesMertonProcess(
-            new QuoteHandle(underlying),
-            new YieldTermStructureHandle(dividendTS),
-            new YieldTermStructureHandle(riskFreeTS),
-            new BlackVolTermStructureHandle(volTS));
-
-        var engine = new DoubleBoundaryEngine(process, underlying);
-        option.setPricingEngine(engine);
-
-        // Warm-up
+        var approximation = new QdPlusApproximation(
+            spot: 100.0,
+            strike: 100.0,
+            maturity: 10.0,
+            rate: -0.005,
+            dividendYield: -0.01,
+            volatility: 0.08,
+            isCall: false
+        );
+        
+        // Act: Run multiple iterations for timing
+        var stopwatch = Stopwatch.StartNew();
+        for (int i = 0; i < iterations; i++)
+        {
+            var (upper, lower) = approximation.CalculateBoundaries();
+        }
+        stopwatch.Stop();
+        
+        // Assert
+        stopwatch.ElapsedMilliseconds.Should().BeLessThan(maxMilliseconds,
+            $"QD+ should complete {iterations} iterations within {maxMilliseconds}ms");
+        
+        // Calculate average time per iteration
+        double avgMs = stopwatch.ElapsedMilliseconds / (double)iterations;
+        avgMs.Should().BeLessThan(20.0, "average time per QD+ calculation should be under 20ms");
+    }
+    
+    [Theory]
+    [InlineData(20, 1000)]   // 20 collocation points
+    [InlineData(50, 3000)]   // 50 collocation points
+    [InlineData(100, 8000)]  // 100 collocation points
+    public void KimSolverRefinement_ScalesWithCollocation(int collocationPoints, int maxMilliseconds)
+    {
+        // Arrange
+        var solver = new DoubleBoundarySolver(
+            spot: 100.0,
+            strike: 100.0,
+            maturity: 10.0,
+            rate: -0.005,
+            dividendYield: -0.01,
+            volatility: 0.08,
+            isCall: false,
+            collocationPoints: collocationPoints,
+            useRefinement: true
+        );
+        
+        // Act
+        var stopwatch = Stopwatch.StartNew();
+        var result = solver.Solve();
+        stopwatch.Stop();
+        
+        // Assert
+        stopwatch.ElapsedMilliseconds.Should().BeLessThan(maxMilliseconds,
+            $"Kim refinement with {collocationPoints} points should complete within {maxMilliseconds}ms");
+        
+        result.IsValid.Should().BeTrue("result should be valid regardless of performance");
+    }
+    
+    [Fact]
+    public void BatchProcessing_MultipleOptions_Throughput()
+    {
+        // Test throughput for batch processing scenario
+        var testCases = GenerateTestPortfolio(100);  // 100 options
+        
+        // Act
+        var stopwatch = Stopwatch.StartNew();
+        var results = testCases.Select(tc =>
+        {
+            var solver = new DoubleBoundarySolver(
+                tc.Spot, tc.Strike, tc.Maturity,
+                tc.Rate, tc.Dividend, tc.Volatility,
+                tc.IsCall, 20, false  // Quick QD+ only
+            );
+            return solver.Solve();
+        }).ToList();
+        stopwatch.Stop();
+        
+        // Assert
+        stopwatch.ElapsedMilliseconds.Should().BeLessThan(5000,
+            "should process 100 options within 5 seconds");
+        
+        double throughput = 100.0 / (stopwatch.ElapsedMilliseconds / 1000.0);
+        throughput.Should().BeGreaterThan(20.0, "should process at least 20 options per second");
+        
+        results.All(r => r.IsValid).Should().BeTrue("all results should be valid");
+    }
+    
+    [Theory]
+    [InlineData(1.0)]
+    [InlineData(5.0)]
+    [InlineData(10.0)]
+    [InlineData(20.0)]
+    public void MaturityScaling_PerformanceCharacteristics(double maturity)
+    {
+        // Test how performance scales with maturity
+        var solver = new DoubleBoundarySolver(
+            spot: 100.0,
+            strike: 100.0,
+            maturity: maturity,
+            rate: -0.005,
+            dividendYield: -0.01,
+            volatility: 0.08,
+            isCall: false,
+            collocationPoints: 50,
+            useRefinement: true
+        );
+        
+        // Act
+        var stopwatch = Stopwatch.StartNew();
+        var result = solver.Solve();
+        stopwatch.Stop();
+        
+        // Assert: Performance should not degrade significantly with maturity
+        double expectedMaxMs = 1000 + maturity * 100;  // Linear scaling expectation
+        stopwatch.ElapsedMilliseconds.Should().BeLessThan((int)expectedMaxMs,
+            $"computation time should scale reasonably with maturity T={maturity}");
+        
+        result.IsValid.Should().BeTrue();
+    }
+    
+    [Fact]
+    public void MemoryAllocation_MinimalGarbageCollection()
+    {
+        // Test that solver doesn't cause excessive garbage collection
+        var solver = new DoubleBoundarySolver(
+            spot: 100.0,
+            strike: 100.0,
+            maturity: 10.0,
+            rate: -0.005,
+            dividendYield: -0.01,
+            volatility: 0.08,
+            isCall: false,
+            collocationPoints: 100,
+            useRefinement: true
+        );
+        
+        // Force garbage collection before test
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+        
+        int gen0Before = GC.CollectionCount(0);
+        int gen1Before = GC.CollectionCount(1);
+        int gen2Before = GC.CollectionCount(2);
+        
+        // Act: Run multiple iterations
         for (int i = 0; i < 10; i++)
         {
-            engine.Calculate(option);
+            var result = solver.Solve();
         }
-
-        // Act
-        var sw = Stopwatch.StartNew();
-        for (int i = 0; i < iterations; i++)
-        {
-            engine.Calculate(option);
-        }
-        sw.Stop();
-
-        // Assert & Report
-        var avgTime = sw.ElapsedMilliseconds / (double)iterations;
-        _output.WriteLine($"Average pricing time: {avgTime:F3} ms");
-        _output.WriteLine($"Total time for {iterations} iterations: {sw.ElapsedMilliseconds} ms");
         
-        avgTime.Should().BeLessThan(10); // Should be fast
-    }
-
-    [Fact]
-    public void Benchmark_SensitivityAnalysis_MeasuresScaling()
-    {
-        // Arrange
-        var spot = 100.0;
-        var strike = 100.0;
-        var rate = 0.05;
-        var volatility = 0.20;
-        var maturity = 1.0;
-
-        var todaysDate = new Date(15, Month.January, 2024);
-        Settings.instance().setEvaluationDate(todaysDate);
-
-        var exerciseDate = todaysDate.Add(new Period((int)(maturity * 365), TimeUnit.Days));
-        var exercise = new AmericanExercise(todaysDate, exerciseDate);
-        var payoff = new PlainVanillaPayoff(Option.Type.Call, strike);
-        var option = new VanillaOption(payoff, exercise);
-
-        var underlying = new SimpleQuote(spot);
-        var riskFreeTS = new FlatForward(todaysDate, rate, new Actual365Fixed());
-        var dividendTS = new FlatForward(todaysDate, 0.0, new Actual365Fixed());
-        var volTS = new BlackConstantVol(todaysDate, new TARGET(), volatility, new Actual365Fixed());
-
-        var process = new BlackScholesMertonProcess(
-            new QuoteHandle(underlying),
-            new YieldTermStructureHandle(dividendTS),
-            new YieldTermStructureHandle(riskFreeTS),
-            new BlackVolTermStructureHandle(volTS));
-
-        var engine = new DoubleBoundaryEngine(process, underlying);
-
-        // Act
-        var sw = Stopwatch.StartNew();
-        var results = engine.SensitivityAnalysis(option, 80, 120, 100);
-        sw.Stop();
-
-        // Assert & Report
-        _output.WriteLine($"Sensitivity analysis (100 points): {sw.ElapsedMilliseconds} ms");
-        _output.WriteLine($"Average per point: {sw.ElapsedMilliseconds / 100.0:F2} ms");
+        int gen0After = GC.CollectionCount(0);
+        int gen1After = GC.CollectionCount(1);
+        int gen2After = GC.CollectionCount(2);
         
-        results.Should().HaveCount(100);
-        sw.ElapsedMilliseconds.Should().BeLessThan(2000); // Should complete in reasonable time
+        // Assert: Minimal garbage collection
+        (gen2After - gen2Before).Should().Be(0, "should not trigger Gen 2 GC");
+        (gen1After - gen1Before).Should().BeLessOrEqualTo(1, "should minimize Gen 1 GC");
+        // Gen 0 collections are acceptable but should be reasonable
+        (gen0After - gen0Before).Should().BeLessThan(20, "should have reasonable Gen 0 collections");
     }
-
+    
     [Theory]
-    [InlineData(10)]
-    [InlineData(50)]
-    [InlineData(100)]
-    public void Benchmark_VariableSteps_MeasuresLinearScaling(int steps)
+    [InlineData(1)]    // Single thread baseline
+    [InlineData(2)]    // 2 threads
+    [InlineData(4)]    // 4 threads
+    [InlineData(8)]    // 8 threads
+    public void ParallelExecution_Scalability(int threadCount)
     {
-        // Arrange
-        var spot = 100.0;
-        var strike = 100.0;
-        var rate = 0.05;
-        var volatility = 0.20;
-        var maturity = 1.0;
-
-        var todaysDate = new Date(15, Month.January, 2024);
-        Settings.instance().setEvaluationDate(todaysDate);
-
-        var exerciseDate = todaysDate.Add(new Period((int)(maturity * 365), TimeUnit.Days));
-        var exercise = new AmericanExercise(todaysDate, exerciseDate);
-        var payoff = new PlainVanillaPayoff(Option.Type.Call, strike);
-        var option = new VanillaOption(payoff, exercise);
-
-        var underlying = new SimpleQuote(spot);
-        var riskFreeTS = new FlatForward(todaysDate, rate, new Actual365Fixed());
-        var dividendTS = new FlatForward(todaysDate, 0.0, new Actual365Fixed());
-        var volTS = new BlackConstantVol(todaysDate, new TARGET(), volatility, new Actual365Fixed());
-
-        var process = new BlackScholesMertonProcess(
-            new QuoteHandle(underlying),
-            new YieldTermStructureHandle(dividendTS),
-            new YieldTermStructureHandle(riskFreeTS),
-            new BlackVolTermStructureHandle(volTS));
-
-        var engine = new DoubleBoundaryEngine(process, underlying);
-
+        // Test parallel execution scalability
+        var testCases = GenerateTestPortfolio(100);
+        
         // Act
-        var sw = Stopwatch.StartNew();
-        var results = engine.SensitivityAnalysis(option, 80, 120, steps);
-        sw.Stop();
-
-        // Report
-        _output.WriteLine($"Steps: {steps}, Time: {sw.ElapsedMilliseconds} ms, " +
-                         $"Avg: {sw.ElapsedMilliseconds / (double)steps:F2} ms/step");
+        var stopwatch = Stopwatch.StartNew();
+        var results = testCases
+            .AsParallel()
+            .WithDegreeOfParallelism(threadCount)
+            .Select(tc =>
+            {
+                var solver = new DoubleBoundarySolver(
+                    tc.Spot, tc.Strike, tc.Maturity,
+                    tc.Rate, tc.Dividend, tc.Volatility,
+                    tc.IsCall, 30, false
+                );
+                return solver.Solve();
+            })
+            .ToList();
+        stopwatch.Stop();
         
-        results.Should().HaveCount(steps);
+        // Assert
+        results.Count.Should().Be(100);
+        results.All(r => r.IsValid).Should().BeTrue();
+        
+        // Performance should improve with more threads (up to a point)
+        if (threadCount > 1)
+        {
+            double expectedSpeedup = Math.Min(threadCount * 0.7, 4.0);  // Account for overhead
+            double maxExpectedTime = 10000.0 / expectedSpeedup;
+            stopwatch.ElapsedMilliseconds.Should().BeLessThan((int)maxExpectedTime,
+                $"parallel execution with {threadCount} threads should show speedup");
+        }
     }
-
+    
     [Fact]
-    public void Benchmark_NegativeRates_ComparesWithPositiveRates()
+    public void CacheEfficiency_RepeatedCalculations()
     {
-        // Compare performance between negative and positive rates
-        var iterations = 100;
-        var spot = 100.0;
-        var strike = 100.0;
-        var volatility = 0.20;
-        var maturity = 1.0;
-
-        var todaysDate = new Date(15, Month.January, 2024);
-        Settings.instance().setEvaluationDate(todaysDate);
-
-        var exerciseDate = todaysDate.Add(new Period((int)(maturity * 365), TimeUnit.Days));
-        var exercise = new AmericanExercise(todaysDate, exerciseDate);
-        var payoff = new PlainVanillaPayoff(Option.Type.Call, strike);
-
-        // Test with positive rate
-        var positiveRate = 0.05;
-        var option1 = new VanillaOption(payoff, exercise);
-        var underlying1 = new SimpleQuote(spot);
-        var riskFreeTS1 = new FlatForward(todaysDate, positiveRate, new Actual365Fixed());
-        var dividendTS1 = new FlatForward(todaysDate, 0.0, new Actual365Fixed());
-        var volTS1 = new BlackConstantVol(todaysDate, new TARGET(), volatility, new Actual365Fixed());
-        var process1 = new BlackScholesMertonProcess(
-            new QuoteHandle(underlying1),
-            new YieldTermStructureHandle(dividendTS1),
-            new YieldTermStructureHandle(riskFreeTS1),
-            new BlackVolTermStructureHandle(volTS1));
-        var engine1 = new DoubleBoundaryEngine(process1, underlying1);
-        option1.setPricingEngine(engine1);
-
-        var sw1 = Stopwatch.StartNew();
-        for (int i = 0; i < iterations; i++)
-        {
-            engine1.Calculate(option1);
-        }
-        sw1.Stop();
-
-        // Test with negative rate
-        var negativeRate = -0.01;
-        var option2 = new VanillaOption(payoff, exercise);
-        var underlying2 = new SimpleQuote(spot);
-        var riskFreeTS2 = new FlatForward(todaysDate, negativeRate, new Actual365Fixed());
-        var dividendTS2 = new FlatForward(todaysDate, 0.0, new Actual365Fixed());
-        var volTS2 = new BlackConstantVol(todaysDate, new TARGET(), volatility, new Actual365Fixed());
-        var process2 = new BlackScholesMertonProcess(
-            new QuoteHandle(underlying2),
-            new YieldTermStructureHandle(dividendTS2),
-            new YieldTermStructureHandle(riskFreeTS2),
-            new BlackVolTermStructureHandle(volTS2));
-        var engine2 = new DoubleBoundaryEngine(process2, underlying2);
-        option2.setPricingEngine(engine2);
-
-        var sw2 = Stopwatch.StartNew();
-        for (int i = 0; i < iterations; i++)
-        {
-            engine2.Calculate(option2);
-        }
-        sw2.Stop();
-
-        // Report
-        _output.WriteLine($"Positive rate (+5%): {sw1.ElapsedMilliseconds} ms");
-        _output.WriteLine($"Negative rate (-1%): {sw2.ElapsedMilliseconds} ms");
-        _output.WriteLine($"Performance ratio: {sw2.ElapsedMilliseconds / (double)sw1.ElapsedMilliseconds:F2}x");
+        // Test if repeated calculations benefit from any caching
+        var solver = new DoubleBoundarySolver(
+            spot: 100.0,
+            strike: 100.0,
+            maturity: 10.0,
+            rate: -0.005,
+            dividendYield: -0.01,
+            volatility: 0.08,
+            isCall: false,
+            collocationPoints: 50,
+            useRefinement: true
+        );
         
-        // Performance should be comparable
-        var ratio = sw2.ElapsedMilliseconds / (double)sw1.ElapsedMilliseconds;
-        ratio.Should().BeLessThan(2.0); // Negative rates shouldn't be more than 2x slower
+        // Warm-up
+        _ = solver.Solve();
+        
+        // Act: Time multiple iterations
+        var timings = new double[10];
+        for (int i = 0; i < 10; i++)
+        {
+            var sw = Stopwatch.StartNew();
+            _ = solver.Solve();
+            sw.Stop();
+            timings[i] = sw.Elapsed.TotalMilliseconds;
+        }
+        
+        // Assert: Later iterations might be faster due to JIT and cache
+        double firstAvg = timings.Take(3).Average();
+        double lastAvg = timings.Skip(7).Average();
+        
+        // Last iterations should be at least as fast as first (accounting for variance)
+        lastAvg.Should().BeLessOrEqualTo(firstAvg * 1.2,
+            "repeated calculations should not degrade in performance");
+    }
+    
+    [Fact]
+    public void WorstCasePerformance_BoundaryNearCrossing()
+    {
+        // Test performance when boundaries are very close (worst case for convergence)
+        var solver = new DoubleBoundarySolver(
+            spot: 100.0,
+            strike: 100.0,
+            maturity: 10.0,
+            rate: -0.005,
+            dividendYield: -0.01,
+            volatility: 0.20,  // Higher volatility for near-crossing
+            isCall: false,
+            collocationPoints: 100,
+            useRefinement: true
+        );
+        
+        // Act
+        var stopwatch = Stopwatch.StartNew();
+        var result = solver.Solve();
+        stopwatch.Stop();
+        
+        // Assert: Even worst case should complete in reasonable time
+        stopwatch.ElapsedMilliseconds.Should().BeLessThan(15000,
+            "worst case (near crossing) should still complete within 15 seconds");
+        
+        result.IsValid.Should().BeTrue("result should be valid even in worst case");
+    }
+    
+    private class TestCase
+    {
+        public double Spot { get; set; }
+        public double Strike { get; set; }
+        public double Maturity { get; set; }
+        public double Rate { get; set; }
+        public double Dividend { get; set; }
+        public double Volatility { get; set; }
+        public bool IsCall { get; set; }
+    }
+    
+    private TestCase[] GenerateTestPortfolio(int count)
+    {
+        var random = new Random(42);  // Fixed seed for reproducibility
+        var testCases = new TestCase[count];
+        
+        for (int i = 0; i < count; i++)
+        {
+            testCases[i] = new TestCase
+            {
+                Spot = 100.0,
+                Strike = 90.0 + random.NextDouble() * 20.0,  // 90-110
+                Maturity = 0.25 + random.NextDouble() * 4.75, // 0.25-5 years
+                Rate = -0.01 + random.NextDouble() * 0.008,   // -1% to -0.2%
+                Dividend = -0.02 + random.NextDouble() * 0.01, // -2% to -1%
+                Volatility = 0.10 + random.NextDouble() * 0.30, // 10%-40%
+                IsCall = random.NextDouble() > 0.5
+            };
+        }
+        
+        return testCases;
     }
 }

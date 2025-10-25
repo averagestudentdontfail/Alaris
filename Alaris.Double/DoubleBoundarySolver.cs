@@ -91,6 +91,8 @@ public sealed class DoubleBoundarySolver
             {
                 UpperBoundary = upperInitial,
                 LowerBoundary = lowerInitial,
+                QdUpperBoundary = upperInitial,
+                QdLowerBoundary = lowerInitial,
                 CrossingTime = 0.0,
                 IsRefined = false,
                 Method = "QD+ (Single Boundary)",
@@ -106,6 +108,8 @@ public sealed class DoubleBoundarySolver
             {
                 UpperBoundary = upperInitial,
                 LowerBoundary = lowerInitial,
+                QdUpperBoundary = upperInitial,
+                QdLowerBoundary = lowerInitial,
                 CrossingTime = 0.0,
                 IsRefined = false,
                 Method = "QD+ Approximation",
@@ -132,6 +136,8 @@ public sealed class DoubleBoundarySolver
         {
             UpperBoundary = upperFinal,
             LowerBoundary = lowerFinal,
+            QdUpperBoundary = upperInitial,
+            QdLowerBoundary = lowerInitial,
             CrossingTime = crossingTime,
             IsRefined = true,
             Method = "QD+ + FP-B' Kim Refinement",
@@ -238,6 +244,26 @@ public sealed class DoubleBoundaryResult
     /// Number of iterations or collocation points used.
     /// </summary>
     public int Iterations { get; set; }
+    
+    /// <summary>
+    /// QD+ upper boundary (before refinement).
+    /// </summary>
+    public double QdUpperBoundary { get; set; }
+    
+    /// <summary>
+    /// QD+ lower boundary (before refinement).
+    /// </summary>
+    public double QdLowerBoundary { get; set; }
+    
+    /// <summary>
+    /// Improvement from QD+ to refined (upper boundary).
+    /// </summary>
+    public double UpperImprovement => IsRefined ? Math.Abs(UpperBoundary - QdUpperBoundary) : 0.0;
+    
+    /// <summary>
+    /// Improvement from QD+ to refined (lower boundary).
+    /// </summary>
+    public double LowerImprovement => IsRefined ? Math.Abs(LowerBoundary - QdLowerBoundary) : 0.0;
     
     /// <summary>
     /// Optional: Full upper boundary path across time points.
