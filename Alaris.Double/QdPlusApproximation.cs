@@ -13,6 +13,7 @@ namespace Alaris.Double;
 /// - Correct theta sign convention (∂V/∂τ vs ∂V/∂t)
 /// - Super Halley's method for robust convergence
 /// - Calibrated initial guesses for negative rate regime
+/// - FIXED: Relaxed iteration constraints to prevent convergence trap
 /// </para>
 /// <para>
 /// The QD+ approximation provides initial boundaries that satisfy:
@@ -154,9 +155,19 @@ public sealed class QdPlusApproximation
     
     /// <summary>
     /// Solves the QD+ boundary equation using Super Halley's method.
+    /// CORRECTED VERSION: Uses relaxed constraints during iteration.
     /// </summary>
     /// <remarks>
     /// Implements Healy Equation 17 for robust third-order convergence.
+    /// 
+    /// KEY FIX: The original implementation applied strict constraints (S ≤ strike - ε) 
+    /// after each iteration, causing Super Halley to become trapped at the strike 
+    /// price (100.0) instead of converging to the correct boundary (~69-73).
+    /// 
+    /// This corrected version:
+    /// 1. Uses RELAXED bounds during iteration (0.01*K to 2.0*K)
+    /// 2. Applies STRICT constraints only after convergence
+    /// 3. Allows Super Halley to explore solution space properly
     /// </remarks>
     private double SolveBoundaryEquation(double lambda, double h, bool isUpper)
     {
@@ -164,17 +175,23 @@ public sealed class QdPlusApproximation
         double initialGuess = GetCalibratedInitialGuess(isUpper);
         double S = initialGuess;
         
+        // Define RELAXED search bounds for iteration
+        // These wide bounds allow Super Halley to explore without getting trapped
+        double searchLowerBound = 0.01 * _strike;  // 1% of strike
+        double searchUpperBound = 2.0 * _strike;   // 200% of strike
+        
         for (int iter = 0; iter < MAX_ITERATIONS; iter++)
         {
             var (f, df, d2f) = EvaluateBoundaryFunction(S, lambda, h);
             
+            // Check convergence
             if (Math.Abs(f) < TOLERANCE)
                 break;
             
             // Super Halley's method (Healy Equation 17)
             double Lf = f * d2f / (df * df);
             
-            // Prevent division by zero
+            // Prevent division by zero in Super Halley
             if (Math.Abs(1.0 - Lf) < NUMERICAL_EPSILON)
             {
                 // Fall back to Newton's method
@@ -182,13 +199,29 @@ public sealed class QdPlusApproximation
             }
             else
             {
+                // Full Super Halley correction
                 double correction = (1.0 + 0.5 * Lf / (1.0 - Lf)) * f / df;
                 S = S - correction;
             }
             
-            // Enforce constraints
-            S = Math.Max(S, NUMERICAL_EPSILON);
-            S = Math.Min(S, _strike - NUMERICAL_EPSILON);
+            // Apply RELAXED constraints during iteration
+            // This allows exploration whilst preventing numerical overflow
+            S = Math.Max(S, searchLowerBound);
+            S = Math.Min(S, searchUpperBound);
+        }
+        
+        // Apply STRICT economically-valid constraints only after convergence
+        if (!_isCall)
+        {
+            // Put option boundaries
+            S = Math.Max(S, NUMERICAL_EPSILON);   // Must be positive
+            S = Math.Min(S, _strike);             // Cannot exceed strike
+        }
+        else
+        {
+            // Call option boundaries  
+            S = Math.Max(S, _strike);             // Cannot be below strike
+            // Upper bound is unlimited for calls
         }
         
         return S;
@@ -221,7 +254,7 @@ public sealed class QdPlusApproximation
         double phi_d2 = NormalPDF(d2);
         
         // European option value
-        double VE = _isCall ? 
+        double VE = _isCall ?
             S * Math.Exp(-q * T) * Phi_d1 - K * Math.Exp(-r * T) * Phi_d2 :
             K * Math.Exp(-r * T) * (1.0 - Phi_d2) - S * Math.Exp(-q * T) * (1.0 - Phi_d1);
         
