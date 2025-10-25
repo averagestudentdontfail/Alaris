@@ -1,3 +1,5 @@
+using System;
+
 namespace Alaris.Double;
 
 /// <summary>
@@ -67,129 +69,183 @@ public sealed class DoubleBoundarySolver
     }
     
     /// <summary>
-    /// Solves for both boundaries.
+    /// Solves for both boundaries using QD+ approximation and optional Kim refinement.
     /// </summary>
-    /// <returns>Result containing upper and lower boundaries at t=0, crossing time, and metadata</returns>
+    /// <returns>Solution containing boundaries and metadata</returns>
     public DoubleBoundaryResult Solve()
     {
-        // Stage 1: QD+ approximation with Super Halley's method
-        var qdSolver = new QdPlusApproximation(
-            _spot, _strike, _maturity, _rate, _dividendYield, _volatility, _isCall);
+        // Stage 1: QD+ approximation
+        var qdplus = new QdPlusApproximation(
+            _spot, _strike, _maturity, _rate, 
+            _dividendYield, _volatility, _isCall);
         
-        var (upperQd, lowerQd) = qdSolver.CalculateBoundaries();
+        var (upperInitial, lowerInitial) = qdplus.CalculateBoundaries();
         
-        // Check if QD+ boundaries are valid
-        bool qdValid = IsValidBoundaryPair(upperQd, lowerQd);
+        // Check regime
+        bool isDoubleBoundary = DetectDoubleBoundaryRegime();
         
-        if (!_useRefinement || !qdValid)
+        if (!isDoubleBoundary)
         {
-            // Return QD+ approximation only
+            // Single boundary regime
             return new DoubleBoundaryResult
             {
-                UpperBoundary = upperQd,
-                LowerBoundary = lowerQd,
+                UpperBoundary = upperInitial,
+                LowerBoundary = lowerInitial,
                 CrossingTime = 0.0,
-                Method = "QD+ only",
                 IsRefined = false,
-                IsValid = qdValid
+                Method = "QD+ (Single Boundary)",
+                IsValid = true,
+                Iterations = 0
             };
         }
         
-        // Stage 2: FP-B' Kim solver refinement
+        if (!_useRefinement)
+        {
+            // Return QD+ approximation without refinement
+            return new DoubleBoundaryResult
+            {
+                UpperBoundary = upperInitial,
+                LowerBoundary = lowerInitial,
+                CrossingTime = 0.0,
+                IsRefined = false,
+                Method = "QD+ Approximation",
+                IsValid = ValidateBoundaries(upperInitial, lowerInitial),
+                Iterations = 0
+            };
+        }
+        
+        // Stage 2: Kim refinement with FP-B' stabilization
         var kimSolver = new DoubleBoundaryKimSolver(
-            _spot, _strike, _maturity, _rate, _dividendYield, _volatility, _isCall, _collocationPoints);
+            _spot, _strike, _maturity, _rate,
+            _dividendYield, _volatility, _isCall,
+            _collocationPoints);
         
-        var (upperArray, lowerArray, crossingTime) = kimSolver.SolveBoundaries(upperQd, lowerQd);
+        var (upperRefined, lowerRefined, crossingTime) = kimSolver.SolveBoundaries(
+            upperInitial, lowerInitial);
         
-        // Boundary at t=0 is the first element
-        double upperRefined = upperArray[0];
-        double lowerRefined = lowerArray[0];
-        
-        bool refinedValid = IsValidBoundaryPair(upperRefined, lowerRefined);
+        // Extract boundary values at maturity
+        int lastIndex = upperRefined.Length - 1;
+        double upperFinal = upperRefined[lastIndex];
+        double lowerFinal = lowerRefined[lastIndex];
         
         return new DoubleBoundaryResult
         {
-            UpperBoundary = upperRefined,
-            LowerBoundary = lowerRefined,
+            UpperBoundary = upperFinal,
+            LowerBoundary = lowerFinal,
             CrossingTime = crossingTime,
-            Method = "QD+ with FP-B' refinement",
             IsRefined = true,
-            IsValid = refinedValid,
-            QdUpperBoundary = upperQd,
-            QdLowerBoundary = lowerQd
+            Method = "QD+ + FP-B' Kim Refinement",
+            IsValid = ValidateBoundaries(upperFinal, lowerFinal),
+            Iterations = _collocationPoints,
+            UpperBoundaryPath = upperRefined,
+            LowerBoundaryPath = lowerRefined
         };
     }
     
     /// <summary>
-    /// Validates that boundaries don't cross.
+    /// Detects if the option is in a double boundary regime.
     /// </summary>
-    private bool IsValidBoundaryPair(double upper, double lower)
+    private bool DetectDoubleBoundaryRegime()
     {
-        if (_isCall)
+        if (!_isCall)
         {
-            // For calls: upper > lower, both >= strike
-            return upper > lower && upper >= _strike && lower >= _strike;
+            // Put: double boundary when q < r < 0
+            return _dividendYield < _rate && _rate < 0;
         }
         else
         {
-            // For puts: upper > lower, both <= strike
-            return upper > lower && upper <= _strike && lower <= _strike;
+            // Call: double boundary when 0 < r < q
+            return 0 < _rate && _rate < _dividendYield;
         }
+    }
+    
+    /// <summary>
+    /// Validates boundary values for consistency.
+    /// </summary>
+    private bool ValidateBoundaries(double upper, double lower)
+    {
+        if (double.IsNaN(upper) || double.IsNaN(lower))
+            return false;
+        
+        if (double.IsInfinity(upper) && double.IsInfinity(lower))
+            return false;
+        
+        if (!_isCall)
+        {
+            // Put validation
+            if (!double.IsPositiveInfinity(upper) && upper > _strike)
+                return false;
+            
+            if (!double.IsNegativeInfinity(lower) && lower < 0)
+                return false;
+            
+            if (!double.IsInfinity(upper) && !double.IsInfinity(lower) && lower >= upper)
+                return false;
+        }
+        else
+        {
+            // Call validation
+            if (!double.IsPositiveInfinity(upper) && upper < _strike)
+                return false;
+            
+            if (!double.IsNegativeInfinity(lower) && lower < 0)
+                return false;
+            
+            if (!double.IsInfinity(upper) && !double.IsInfinity(lower) && lower >= upper)
+                return false;
+        }
+        
+        return true;
     }
 }
 
 /// <summary>
-/// Result from double boundary solver containing boundaries and diagnostic information.
+/// Result from double boundary solver.
 /// </summary>
 public sealed class DoubleBoundaryResult
 {
     /// <summary>
-    /// Upper exercise boundary at t=0.
+    /// Upper exercise boundary at maturity.
     /// </summary>
-    public double UpperBoundary { get; init; }
+    public double UpperBoundary { get; set; }
     
     /// <summary>
-    /// Lower exercise boundary at t=0.
+    /// Lower exercise boundary at maturity.
     /// </summary>
-    public double LowerBoundary { get; init; }
+    public double LowerBoundary { get; set; }
     
     /// <summary>
-    /// Estimated crossing time (0 if boundaries don't cross).
+    /// Time when boundaries cross (0 if no crossing).
     /// </summary>
-    public double CrossingTime { get; init; }
+    public double CrossingTime { get; set; }
     
     /// <summary>
-    /// Method used: "QD+ only" or "QD+ with FP-B' refinement".
+    /// Indicates if Kim refinement was applied.
     /// </summary>
-    public string Method { get; init; } = string.Empty;
+    public bool IsRefined { get; set; }
     
     /// <summary>
-    /// Whether Kim FP-B' refinement was applied.
+    /// Method used for calculation.
     /// </summary>
-    public bool IsRefined { get; init; }
+    public string Method { get; set; } = string.Empty;
     
     /// <summary>
-    /// Whether the boundaries are valid (don't cross at t=0).
+    /// Indicates if boundaries are valid.
     /// </summary>
-    public bool IsValid { get; init; }
+    public bool IsValid { get; set; }
     
     /// <summary>
-    /// QD+ upper boundary (before refinement).
+    /// Number of iterations or collocation points used.
     /// </summary>
-    public double QdUpperBoundary { get; init; }
+    public int Iterations { get; set; }
     
     /// <summary>
-    /// QD+ lower boundary (before refinement).
+    /// Optional: Full upper boundary path across time points.
     /// </summary>
-    public double QdLowerBoundary { get; init; }
+    public double[]? UpperBoundaryPath { get; set; }
     
     /// <summary>
-    /// Improvement from QD+ to refined (upper boundary).
+    /// Optional: Full lower boundary path across time points.
     /// </summary>
-    public double UpperImprovement => System.Math.Abs(UpperBoundary - QdUpperBoundary);
-    
-    /// <summary>
-    /// Improvement from QD+ to refined (lower boundary).
-    /// </summary>
-    public double LowerImprovement => System.Math.Abs(LowerBoundary - QdLowerBoundary);
+    public double[]? LowerBoundaryPath { get; set; }
 }

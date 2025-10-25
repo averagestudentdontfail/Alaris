@@ -1,3 +1,6 @@
+using System;
+using System.Linq;
+
 namespace Alaris.Double;
 
 /// <summary>
@@ -29,7 +32,7 @@ public sealed class DoubleBoundaryKimSolver
     private readonly double _dividendYield;
     private readonly double _volatility;
     private readonly bool _isCall;
-    private readonly int _collocationPoints;
+    public readonly int _collocationPoints;
     
     private const double TOLERANCE = 1e-6;
     private const int MAX_ITERATIONS = 100;
@@ -61,7 +64,7 @@ public sealed class DoubleBoundaryKimSolver
     }
     
     /// <summary>
-    /// Solves for refined boundaries using Kim's integral equation with FP-B' stabilized fixed point iteration.
+    /// Solves for refined boundaries using Kim's integral equation with FP-B' stabilized iteration.
     /// </summary>
     /// <param name="upperInitial">Initial upper boundary from QD+</param>
     /// <param name="lowerInitial">Initial lower boundary from QD+</param>
@@ -74,8 +77,8 @@ public sealed class DoubleBoundaryKimSolver
         double[] lower = new double[m];
         
         // Initialize with QD+ values
-        System.Array.Fill(upper, upperInitial);
-        System.Array.Fill(lower, lowerInitial);
+        Array.Fill(upper, upperInitial);
+        Array.Fill(lower, lowerInitial);
         
         // Find initial crossing time estimate
         double crossingTime = FindCrossingTime(upper, lower);
@@ -110,6 +113,8 @@ public sealed class DoubleBoundaryKimSolver
         for (int iter = 0; iter < MAX_ITERATIONS; iter++)
         {
             double maxChange = 0.0;
+            double[] upperNew = new double[m];
+            double[] lowerNew = new double[m];
             
             // FP-B' iteration (Equation 33)
             for (int i = 0; i < m; i++)
@@ -117,25 +122,31 @@ public sealed class DoubleBoundaryKimSolver
                 double ti = i * _maturity / (m - 1);
                 
                 // Skip points before crossing time
-                if (ti < crossingTime)
+                if (ti < crossingTime - NUMERICAL_EPSILON)
+                {
+                    upperNew[i] = upper[i];
+                    lowerNew[i] = lower[i];
                     continue;
+                }
                 
-                // Update upper boundary using FP-B (Equation 30-32)
-                double upperNew = SolveUpperBoundaryPoint(ti, upper, lower, crossingTime);
+                // Update upper boundary using FP-B (Equations 30-32)
+                upperNew[i] = SolveUpperBoundaryPoint(ti, upper, lower, crossingTime);
                 
                 // CRITICAL: Update lower boundary using FP-B' (Equations 33-35)
                 // Uses the JUST-COMPUTED upper boundary (upperNew) instead of old value
-                double lowerNew = SolveLowerBoundaryPointStabilized(ti, lower, upper, upperNew, crossingTime);
+                double[] tempUpper = (double[])upper.Clone();
+                tempUpper[i] = upperNew[i]; // Use new upper value
+                lowerNew[i] = SolveLowerBoundaryPointStabilized(ti, lower, tempUpper, crossingTime);
                 
                 // Enforce constraints
-                (upperNew, lowerNew) = EnforceConstraints(upperNew, lowerNew, ti);
+                (upperNew[i], lowerNew[i]) = EnforceConstraints(upperNew[i], lowerNew[i], ti);
                 
-                maxChange = System.Math.Max(maxChange, System.Math.Abs(upperNew - upper[i]));
-                maxChange = System.Math.Max(maxChange, System.Math.Abs(lowerNew - lower[i]));
-                
-                upper[i] = upperNew;
-                lower[i] = lowerNew;
+                maxChange = Math.Max(maxChange, Math.Abs(upperNew[i] - upper[i]));
+                maxChange = Math.Max(maxChange, Math.Abs(lowerNew[i] - lower[i]));
             }
+            
+            upper = upperNew;
+            lower = lowerNew;
             
             if (maxChange < TOLERANCE)
                 break;
@@ -155,7 +166,7 @@ public sealed class DoubleBoundaryKimSolver
         double Ni = CalculateNumerator(ti, upper, lower, crossingTime, true);
         double Di = CalculateDenominator(ti, upper, lower, crossingTime, true);
         
-        if (System.Math.Abs(Di) < NUMERICAL_EPSILON)
+        if (Math.Abs(Di) < NUMERICAL_EPSILON)
             return InterpolateBoundary(upper, ti);
         
         return _strike * Ni / Di;
@@ -167,27 +178,17 @@ public sealed class DoubleBoundaryKimSolver
     /// <remarks>
     /// CRITICAL: l^j_i = K * N'(t_i, l^(j-1), u^j) / D'(t_i, l^(j-1), u^j)
     /// Note the use of u^j (just-computed upper) instead of u^(j-1).
-    /// 
-    /// N' and D' are modified (Equations 34-35):
-    /// - N' includes additional term: + (B^u_i/K) * ∫ q*exp(-q(t-ti)) * [Φ(...) - Φ(...)] dt
-    /// - D' is simplified: = 1 - exp(-q(T-ti)) * Φ(-d1(B^u_i, K, T-ti))
     /// </remarks>
     private double SolveLowerBoundaryPointStabilized(
-        double ti, double[] lowerOld, double[] upperOld, double upperNew, double crossingTime)
+        double ti, double[] lowerOld, double[] upperNew, double crossingTime)
     {
-        // Build temporary upper array with the new value
-        double[] upperCurrent = (double[])upperOld.Clone();
-        int idx = (int)(ti / _maturity * (_collocationPoints - 1));
-        if (idx >= 0 && idx < upperCurrent.Length)
-            upperCurrent[idx] = upperNew;
-        
         // Calculate N' (Equation 34) - includes additional term
-        double NiPrime = CalculateNumeratorPrime(ti, lowerOld, upperCurrent, crossingTime);
+        double NiPrime = CalculateNumeratorPrime(ti, lowerOld, upperNew, crossingTime);
         
         // Calculate D' (Equation 35) - simplified form
         double DiPrime = CalculateDenominatorPrime(ti, lowerOld, crossingTime);
         
-        if (System.Math.Abs(DiPrime) < NUMERICAL_EPSILON)
+        if (Math.Abs(DiPrime) < NUMERICAL_EPSILON)
             return InterpolateBoundary(lowerOld, ti);
         
         return _strike * NiPrime / DiPrime;
@@ -196,10 +197,6 @@ public sealed class DoubleBoundaryKimSolver
     /// <summary>
     /// Calculates numerator N for FP-B (Healy Equation 31).
     /// </summary>
-    /// <remarks>
-    /// N(t_i, B^u, B^l) = 1 - exp(-r(T-t_i))*Φ(-d2(B^u_i, K, T-t_i))
-    ///                    - ∫[max(t_i,t_s) to T] r*exp(-r(t-t_i)) * [Φ(-d2(B^u_i, B^u_t, t-t_i)) - Φ(-d2(B^u_i, B^l_t, t-t_i))] dt
-    /// </remarks>
     private double CalculateNumerator(double ti, double[] upper, double[] lower, 
         double crossingTime, bool isUpper)
     {
@@ -209,7 +206,7 @@ public sealed class DoubleBoundaryKimSolver
         // Non-integral term
         double tauToMaturity = _maturity - ti;
         double d2Terminal = CalculateD2(Bi, _strike, tauToMaturity);
-        double nonIntegral = 1.0 - System.Math.Exp(-_rate * tauToMaturity) * NormalCDF(-d2Terminal);
+        double nonIntegral = 1.0 - Math.Exp(-_rate * tauToMaturity) * NormalCDF(-d2Terminal);
         
         // Integral term (Equation 27 structure)
         double integral = CalculateIntegralTermN(ti, Bi, upper, lower, crossingTime);
@@ -220,10 +217,6 @@ public sealed class DoubleBoundaryKimSolver
     /// <summary>
     /// Calculates denominator D for FP-B (Healy Equation 32).
     /// </summary>
-    /// <remarks>
-    /// D(t_i, B^u, B^l) = 1 - exp(-q(T-t_i))*Φ(-d1(B^u_i, K, T-t_i))
-    ///                    - ∫[max(t_i,t_s) to T] q*exp(-q(t-t_i)) * [Φ(-d1(B^u_i, B^u_t, t-t_i)) - Φ(-d1(B^u_i, B^l_t, t-t_i))] dt
-    /// </remarks>
     private double CalculateDenominator(double ti, double[] upper, double[] lower,
         double crossingTime, bool isUpper)
     {
@@ -233,7 +226,7 @@ public sealed class DoubleBoundaryKimSolver
         // Non-integral term
         double tauToMaturity = _maturity - ti;
         double d1Terminal = CalculateD1(Bi, _strike, tauToMaturity);
-        double nonIntegral = 1.0 - System.Math.Exp(-_dividendYield * tauToMaturity) * NormalCDF(-d1Terminal);
+        double nonIntegral = 1.0 - Math.Exp(-_dividendYield * tauToMaturity) * NormalCDF(-d1Terminal);
         
         // Integral term
         double integral = CalculateIntegralTermD(ti, Bi, upper, lower, crossingTime);
@@ -244,12 +237,6 @@ public sealed class DoubleBoundaryKimSolver
     /// <summary>
     /// Calculates modified numerator N' for FP-B' (Healy Equation 34).
     /// </summary>
-    /// <remarks>
-    /// N'(t_i, B^u, B^l) = N(t_i, B^u, B^l) 
-    ///                     + (B^u_i/K) * ∫[max(t_i,t_s) to T] q*exp(-q(t-t_i)) * [Φ(-d1(B^u_i, B^u_t, t-t_i)) - Φ(-d1(B^u_i, B^l_t, t-t_i))] dt
-    /// 
-    /// The additional term restores stability for the lower boundary update.
-    /// </remarks>
     private double CalculateNumeratorPrime(double ti, double[] lower, double[] upper, double crossingTime)
     {
         double Bi = InterpolateBoundary(lower, ti);
@@ -257,7 +244,7 @@ public sealed class DoubleBoundaryKimSolver
         // Standard N term
         double N = CalculateNumerator(ti, upper, lower, crossingTime, false);
         
-        // Additional stabilization term: (B^u_i/K) * integral
+        // Additional stabilization term: (B^l_i/K) * integral
         double additionalTerm = (Bi / _strike) * CalculateIntegralTermD(ti, Bi, upper, lower, crossingTime);
         
         return N + additionalTerm;
@@ -266,11 +253,6 @@ public sealed class DoubleBoundaryKimSolver
     /// <summary>
     /// Calculates simplified denominator D' for FP-B' (Healy Equation 35).
     /// </summary>
-    /// <remarks>
-    /// D'(t_i, B^u, B^l) = 1 - exp(-q(T-t_i)) * Φ(-d1(B^u_i, K, T-t_i))
-    /// 
-    /// Notice the integral term is REMOVED in the FP-B' formulation.
-    /// </remarks>
     private double CalculateDenominatorPrime(double ti, double[] lower, double crossingTime)
     {
         double Bi = InterpolateBoundary(lower, ti);
@@ -279,39 +261,41 @@ public sealed class DoubleBoundaryKimSolver
         double tauToMaturity = _maturity - ti;
         double d1Terminal = CalculateD1(Bi, _strike, tauToMaturity);
         
-        return 1.0 - System.Math.Exp(-_dividendYield * tauToMaturity) * NormalCDF(-d1Terminal);
+        return 1.0 - Math.Exp(-_dividendYield * tauToMaturity) * NormalCDF(-d1Terminal);
     }
     
     /// <summary>
     /// Calculates integral term for numerator (r-weighted).
     /// </summary>
-    private double CalculateIntegralTermN(double ti, double Bi, double[] upper, double[] lower, double crossingTime)
+    private double CalculateIntegralTermN(double ti, double Bi, double[] upper, double[] lower, 
+        double crossingTime)
     {
-        double tStart = System.Math.Max(ti, crossingTime);
+        double integral = 0.0;
+        double tStart = Math.Max(ti, crossingTime);
+        
         if (tStart >= _maturity)
             return 0.0;
         
-        double dt = (_maturity - tStart) / INTEGRATION_POINTS;
-        double integral = 0.0;
+        // Trapezoidal integration
+        int nSteps = INTEGRATION_POINTS;
+        double dt = (_maturity - tStart) / nSteps;
         
-        for (int j = 0; j < INTEGRATION_POINTS; j++)
+        for (int j = 0; j <= nSteps; j++)
         {
-            double t = tStart + (j + 0.5) * dt;
+            double t = tStart + j * dt;
+            double upperVal = InterpolateBoundary(upper, t);
+            double lowerVal = InterpolateBoundary(lower, t);
+            
             double tau = t - ti;
+            double d2Upper = CalculateD2(Bi, upperVal, tau);
+            double d2Lower = CalculateD2(Bi, lowerVal, tau);
             
-            if (tau < NUMERICAL_EPSILON)
-                continue;
+            double integrand = _rate * Math.Exp(-_rate * tau) * 
+                              (NormalCDF(-d2Upper) - NormalCDF(-d2Lower));
             
-            double Bu_t = InterpolateBoundary(upper, t);
-            double Bl_t = InterpolateBoundary(lower, t);
-            
-            double d2_upper = CalculateD2(Bi, Bu_t, tau);
-            double d2_lower = CalculateD2(Bi, Bl_t, tau);
-            
-            double phi_diff = NormalCDF(-d2_upper) - NormalCDF(-d2_lower);
-            double weight = _rate * System.Math.Exp(-_rate * tau);
-            
-            integral += weight * phi_diff * dt;
+            // Trapezoidal rule weights
+            double weight = (j == 0 || j == nSteps) ? 0.5 : 1.0;
+            integral += weight * integrand * dt;
         }
         
         return integral;
@@ -320,33 +304,35 @@ public sealed class DoubleBoundaryKimSolver
     /// <summary>
     /// Calculates integral term for denominator (q-weighted).
     /// </summary>
-    private double CalculateIntegralTermD(double ti, double Bi, double[] upper, double[] lower, double crossingTime)
+    private double CalculateIntegralTermD(double ti, double Bi, double[] upper, double[] lower,
+        double crossingTime)
     {
-        double tStart = System.Math.Max(ti, crossingTime);
+        double integral = 0.0;
+        double tStart = Math.Max(ti, crossingTime);
+        
         if (tStart >= _maturity)
             return 0.0;
         
-        double dt = (_maturity - tStart) / INTEGRATION_POINTS;
-        double integral = 0.0;
+        // Trapezoidal integration
+        int nSteps = INTEGRATION_POINTS;
+        double dt = (_maturity - tStart) / nSteps;
         
-        for (int j = 0; j < INTEGRATION_POINTS; j++)
+        for (int j = 0; j <= nSteps; j++)
         {
-            double t = tStart + (j + 0.5) * dt;
+            double t = tStart + j * dt;
+            double upperVal = InterpolateBoundary(upper, t);
+            double lowerVal = InterpolateBoundary(lower, t);
+            
             double tau = t - ti;
+            double d1Upper = CalculateD1(Bi, upperVal, tau);
+            double d1Lower = CalculateD1(Bi, lowerVal, tau);
             
-            if (tau < NUMERICAL_EPSILON)
-                continue;
+            double integrand = _dividendYield * Math.Exp(-_dividendYield * tau) * 
+                              (NormalCDF(-d1Upper) - NormalCDF(-d1Lower));
             
-            double Bu_t = InterpolateBoundary(upper, t);
-            double Bl_t = InterpolateBoundary(lower, t);
-            
-            double d1_upper = CalculateD1(Bi, Bu_t, tau);
-            double d1_lower = CalculateD1(Bi, Bl_t, tau);
-            
-            double phi_diff = NormalCDF(-d1_upper) - NormalCDF(-d1_lower);
-            double weight = _dividendYield * System.Math.Exp(-_dividendYield * tau);
-            
-            integral += weight * phi_diff * dt;
+            // Trapezoidal rule weights
+            double weight = (j == 0 || j == nSteps) ? 0.5 : 1.0;
+            integral += weight * integrand * dt;
         }
         
         return integral;
@@ -357,21 +343,12 @@ public sealed class DoubleBoundaryKimSolver
     /// </summary>
     private double FindCrossingTime(double[] upper, double[] lower)
     {
-        int m = _collocationPoints;
-        
-        for (int i = m - 1; i >= 0; i--)
+        // Find where boundaries cross
+        for (int i = 1; i < _collocationPoints; i++)
         {
-            double ti = i * _maturity / (m - 1);
-            
-            if (_isCall)
+            if (upper[i] <= lower[i])
             {
-                if (upper[i] <= lower[i])
-                    return ti;
-            }
-            else
-            {
-                if (lower[i] >= upper[i])
-                    return ti;
+                return i * _maturity / (_collocationPoints - 1);
             }
         }
         
@@ -379,162 +356,167 @@ public sealed class DoubleBoundaryKimSolver
     }
     
     /// <summary>
-    /// Refines crossing time by subdivision (Healy p.12: Δt &lt; 10^-2).
+    /// Refines crossing time estimate to achieve Δt < threshold.
     /// </summary>
-    private double RefineCrossingTime(double[] upper, double[] lower, double initialGuess)
+    private double RefineCrossingTime(double[] upper, double[] lower, double initialCrossing)
     {
-        if (initialGuess <= 0.0)
-            return 0.0;
+        if (initialCrossing <= 0 || initialCrossing >= _maturity)
+            return initialCrossing;
         
-        int m = _collocationPoints;
-        double dt = _maturity / (m - 1);
+        // Binary search refinement
+        double left = Math.Max(0, initialCrossing - 0.1);
+        double right = Math.Min(_maturity, initialCrossing + 0.1);
         
-        // Find the interval containing the crossing
-        int idx = (int)(initialGuess / dt);
-        if (idx <= 0 || idx >= m - 1)
-            return initialGuess;
-        
-        double tLeft = idx * dt;
-        double tRight = (idx + 1) * dt;
-        
-        // Binary search for crossing point
-        while (tRight - tLeft > CROSSING_TIME_THRESHOLD)
+        while (right - left > CROSSING_TIME_THRESHOLD)
         {
-            double tMid = (tLeft + tRight) / 2.0;
+            double mid = (left + right) / 2.0;
+            double upperVal = InterpolateBoundary(upper, mid);
+            double lowerVal = InterpolateBoundary(lower, mid);
             
-            double upperMid = InterpolateBoundary(upper, tMid);
-            double lowerMid = InterpolateBoundary(lower, tMid);
-            
-            bool crossesAtMid = _isCall ? (upperMid <= lowerMid) : (lowerMid >= upperMid);
-            
-            if (crossesAtMid)
-                tRight = tMid;
+            if (upperVal > lowerVal)
+            {
+                left = mid;
+            }
             else
-                tLeft = tMid;
+            {
+                right = mid;
+            }
         }
         
-        return (tLeft + tRight) / 2.0;
+        return (left + right) / 2.0;
     }
     
     /// <summary>
-    /// Adjusts initial guess when boundaries cross (Healy p.12 procedure).
+    /// Adjusts initial guess when boundaries cross (Healy p.12).
     /// </summary>
     private void AdjustCrossingInitialGuess(double[] upper, double[] lower, double crossingTime)
     {
-        if (crossingTime <= 0.0)
+        if (crossingTime <= 0 || crossingTime >= _maturity)
             return;
         
-        int m = _collocationPoints;
-        int crossingIdx = (int)(crossingTime / _maturity * (m - 1));
+        // Find crossing index
+        int crossingIndex = (int)(crossingTime / _maturity * (_collocationPoints - 1));
         
-        if (crossingIdx <= 0)
-            return;
+        // Set boundaries equal at and before crossing
+        double crossingValue = (upper[crossingIndex] + lower[crossingIndex]) / 2.0;
         
-        // Find adjustment value
-        double cStar = _isCall 
-            ? System.Math.Max(upper[crossingIdx], lower[crossingIdx + 1])
-            : System.Math.Min(System.Math.Max(upper[crossingIdx], lower[crossingIdx + 1]), lower[crossingIdx + 1]);
-        
-        // Set both boundaries to cStar before crossing time
-        for (int i = 0; i <= crossingIdx; i++)
+        for (int i = 0; i <= crossingIndex; i++)
         {
-            upper[i] = cStar;
-            lower[i] = cStar;
+            upper[i] = crossingValue;
+            lower[i] = crossingValue;
         }
     }
     
     /// <summary>
-    /// Enforces monotonicity and ordering constraints.
+    /// Enforces boundary constraints.
     /// </summary>
     private (double Upper, double Lower) EnforceConstraints(double upper, double lower, double ti)
     {
-        if (_isCall)
+        if (!_isCall)
         {
-            // Call: upper must be above lower, both above strike
-            if (upper < _strike) upper = _strike * 1.01;
-            if (lower < _strike) lower = _strike;
-            if (upper <= lower) upper = lower * 1.01;
+            // Put constraints
+            upper = Math.Min(upper, _strike);
+            lower = Math.Max(lower, 0.0);
+            
+            // Ensure ordering
+            if (lower >= upper)
+            {
+                double mid = (upper + lower) / 2.0;
+                upper = mid + NUMERICAL_EPSILON;
+                lower = mid - NUMERICAL_EPSILON;
+            }
         }
         else
         {
-            // Put: lower must be below upper, both below strike
-            if (upper > _strike) upper = _strike;
-            if (lower > _strike) lower = _strike * 0.99;
-            if (lower >= upper) lower = upper * 0.99;
+            // Call constraints
+            upper = Math.Max(upper, _strike);
+            lower = Math.Max(lower, 0.0);
+            
+            // Ensure ordering
+            if (lower >= upper)
+            {
+                double mid = (upper + lower) / 2.0;
+                upper = mid + NUMERICAL_EPSILON;
+                lower = mid - NUMERICAL_EPSILON;
+            }
         }
         
         return (upper, lower);
     }
     
     /// <summary>
-    /// Interpolates boundary value at arbitrary time.
+    /// Interpolates boundary value at given time.
     /// </summary>
     private double InterpolateBoundary(double[] boundary, double t)
     {
-        int m = boundary.Length;
-        double dt = _maturity / (m - 1);
-        int i = (int)(t / dt);
+        if (boundary.Length == 1)
+            return boundary[0];
         
-        if (i >= m - 1) return boundary[m - 1];
-        if (i < 0) return boundary[0];
+        double index = t / _maturity * (boundary.Length - 1);
+        int i0 = (int)Math.Floor(index);
+        int i1 = Math.Min(i0 + 1, boundary.Length - 1);
+        double alpha = index - i0;
         
-        double alpha = (t - i * dt) / dt;
-        return boundary[i] * (1.0 - alpha) + boundary[i + 1] * alpha;
+        return boundary[i0] * (1.0 - alpha) + boundary[i1] * alpha;
     }
     
     /// <summary>
-    /// Calculates d₁ = (ln(S/K) + (r - q + 0.5σ²)τ) / (σ√τ)
+    /// Calculates d1 for Black-Scholes formula.
     /// </summary>
     private double CalculateD1(double S, double K, double tau)
     {
-        if (tau < NUMERICAL_EPSILON)
-            return S > K ? 10.0 : -10.0;
+        if (tau <= NUMERICAL_EPSILON)
+            return 0.0;
         
-        if (S <= 0.0 || K <= 0.0)
-            return -10.0;
+        double sigma = _volatility;
+        double r = _rate;
+        double q = _dividendYield;
         
-        double sqrtTau = System.Math.Sqrt(tau);
-        double numerator = System.Math.Log(S / K) + 
-                          (_rate - _dividendYield + 0.5 * _volatility * _volatility) * tau;
-        return numerator / (_volatility * sqrtTau);
+        return (Math.Log(S / K) + (r - q + 0.5 * sigma * sigma) * tau) / (sigma * Math.Sqrt(tau));
     }
     
     /// <summary>
-    /// Calculates d₂ = d₁ - σ√τ
+    /// Calculates d2 for Black-Scholes formula.
     /// </summary>
     private double CalculateD2(double S, double K, double tau)
     {
-        double d1 = CalculateD1(S, K, tau);
-        return d1 - _volatility * System.Math.Sqrt(System.Math.Max(0.0, tau));
+        if (tau <= NUMERICAL_EPSILON)
+            return 0.0;
+        
+        return CalculateD1(S, K, tau) - _volatility * Math.Sqrt(tau);
     }
     
     /// <summary>
-    /// Standard normal cumulative distribution function.
+    /// Normal cumulative distribution function.
     /// </summary>
-    private double NormalCDF(double x)
+    private static double NormalCDF(double x)
     {
-        if (x > 8.0) return 1.0;
-        if (x < -8.0) return 0.0;
-        return 0.5 * (1.0 + Erf(x / System.Math.Sqrt(2.0)));
+        return 0.5 * (1.0 + Erf(x / Math.Sqrt(2.0)));
     }
     
     /// <summary>
     /// Error function approximation.
     /// </summary>
-    private double Erf(double x)
+    private static double Erf(double x)
     {
-        double a1 =  0.254829592;
-        double a2 = -0.284496736;
-        double a3 =  1.421413741;
-        double a4 = -1.453152027;
-        double a5 =  1.061405429;
-        double p  =  0.3275911;
+        // Abramowitz and Stegun approximation
+        const double a1 = 0.254829592;
+        const double a2 = -0.284496736;
+        const double a3 = 1.421413741;
+        const double a4 = -1.453152027;
+        const double a5 = 1.061405429;
+        const double p = 0.3275911;
         
         int sign = x < 0 ? -1 : 1;
-        x = System.Math.Abs(x);
+        x = Math.Abs(x);
         
         double t = 1.0 / (1.0 + p * x);
-        double y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * System.Math.Exp(-x * x);
+        double t2 = t * t;
+        double t3 = t2 * t;
+        double t4 = t3 * t;
+        double t5 = t4 * t;
+        
+        double y = 1.0 - (a1 * t + a2 * t2 + a3 * t3 + a4 * t4 + a5 * t5) * Math.Exp(-x * x);
         
         return sign * y;
     }
