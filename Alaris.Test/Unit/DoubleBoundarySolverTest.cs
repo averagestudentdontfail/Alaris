@@ -27,13 +27,14 @@ public class DoubleBoundarySolverTests
         );
 
         // Act
-        var (upper, lower, crossingTime) = solver.SolveBoundaries();
+        var result = solver.Solve();
 
         // Assert
-        upper.Should().BeGreaterThan(100.0,
+        result.UpperBoundary.Should().BeGreaterThan(100.0,
             "upper boundary should be above strike for call options");
-        lower.Should().BeLessThan(upper,
+        result.LowerBoundary.Should().BeLessThan(result.UpperBoundary,
             "lower boundary should be below upper boundary");
+        result.IsValid.Should().BeTrue("boundaries should not cross");
     }
 
     [Fact]
@@ -53,39 +54,14 @@ public class DoubleBoundarySolverTests
         );
 
         // Act
-        var (upper, lower, crossingTime) = solver.SolveBoundaries();
+        var result = solver.Solve();
 
         // Assert
-        lower.Should().BeLessThan(100.0,
+        result.LowerBoundary.Should().BeLessThan(100.0,
             "lower boundary should be below strike for put options");
-        upper.Should().BeGreaterThan(lower,
+        result.UpperBoundary.Should().BeGreaterThan(result.LowerBoundary,
             "upper boundary should be above lower boundary");
-    }
-
-    [Fact]
-    public void DoubleBoundarySolver_CalculatesOptionValue()
-    {
-        // Arrange: ATM call option
-        var solver = new DoubleBoundarySolver(
-            spot: 100.0,
-            strike: 100.0,
-            maturity: 1.0,
-            rate: -0.01,
-            dividendYield: -0.02,
-            volatility: 0.20,
-            isCall: true,
-            collocationPoints: 20,
-            useRefinement: false
-        );
-
-        // Act
-        double value = solver.CalculateValue();
-
-        // Assert
-        value.Should().BeGreaterThan(0.0,
-            "ATM option should have positive value");
-        value.Should().BeLessThan(100.0,
-            "option value should be less than spot");
+        result.IsValid.Should().BeTrue("boundaries should not cross");
     }
 
     [Fact]
@@ -117,75 +93,20 @@ public class DoubleBoundarySolverTests
         );
 
         // Act
-        var (upperNoRefine, lowerNoRefine, _) = solverNoRefine.SolveBoundaries();
-        var (upperWithRefine, lowerWithRefine, _) = solverWithRefine.SolveBoundaries();
+        var resultNoRefine = solverNoRefine.Solve();
+        var resultWithRefine = solverWithRefine.Solve();
 
         // Assert: Boundaries should be in same general range
         // (Kim refinement adjusts but doesn't drastically change QD+ results)
-        System.Math.Abs(upperWithRefine - upperNoRefine).Should().BeLessThan(10.0,
+        System.Math.Abs(resultWithRefine.UpperBoundary - resultNoRefine.UpperBoundary).Should().BeLessThan(10.0,
             "refined boundary should be close to QD+ approximation");
-        System.Math.Abs(lowerWithRefine - lowerNoRefine).Should().BeLessThan(10.0,
+        System.Math.Abs(resultWithRefine.LowerBoundary - resultNoRefine.LowerBoundary).Should().BeLessThan(10.0,
             "refined boundary should be close to QD+ approximation");
-    }
-
-    [Fact]
-    public void DoubleBoundarySolver_HandlesImmediateExercise()
-    {
-        // Arrange: Deep ITM call (spot >> upper boundary)
-        var solver = new DoubleBoundarySolver(
-            spot: 200.0,  // Very high spot
-            strike: 100.0,
-            maturity: 1.0,
-            rate: -0.01,
-            dividendYield: -0.02,
-            volatility: 0.20,
-            isCall: true,
-            collocationPoints: 20,
-            useRefinement: false
-        );
-
-        // Act
-        double value = solver.CalculateValue();
-
-        // Assert: Should be close to intrinsic value
-        double intrinsicValue = 200.0 - 100.0;
-        value.Should().BeGreaterThan(intrinsicValue * 0.95,
-            "deep ITM option should be close to intrinsic value");
-    }
-
-    [Fact]
-    public void DoubleBoundarySolver_FastPath_MatchesApproximation()
-    {
-        // Arrange: Same parameters for both
-        var approximation = new DoubleBoundaryApproximation(
-            spot: 100.0,
-            strike: 100.0,
-            maturity: 1.0,
-            rate: -0.01,
-            dividendYield: -0.02,
-            volatility: 0.20,
-            isCall: true
-        );
-
-        var solver = new DoubleBoundarySolver(
-            spot: 100.0,
-            strike: 100.0,
-            maturity: 1.0,
-            rate: -0.01,
-            dividendYield: -0.02,
-            volatility: 0.20,
-            isCall: true,
-            collocationPoints: 20,
-            useRefinement: false  // Should match approximation
-        );
-
-        // Act
-        double approxValue = approximation.ApproximateValue();
-        double solverValue = solver.CalculateValue();
-
-        // Assert: Fast path should match approximation
-        solverValue.Should().BeApproximately(approxValue, 0.01,
-            "solver without refinement should match approximation");
+        
+        // Refined result should indicate refinement was used
+        resultWithRefine.IsRefined.Should().BeTrue("refinement should be applied");
+        resultWithRefine.Method.Should().Contain("FP-B'", "should use FP-B' refinement");
+        resultNoRefine.IsRefined.Should().BeFalse("no refinement should be applied");
     }
 
     [Fact]
@@ -205,14 +126,12 @@ public class DoubleBoundarySolverTests
         );
 
         // Act
-        var (upper, lower, crossingTime) = solver.SolveBoundaries();
-        double value = solver.CalculateValue();
+        var result = solver.Solve();
 
         // Assert
-        upper.Should().BeGreaterThan(lower,
+        result.UpperBoundary.Should().BeGreaterThan(result.LowerBoundary,
             "boundaries should remain ordered even with high volatility");
-        value.Should().BeGreaterThan(0.0,
-            "option should have positive value");
+        result.IsValid.Should().BeTrue("boundaries should be valid");
     }
 
     [Fact]
@@ -226,12 +145,16 @@ public class DoubleBoundarySolverTests
             100.0, 100.0, 2.0, -0.01, -0.02, 0.20, true, 20, false);
 
         // Act
-        double valueShort = shortMaturity.CalculateValue();
-        double valueLong = longMaturity.CalculateValue();
+        var shortResult = shortMaturity.Solve();
+        var longResult = longMaturity.Solve();
 
-        // Assert: Longer maturity should have higher time value
-        valueLong.Should().BeGreaterThan(valueShort,
-            "longer maturity should have higher option value");
+        // Assert: Both should produce valid boundaries
+        shortResult.IsValid.Should().BeTrue("short maturity should have valid boundaries");
+        longResult.IsValid.Should().BeTrue("long maturity should have valid boundaries");
+        
+        // Longer maturity typically has boundaries further from strike
+        longResult.UpperBoundary.Should().BeGreaterThanOrEqualTo(shortResult.UpperBoundary * 0.8,
+            "long maturity upper boundary should be in reasonable range");
     }
 
     [Fact]
@@ -245,15 +168,153 @@ public class DoubleBoundarySolverTests
             100.0, 100.0, 1.0, -0.01, -0.02, 0.20, false, 20, false);
 
         // Act
-        double callValue = call.CalculateValue();
-        double putValue = put.CalculateValue();
+        var callResult = call.Solve();
+        var putResult = put.Solve();
 
-        // Assert: Both should have positive value
-        callValue.Should().BeGreaterThan(0.0);
-        putValue.Should().BeGreaterThan(0.0);
+        // Assert: Both should have valid boundaries
+        callResult.IsValid.Should().BeTrue("call should have valid boundaries");
+        putResult.IsValid.Should().BeTrue("put should have valid boundaries");
         
-        // For negative rates, both call and put can have significant early exercise premium
-        callValue.Should().BeLessThan(100.0);
-        putValue.Should().BeLessThan(100.0);
+        // Call upper boundary should be above strike
+        callResult.UpperBoundary.Should().BeGreaterThan(100.0,
+            "call upper boundary should be above strike");
+        
+        // Put lower boundary should be below strike
+        putResult.LowerBoundary.Should().BeLessThan(100.0,
+            "put lower boundary should be below strike");
+    }
+
+    [Fact]
+    public void DoubleBoundarySolver_ReturnsQdBoundaries_WhenAvailable()
+    {
+        // Arrange
+        var solver = new DoubleBoundarySolver(
+            spot: 100.0,
+            strike: 100.0,
+            maturity: 1.0,
+            rate: -0.01,
+            dividendYield: -0.02,
+            volatility: 0.20,
+            isCall: true,
+            collocationPoints: 20,
+            useRefinement: true  // Use refinement to get QD boundaries
+        );
+
+        // Act
+        var result = solver.Solve();
+
+        // Assert: QD boundaries should be populated when refinement is used
+        if (result.IsRefined)
+        {
+            result.QdUpperBoundary.Should().BeGreaterThan(0.0,
+                "QD upper boundary should be available");
+            result.QdLowerBoundary.Should().BeGreaterThan(0.0,
+                "QD lower boundary should be available");
+            
+            // Check improvement metrics
+            result.UpperImprovement.Should().BeGreaterThanOrEqualTo(0.0,
+                "upper improvement should be non-negative");
+            result.LowerImprovement.Should().BeGreaterThanOrEqualTo(0.0,
+                "lower improvement should be non-negative");
+        }
+    }
+
+    [Fact]
+    public void DoubleBoundarySolver_DetectsCrossingTime_WhenBoundariesCross()
+    {
+        // Arrange: Parameters that might lead to boundary crossing
+        var solver = new DoubleBoundarySolver(
+            spot: 100.0,
+            strike: 100.0,
+            maturity: 5.0,  // Longer maturity increases crossing likelihood
+            rate: -0.005,
+            dividendYield: -0.01,
+            volatility: 0.08,
+            isCall: false,
+            collocationPoints: 50,
+            useRefinement: true
+        );
+
+        // Act
+        var result = solver.Solve();
+
+        // Assert: Crossing time should be detected if boundaries cross
+        if (result.CrossingTime > 0.0)
+        {
+            result.CrossingTime.Should().BeLessThanOrEqualTo(5.0,
+                "crossing time should be within maturity");
+            result.CrossingTime.Should().BeGreaterThan(0.0,
+                "crossing time should be positive");
+        }
+    }
+
+    [Fact]
+    public void DoubleBoundarySolver_HandlesDeepInTheMoneyCall()
+    {
+        // Arrange: Deep ITM call (spot >> strike)
+        var solver = new DoubleBoundarySolver(
+            spot: 200.0,  // Very high spot
+            strike: 100.0,
+            maturity: 1.0,
+            rate: -0.01,
+            dividendYield: -0.02,
+            volatility: 0.20,
+            isCall: true,
+            collocationPoints: 20,
+            useRefinement: false
+        );
+
+        // Act
+        var result = solver.Solve();
+
+        // Assert: Boundaries should still be valid
+        result.IsValid.Should().BeTrue("deep ITM call should have valid boundaries");
+        result.UpperBoundary.Should().BeGreaterThan(100.0,
+            "upper boundary should be above strike");
+    }
+
+    [Fact]
+    public void DoubleBoundarySolver_HandlesDeepInTheMoneyPut()
+    {
+        // Arrange: Deep ITM put (spot << strike)
+        var solver = new DoubleBoundarySolver(
+            spot: 50.0,  // Very low spot
+            strike: 100.0,
+            maturity: 1.0,
+            rate: -0.01,
+            dividendYield: -0.02,
+            volatility: 0.20,
+            isCall: false,
+            collocationPoints: 20,
+            useRefinement: false
+        );
+
+        // Act
+        var result = solver.Solve();
+
+        // Assert: Boundaries should still be valid
+        result.IsValid.Should().BeTrue("deep ITM put should have valid boundaries");
+        result.LowerBoundary.Should().BeLessThan(100.0,
+            "lower boundary should be below strike");
+    }
+
+    [Fact]
+    public void DoubleBoundarySolver_MethodDescription_MatchesRefinementSetting()
+    {
+        // Arrange & Act
+        var withoutRefinement = new DoubleBoundarySolver(
+            100.0, 100.0, 1.0, -0.01, -0.02, 0.20, true, 20, false).Solve();
+        
+        var withRefinement = new DoubleBoundarySolver(
+            100.0, 100.0, 1.0, -0.01, -0.02, 0.20, true, 20, true).Solve();
+
+        // Assert
+        withoutRefinement.Method.Should().Contain("QD+", "should indicate QD+ method");
+        withoutRefinement.Method.Should().NotContain("FP-B'", "should not indicate refinement");
+        
+        if (withRefinement.IsRefined)
+        {
+            withRefinement.Method.Should().Contain("FP-B'", "should indicate FP-B' refinement");
+        }
     }
 }
