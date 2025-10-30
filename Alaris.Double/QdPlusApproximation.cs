@@ -227,9 +227,8 @@ public sealed class QdPlusApproximation
     /// Evaluates the QD+ boundary equation and its derivatives.
     /// </summary>
     /// <remarks>
-    /// CRITICAL FIX: Corrected alpha and beta definitions to match Healy Equation 10:
-    /// - α = 2r/σ² (previously: 0.5 - (r-q)/σ²)
-    /// - β = 2(r-q)/σ² (previously: α² + 2r/σ²)
+    /// CRITICAL FIX: Corrected c0 calculation to use (1-h) consistently for all h.
+    /// The formula (1-h) works correctly for both positive and negative h values.
     /// </remarks>
     private (double f, double df, double d2f) EvaluateBoundaryFunction(
         double S, double lambda, double h)
@@ -256,37 +255,24 @@ public sealed class QdPlusApproximation
             K * Math.Exp(-r * T) * (1.0 - Phi_d2) - S * Math.Exp(-q * T) * (1.0 - Phi_d1);
         
         // Calculate theta (time derivative) with correct sign convention
-        // Note: ∂V/∂τ = -∂V/∂t where τ = T - t
         double theta = CalculateThetaBS(S, d1, d2, phi_d1, phi_d2);
         
-        // CRITICAL FIX: Correct alpha and beta definitions from Healy Equation 10
-        double alpha = 2.0 * r / sigma2;        // Was: 0.5 - (r - q) / sigma2
-        double beta = 2.0 * (r - q) / sigma2;   // Was: alpha * alpha + 2.0 * r / sigma2
+        // CRITICAL: Correct alpha and beta definitions from Healy Equation 10
+        double alpha = 2.0 * r / sigma2;
+        double beta = 2.0 * (r - q) / sigma2;
         
         // Calculate lambda derivatives
         double lambdaPrime = CalculateLambdaPrime(lambda, h, sigma2);
         
-        // Calculate c0 with negative h handling
+        // Calculate c0 using Healy Equation 10
+        // CRITICAL FIX: Use (1-h) for all cases - works correctly for negative h
         double eta = _isCall ? 1.0 : -1.0;
         double intrinsic = eta * (S - K);
         
-        // CRITICAL: Handle negative h correctly
-        double c0;
-        if (h < 0)
-        {
-            // For negative h, adjust the sign in c0 calculation
-            double term1 = Math.Abs(h) * alpha / (2.0 * lambda + beta - 1.0);
-            double term2 = (-1.0 / h) - theta / (r * (intrinsic - VE));
-            double term3 = lambdaPrime / (2.0 * lambda + beta - 1.0);
-            c0 = term1 * term2 + term3;
-        }
-        else
-        {
-            double term1 = (1.0 - h) * alpha / (2.0 * lambda + beta - 1.0);
-            double term2 = (1.0 / h) - theta / (r * (intrinsic - VE));
-            double term3 = lambdaPrime / (2.0 * lambda + beta - 1.0);
-            c0 = -term1 * term2 + term3;
-        }
+        double term1 = (1.0 - h) * alpha / (2.0 * lambda + beta - 1.0);
+        double term2 = (1.0 / h) - theta / (r * (intrinsic - VE));
+        double term3 = lambdaPrime / (2.0 * lambda + beta - 1.0);
+        double c0 = -term1 * term2 + term3;
         
         // QD+ boundary equation: S^λ = K^λ * exp(c0)
         // Rearranged: f(S) = S^λ - K^λ * exp(c0) = 0
@@ -296,15 +282,19 @@ public sealed class QdPlusApproximation
         
         double f = Slambda - Klambda * exp_c0;
         
-        // First derivative
+        // First derivative: df/dS = λS^(λ-1) - K^λ * exp(c0) * dc0/dS
         double df = lambda * Math.Pow(S, lambda - 1.0);
         
         // Add derivative contribution from c0 dependence on S
         double dc0_dS = CalculateDc0DS(S, theta, d1, phi_d1, sigma, T);
         df -= Klambda * exp_c0 * dc0_dS;
         
-        // Second derivative
+        // Second derivative: d²f/dS² = λ(λ-1)S^(λ-2) - K^λ * exp(c0) * [dc0/dS² + (dc0/dS)²]
         double d2f = lambda * (lambda - 1.0) * Math.Pow(S, lambda - 2.0);
+        
+        // Second derivative contributions from exp(c0) term
+        // Simplified approximation: neglect d²c0/dS² term for robustness
+        d2f -= Klambda * exp_c0 * dc0_dS * dc0_dS;
         
         return (f, df, d2f);
     }
