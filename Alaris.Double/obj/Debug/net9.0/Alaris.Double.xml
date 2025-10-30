@@ -555,9 +555,8 @@
             Evaluates the QD+ boundary equation and its derivatives.
             </summary>
             <remarks>
-            CRITICAL FIX: Corrected alpha and beta definitions to match Healy Equation 10:
-            - α = 2r/σ² (previously: 0.5 - (r-q)/σ²)
-            - β = 2(r-q)/σ² (previously: α² + 2r/σ²)
+            CRITICAL FIX: Corrected c0 calculation to use (1-h) consistently for all h.
+            The formula (1-h) works correctly for both positive and negative h values.
             </remarks>
         </member>
         <member name="M:Alaris.Double.QdPlusApproximation.GetCalibratedInitialGuess(System.Boolean)">
