@@ -4,18 +4,12 @@ namespace Alaris.Double;
 
 /// <summary>
 /// QD+ approximation for American option boundaries under negative interest rates.
-/// Implements the complete mathematical framework from Healy (2021) without hard-coding.
+/// Implements the mathematical framework from Healy (2021).
 /// </summary>
 /// <remarks>
-/// <para>
-/// CRITICAL FIX: Corrected alpha and beta definitions to match Healy Equation 10:
-/// - α = 2r/σ² (not 0.5 - (r-q)/σ²)
-/// - β = 2(r-q)/σ² (not α² + 2r/σ²)
-/// </para>
-/// <para>
-/// The incorrect formulas caused the boundary equation to produce wrong c0 values,
-/// leading to convergence to S = 100 instead of the correct boundaries.
-/// </para>
+/// The QD+ algorithm provides fast approximations for early exercise boundaries
+/// by solving characteristic equations with Super Halley's method (third-order convergence).
+/// Supports both single boundary (standard) and double boundary (negative rate) regimes.
 /// </remarks>
 public sealed class QdPlusApproximation
 {
@@ -55,25 +49,27 @@ public sealed class QdPlusApproximation
     /// <returns>Initial (Upper, Lower) boundary estimates for Kim solver refinement</returns>
     public (double Upper, double Lower) CalculateBoundaries()
     {
-        // For single boundary regime (r ≥ 0), return single boundary
+        // Single boundary regime for standard puts (r ≥ 0)
         if (_rate >= 0 && !_isCall)
         {
             double boundary = CalculateSingleBoundaryPut();
             return (double.PositiveInfinity, boundary);
         }
-        else if (_dividendYield >= 0 && _isCall)
+        
+        // Single boundary regime for standard calls (q ≥ 0)
+        if (_dividendYield >= 0 && _isCall)
         {
             double boundary = CalculateSingleBoundaryCall();
             return (boundary, double.NegativeInfinity);
         }
         
-        // Double boundary regime (q < r < 0 for puts)
+        // Double boundary regime for puts (q < r < 0)
         if (!_isCall && _dividendYield < _rate && _rate < 0)
         {
             return CalculateDoubleBoundariesPut();
         }
         
-        // Double boundary regime (0 < r < q for calls)
+        // Double boundary regime for calls (0 < r < q)
         if (_isCall && 0 < _rate && _rate < _dividendYield)
         {
             return CalculateDoubleBoundariesCall();
@@ -91,37 +87,33 @@ public sealed class QdPlusApproximation
     {
         double h = 1.0 - Math.Exp(-_rate * _maturity);
         
-        // h is negative when r < 0, requiring special handling
+        // Handle near-zero h with Taylor expansion
         if (Math.Abs(h) < NUMERICAL_EPSILON)
         {
-            // Near-zero h: use Taylor expansion approximation
             return ApproximateForSmallH();
         }
         
         double sigma2 = _volatility * _volatility;
         double omega = 2.0 * (_rate - _dividendYield) / sigma2;
         
-        // Calculate lambda roots
+        // Calculate characteristic equation roots
         var (lambda1, lambda2) = CalculateLambdaRoots(h, omega, sigma2);
         
-        // For puts with r < 0:
-        // Upper boundary uses negative lambda root
-        // Lower boundary uses positive lambda root
+        // For puts with r < 0: upper uses negative root, lower uses positive root
         double lambdaUpper = Math.Min(lambda1, lambda2);
         double lambdaLower = Math.Max(lambda1, lambda2);
         
-        // Calculate boundaries using respective lambdas
+        // Solve boundary equations
         double upperBoundary = SolveBoundaryEquation(lambdaUpper, h, true);
         double lowerBoundary = SolveBoundaryEquation(lambdaLower, h, false);
         
-        // Enforce constraints
+        // Apply economic constraints
         upperBoundary = Math.Min(upperBoundary, _strike);
         lowerBoundary = Math.Max(lowerBoundary, 0.0);
         
-        // Ensure proper ordering
+        // Check for crossing (invalid approximation)
         if (lowerBoundary >= upperBoundary)
         {
-            // Boundaries crossed; use empirical approximation
             return ApproximateEmpiricalBoundaries();
         }
         
@@ -129,7 +121,7 @@ public sealed class QdPlusApproximation
     }
     
     /// <summary>
-    /// Calculates lambda roots for the characteristic equation.
+    /// Calculates lambda roots from the characteristic equation (Healy Equation 9).
     /// </summary>
     private (double Lambda1, double Lambda2) CalculateLambdaRoots(double h, double omega, double sigma2)
     {
@@ -138,7 +130,6 @@ public sealed class QdPlusApproximation
         
         if (discriminant < 0)
         {
-            // Complex roots; use alternative formulation
             return CalculateComplexLambdaApproximation(omega);
         }
         
@@ -150,74 +141,82 @@ public sealed class QdPlusApproximation
     }
     
     /// <summary>
-    /// Solves the QD+ boundary equation using Super Halley's method.
-    /// CORRECTED VERSION: Uses relaxed constraints during iteration.
+    /// Solves the QD+ boundary equation using Super Halley's method (Healy Equation 17).
     /// </summary>
     /// <remarks>
-    /// Implements Healy Equation 17 for robust third-order convergence.
-    /// 
-    /// KEY FIX: The original implementation applied strict constraints (S ≤ strike - ε) 
-    /// after each iteration, causing Super Halley to become trapped at the strike 
-    /// price (100.0) instead of converging to the correct boundary (~69-73).
-    /// 
-    /// This corrected version:
-    /// 1. Uses RELAXED bounds during iteration (0.01*K to 2.0*K)
-    /// 2. Applies STRICT constraints only after convergence
-    /// 3. Allows Super Halley to explore solution space properly
+    /// Super Halley provides third-order convergence for solving f(S) = S^λ - K^λ*exp(c0) = 0.
+    /// Uses adaptive tolerance for negative lambda to prevent false convergence.
     /// </remarks>
     private double SolveBoundaryEquation(double lambda, double h, bool isUpper)
     {
-        // Initial guess using calibrated formula for negative rates
         double initialGuess = GetCalibratedInitialGuess(isUpper);
         double S = initialGuess;
         
-        // Define RELAXED search bounds for iteration
-        // These wide bounds allow Super Halley to explore without getting trapped
-        double searchLowerBound = 0.01 * _strike;  // 1% of strike
-        double searchUpperBound = 2.0 * _strike;   // 200% of strike
+        // Define search bounds for iteration
+        double searchLowerBound = 0.01 * _strike;
+        double searchUpperBound = 2.0 * _strike;
         
         for (int iter = 0; iter < MAX_ITERATIONS; iter++)
         {
             var (f, df, d2f) = EvaluateBoundaryFunction(S, lambda, h);
             
-            // Check convergence
-            if (Math.Abs(f) < TOLERANCE)
+            // Adaptive tolerance: scale by S^λ magnitude for negative lambda
+            // This prevents false convergence when S^λ ≈ 10^-11
+            double tolerance = lambda < 0 ? 
+                TOLERANCE * Math.Max(Math.Abs(Math.Pow(S, lambda)), Math.Abs(Math.Pow(_strike, lambda))) :
+                TOLERANCE;
+            
+            // Convergence check: require at least one iteration
+            if (Math.Abs(f) < tolerance && iter > 0)
+            {
                 break;
+            }
+            
+            // Secondary convergence: small relative change in S
+            if (iter > 2 && Math.Abs(df) > NUMERICAL_EPSILON)
+            {
+                double deltaS = f / df;
+                if (Math.Abs(deltaS / S) < 1e-6)
+                    break;
+            }
+            
+            // Check for degenerate derivative
+            if (Math.Abs(df) < NUMERICAL_EPSILON)
+            {
+                break;
+            }
             
             // Super Halley's method (Healy Equation 17)
             double Lf = f * d2f / (df * df);
             
-            // Prevent division by zero in Super Halley
+            double correction;
             if (Math.Abs(1.0 - Lf) < NUMERICAL_EPSILON)
             {
                 // Fall back to Newton's method
-                S = S - f / df;
+                correction = f / df;
             }
             else
             {
                 // Full Super Halley correction
-                double correction = (1.0 + 0.5 * Lf / (1.0 - Lf)) * f / df;
-                S = S - correction;
+                correction = (1.0 + 0.5 * Lf / (1.0 - Lf)) * f / df;
             }
             
-            // Apply RELAXED constraints during iteration
-            // This allows exploration whilst preventing numerical overflow
+            S = S - correction;
+            
+            // Apply search bounds during iteration
             S = Math.Max(S, searchLowerBound);
             S = Math.Min(S, searchUpperBound);
         }
         
-        // Apply STRICT economically-valid constraints only after convergence
+        // Apply final economic constraints
         if (!_isCall)
         {
-            // Put option boundaries
-            S = Math.Max(S, NUMERICAL_EPSILON);   // Must be positive
-            S = Math.Min(S, _strike);             // Cannot exceed strike
+            S = Math.Max(S, NUMERICAL_EPSILON);
+            S = Math.Min(S, _strike);
         }
         else
         {
-            // Call option boundaries  
-            S = Math.Max(S, _strike);             // Cannot be below strike
-            // Upper bound is unlimited for calls
+            S = Math.Max(S, _strike);
         }
         
         return S;
@@ -225,11 +224,8 @@ public sealed class QdPlusApproximation
     
     /// <summary>
     /// Evaluates the QD+ boundary equation and its derivatives.
+    /// Implements Healy Equation 10 for c0 calculation.
     /// </summary>
-    /// <remarks>
-    /// CRITICAL FIX: Corrected c0 calculation to use (1-h) consistently for all h.
-    /// The formula (1-h) works correctly for both positive and negative h values.
-    /// </remarks>
     private (double f, double df, double d2f) EvaluateBoundaryFunction(
         double S, double lambda, double h)
     {
@@ -240,7 +236,7 @@ public sealed class QdPlusApproximation
         double sigma = _volatility;
         double sigma2 = sigma * sigma;
         
-        // Calculate option value components
+        // Black-Scholes parameters
         double d1 = (Math.Log(S / K) + (r - q + 0.5 * sigma2) * T) / (sigma * Math.Sqrt(T));
         double d2 = d1 - sigma * Math.Sqrt(T);
         
@@ -254,18 +250,17 @@ public sealed class QdPlusApproximation
             S * Math.Exp(-q * T) * Phi_d1 - K * Math.Exp(-r * T) * Phi_d2 :
             K * Math.Exp(-r * T) * (1.0 - Phi_d2) - S * Math.Exp(-q * T) * (1.0 - Phi_d1);
         
-        // Calculate theta (time derivative) with correct sign convention
+        // Theta calculation (time derivative)
         double theta = CalculateThetaBS(S, d1, d2, phi_d1, phi_d2);
         
-        // CRITICAL: Correct alpha and beta definitions from Healy Equation 10
+        // Healy Equation 10 parameters
         double alpha = 2.0 * r / sigma2;
         double beta = 2.0 * (r - q) / sigma2;
         
-        // Calculate lambda derivatives
+        // Lambda derivative with respect to h
         double lambdaPrime = CalculateLambdaPrime(lambda, h, sigma2);
         
-        // Calculate c0 using Healy Equation 10
-        // CRITICAL FIX: Use (1-h) for all cases - works correctly for negative h
+        // Calculate c0 coefficient (Healy Equation 10)
         double eta = _isCall ? 1.0 : -1.0;
         double intrinsic = eta * (S - K);
         
@@ -274,8 +269,7 @@ public sealed class QdPlusApproximation
         double term3 = lambdaPrime / (2.0 * lambda + beta - 1.0);
         double c0 = -term1 * term2 + term3;
         
-        // QD+ boundary equation: S^λ = K^λ * exp(c0)
-        // Rearranged: f(S) = S^λ - K^λ * exp(c0) = 0
+        // Boundary equation: f(S) = S^λ - K^λ * exp(c0) = 0
         double Slambda = Math.Pow(S, lambda);
         double Klambda = Math.Pow(K, lambda);
         double exp_c0 = Math.Exp(c0);
@@ -284,16 +278,11 @@ public sealed class QdPlusApproximation
         
         // First derivative: df/dS = λS^(λ-1) - K^λ * exp(c0) * dc0/dS
         double df = lambda * Math.Pow(S, lambda - 1.0);
-        
-        // Add derivative contribution from c0 dependence on S
         double dc0_dS = CalculateDc0DS(S, theta, d1, phi_d1, sigma, T);
         df -= Klambda * exp_c0 * dc0_dS;
         
-        // Second derivative: d²f/dS² = λ(λ-1)S^(λ-2) - K^λ * exp(c0) * [dc0/dS² + (dc0/dS)²]
+        // Second derivative: d²f/dS² = λ(λ-1)S^(λ-2) - K^λ * exp(c0) * (dc0/dS)²
         double d2f = lambda * (lambda - 1.0) * Math.Pow(S, lambda - 2.0);
-        
-        // Second derivative contributions from exp(c0) term
-        // Simplified approximation: neglect d²c0/dS² term for robustness
         d2f -= Klambda * exp_c0 * dc0_dS * dc0_dS;
         
         return (f, df, d2f);
@@ -301,11 +290,8 @@ public sealed class QdPlusApproximation
     
     /// <summary>
     /// Calculates calibrated initial guess for negative rate regime.
+    /// Empirical formulas based on Healy benchmark calibration.
     /// </summary>
-    /// <remarks>
-    /// Empirically calibrated formulas outperform asymptotic limits for
-    /// avoiding convergence to wrong basins of attraction.
-    /// </remarks>
     private double GetCalibratedInitialGuess(bool isUpper)
     {
         double K = _strike;
@@ -313,28 +299,24 @@ public sealed class QdPlusApproximation
         
         if (isUpper)
         {
-            // Upper boundary: K*(0.70 - 0.01*√T)
             return K * (0.70 - 0.01 * sqrtT);
         }
         else
         {
-            // Lower boundary: K*(0.60 - 0.01*√T)
             return K * (0.60 - 0.01 * sqrtT);
         }
     }
     
     /// <summary>
-    /// Approximates boundaries when h is very small (r ≈ 0).
+    /// Taylor expansion approximation for small h (r ≈ 0).
     /// </summary>
     private (double Upper, double Lower) ApproximateForSmallH()
     {
-        // Taylor expansion approximation for small h
         double K = _strike;
         double T = _maturity;
         double sigma = _volatility;
         double sqrtT = Math.Sqrt(T);
         
-        // Simplified formulas for small h
         double upper = K * (1.0 - 0.2 * sigma * sqrtT);
         double lower = K * (0.5 + 0.1 * sigma * sqrtT);
         
@@ -342,7 +324,8 @@ public sealed class QdPlusApproximation
     }
     
     /// <summary>
-    /// Provides empirical approximation when exact calculation fails.
+    /// Empirical approximation when exact calculation fails.
+    /// Calibrated to Healy benchmarks.
     /// </summary>
     private (double Upper, double Lower) ApproximateEmpiricalBoundaries()
     {
@@ -351,7 +334,6 @@ public sealed class QdPlusApproximation
         double sigma = _volatility;
         double sqrtT = Math.Sqrt(T);
         
-        // Empirical formulas calibrated to Healy benchmarks
         double upper = K * Math.Exp(-0.1 * sigma * sqrtT * (1.0 + 0.1 * T));
         double lower = K * Math.Exp(-0.2 * sigma * sqrtT * (1.0 + 0.15 * T));
         
@@ -359,15 +341,12 @@ public sealed class QdPlusApproximation
     }
     
     /// <summary>
-    /// Handles complex lambda roots using approximation.
+    /// Approximation for complex lambda roots.
+    /// Uses real part of complex roots when discriminant is negative.
     /// </summary>
     private (double Lambda1, double Lambda2) CalculateComplexLambdaApproximation(double omega)
     {
-        // When discriminant is negative, use approximation
-        // based on the real part of complex roots
         double realPart = -(omega - 1.0) / 2.0;
-        
-        // Approximate with nearby real values
         double offset = 0.5;
         return (realPart + offset, realPart - offset);
     }
@@ -377,13 +356,12 @@ public sealed class QdPlusApproximation
     /// </summary>
     private double CalculateSingleBoundaryPut()
     {
-        // Standard QD+ for single boundary
         double h = 1.0 - Math.Exp(-_rate * _maturity);
         double sigma2 = _volatility * _volatility;
         double omega = 2.0 * (_rate - _dividendYield) / sigma2;
         
         var (lambda1, lambda2) = CalculateLambdaRoots(h, omega, sigma2);
-        double lambda = Math.Max(lambda1, lambda2); // Use positive root
+        double lambda = Math.Max(lambda1, lambda2);
         
         return SolveBoundaryEquation(lambda, h, false);
     }
@@ -393,23 +371,21 @@ public sealed class QdPlusApproximation
     /// </summary>
     private double CalculateSingleBoundaryCall()
     {
-        // Standard QD+ for single boundary
         double h = 1.0 - Math.Exp(-_rate * _maturity);
         double sigma2 = _volatility * _volatility;
         double omega = 2.0 * (_rate - _dividendYield) / sigma2;
         
         var (lambda1, lambda2) = CalculateLambdaRoots(h, omega, sigma2);
-        double lambda = Math.Min(lambda1, lambda2); // Use negative root
+        double lambda = Math.Min(lambda1, lambda2);
         
         return SolveBoundaryEquation(lambda, h, true);
     }
     
     /// <summary>
-    /// Calculates double boundaries for call options (0 < r < q).
+    /// Calculates double boundaries for call options (0 &lt; r &lt; q).
     /// </summary>
     private (double Upper, double Lower) CalculateDoubleBoundariesCall()
     {
-        // Mirror of put case with appropriate adjustments
         double h = 1.0 - Math.Exp(-_rate * _maturity);
         double sigma2 = _volatility * _volatility;
         double omega = 2.0 * (_rate - _dividendYield) / sigma2;
@@ -435,7 +411,7 @@ public sealed class QdPlusApproximation
     }
     
     /// <summary>
-    /// Calculates Black-Scholes theta with correct sign convention.
+    /// Calculates Black-Scholes theta.
     /// </summary>
     private double CalculateThetaBS(double S, double d1, double d2, double phi_d1, double phi_d2)
     {
@@ -447,7 +423,6 @@ public sealed class QdPlusApproximation
         
         if (_isCall)
         {
-            // Call theta
             double term1 = -S * phi_d1 * sigma * Math.Exp(-q * T) / (2.0 * Math.Sqrt(T));
             double term2 = q * S * Math.Exp(-q * T) * NormalCDF(d1);
             double term3 = -r * K * Math.Exp(-r * T) * NormalCDF(d2);
@@ -455,7 +430,6 @@ public sealed class QdPlusApproximation
         }
         else
         {
-            // Put theta
             double term1 = -S * phi_d1 * sigma * Math.Exp(-q * T) / (2.0 * Math.Sqrt(T));
             double term2 = -q * S * Math.Exp(-q * T) * (1.0 - NormalCDF(d1));
             double term3 = r * K * Math.Exp(-r * T) * (1.0 - NormalCDF(d2));
@@ -464,11 +438,10 @@ public sealed class QdPlusApproximation
     }
     
     /// <summary>
-    /// Calculates lambda derivative with respect to h.
+    /// Calculates derivative of lambda with respect to h.
     /// </summary>
     private double CalculateLambdaPrime(double lambda, double h, double sigma2)
     {
-        // ∂λ/∂h from characteristic equation
         double omega = 2.0 * (_rate - _dividendYield) / sigma2;
         double discriminant = (omega - 1.0) * (omega - 1.0) + 8.0 * _rate / (sigma2 * h);
         
@@ -483,26 +456,22 @@ public sealed class QdPlusApproximation
     
     /// <summary>
     /// Calculates derivative of c0 with respect to S.
+    /// Simplified approximation for numerical stability.
     /// </summary>
     private double CalculateDc0DS(double S, double theta, double d1, double phi_d1, 
         double sigma, double T)
     {
-        // Simplified derivative calculation
         double K = _strike;
         double sqrtT = Math.Sqrt(T);
         
-        // d(theta)/dS contribution
         double dtheta_dS = phi_d1 * _dividendYield * Math.Exp(-_dividendYield * T);
-        
-        // d(VE)/dS contribution  
         double dVE_dS = Math.Exp(-_dividendYield * T) * NormalCDF(d1);
         
-        // Combined derivative (simplified)
         return -dtheta_dS / (_rate * (S - K)) + theta * dVE_dS / (_rate * (S - K) * (S - K));
     }
     
     /// <summary>
-    /// Normal cumulative distribution function.
+    /// Standard normal cumulative distribution function.
     /// </summary>
     private static double NormalCDF(double x)
     {
@@ -510,7 +479,7 @@ public sealed class QdPlusApproximation
     }
     
     /// <summary>
-    /// Normal probability density function.
+    /// Standard normal probability density function.
     /// </summary>
     private static double NormalPDF(double x)
     {
@@ -518,11 +487,10 @@ public sealed class QdPlusApproximation
     }
     
     /// <summary>
-    /// Error function approximation.
+    /// Error function (Abramowitz and Stegun approximation).
     /// </summary>
     private static double Erf(double x)
     {
-        // Abramowitz and Stegun approximation
         const double a1 = 0.254829592;
         const double a2 = -0.284496736;
         const double a3 = 1.421413741;
