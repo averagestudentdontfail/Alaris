@@ -8,17 +8,13 @@ namespace Alaris.Double;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Key improvements over previous implementation:
-/// - Proper handling of negative h parameter (when r &lt; 0)
-/// - Correct theta sign convention (∂V/∂τ vs ∂V/∂t)
-/// - Super Halley's method for robust convergence
-/// - Calibrated initial guesses for negative rate regime
-/// - FIXED: Relaxed iteration constraints to prevent convergence trap
+/// CRITICAL FIX: Corrected alpha and beta definitions to match Healy Equation 10:
+/// - α = 2r/σ² (not 0.5 - (r-q)/σ²)
+/// - β = 2(r-q)/σ² (not α² + 2r/σ²)
 /// </para>
 /// <para>
-/// The QD+ approximation provides initial boundaries that satisfy:
-/// - Healy Equation 27 constraints for double boundaries
-/// - Appendix A proof requirements (Equations A1-A10)
+/// The incorrect formulas caused the boundary equation to produce wrong c0 values,
+/// leading to convergence to S = 100 instead of the correct boundaries.
 /// </para>
 /// </remarks>
 public sealed class QdPlusApproximation
@@ -85,7 +81,7 @@ public sealed class QdPlusApproximation
         
         // Default to European-like boundaries
         return (_isCall ? double.PositiveInfinity : _strike, 
-                _isCall ? 0.0 : 0.0);
+                _isCall ? _strike : 0.0);
     }
     
     /// <summary>
@@ -231,8 +227,9 @@ public sealed class QdPlusApproximation
     /// Evaluates the QD+ boundary equation and its derivatives.
     /// </summary>
     /// <remarks>
-    /// Implements the non-linear equation from Healy Section 4.1 with corrections
-    /// for negative h values.
+    /// CRITICAL FIX: Corrected alpha and beta definitions to match Healy Equation 10:
+    /// - α = 2r/σ² (previously: 0.5 - (r-q)/σ²)
+    /// - β = 2(r-q)/σ² (previously: α² + 2r/σ²)
     /// </remarks>
     private (double f, double df, double d2f) EvaluateBoundaryFunction(
         double S, double lambda, double h)
@@ -262,9 +259,9 @@ public sealed class QdPlusApproximation
         // Note: ∂V/∂τ = -∂V/∂t where τ = T - t
         double theta = CalculateThetaBS(S, d1, d2, phi_d1, phi_d2);
         
-        // Calculate alpha and beta
-        double alpha = 0.5 - (r - q) / sigma2;
-        double beta = alpha * alpha + 2.0 * r / sigma2;
+        // CRITICAL FIX: Correct alpha and beta definitions from Healy Equation 10
+        double alpha = 2.0 * r / sigma2;        // Was: 0.5 - (r - q) / sigma2
+        double beta = 2.0 * (r - q) / sigma2;   // Was: alpha * alpha + 2.0 * r / sigma2
         
         // Calculate lambda derivatives
         double lambdaPrime = CalculateLambdaPrime(lambda, h, sigma2);
