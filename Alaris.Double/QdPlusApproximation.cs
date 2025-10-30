@@ -299,11 +299,11 @@ public sealed class QdPlusApproximation
         
         if (isUpper)
         {
-            return K * (0.70 - 0.01 * sqrtT);
+            return K * (0.75 + 0.005 * sqrtT);
         }
         else
         {
-            return K * (0.60 - 0.01 * sqrtT);
+            return K * (0.65 + 0.005 * sqrtT);
         }
     }
     
