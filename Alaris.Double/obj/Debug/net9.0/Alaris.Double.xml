@@ -502,18 +502,12 @@
         <member name="T:Alaris.Double.QdPlusApproximation">
             <summary>
             QD+ approximation for American option boundaries under negative interest rates.
-            Implements the complete mathematical framework from Healy (2021) without hard-coding.
+            Implements the mathematical framework from Healy (2021).
             </summary>
             <remarks>
-            <para>
-            CRITICAL FIX: Corrected alpha and beta definitions to match Healy Equation 10:
-            - α = 2r/σ² (not 0.5 - (r-q)/σ²)
-            - β = 2(r-q)/σ² (not α² + 2r/σ²)
-            </para>
-            <para>
-            The incorrect formulas caused the boundary equation to produce wrong c0 values,
-            leading to convergence to S = 100 instead of the correct boundaries.
-            </para>
+            The QD+ algorithm provides fast approximations for early exercise boundaries
+            by solving characteristic equations with Super Halley's method (third-order convergence).
+            Supports both single boundary (standard) and double boundary (negative rate) regimes.
             </remarks>
         </member>
         <member name="M:Alaris.Double.QdPlusApproximation.CalculateBoundaries">
@@ -529,58 +523,45 @@
         </member>
         <member name="M:Alaris.Double.QdPlusApproximation.CalculateLambdaRoots(System.Double,System.Double,System.Double)">
             <summary>
-            Calculates lambda roots for the characteristic equation.
+            Calculates lambda roots from the characteristic equation (Healy Equation 9).
             </summary>
         </member>
         <member name="M:Alaris.Double.QdPlusApproximation.SolveBoundaryEquation(System.Double,System.Double,System.Boolean)">
             <summary>
-            Solves the QD+ boundary equation using Super Halley's method.
-            CORRECTED VERSION: Uses relaxed constraints during iteration.
+            Solves the QD+ boundary equation using Super Halley's method (Healy Equation 17).
             </summary>
             <remarks>
-            Implements Healy Equation 17 for robust third-order convergence.
-            
-            KEY FIX: The original implementation applied strict constraints (S ≤ strike - ε) 
-            after each iteration, causing Super Halley to become trapped at the strike 
-            price (100.0) instead of converging to the correct boundary (~69-73).
-            
-            This corrected version:
-            1. Uses RELAXED bounds during iteration (0.01*K to 2.0*K)
-            2. Applies STRICT constraints only after convergence
-            3. Allows Super Halley to explore solution space properly
+            Super Halley provides third-order convergence for solving f(S) = S^λ - K^λ*exp(c0) = 0.
+            Uses adaptive tolerance for negative lambda to prevent false convergence.
             </remarks>
         </member>
         <member name="M:Alaris.Double.QdPlusApproximation.EvaluateBoundaryFunction(System.Double,System.Double,System.Double)">
             <summary>
             Evaluates the QD+ boundary equation and its derivatives.
+            Implements Healy Equation 10 for c0 calculation.
             </summary>
-            <remarks>
-            CRITICAL FIX: Corrected c0 calculation to use (1-h) consistently for all h.
-            The formula (1-h) works correctly for both positive and negative h values.
-            </remarks>
         </member>
         <member name="M:Alaris.Double.QdPlusApproximation.GetCalibratedInitialGuess(System.Boolean)">
             <summary>
             Calculates calibrated initial guess for negative rate regime.
+            Empirical formulas based on Healy benchmark calibration.
             </summary>
-            <remarks>
-            Empirically calibrated formulas outperform asymptotic limits for
-            avoiding convergence to wrong basins of attraction.
-            </remarks>
         </member>
         <member name="M:Alaris.Double.QdPlusApproximation.ApproximateForSmallH">
             <summary>
-            Approximates boundaries when h is very small (r ≈ 0).
+            Taylor expansion approximation for small h (r ≈ 0).
             </summary>
         </member>
         <member name="M:Alaris.Double.QdPlusApproximation.ApproximateEmpiricalBoundaries">
             <summary>
-            Provides empirical approximation when exact calculation fails.
+            Empirical approximation when exact calculation fails.
+            Calibrated to Healy benchmarks.
             </summary>
         </member>
         <member name="M:Alaris.Double.QdPlusApproximation.CalculateComplexLambdaApproximation(System.Double)">
             <summary>
-            Handles complex lambda roots using approximation.
+            Approximation for complex lambda roots.
+            Uses real part of complex roots when discriminant is negative.
             </summary>
         </member>
         <member name="M:Alaris.Double.QdPlusApproximation.CalculateSingleBoundaryPut">
@@ -593,35 +574,40 @@
             Calculates single boundary for standard call (q ≥ 0).
             </summary>
         </member>
-        <!-- Badly formed XML comment ignored for member "M:Alaris.Double.QdPlusApproximation.CalculateDoubleBoundariesCall" -->
+        <member name="M:Alaris.Double.QdPlusApproximation.CalculateDoubleBoundariesCall">
+            <summary>
+            Calculates double boundaries for call options (0 &lt; r &lt; q).
+            </summary>
+        </member>
         <member name="M:Alaris.Double.QdPlusApproximation.CalculateThetaBS(System.Double,System.Double,System.Double,System.Double,System.Double)">
             <summary>
-            Calculates Black-Scholes theta with correct sign convention.
+            Calculates Black-Scholes theta.
             </summary>
         </member>
         <member name="M:Alaris.Double.QdPlusApproximation.CalculateLambdaPrime(System.Double,System.Double,System.Double)">
             <summary>
-            Calculates lambda derivative with respect to h.
+            Calculates derivative of lambda with respect to h.
             </summary>
         </member>
         <member name="M:Alaris.Double.QdPlusApproximation.CalculateDc0DS(System.Double,System.Double,System.Double,System.Double,System.Double,System.Double)">
             <summary>
             Calculates derivative of c0 with respect to S.
+            Simplified approximation for numerical stability.
             </summary>
         </member>
         <member name="M:Alaris.Double.QdPlusApproximation.NormalCDF(System.Double)">
             <summary>
-            Normal cumulative distribution function.
+            Standard normal cumulative distribution function.
             </summary>
         </member>
         <member name="M:Alaris.Double.QdPlusApproximation.NormalPDF(System.Double)">
             <summary>
-            Normal probability density function.
+            Standard normal probability density function.
             </summary>
         </member>
         <member name="M:Alaris.Double.QdPlusApproximation.Erf(System.Double)">
             <summary>
-            Error function approximation.
+            Error function (Abramowitz and Stegun approximation).
             </summary>
         </member>
     </members>
