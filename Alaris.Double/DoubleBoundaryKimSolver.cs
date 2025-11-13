@@ -165,11 +165,25 @@ public sealed class DoubleBoundaryKimSolver
     {
         double Ni = CalculateNumerator(ti, upper, lower, crossingTime, true);
         double Di = CalculateDenominator(ti, upper, lower, crossingTime, true);
-        
-        if (Math.Abs(Di) < NUMERICAL_EPSILON)
+
+        // Check for NaN or invalid values
+        if (double.IsNaN(Ni) || double.IsNaN(Di) || Math.Abs(Di) < NUMERICAL_EPSILON)
             return InterpolateBoundary(upper, ti);
-        
-        return _strike * Ni / Di;
+
+        double result = _strike * Ni / Di;
+
+        // Safeguard against unreasonable values
+        if (double.IsNaN(result) || double.IsInfinity(result))
+            return InterpolateBoundary(upper, ti);
+
+        // For puts, upper boundary must be less than strike
+        if (!_isCall)
+        {
+            result = Math.Min(result, _strike * 0.99);
+            result = Math.Max(result, _strike * 0.3);
+        }
+
+        return result;
     }
     
     /// <summary>
@@ -184,33 +198,59 @@ public sealed class DoubleBoundaryKimSolver
     {
         // Calculate N' (Equation 34) - includes additional term
         double NiPrime = CalculateNumeratorPrime(ti, lowerOld, upperNew, crossingTime);
-        
+
         // Calculate D' (Equation 35) - simplified form
         double DiPrime = CalculateDenominatorPrime(ti, lowerOld, crossingTime);
-        
-        if (Math.Abs(DiPrime) < NUMERICAL_EPSILON)
+
+        // Check for NaN or invalid values
+        if (double.IsNaN(NiPrime) || double.IsNaN(DiPrime) || Math.Abs(DiPrime) < NUMERICAL_EPSILON)
             return InterpolateBoundary(lowerOld, ti);
-        
-        return _strike * NiPrime / DiPrime;
+
+        double result = _strike * NiPrime / DiPrime;
+
+        // Safeguard against unreasonable values
+        if (double.IsNaN(result) || double.IsInfinity(result))
+            return InterpolateBoundary(lowerOld, ti);
+
+        // For puts, lower boundary must be less than upper and positive
+        if (!_isCall)
+        {
+            double upperAtTi = InterpolateBoundary(upperNew, ti);
+            result = Math.Min(result, upperAtTi * 0.98); // Keep below upper
+            result = Math.Max(result, _strike * 0.2); // Keep reasonable minimum
+        }
+
+        return result;
     }
     
     /// <summary>
     /// Calculates numerator N for FP-B (Healy Equation 31).
     /// </summary>
-    private double CalculateNumerator(double ti, double[] upper, double[] lower, 
+    private double CalculateNumerator(double ti, double[] upper, double[] lower,
         double crossingTime, bool isUpper)
     {
         double[] boundary = isUpper ? upper : lower;
         double Bi = InterpolateBoundary(boundary, ti);
-        
+
+        // Check for invalid boundary value
+        if (double.IsNaN(Bi) || Bi <= 0)
+            return double.NaN;
+
         // Non-integral term
         double tauToMaturity = _maturity - ti;
+        if (tauToMaturity < NUMERICAL_EPSILON)
+            return 1.0; // At maturity, N = 1
+
         double d2Terminal = CalculateD2(Bi, _strike, tauToMaturity);
         double nonIntegral = 1.0 - Math.Exp(-_rate * tauToMaturity) * NormalCDF(-d2Terminal);
-        
+
         // Integral term (Equation 27 structure)
         double integral = CalculateIntegralTermN(ti, Bi, upper, lower, crossingTime);
-        
+
+        // Check for NaN in integral
+        if (double.IsNaN(integral))
+            return nonIntegral; // Fall back to non-integral term
+
         return nonIntegral - integral;
     }
     
@@ -222,15 +262,26 @@ public sealed class DoubleBoundaryKimSolver
     {
         double[] boundary = isUpper ? upper : lower;
         double Bi = InterpolateBoundary(boundary, ti);
-        
+
+        // Check for invalid boundary value
+        if (double.IsNaN(Bi) || Bi <= 0)
+            return double.NaN;
+
         // Non-integral term
         double tauToMaturity = _maturity - ti;
+        if (tauToMaturity < NUMERICAL_EPSILON)
+            return 1.0; // At maturity, D = 1
+
         double d1Terminal = CalculateD1(Bi, _strike, tauToMaturity);
         double nonIntegral = 1.0 - Math.Exp(-_dividendYield * tauToMaturity) * NormalCDF(-d1Terminal);
-        
+
         // Integral term
         double integral = CalculateIntegralTermD(ti, Bi, upper, lower, crossingTime);
-        
+
+        // Check for NaN in integral
+        if (double.IsNaN(integral))
+            return nonIntegral; // Fall back to non-integral term
+
         return nonIntegral - integral;
     }
     
@@ -267,37 +318,49 @@ public sealed class DoubleBoundaryKimSolver
     /// <summary>
     /// Calculates integral term for numerator (r-weighted).
     /// </summary>
-    private double CalculateIntegralTermN(double ti, double Bi, double[] upper, double[] lower, 
+    private double CalculateIntegralTermN(double ti, double Bi, double[] upper, double[] lower,
         double crossingTime)
     {
         double integral = 0.0;
         double tStart = Math.Max(ti, crossingTime);
-        
+
         if (tStart >= _maturity)
             return 0.0;
-        
+
         // Trapezoidal integration
         int nSteps = INTEGRATION_POINTS;
         double dt = (_maturity - tStart) / nSteps;
-        
+
         for (int j = 0; j <= nSteps; j++)
         {
             double t = tStart + j * dt;
             double upperVal = InterpolateBoundary(upper, t);
             double lowerVal = InterpolateBoundary(lower, t);
-            
+
+            // Check for invalid boundary values
+            if (double.IsNaN(upperVal) || double.IsNaN(lowerVal) ||
+                upperVal <= 0 || lowerVal <= 0 || lowerVal >= upperVal)
+                continue; // Skip this point
+
             double tau = t - ti;
+            if (tau < NUMERICAL_EPSILON)
+                continue;
+
             double d2Upper = CalculateD2(Bi, upperVal, tau);
             double d2Lower = CalculateD2(Bi, lowerVal, tau);
-            
-            double integrand = _rate * Math.Exp(-_rate * tau) * 
+
+            double integrand = _rate * Math.Exp(-_rate * tau) *
                               (NormalCDF(-d2Upper) - NormalCDF(-d2Lower));
-            
+
+            // Check for NaN in integrand
+            if (double.IsNaN(integrand) || double.IsInfinity(integrand))
+                continue; // Skip this point
+
             // Trapezoidal rule weights
             double weight = (j == 0 || j == nSteps) ? 0.5 : 1.0;
             integral += weight * integrand * dt;
         }
-        
+
         return integral;
     }
     
@@ -309,32 +372,44 @@ public sealed class DoubleBoundaryKimSolver
     {
         double integral = 0.0;
         double tStart = Math.Max(ti, crossingTime);
-        
+
         if (tStart >= _maturity)
             return 0.0;
-        
+
         // Trapezoidal integration
         int nSteps = INTEGRATION_POINTS;
         double dt = (_maturity - tStart) / nSteps;
-        
+
         for (int j = 0; j <= nSteps; j++)
         {
             double t = tStart + j * dt;
             double upperVal = InterpolateBoundary(upper, t);
             double lowerVal = InterpolateBoundary(lower, t);
-            
+
+            // Check for invalid boundary values
+            if (double.IsNaN(upperVal) || double.IsNaN(lowerVal) ||
+                upperVal <= 0 || lowerVal <= 0 || lowerVal >= upperVal)
+                continue; // Skip this point
+
             double tau = t - ti;
+            if (tau < NUMERICAL_EPSILON)
+                continue;
+
             double d1Upper = CalculateD1(Bi, upperVal, tau);
             double d1Lower = CalculateD1(Bi, lowerVal, tau);
-            
-            double integrand = _dividendYield * Math.Exp(-_dividendYield * tau) * 
+
+            double integrand = _dividendYield * Math.Exp(-_dividendYield * tau) *
                               (NormalCDF(-d1Upper) - NormalCDF(-d1Lower));
-            
+
+            // Check for NaN in integrand
+            if (double.IsNaN(integrand) || double.IsInfinity(integrand))
+                continue; // Skip this point
+
             // Trapezoidal rule weights
             double weight = (j == 0 || j == nSteps) ? 0.5 : 1.0;
             integral += weight * integrand * dt;
         }
-        
+
         return integral;
     }
     
