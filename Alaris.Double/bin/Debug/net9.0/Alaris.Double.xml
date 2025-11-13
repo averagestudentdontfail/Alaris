@@ -538,13 +538,13 @@
         <member name="M:Alaris.Double.QdPlusApproximation.EvaluateBoundaryFunction(System.Double,System.Double,System.Double)">
             <summary>
             Evaluates the QD+ boundary equation and its derivatives.
-            Implements Healy Equation 10 for c0 calculation.
+            Implements Healy Equation 10 for c0 calculation with numerical safeguards.
             </summary>
         </member>
         <member name="M:Alaris.Double.QdPlusApproximation.GetCalibratedInitialGuess(System.Boolean)">
             <summary>
             Calculates calibrated initial guess for negative rate regime.
-            Empirical formulas based on Healy benchmark calibration.
+            Calibrated to Healy (2021) Table 2 benchmarks.
             </summary>
         </member>
         <member name="M:Alaris.Double.QdPlusApproximation.ApproximateForSmallH">
@@ -555,7 +555,7 @@
         <member name="M:Alaris.Double.QdPlusApproximation.ApproximateEmpiricalBoundaries">
             <summary>
             Empirical approximation when exact calculation fails.
-            Calibrated to Healy benchmarks.
+            Calibrated to Healy (2021) Table 2 benchmarks for r=-0.005, q=-0.01, σ=0.08.
             </summary>
         </member>
         <member name="M:Alaris.Double.QdPlusApproximation.CalculateComplexLambdaApproximation(System.Double)">
