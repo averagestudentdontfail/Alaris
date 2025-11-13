@@ -76,29 +76,12 @@ public sealed class DoubleBoundaryKimSolver
         double[] upper = new double[m];
         double[] lower = new double[m];
 
-        // Initialize boundaries to vary from strike at t=0 to QD+ values at maturity
-        // This is critical: boundaries must evolve over time, not be constant
+        // Initialize with QD+ values as constant starting guess
+        // The FP-B' iteration will refine these to correct time-dependent boundaries
         for (int i = 0; i < m; i++)
         {
-            double ti = i * _maturity / (m - 1);
-            double weight = ti / _maturity;
-
-            if (!_isCall)
-            {
-                // For puts: upper boundary evolves from strike to upperInitial
-                upper[i] = _strike * (1.0 - weight) + upperInitial * weight;
-
-                // Lower boundary: start conservatively away from zero to avoid numerical issues
-                // Interpolate from a safe lower start point to lowerInitial
-                double lowerStart = Math.Max(_strike * 0.1, lowerInitial * 0.3);
-                lower[i] = lowerStart * (1.0 - weight) + lowerInitial * weight;
-            }
-            else
-            {
-                // For calls: boundaries are above strike
-                upper[i] = _strike * (1.0 - weight) + upperInitial * weight;
-                lower[i] = _strike * (1.0 - weight) + lowerInitial * weight;
-            }
+            upper[i] = upperInitial;
+            lower[i] = lowerInitial;
         }
         
         // Find initial crossing time estimate
@@ -197,11 +180,11 @@ public sealed class DoubleBoundaryKimSolver
         if (double.IsNaN(result) || double.IsInfinity(result))
             return InterpolateBoundary(upper, ti);
 
-        // For puts, upper boundary must be less than strike
+        // For puts, upper boundary must be less than strike but allow refinement
         if (!_isCall)
         {
-            result = Math.Min(result, _strike * 0.99);
-            result = Math.Max(result, _strike * 0.3);
+            result = Math.Min(result, _strike);  // Must be ≤ strike
+            result = Math.Max(result, NUMERICAL_EPSILON);  // Must be positive
         }
 
         return result;
@@ -237,8 +220,8 @@ public sealed class DoubleBoundaryKimSolver
         if (!_isCall)
         {
             double upperAtTi = InterpolateBoundary(upperNew, ti);
-            result = Math.Min(result, upperAtTi * 0.98); // Keep below upper
-            result = Math.Max(result, _strike * 0.2); // Keep reasonable minimum
+            result = Math.Min(result, upperAtTi * 0.99); // Keep below upper
+            result = Math.Max(result, NUMERICAL_EPSILON); // Keep positive
         }
 
         return result;
