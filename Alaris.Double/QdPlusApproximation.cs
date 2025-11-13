@@ -336,15 +336,34 @@ public sealed class QdPlusApproximation
         double sqrtT = Math.Sqrt(_maturity);
         double sigmaFactor = _volatility / 0.08; // Normalize to benchmark volatility
 
-        if (isUpper)
+        if (_isCall)
         {
-            // Calibrated for T=1: 73.5, T=10: 69.62, T=15: 68
-            return K * (0.74 - 0.012 * sqrtT * sigmaFactor);
+            // For calls: boundaries are above strike (mirror of put case)
+            double putUpperEquiv = K * (0.74 - 0.012 * sqrtT * sigmaFactor);
+            double putLowerEquiv = K * (0.64 - 0.018 * sqrtT * sigmaFactor);
+
+            if (isUpper)
+            {
+                // Call upper boundary: mirror of put lower boundary
+                return K + (K - putLowerEquiv);
+            }
+            else
+            {
+                // Call lower boundary: mirror of put upper boundary
+                return K + (K - putUpperEquiv);
+            }
         }
         else
         {
-            // Calibrated for T=1: 63.5, T=10: 58.72, T=15: 57
-            return K * (0.64 - 0.018 * sqrtT * sigmaFactor);
+            // For puts: Calibrated for T=1: 73.5/63.5, T=10: 69.62/58.72, T=15: 68/57
+            if (isUpper)
+            {
+                return K * (0.74 - 0.012 * sqrtT * sigmaFactor);
+            }
+            else
+            {
+                return K * (0.64 - 0.018 * sqrtT * sigmaFactor);
+            }
         }
     }
     
@@ -357,11 +376,26 @@ public sealed class QdPlusApproximation
         double T = _maturity;
         double sigma = _volatility;
         double sqrtT = Math.Sqrt(T);
-        
-        double upper = K * (1.0 - 0.2 * sigma * sqrtT);
-        double lower = K * (0.5 + 0.1 * sigma * sqrtT);
-        
-        return (upper, lower);
+
+        if (_isCall)
+        {
+            // For calls: boundaries above strike (mirror of put case)
+            double putUpper = K * (1.0 - 0.2 * sigma * sqrtT);
+            double putLower = K * (0.5 + 0.1 * sigma * sqrtT);
+
+            double upper = K + (K - putLower); // ~1.5K - 0.1*sigma*sqrtT
+            double lower = K + (K - putUpper); // ~K + 0.2*sigma*sqrtT
+
+            return (upper, lower);
+        }
+        else
+        {
+            // For puts: boundaries below strike
+            double upper = K * (1.0 - 0.2 * sigma * sqrtT);
+            double lower = K * (0.5 + 0.1 * sigma * sqrtT);
+
+            return (upper, lower);
+        }
     }
     
     /// <summary>
@@ -374,19 +408,41 @@ public sealed class QdPlusApproximation
         double T = _maturity;
         double sigma = _volatility;
         double sqrtT = Math.Sqrt(T);
-
-        // Calibrated formula based on Healy benchmarks:
-        // T=1: (73.5, 63.5), T=5: (71.6, 61.6), T=10: (69.62, 58.72), T=15: (68, 57)
         double sigmaFactor = sigma / 0.08; // Scale for different volatilities
-        double upper = K * (0.74 - 0.012 * sqrtT * sigmaFactor);
-        double lower = K * (0.64 - 0.018 * sqrtT * sigmaFactor);
 
-        // Ensure boundaries don't go negative or cross
-        upper = Math.Max(upper, K * 0.5);
-        lower = Math.Max(lower, K * 0.3);
-        lower = Math.Min(lower, upper - K * 0.05);
+        if (_isCall)
+        {
+            // For calls in double boundary regime (0 < r < q):
+            // Boundaries are ABOVE strike, symmetric to put case
+            // Use mirror formula: K + (K - put_boundary)
+            double putUpperEquiv = K * (0.74 - 0.012 * sqrtT * sigmaFactor);
+            double putLowerEquiv = K * (0.64 - 0.018 * sqrtT * sigmaFactor);
 
-        return (upper, lower);
+            // Mirror around strike to get call boundaries
+            double upper = K + (K - putLowerEquiv); // ~136-142
+            double lower = K + (K - putUpperEquiv); // ~126-130
+
+            // Ensure boundaries are above strike and don't cross
+            upper = Math.Max(upper, K * 1.2);
+            lower = Math.Max(lower, K * 1.05);
+            lower = Math.Min(lower, upper - K * 0.05);
+
+            return (upper, lower);
+        }
+        else
+        {
+            // For puts: Calibrated formula based on Healy benchmarks:
+            // T=1: (73.5, 63.5), T=5: (71.6, 61.6), T=10: (69.62, 58.72), T=15: (68, 57)
+            double upper = K * (0.74 - 0.012 * sqrtT * sigmaFactor);
+            double lower = K * (0.64 - 0.018 * sqrtT * sigmaFactor);
+
+            // Ensure boundaries don't go negative or cross
+            upper = Math.Max(upper, K * 0.5);
+            lower = Math.Max(lower, K * 0.3);
+            lower = Math.Min(lower, upper - K * 0.05);
+
+            return (upper, lower);
+        }
     }
     
     /// <summary>

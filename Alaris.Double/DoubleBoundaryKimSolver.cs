@@ -75,10 +75,31 @@ public sealed class DoubleBoundaryKimSolver
         int m = _collocationPoints;
         double[] upper = new double[m];
         double[] lower = new double[m];
-        
-        // Initialize with QD+ values
-        Array.Fill(upper, upperInitial);
-        Array.Fill(lower, lowerInitial);
+
+        // Initialize boundaries to vary from strike at t=0 to QD+ values at maturity
+        // This is critical: boundaries must evolve over time, not be constant
+        for (int i = 0; i < m; i++)
+        {
+            double ti = i * _maturity / (m - 1);
+            double weight = ti / _maturity;
+
+            if (!_isCall)
+            {
+                // For puts: upper boundary evolves from strike to upperInitial
+                upper[i] = _strike * (1.0 - weight) + upperInitial * weight;
+
+                // Lower boundary: start conservatively away from zero to avoid numerical issues
+                // Interpolate from a safe lower start point to lowerInitial
+                double lowerStart = Math.Max(_strike * 0.1, lowerInitial * 0.3);
+                lower[i] = lowerStart * (1.0 - weight) + lowerInitial * weight;
+            }
+            else
+            {
+                // For calls: boundaries are above strike
+                upper[i] = _strike * (1.0 - weight) + upperInitial * weight;
+                lower[i] = _strike * (1.0 - weight) + lowerInitial * weight;
+            }
+        }
         
         // Find initial crossing time estimate
         double crossingTime = FindCrossingTime(upper, lower);
