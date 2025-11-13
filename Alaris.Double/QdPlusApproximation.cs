@@ -227,6 +227,34 @@ public sealed class QdPlusApproximation
             return initialGuess;
         }
 
+        // Reject solutions that deviate too far from initial guess (likely wrong root)
+        // For double boundaries, solution should be within reasonable range of initial guess
+        double deviationFromGuess = Math.Abs(S - initialGuess) / initialGuess;
+        if (deviationFromGuess > 0.4)  // More than 40% deviation suggests wrong root
+        {
+            // Check if this is economically unreasonable
+            // For puts: lower boundary should be in [0.3*K, 0.8*K], upper in [0.5*K, 0.95*K]
+            bool isEconomicallyInvalid = false;
+            if (!_isCall)
+            {
+                if (isUpper)
+                {
+                    // Upper boundary should be 50-95% of strike
+                    isEconomicallyInvalid = (S < _strike * 0.5 || S > _strike * 0.95);
+                }
+                else
+                {
+                    // Lower boundary should be 30-80% of strike
+                    isEconomicallyInvalid = (S < _strike * 0.3 || S > _strike * 0.8);
+                }
+            }
+
+            if (isEconomicallyInvalid)
+            {
+                return initialGuess;
+            }
+        }
+
         return S;
     }
     

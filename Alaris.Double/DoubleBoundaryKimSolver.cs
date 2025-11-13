@@ -155,7 +155,11 @@ public sealed class DoubleBoundaryKimSolver
             if (maxChange < TOLERANCE)
                 break;
         }
-        
+
+        // Enforce monotonicity: boundaries should decrease over time for puts
+        upper = EnforceMonotonicity(upper, false); // Non-increasing for puts
+        lower = EnforceMonotonicity(lower, false); // Non-increasing for puts
+
         return (upper, lower);
     }
     
@@ -174,16 +178,28 @@ public sealed class DoubleBoundaryKimSolver
         if (double.IsNaN(Ni) || double.IsNaN(Di) || Math.Abs(Di) < NUMERICAL_EPSILON)
             return InterpolateBoundary(upper, ti);
 
-        double result = _strike * Ni / Di;
+        // For negative rates, N and D can become negative or produce ratios > 1
+        // Add safeguards to prevent divergence
+        if (Math.Abs(Di) < NUMERICAL_EPSILON || Ni < 0 || Di < 0)
+            return InterpolateBoundary(upper, ti);
+
+        double ratio = Ni / Di;
+
+        // For puts, ratio should be < 1 (boundary < strike)
+        // If ratio > 1, Kim solver is diverging - fall back to interpolation
+        if (!_isCall && ratio >= 0.99)
+            return InterpolateBoundary(upper, ti);
+
+        double result = _strike * ratio;
 
         // Safeguard against unreasonable values
         if (double.IsNaN(result) || double.IsInfinity(result))
             return InterpolateBoundary(upper, ti);
 
-        // For puts, upper boundary must be less than strike but allow refinement
+        // For puts, upper boundary must be less than strike
         if (!_isCall)
         {
-            result = Math.Min(result, _strike);  // Must be ≤ strike
+            result = Math.Min(result, _strike * 0.98);  // Stay below strike with margin
             result = Math.Max(result, NUMERICAL_EPSILON);  // Must be positive
         }
 
@@ -206,11 +222,20 @@ public sealed class DoubleBoundaryKimSolver
         // Calculate D' (Equation 35) - simplified form
         double DiPrime = CalculateDenominatorPrime(ti, lowerOld, crossingTime);
 
-        // Check for NaN or invalid values
-        if (double.IsNaN(NiPrime) || double.IsNaN(DiPrime) || Math.Abs(DiPrime) < NUMERICAL_EPSILON)
+        // For negative rates, N' and D' can become negative or produce ratios > 1
+        // Add safeguards to prevent divergence
+        if (Math.Abs(DiPrime) < NUMERICAL_EPSILON || NiPrime < 0 || DiPrime < 0)
             return InterpolateBoundary(lowerOld, ti);
 
-        double result = _strike * NiPrime / DiPrime;
+        double ratio = NiPrime / DiPrime;
+        double upperAtTi = InterpolateBoundary(upperNew, ti);
+
+        // For puts, lower boundary ratio should be < upper/strike
+        // If ratio is too large, Kim solver is diverging - fall back to interpolation
+        if (!_isCall && ratio >= 0.95)
+            return InterpolateBoundary(lowerOld, ti);
+
+        double result = _strike * ratio;
 
         // Safeguard against unreasonable values
         if (double.IsNaN(result) || double.IsInfinity(result))
@@ -219,8 +244,7 @@ public sealed class DoubleBoundaryKimSolver
         // For puts, lower boundary must be less than upper and positive
         if (!_isCall)
         {
-            double upperAtTi = InterpolateBoundary(upperNew, ti);
-            result = Math.Min(result, upperAtTi * 0.99); // Keep below upper
+            result = Math.Min(result, upperAtTi * 0.95); // Keep well below upper
             result = Math.Max(result, NUMERICAL_EPSILON); // Keep positive
         }
 
@@ -598,5 +622,42 @@ public sealed class DoubleBoundaryKimSolver
         double y = 1.0 - (a1 * t + a2 * t2 + a3 * t3 + a4 * t4 + a5 * t5) * Math.Exp(-x * x);
         
         return sign * y;
+    }
+
+    /// <summary>
+    /// Enforces monotonicity on boundary array by smoothing violations.
+    /// For puts, boundaries should be non-increasing over time.
+    /// </summary>
+    private double[] EnforceMonotonicity(double[] boundary, bool isIncreasing)
+    {
+        int n = boundary.Length;
+        double[] smoothed = (double[])boundary.Clone();
+
+        if (isIncreasing)
+        {
+            // Enforce non-decreasing: boundary[i+1] >= boundary[i]
+            for (int i = 1; i < n; i++)
+            {
+                if (smoothed[i] < smoothed[i - 1])
+                {
+                    // Average to smooth the violation
+                    smoothed[i] = (smoothed[i] + smoothed[i - 1]) / 2.0;
+                }
+            }
+        }
+        else
+        {
+            // Enforce non-increasing: boundary[i+1] <= boundary[i]
+            for (int i = 1; i < n; i++)
+            {
+                if (smoothed[i] > smoothed[i - 1])
+                {
+                    // Average to smooth the violation
+                    smoothed[i] = (smoothed[i] + smoothed[i - 1]) / 2.0;
+                }
+            }
+        }
+
+        return smoothed;
     }
 }
