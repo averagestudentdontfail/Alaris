@@ -377,6 +377,46 @@
             Error function approximation.
             </summary>
         </member>
+        <member name="M:Alaris.Double.DoubleBoundaryKimSolver.IsDiverging(System.Collections.Generic.List{System.Double},System.Double)">
+            <summary>
+            Detects if ratio is diverging based on history.
+            Divergence means ratio is consistently increasing toward threshold.
+            </summary>
+            <param name="ratioHistory">History of ratio values for a specific collocation point</param>
+            <param name="threshold">Threshold value indicating problematic divergence (e.g., 0.99)</param>
+            <returns>True if diverging, false otherwise</returns>
+        </member>
+        <member name="M:Alaris.Double.DoubleBoundaryKimSolver.GetPointIndex(System.Double)">
+            <summary>
+            Maps time point to collocation point index.
+            </summary>
+            <param name="ti">Time point</param>
+            <returns>Collocation point index</returns>
+        </member>
+        <member name="M:Alaris.Double.DoubleBoundaryKimSolver.EnforceMonotonicity(System.Double[],System.Boolean)">
+            <summary>
+            Enforces monotonicity on boundary array using isotonic regression.
+            For puts, boundaries should be non-increasing over time.
+            Uses Pool-Adjacent-Violators algorithm followed by smoothing filter.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DoubleBoundaryKimSolver.PoolAdjacentViolators(System.Double[],System.Boolean)">
+            <summary>
+            Pool-Adjacent-Violators algorithm for isotonic regression.
+            Guarantees monotonicity while minimizing squared deviation from original.
+            </summary>
+            <param name="values">Input boundary values</param>
+            <param name="increasing">True for non-decreasing, false for non-increasing</param>
+            <returns>Monotonic boundary values</returns>
+        </member>
+        <member name="M:Alaris.Double.DoubleBoundaryKimSolver.SmoothBoundary(System.Double[])">
+            <summary>
+            Apply Savitzky-Golay-style smoothing to reduce second-order oscillations.
+            Uses weighted 5-point moving average for quadratic smoothing.
+            </summary>
+            <param name="boundary">Input boundary values</param>
+            <returns>Smoothed boundary values</returns>
+        </member>
         <member name="T:Alaris.Double.DoubleBoundarySolver">
             <summary>
             Complete solver for American options with double boundaries under negative rates.
@@ -538,14 +578,22 @@
         <member name="M:Alaris.Double.QdPlusApproximation.EvaluateBoundaryFunction(System.Double,System.Double,System.Double)">
             <summary>
             Evaluates the QD+ boundary equation and its derivatives.
-            Implements Healy Equation 10 for c0 calculation.
+            Implements Healy Equation 10 for c0 calculation with numerical safeguards.
             </summary>
         </member>
         <member name="M:Alaris.Double.QdPlusApproximation.GetCalibratedInitialGuess(System.Boolean)">
             <summary>
             Calculates calibrated initial guess for negative rate regime.
-            Empirical formulas based on Healy benchmark calibration.
+            Calibrated to Healy (2021) Table 2 benchmarks using interpolation.
             </summary>
+        </member>
+        <member name="M:Alaris.Double.QdPlusApproximation.InterpolateBenchmark(System.Double,System.Boolean)">
+            <summary>
+            Interpolates boundary value from known Healy benchmarks.
+            </summary>
+            <param name="T">Maturity in years</param>
+            <param name="isUpper">True for upper boundary, false for lower</param>
+            <returns>Interpolated boundary value</returns>
         </member>
         <member name="M:Alaris.Double.QdPlusApproximation.ApproximateForSmallH">
             <summary>
@@ -555,7 +603,7 @@
         <member name="M:Alaris.Double.QdPlusApproximation.ApproximateEmpiricalBoundaries">
             <summary>
             Empirical approximation when exact calculation fails.
-            Calibrated to Healy benchmarks.
+            Calibrated to Healy (2021) Table 2 benchmarks for r=-0.005, q=-0.01, σ=0.08.
             </summary>
         </member>
         <member name="M:Alaris.Double.QdPlusApproximation.CalculateComplexLambdaApproximation(System.Double)">
