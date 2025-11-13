@@ -377,6 +377,12 @@
             Error function approximation.
             </summary>
         </member>
+        <member name="M:Alaris.Double.DoubleBoundaryKimSolver.EnforceMonotonicity(System.Double[],System.Boolean)">
+            <summary>
+            Enforces monotonicity on boundary array by smoothing violations.
+            For puts, boundaries should be non-increasing over time.
+            </summary>
+        </member>
         <member name="T:Alaris.Double.DoubleBoundarySolver">
             <summary>
             Complete solver for American options with double boundaries under negative rates.
