@@ -33,7 +33,12 @@ public sealed class DoubleBoundaryKimSolver
     private readonly double _volatility;
     private readonly bool _isCall;
     public readonly int _collocationPoints;
-    
+
+    // Ratio history tracking for divergence detection
+    private System.Collections.Generic.Dictionary<int, System.Collections.Generic.List<double>> _upperRatioHistory = new();
+    private System.Collections.Generic.Dictionary<int, System.Collections.Generic.List<double>> _lowerRatioHistory = new();
+    private int _currentIteration = 0;
+
     private const double TOLERANCE = 1e-6;
     private const int MAX_ITERATIONS = 100;
     private const int INTEGRATION_POINTS = 50;
@@ -113,9 +118,15 @@ public sealed class DoubleBoundaryKimSolver
         int m = _collocationPoints;
         double[] upper = (double[])upperInitial.Clone();
         double[] lower = (double[])lowerInitial.Clone();
-        
+
+        // Initialize ratio tracking for divergence detection
+        _upperRatioHistory.Clear();
+        _lowerRatioHistory.Clear();
+        _currentIteration = 0;
+
         for (int iter = 0; iter < MAX_ITERATIONS; iter++)
         {
+            _currentIteration = iter;
             double maxChange = 0.0;
             double[] upperNew = new double[m];
             double[] lowerNew = new double[m];
@@ -186,9 +197,25 @@ public sealed class DoubleBoundaryKimSolver
         double ratio = Ni / Di;
 
         // For puts, ratio should be < 1 (boundary < strike)
-        // If ratio > 1, Kim solver is diverging - fall back to interpolation
-        if (!_isCall && ratio >= 0.99)
-            return InterpolateBoundary(upper, ti);
+        // Use divergence detection instead of hard threshold
+        if (!_isCall && ratio > 0.95)
+        {
+            // Track ratio history for this collocation point
+            int pointIndex = GetPointIndex(ti);
+            if (!_upperRatioHistory.ContainsKey(pointIndex))
+                _upperRatioHistory[pointIndex] = new System.Collections.Generic.List<double>();
+
+            _upperRatioHistory[pointIndex].Add(ratio);
+
+            // Check for divergence: ratio consistently increasing toward 1.0
+            if (IsDiverging(_upperRatioHistory[pointIndex], threshold: 0.99))
+            {
+                // Confirmed divergence - fall back to interpolation
+                return InterpolateBoundary(upper, ti);
+            }
+
+            // High ratio but not diverging - allow it and continue refinement
+        }
 
         double result = _strike * ratio;
 
@@ -231,9 +258,25 @@ public sealed class DoubleBoundaryKimSolver
         double upperAtTi = InterpolateBoundary(upperNew, ti);
 
         // For puts, lower boundary ratio should be < upper/strike
-        // If ratio is too large, Kim solver is diverging - fall back to interpolation
-        if (!_isCall && ratio >= 0.95)
-            return InterpolateBoundary(lowerOld, ti);
+        // Use divergence detection instead of hard threshold
+        if (!_isCall && ratio > 0.90)
+        {
+            // Track ratio history for this collocation point
+            int pointIndex = GetPointIndex(ti);
+            if (!_lowerRatioHistory.ContainsKey(pointIndex))
+                _lowerRatioHistory[pointIndex] = new System.Collections.Generic.List<double>();
+
+            _lowerRatioHistory[pointIndex].Add(ratio);
+
+            // Check for divergence: ratio consistently increasing toward upper boundary
+            if (IsDiverging(_lowerRatioHistory[pointIndex], threshold: 0.95))
+            {
+                // Confirmed divergence - fall back to interpolation
+                return InterpolateBoundary(lowerOld, ti);
+            }
+
+            // High ratio but not diverging - allow it and continue refinement
+        }
 
         double result = _strike * ratio;
 
@@ -625,37 +668,164 @@ public sealed class DoubleBoundaryKimSolver
     }
 
     /// <summary>
-    /// Enforces monotonicity on boundary array by smoothing violations.
+    /// Detects if ratio is diverging based on history.
+    /// Divergence means ratio is consistently increasing toward threshold.
+    /// </summary>
+    /// <param name="ratioHistory">History of ratio values for a specific collocation point</param>
+    /// <param name="threshold">Threshold value indicating problematic divergence (e.g., 0.99)</param>
+    /// <returns>True if diverging, false otherwise</returns>
+    private bool IsDiverging(System.Collections.Generic.List<double> ratioHistory, double threshold)
+    {
+        // Need at least 2 iterations to detect trend
+        if (ratioHistory.Count < 2)
+            return false;
+
+        // Check if last 2-3 values are consistently increasing toward 1.0
+        int checkCount = Math.Min(3, ratioHistory.Count);
+        bool increasing = true;
+
+        for (int i = ratioHistory.Count - checkCount + 1; i < ratioHistory.Count; i++)
+        {
+            if (ratioHistory[i] <= ratioHistory[i - 1] + NUMERICAL_EPSILON)
+            {
+                increasing = false;
+                break;
+            }
+        }
+
+        // Diverging if: (1) consistently increasing AND (2) latest value exceeds threshold
+        return increasing && ratioHistory[^1] >= threshold;
+    }
+
+    /// <summary>
+    /// Maps time point to collocation point index.
+    /// </summary>
+    /// <param name="ti">Time point</param>
+    /// <returns>Collocation point index</returns>
+    private int GetPointIndex(double ti)
+    {
+        // Map time to collocation point index
+        return (int)Math.Round(ti / _maturity * (_collocationPoints - 1));
+    }
+
+    /// <summary>
+    /// Enforces monotonicity on boundary array using isotonic regression.
     /// For puts, boundaries should be non-increasing over time.
+    /// Uses Pool-Adjacent-Violators algorithm followed by smoothing filter.
     /// </summary>
     private double[] EnforceMonotonicity(double[] boundary, bool isIncreasing)
     {
         int n = boundary.Length;
-        double[] smoothed = (double[])boundary.Clone();
+        double[] result = (double[])boundary.Clone();
 
-        if (isIncreasing)
+        // Apply Pool-Adjacent-Violators algorithm for isotonic regression
+        result = PoolAdjacentViolators(result, isIncreasing);
+
+        // Apply smoothing filter to reduce second-order oscillations
+        result = SmoothBoundary(result);
+
+        return result;
+    }
+
+    /// <summary>
+    /// Pool-Adjacent-Violators algorithm for isotonic regression.
+    /// Guarantees monotonicity while minimizing squared deviation from original.
+    /// </summary>
+    /// <param name="values">Input boundary values</param>
+    /// <param name="increasing">True for non-decreasing, false for non-increasing</param>
+    /// <returns>Monotonic boundary values</returns>
+    private double[] PoolAdjacentViolators(double[] values, bool increasing)
+    {
+        int n = values.Length;
+        double[] result = (double[])values.Clone();
+
+        if (!increasing)
         {
-            // Enforce non-decreasing: boundary[i+1] >= boundary[i]
-            for (int i = 1; i < n; i++)
+            // For non-increasing, reverse, apply PAV for increasing, reverse back
+            Array.Reverse(result);
+            result = PoolAdjacentViolators(result, increasing: true);
+            Array.Reverse(result);
+            return result;
+        }
+
+        // PAV algorithm for non-decreasing (increasing) constraint
+        var poolValues = new System.Collections.Generic.List<double>();
+        var poolSizes = new System.Collections.Generic.List<int>();
+
+        for (int i = 0; i < n; i++)
+        {
+            poolValues.Add(result[i]);
+            poolSizes.Add(1);
+
+            // Merge pools while violation exists
+            while (poolValues.Count > 1 &&
+                   poolValues[^1] < poolValues[^2])
             {
-                if (smoothed[i] < smoothed[i - 1])
-                {
-                    // Average to smooth the violation
-                    smoothed[i] = (smoothed[i] + smoothed[i - 1]) / 2.0;
-                }
+                // Merge last two pools (weighted average)
+                double sum1 = poolValues[^1] * poolSizes[^1];
+                double sum2 = poolValues[^2] * poolSizes[^2];
+                int totalSize = poolSizes[^1] + poolSizes[^2];
+
+                poolValues.RemoveAt(poolValues.Count - 1);
+                poolSizes.RemoveAt(poolSizes.Count - 1);
+
+                poolValues[^1] = (sum1 + sum2) / totalSize;
+                poolSizes[^1] = totalSize;
             }
         }
-        else
+
+        // Reconstruct result from pools
+        int idx = 0;
+        for (int i = 0; i < poolValues.Count; i++)
         {
-            // Enforce non-increasing: boundary[i+1] <= boundary[i]
-            for (int i = 1; i < n; i++)
+            for (int j = 0; j < poolSizes[i]; j++)
             {
-                if (smoothed[i] > smoothed[i - 1])
-                {
-                    // Average to smooth the violation
-                    smoothed[i] = (smoothed[i] + smoothed[i - 1]) / 2.0;
-                }
+                result[idx++] = poolValues[i];
             }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Apply Savitzky-Golay-style smoothing to reduce second-order oscillations.
+    /// Uses weighted 5-point moving average for quadratic smoothing.
+    /// </summary>
+    /// <param name="boundary">Input boundary values</param>
+    /// <returns>Smoothed boundary values</returns>
+    private double[] SmoothBoundary(double[] boundary)
+    {
+        int n = boundary.Length;
+        if (n < 5)
+            return boundary;
+
+        double[] smoothed = (double[])boundary.Clone();
+
+        // Savitzky-Golay weights for 5-point quadratic smoothing: [-3, 12, 17, 12, -3] / 35
+        // This preserves quadratic trends while smoothing noise
+        double[] weights = { -3.0 / 35.0, 12.0 / 35.0, 17.0 / 35.0, 12.0 / 35.0, -3.0 / 35.0 };
+
+        // Apply smoothing to interior points
+        for (int i = 2; i < n - 2; i++)
+        {
+            double sum = 0;
+            for (int j = -2; j <= 2; j++)
+            {
+                sum += boundary[i + j] * weights[j + 2];
+            }
+            smoothed[i] = sum;
+        }
+
+        // Handle edge points with 3-point smoothing
+        if (n >= 3)
+        {
+            // First point: weighted average of first 3 points
+            smoothed[0] = (5.0 * boundary[0] + 2.0 * boundary[1] - boundary[2]) / 6.0;
+            smoothed[1] = (boundary[0] + boundary[1] + boundary[2]) / 3.0;
+
+            // Last point: weighted average of last 3 points
+            smoothed[n - 2] = (boundary[n - 3] + boundary[n - 2] + boundary[n - 1]) / 3.0;
+            smoothed[n - 1] = (-boundary[n - 3] + 2.0 * boundary[n - 2] + 5.0 * boundary[n - 1]) / 6.0;
         }
 
         return smoothed;
