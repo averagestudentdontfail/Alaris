@@ -397,7 +397,7 @@
             <summary>
             Enforces monotonicity on boundary array using isotonic regression.
             For puts, boundaries should be non-increasing over time.
-            Uses Pool-Adjacent-Violators algorithm followed by smoothing filter.
+            Uses Pool-Adjacent-Violators algorithm.
             </summary>
         </member>
         <member name="M:Alaris.Double.DoubleBoundaryKimSolver.PoolAdjacentViolators(System.Double[],System.Boolean)">
