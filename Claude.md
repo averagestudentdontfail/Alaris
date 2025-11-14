@@ -173,7 +173,7 @@ All tests validate these constraints are satisfied:
 
 #### Generalized Solver Requirements
 
-**User Requirement**: "I want a generalised solver, that will work in all market conditions, regardless of values"
+**User Requirement**: "I want a generalised solver, that will work in all market conditions, regardless of known values"
 
 **Implementation**:
 - Pre-checks detect unreasonable inputs before wasting computation
