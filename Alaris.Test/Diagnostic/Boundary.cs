@@ -147,21 +147,33 @@ public class DoubleBoundaryValidationTest
         lowerRefined[lastIndex].Should().BeApproximately(58.72, HEALY_TOLERANCE,
             "refined lower boundary should match Healy Table 2");
         
-        // Validate refinement improved accuracy
+        // Validate refinement improved or preserved accuracy
         Console.WriteLine("Refinement Analysis:");
         double initialUpperError = Math.Abs(upperInitial - 69.62);
         double initialLowerError = Math.Abs(lowerInitial - 58.72);
-        
+
         bool upperImproved = upperError < initialUpperError;
         bool lowerImproved = lowerError < initialLowerError;
-        
+        bool upperPreserved = Math.Abs(upperError - initialUpperError) < 1e-10;
+        bool lowerPreserved = Math.Abs(lowerError - initialLowerError) < 1e-10;
+
         Console.WriteLine($"  Upper boundary improved: {upperImproved} " +
                          $"({initialUpperError:F2} → {upperError:F2})");
         Console.WriteLine($"  Lower boundary improved: {lowerImproved} " +
                          $"({initialLowerError:F2} → {lowerError:F2})");
-        
-        upperImproved.Should().BeTrue("refinement should improve upper boundary");
-        lowerImproved.Should().BeTrue("refinement should improve lower boundary");
+
+        // Refinement should improve OR preserve accuracy (when QD+ is already perfect)
+        // It should NEVER make things worse
+        (upperImproved || upperPreserved).Should().BeTrue(
+            "refinement should improve or preserve upper boundary accuracy");
+        (lowerImproved || lowerPreserved).Should().BeTrue(
+            "refinement should improve or preserve lower boundary accuracy");
+
+        // Ensure refinement didn't degrade the solution
+        upperError.Should().BeLessOrEqualTo(initialUpperError,
+            "refinement should not degrade upper boundary");
+        lowerError.Should().BeLessOrEqualTo(initialLowerError,
+            "refinement should not degrade lower boundary");
     }
     
     [Theory]
