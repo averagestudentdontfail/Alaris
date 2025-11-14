@@ -288,15 +288,15 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
                 var delta = CalculateDelta(option, underlyingQuote, bsmProcess);
                 var gamma = CalculateGamma(option, underlyingQuote, bsmProcess);
                 var vega = CalculateVegaQuantlib(option, flatVolTs, bsmProcess, parameters);
-                var theta = CalculateThetaQuantlib(option, parameters);
+                var theta = CalculateThetaQuantlib(option, fdEngine, bsmProcess, parameters);
                 var rho = CalculateRhoQuantlib(option, flatRateTs, bsmProcess, parameters);
 
                 var timeToExpiry = CalculateTimeToExpiry(parameters.ValuationDate, parameters.Expiry);
                 var moneyness = parameters.UnderlyingPrice / parameters.Strike;
 
-                // Clean up
-                option.Dispose();
+                // Clean up (dispose in reverse order of creation)
                 fdEngine.Dispose();
+                option.Dispose();
                 bsmProcess.Dispose();
                 volatilityHandle.Dispose();
                 flatVolTs.Dispose();
@@ -329,7 +329,8 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
     }
 
     /// <summary>
-    /// Prices an option using the Alaris.Double engine (double boundary method for negative rates).
+    /// Prices an option using finite differences engine (supports negative rates).
+    /// Uses higher grid resolution for negative rate regimes to ensure accuracy.
     /// </summary>
     private Task<OptionPricing> PriceWithDouble(OptionParameters parameters)
     {
@@ -378,17 +379,26 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
                 var payoff = new PlainVanillaPayoff(parameters.OptionType, parameters.Strike);
                 var option = new VanillaOption(payoff, exercise);
 
-                // Use DoubleBoundaryEngine for negative rates
-                using var doubleEngine = new Alaris.Double.DoubleBoundaryEngine(
-                    bsmProcess,
-                    underlyingQuote);
+                // Use FD engine with higher resolution for negative rates
+                // The double boundary case is handled implicitly by the FD solver
+                var fdEngine = new FdBlackScholesVanillaEngine(bsmProcess, 200, 200);
+                option.setPricingEngine(fdEngine);
 
-                var result = doubleEngine.Calculate(option);
+                // Calculate price
+                var price = option.NPV();
+
+                // Calculate Greeks using finite differences
+                var delta = CalculateDelta(option, underlyingQuote, bsmProcess);
+                var gamma = CalculateGamma(option, underlyingQuote, bsmProcess);
+                var vega = CalculateVegaQuantlib(option, flatVolTs, bsmProcess, parameters);
+                var theta = CalculateThetaQuantlib(option, fdEngine, bsmProcess, parameters);
+                var rho = CalculateRhoQuantlib(option, flatRateTs, bsmProcess, parameters);
 
                 var timeToExpiry = CalculateTimeToExpiry(parameters.ValuationDate, parameters.Expiry);
                 var moneyness = parameters.UnderlyingPrice / parameters.Strike;
 
-                // Clean up
+                // Clean up (dispose in reverse order of creation)
+                fdEngine.Dispose();
                 option.Dispose();
                 bsmProcess.Dispose();
                 volatilityHandle.Dispose();
@@ -402,12 +412,12 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
 
                 return new OptionPricing
                 {
-                    Price = result.Price,
-                    Delta = result.Delta,
-                    Gamma = result.Gamma,
-                    Vega = result.Vega,
-                    Theta = result.Theta,
-                    Rho = result.Rho,
+                    Price = price,
+                    Delta = delta,
+                    Gamma = gamma,
+                    Vega = vega,
+                    Theta = theta,
+                    Rho = rho,
                     ImpliedVolatility = parameters.ImpliedVolatility,
                     TimeToExpiry = timeToExpiry,
                     Moneyness = moneyness
@@ -415,7 +425,7 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Error pricing option with Alaris.Double");
+                _logger?.LogError(ex, "Error pricing option in negative rate regime");
                 throw;
             }
         });
@@ -511,19 +521,26 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
         return (priceUp - priceDown) / (2 * VolBumpSize);
     }
 
-    private double CalculateThetaQuantlib(VanillaOption option, OptionParameters parameters)
+    private double CalculateThetaQuantlib(VanillaOption option, FdBlackScholesVanillaEngine engine,
+        BlackScholesMertonProcess process, OptionParameters parameters)
     {
         var originalDate = parameters.ValuationDate;
-        var dayBump = 1; // 1 day
+        var priceOriginal = option.NPV();
 
-        // Forward date by 1 day
+        // Forward date by 1 day and recalculate
+        var dayBump = 1; // 1 day
         var forwardDate = originalDate.Add(new Period(dayBump, TimeUnit.Days));
         Settings.instance().setEvaluationDate(forwardDate);
-        var priceForward = option.NPV();
 
-        // Restore date and get original price
+        // Recreate engine to force recalculation with new date
+        var forwardEngine = new FdBlackScholesVanillaEngine(process, 100, 100);
+        option.setPricingEngine(forwardEngine);
+        var priceForward = option.NPV();
+        forwardEngine.Dispose();
+
+        // Restore original date and engine
         Settings.instance().setEvaluationDate(originalDate);
-        var priceOriginal = option.NPV();
+        option.setPricingEngine(engine);
 
         // Theta is price change per day (negative for time decay)
         return (priceForward - priceOriginal) / dayBump;
