@@ -227,6 +227,27 @@
             Uses DoubleBoundaryApproximation with QD+ method and early exercise premium calculation.
             </summary>
         </member>
+        <member name="M:Alaris.Strategy.Bridge.UnifiedPricingEngine.CalculateMaxProfit(Alaris.Strategy.Bridge.CalendarSpreadParameters,System.Double)">
+            <summary>
+            Calculates the maximum profit potential of a calendar spread using grid search.
+            </summary>
+            <param name="parameters">Calendar spread parameters.</param>
+            <param name="spreadCost">The initial cost of the spread (debit paid).</param>
+            <returns>Maximum profit potential at front expiration.</returns>
+        </member>
+        <member name="M:Alaris.Strategy.Bridge.UnifiedPricingEngine.CalculateBreakEven(Alaris.Strategy.Bridge.CalendarSpreadParameters,System.Double)">
+            <summary>
+            Calculates the breakeven point(s) for a calendar spread using bisection method.
+            </summary>
+            <param name="parameters">Calendar spread parameters.</param>
+            <param name="spreadCost">The initial cost of the spread (debit paid).</param>
+            <returns>Approximate breakeven underlying price at front expiration.</returns>
+        </member>
+        <member name="M:Alaris.Strategy.Bridge.UnifiedPricingEngine.CalculateIntrinsicValue(System.Double,System.Double,Option.Type)">
+            <summary>
+            Calculates the intrinsic value of an option at expiration.
+            </summary>
+        </member>
         <member name="T:Alaris.Strategy.Bridge.PricingRegime">
             <summary>
             Represents the pricing regime based on interest rate conditions.

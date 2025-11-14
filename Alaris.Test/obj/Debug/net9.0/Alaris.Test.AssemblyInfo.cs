@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Alaris.Test")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+da3a6b83a788184e85cefd64fdc00554f6c715b5")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f79ef872ee2389c968859574790caf4860ad03d0")]
 [assembly: System.Reflection.AssemblyProductAttribute("Alaris.Test")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Alaris.Test")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
