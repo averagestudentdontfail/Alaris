@@ -289,13 +289,15 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
                 var payoff = new PlainVanillaPayoff(parameters.OptionType, parameters.Strike);
                 var option = new VanillaOption(payoff, exercise);
 
-                // Create pricing engine (using FD for Americans by default)
+                // Create pricing engine for main price (using FD for Americans by default)
+                var priceEngine = new FdBlackScholesVanillaEngine(bsmProcess, 100, 100);
+                option.setPricingEngine(priceEngine);
+                var price = option.NPV();
+                priceEngine.Dispose();
+
+                // Create fresh pricing engine for Greek calculations
                 var fdEngine = new FdBlackScholesVanillaEngine(bsmProcess, 100, 100);
                 option.setPricingEngine(fdEngine);
-
-                // Calculate price - force recalculation to avoid stale cache
-                option.setPricingEngine(fdEngine);
-                var price = option.NPV();
 
                 // Calculate Greeks using finite differences
                 var delta = CalculateDelta(option, underlyingQuote, bsmProcess, fdEngine);
