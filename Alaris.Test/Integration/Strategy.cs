@@ -193,6 +193,177 @@ public class StrategyIntegrationTests
         opportunity.Signal.Should().NotBeNull();
     }
 
+    [Fact]
+    public async Task UnifiedPricingEngine_IntegrationTest_PositiveRates()
+    {
+        // Arrange
+        var valuationDate = new Date(15, Month.January, 2024);
+        Settings.instance().setEvaluationDate(valuationDate);
+
+        using var engine = new UnifiedPricingEngine();
+
+        var parameters = new OptionParameters
+        {
+            UnderlyingPrice = 150.0,
+            Strike = 150.0,
+            Expiry = valuationDate.Add(new Period(30, TimeUnit.Days)),
+            ImpliedVolatility = 0.30,
+            RiskFreeRate = 0.05,
+            DividendYield = 0.02,
+            OptionType = Option.Type.Call,
+            ValuationDate = valuationDate
+        };
+
+        // Act
+        var result = await engine.PriceOption(parameters);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.Price.Should().BeGreaterThan(0);
+        result.Delta.Should().BeInRange(0, 1);
+        result.Gamma.Should().BeGreaterThan(0);
+        result.Vega.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task UnifiedPricingEngine_IntegrationTest_NegativeRates()
+    {
+        // Arrange: Healy (2021) parameters
+        var valuationDate = new Date(15, Month.January, 2024);
+        Settings.instance().setEvaluationDate(valuationDate);
+
+        using var engine = new UnifiedPricingEngine();
+
+        var parameters = new OptionParameters
+        {
+            UnderlyingPrice = 100.0,
+            Strike = 100.0,
+            Expiry = valuationDate.Add(new Period(365, TimeUnit.Days)),
+            ImpliedVolatility = 0.08,
+            RiskFreeRate = -0.005,
+            DividendYield = -0.010,
+            OptionType = Option.Type.Put,
+            ValuationDate = valuationDate
+        };
+
+        // Act
+        var result = await engine.PriceOption(parameters);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.Price.Should().BeGreaterThan(0);
+        result.Delta.Should().BeInRange(-1, 0);
+        result.Gamma.Should().BeGreaterThan(0);
+        result.Vega.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task UnifiedPricingEngine_CalendarSpread_PositiveRates()
+    {
+        // Arrange
+        var valuationDate = new Date(15, Month.January, 2024);
+        Settings.instance().setEvaluationDate(valuationDate);
+
+        using var engine = new UnifiedPricingEngine();
+
+        var parameters = new CalendarSpreadParameters
+        {
+            UnderlyingPrice = 150.0,
+            Strike = 150.0,
+            FrontExpiry = valuationDate.Add(new Period(30, TimeUnit.Days)),
+            BackExpiry = valuationDate.Add(new Period(60, TimeUnit.Days)),
+            ImpliedVolatility = 0.30,
+            RiskFreeRate = 0.05,
+            DividendYield = 0.02,
+            OptionType = Option.Type.Call,
+            ValuationDate = valuationDate
+        };
+
+        // Act
+        var result = await engine.PriceCalendarSpread(parameters);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.SpreadCost.Should().BeGreaterThan(0);
+        result.BackOption.Price.Should().BeGreaterThan(result.FrontOption.Price);
+        result.SpreadVega.Should().BeGreaterThan(0);
+        result.ProfitLossRatio.Should().BeGreaterThan(1.0);
+    }
+
+    [Fact]
+    public async Task UnifiedPricingEngine_CalendarSpread_NegativeRates()
+    {
+        // Arrange
+        var valuationDate = new Date(15, Month.January, 2024);
+        Settings.instance().setEvaluationDate(valuationDate);
+
+        using var engine = new UnifiedPricingEngine();
+
+        var parameters = new CalendarSpreadParameters
+        {
+            UnderlyingPrice = 100.0,
+            Strike = 100.0,
+            FrontExpiry = valuationDate.Add(new Period(30, TimeUnit.Days)),
+            BackExpiry = valuationDate.Add(new Period(60, TimeUnit.Days)),
+            ImpliedVolatility = 0.08,
+            RiskFreeRate = -0.005,
+            DividendYield = -0.010,
+            OptionType = Option.Type.Put,
+            ValuationDate = valuationDate
+        };
+
+        // Act
+        var result = await engine.PriceCalendarSpread(parameters);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.SpreadCost.Should().BeGreaterThan(0);
+        result.BackOption.Price.Should().BeGreaterThan(result.FrontOption.Price);
+        result.SpreadVega.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task Control_WithUnifiedPricingEngine_FullWorkflow()
+    {
+        // Arrange
+        var valuationDate = new Date(24, Month.January, 2024);
+        Settings.instance().setEvaluationDate(valuationDate);
+
+        var mockMarketData = new MockMarketDataProvider();
+        var yangZhang = new YangZhangEstimator();
+        var termAnalyzer = new TermStructureAnalyzer();
+        var signalGenerator = new SignalGenerator(mockMarketData, yangZhang, termAnalyzer);
+
+        // Use real UnifiedPricingEngine instead of mock
+        using var pricingEngine = new UnifiedPricingEngine();
+        var sizer = new KellyPositionSizer();
+        var control = new Control(signalGenerator, pricingEngine, sizer);
+
+        var historicalTrades = GenerateSampleTrades(25);
+        var earningsDate = new DateTime(2024, 1, 25);
+        var evaluationDate = new DateTime(2024, 1, 24);
+
+        // Act
+        var opportunity = await control.EvaluateOpportunity(
+            "AAPL",
+            earningsDate,
+            evaluationDate,
+            100000.0,
+            historicalTrades);
+
+        // Assert
+        opportunity.Should().NotBeNull();
+        opportunity.Symbol.Should().Be("AAPL");
+        opportunity.Signal.Should().NotBeNull();
+
+        if (opportunity.SpreadPricing != null)
+        {
+            opportunity.SpreadPricing.SpreadCost.Should().BeGreaterThan(0);
+            opportunity.SpreadPricing.BackOption.Price.Should().BeGreaterThan(0);
+            opportunity.SpreadPricing.FrontOption.Price.Should().BeGreaterThan(0);
+        }
+    }
+
     // Helper methods
     private static List<PriceBar> GenerateSamplePriceBars(int count)
     {
