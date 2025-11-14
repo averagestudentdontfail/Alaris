@@ -127,10 +127,16 @@ public sealed class DoubleBoundaryKimSolver
         double previousMaxChange = double.MaxValue;
         int stagnationCount = 0;
 
+        // Track first iteration changes separately for each boundary
+        double firstIterUpperChange = 0.0;
+        double firstIterLowerChange = 0.0;
+
         for (int iter = 0; iter < MAX_ITERATIONS; iter++)
         {
             _currentIteration = iter;
             double maxChange = 0.0;
+            double maxUpperChange = 0.0;
+            double maxLowerChange = 0.0;
             double[] upperNew = new double[m];
             double[] lowerNew = new double[m];
 
@@ -159,25 +165,44 @@ public sealed class DoubleBoundaryKimSolver
                 // Enforce constraints
                 (upperNew[i], lowerNew[i]) = EnforceConstraints(upperNew[i], lowerNew[i], ti);
 
-                maxChange = Math.Max(maxChange, Math.Abs(upperNew[i] - upper[i]));
-                maxChange = Math.Max(maxChange, Math.Abs(lowerNew[i] - lower[i]));
+                double upperChange = Math.Abs(upperNew[i] - upper[i]);
+                double lowerChange = Math.Abs(lowerNew[i] - lower[i]);
+
+                maxUpperChange = Math.Max(maxUpperChange, upperChange);
+                maxLowerChange = Math.Max(maxLowerChange, lowerChange);
+                maxChange = Math.Max(maxChange, Math.Max(upperChange, lowerChange));
             }
 
-            // Early convergence: if input is already optimal, return it unchanged
-            if (iter == 0 && maxChange < TOLERANCE * 10)
+            // Track first iteration changes per boundary
+            if (iter == 0)
             {
-                // Input is already converged - return original values
-                return (upperInitial, lowerInitial);
+                firstIterUpperChange = maxUpperChange;
+                firstIterLowerChange = maxLowerChange;
+
+                // Early convergence: if BOTH boundaries are already optimal, return input unchanged
+                // This prevents Kim from degrading already-perfect QD+ values
+                if (maxUpperChange < TOLERANCE * 10 && maxLowerChange < TOLERANCE * 10)
+                {
+                    // Input is already converged for both boundaries - return original values
+                    return (upperInitial, lowerInitial);
+                }
             }
 
-            // Stagnation detection: if making no progress, we're stuck
+            // Stagnation detection: if making no progress, we're stuck on poor initial guess
             if (iter > 3 && Math.Abs(maxChange - previousMaxChange) < TOLERANCE)
             {
                 stagnationCount++;
                 if (stagnationCount > 3)
                 {
-                    // Stuck - return current best attempt
-                    break;
+                    // Stuck - fall back to fresh QD+ computation
+                    var qdplus = new QdPlusApproximation(
+                        _spot, _strike, _maturity, _rate, _dividendYield, _volatility, _isCall);
+                    var (qdUpper, qdLower) = qdplus.CalculateBoundaries();
+
+                    // Return QD+ arrays filled with constant values
+                    double[] qdUpperArray = Enumerable.Repeat(qdUpper, m).ToArray();
+                    double[] qdLowerArray = Enumerable.Repeat(qdLower, m).ToArray();
+                    return (qdUpperArray, qdLowerArray);
                 }
             }
             else
@@ -196,6 +221,24 @@ public sealed class DoubleBoundaryKimSolver
         // Enforce monotonicity: boundaries should decrease over time for puts
         upper = EnforceMonotonicity(upper, false); // Non-increasing for puts
         lower = EnforceMonotonicity(lower, false); // Non-increasing for puts
+
+        // Result validation: check if refinement made things worse
+        // Compare final values at maturity to initial values
+        int lastIdx = m - 1;
+        double initialUpperDist = Math.Abs(upperInitial[lastIdx] - _strike);
+        double initialLowerDist = Math.Abs(lowerInitial[lastIdx] - 0);
+        double finalUpperDist = Math.Abs(upper[lastIdx] - _strike);
+        double finalLowerDist = Math.Abs(lower[lastIdx] - 0);
+
+        // If Kim made boundaries WORSE (further from physical constraints), reject refinement
+        bool upperWorse = finalUpperDist > initialUpperDist * 1.5; // Allow 50% tolerance
+        bool lowerWorse = finalLowerDist > initialLowerDist * 1.5;
+
+        if (upperWorse || lowerWorse)
+        {
+            // Refinement degraded solution - return input unchanged
+            return (upperInitial, lowerInitial);
+        }
 
         return (upper, lower);
     }
