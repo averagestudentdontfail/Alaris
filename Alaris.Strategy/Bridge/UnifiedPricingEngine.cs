@@ -292,6 +292,9 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
                 // Create pricing engine for main price (using FD for Americans by default)
                 var priceEngine = new FdBlackScholesVanillaEngine(bsmProcess, 100, 100);
                 option.setPricingEngine(priceEngine);
+
+                // Ensure evaluation date is set correctly before pricing
+                Settings.instance().setEvaluationDate(parameters.ValuationDate);
                 var price = option.NPV();
                 priceEngine.Dispose();
 
