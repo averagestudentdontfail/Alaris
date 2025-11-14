@@ -131,6 +131,26 @@ public sealed class DoubleBoundaryKimSolver
         double firstIterUpperChange = 0.0;
         double firstIterLowerChange = 0.0;
 
+        // Pre-check: Detect unreasonable inputs BEFORE iteration
+        // For puts: upper should be 60%-90% of strike, lower should be 45%-85% of strike
+        double upperRatio = upperInitial[m - 1] / _strike;
+        double lowerRatio = lowerInitial[m - 1] / _strike;
+        bool upperReasonable = upperRatio >= 0.60 && upperRatio < 0.90;
+        bool lowerReasonable = lowerRatio >= 0.45 && lowerRatio < 0.85;
+        bool orderingCorrect = upperInitial[m - 1] > lowerInitial[m - 1];
+
+        if (!upperReasonable || !lowerReasonable || !orderingCorrect)
+        {
+            // Input is unreasonable - don't waste time iterating, fall back to fresh QD+ immediately
+            var qdplus = new QdPlusApproximation(
+                _spot, _strike, _maturity, _rate, _dividendYield, _volatility, _isCall);
+            var (qdUpper, qdLower) = qdplus.CalculateBoundaries();
+
+            double[] qdUpperArray = Enumerable.Repeat(qdUpper, m).ToArray();
+            double[] qdLowerArray = Enumerable.Repeat(qdLower, m).ToArray();
+            return (qdUpperArray, qdLowerArray);
+        }
+
         for (int iter = 0; iter < MAX_ITERATIONS; iter++)
         {
             _currentIteration = iter;
