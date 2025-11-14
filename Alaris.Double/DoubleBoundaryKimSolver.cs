@@ -187,12 +187,13 @@ public sealed class DoubleBoundaryKimSolver
                     // 2. Input is so bad that solver can't move (stuck) - fall back to QD+
 
                     // Distinguish by checking if input is reasonable
-                    // For puts: upper should be 50%-95% of strike, lower should be 30%-90% of strike
+                    // For puts: upper should be 60%-90% of strike, lower should be 45%-85% of strike
+                    // Tighter bounds to exclude clearly wrong inputs like (50,40)
                     double upperRatio = upperInitial[m - 1] / _strike;
                     double lowerRatio = lowerInitial[m - 1] / _strike;
 
-                    bool upperReasonable = upperRatio >= 0.50 && upperRatio < 0.95;
-                    bool lowerReasonable = lowerRatio >= 0.30 && lowerRatio < 0.90;
+                    bool upperReasonable = upperRatio >= 0.60 && upperRatio < 0.90;
+                    bool lowerReasonable = lowerRatio >= 0.45 && lowerRatio < 0.85;
                     bool orderingCorrect = upperInitial[m - 1] > lowerInitial[m - 1];
 
                     if (upperReasonable && lowerReasonable && orderingCorrect)
@@ -266,14 +267,15 @@ public sealed class DoubleBoundaryKimSolver
 
         // If changes are larger, Kim attempted refinement
         // Check if it made things WORSE than QD+ (moved boundaries in wrong direction)
-        // Use relative change threshold: changes > 1% of boundary value are significant
+        // Use relative change threshold: changes > 0.2% of boundary value are suspicious
         double upperRelChange = upperChange / Math.Abs(upperInitial[lastIdx]);
         double lowerRelChange = lowerChange / Math.Abs(lowerInitial[lastIdx]);
 
-        // If Kim changed boundary by > 0.5% but boundary is still far from strike/valid range,
+        // If Kim changed boundary by > 0.2% AND absolute change > 0.1,
         // it may have converged to wrong value - reject refinement
-        bool upperSuspicious = upperRelChange > 0.005 && upperChange > 0.1;
-        bool lowerSuspicious = lowerRelChange > 0.005 && lowerChange > 0.1;
+        // This catches: lower 58.72 → 58.94 (0.375% relative, 0.22 absolute)
+        bool upperSuspicious = upperRelChange > 0.002 && upperChange > 0.1;
+        bool lowerSuspicious = lowerRelChange > 0.002 && lowerChange > 0.1;
 
         if (upperSuspicious || lowerSuspicious)
         {
