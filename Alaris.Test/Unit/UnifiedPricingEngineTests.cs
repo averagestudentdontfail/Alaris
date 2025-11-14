@@ -25,17 +25,19 @@ public class UnifiedPricingEngineTests : IDisposable
     #region Regime Detection Tests
 
     [Theory]
-    [InlineData(0.05, 0.02, PricingRegime.PositiveRates)]
-    [InlineData(0.03, 0.01, PricingRegime.PositiveRates)]
-    [InlineData(0.00, 0.00, PricingRegime.PositiveRates)]
-    [InlineData(-0.005, -0.010, PricingRegime.DoubleBoundary)]
-    [InlineData(-0.010, -0.015, PricingRegime.DoubleBoundary)]
-    [InlineData(-0.005, -0.005, PricingRegime.NegativeRatesSingleBoundary)]
-    [InlineData(-0.005, 0.000, PricingRegime.NegativeRatesSingleBoundary)]
-    public void DetermineRegime_ReturnsCorrectRegime(double rate, double dividend, PricingRegime expected)
+    [InlineData(0.05, 0.02, false, PricingRegime.PositiveRates)]  // Put, positive rates
+    [InlineData(0.03, 0.01, true, PricingRegime.PositiveRates)]   // Call, positive rates
+    [InlineData(0.00, 0.00, false, PricingRegime.PositiveRates)]  // Put, zero rates
+    [InlineData(-0.005, -0.010, false, PricingRegime.DoubleBoundary)]  // Put, q < r < 0
+    [InlineData(-0.010, -0.015, false, PricingRegime.DoubleBoundary)]  // Put, q < r < 0
+    [InlineData(-0.005, -0.005, false, PricingRegime.NegativeRatesSingleBoundary)]  // Put, r < 0, q = r
+    [InlineData(-0.005, 0.000, false, PricingRegime.NegativeRatesSingleBoundary)]   // Put, r < 0, q > r
+    [InlineData(-0.005, -0.010, true, PricingRegime.NegativeRatesSingleBoundary)]   // Call, negative rates
+    [InlineData(0.03, 0.05, true, PricingRegime.DoubleBoundary)]  // Call, 0 < r < q
+    public void DetermineRegime_ReturnsCorrectRegime(double rate, double dividend, bool isCall, PricingRegime expected)
     {
         // Act
-        var regime = UnifiedPricingEngine.DetermineRegime(rate, dividend);
+        var regime = UnifiedPricingEngine.DetermineRegime(rate, dividend, isCall);
 
         // Assert
         regime.Should().Be(expected);
@@ -47,9 +49,10 @@ public class UnifiedPricingEngineTests : IDisposable
         // Arrange
         var r = 0.05;
         var q = 0.02;
+        var isCall = false; // Put option
 
         // Act
-        var regime = UnifiedPricingEngine.DetermineRegime(r, q);
+        var regime = UnifiedPricingEngine.DetermineRegime(r, q, isCall);
 
         // Assert
         regime.Should().Be(PricingRegime.PositiveRates);
@@ -58,12 +61,13 @@ public class UnifiedPricingEngineTests : IDisposable
     [Fact]
     public void DetermineRegime_NegativeRatesDoubleBoundary()
     {
-        // Arrange: Healy (2021) parameters
+        // Arrange: Healy (2021) parameters (put option)
         var r = -0.005;
         var q = -0.010;
+        var isCall = false; // Put option
 
         // Act
-        var regime = UnifiedPricingEngine.DetermineRegime(r, q);
+        var regime = UnifiedPricingEngine.DetermineRegime(r, q, isCall);
 
         // Assert
         regime.Should().Be(PricingRegime.DoubleBoundary);
