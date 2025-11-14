@@ -297,8 +297,8 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
                 var price = option.NPV();
 
                 // Calculate Greeks using finite differences
-                var delta = CalculateDelta(option, underlyingQuote, bsmProcess);
-                var gamma = CalculateGamma(option, underlyingQuote, bsmProcess);
+                var delta = CalculateDelta(option, underlyingQuote, bsmProcess, fdEngine);
+                var gamma = CalculateGamma(option, underlyingQuote, bsmProcess, fdEngine);
                 var vega = CalculateVegaQuantlib(option, flatVolTs, bsmProcess, parameters, fdEngine);
                 var theta = CalculateThetaQuantlib(option, fdEngine, bsmProcess, parameters);
                 var rho = CalculateRhoQuantlib(option, flatRateTs, bsmProcess, parameters, fdEngine);
@@ -556,39 +556,46 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
 
     // Helper methods for Greek calculations
 
-    private double CalculateDelta(VanillaOption option, SimpleQuote underlyingQuote, BlackScholesMertonProcess process)
+    private double CalculateDelta(VanillaOption option, SimpleQuote underlyingQuote, BlackScholesMertonProcess process, FdBlackScholesVanillaEngine engine)
     {
         var originalSpot = underlyingQuote.value();
 
         // Up bump
         underlyingQuote.setValue(originalSpot + BumpSize);
+        option.setPricingEngine(engine); // Force recalculation
         var priceUp = option.NPV();
 
         // Down bump
         underlyingQuote.setValue(originalSpot - BumpSize);
+        option.setPricingEngine(engine); // Force recalculation
         var priceDown = option.NPV();
 
         // Restore
         underlyingQuote.setValue(originalSpot);
+        option.setPricingEngine(engine); // Restore state
 
         return (priceUp - priceDown) / (2 * BumpSize);
     }
 
-    private double CalculateGamma(VanillaOption option, SimpleQuote underlyingQuote, BlackScholesMertonProcess process)
+    private double CalculateGamma(VanillaOption option, SimpleQuote underlyingQuote, BlackScholesMertonProcess process, FdBlackScholesVanillaEngine engine)
     {
         var originalSpot = underlyingQuote.value();
+        option.setPricingEngine(engine); // Ensure fresh calculation
         var priceOriginal = option.NPV();
 
         // Up bump
         underlyingQuote.setValue(originalSpot + BumpSize);
+        option.setPricingEngine(engine); // Force recalculation
         var priceUp = option.NPV();
 
         // Down bump
         underlyingQuote.setValue(originalSpot - BumpSize);
+        option.setPricingEngine(engine); // Force recalculation
         var priceDown = option.NPV();
 
         // Restore
         underlyingQuote.setValue(originalSpot);
+        option.setPricingEngine(engine); // Restore state
 
         return (priceUp - 2 * priceOriginal + priceDown) / (BumpSize * BumpSize);
     }
