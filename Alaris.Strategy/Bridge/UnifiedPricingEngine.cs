@@ -288,15 +288,15 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
                 var delta = CalculateDelta(option, underlyingQuote, bsmProcess);
                 var gamma = CalculateGamma(option, underlyingQuote, bsmProcess);
                 var vega = CalculateVegaQuantlib(option, flatVolTs, bsmProcess, parameters);
-                var theta = CalculateThetaQuantlib(option, parameters);
+                var theta = CalculateThetaQuantlib(option, fdEngine, bsmProcess, parameters);
                 var rho = CalculateRhoQuantlib(option, flatRateTs, bsmProcess, parameters);
 
                 var timeToExpiry = CalculateTimeToExpiry(parameters.ValuationDate, parameters.Expiry);
                 var moneyness = parameters.UnderlyingPrice / parameters.Strike;
 
-                // Clean up
-                option.Dispose();
+                // Clean up (dispose in reverse order of creation)
                 fdEngine.Dispose();
+                option.Dispose();
                 bsmProcess.Dispose();
                 volatilityHandle.Dispose();
                 flatVolTs.Dispose();
@@ -329,7 +329,8 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
     }
 
     /// <summary>
-    /// Prices an option using the Alaris.Double engine (double boundary method for negative rates).
+    /// Prices an option using the Alaris.Double Healy (2021) framework for negative rates.
+    /// Uses DoubleBoundaryApproximation with QD+ method and early exercise premium calculation.
     /// </summary>
     private Task<OptionPricing> PriceWithDouble(OptionParameters parameters)
     {
@@ -340,74 +341,38 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
                 // Set evaluation date
                 Settings.instance().setEvaluationDate(parameters.ValuationDate);
 
-                // Create underlying quote
-                var underlyingQuote = new SimpleQuote(parameters.UnderlyingPrice);
-                var underlyingHandle = new QuoteHandle(underlyingQuote);
-
-                // Create term structures
-                var dayCounter = new Actual365Fixed();
-
-                var flatRateTs = new FlatForward(
-                    parameters.ValuationDate,
-                    parameters.RiskFreeRate,
-                    dayCounter);
-                var riskFreeRateHandle = new YieldTermStructureHandle(flatRateTs);
-
-                var flatDividendTs = new FlatForward(
-                    parameters.ValuationDate,
-                    parameters.DividendYield,
-                    dayCounter);
-                var dividendYieldHandle = new YieldTermStructureHandle(flatDividendTs);
-
-                var flatVolTs = new BlackConstantVol(
-                    parameters.ValuationDate,
-                    new TARGET(),
-                    parameters.ImpliedVolatility,
-                    dayCounter);
-                var volatilityHandle = new BlackVolTermStructureHandle(flatVolTs);
-
-                // Create Black-Scholes-Merton process
-                var bsmProcess = new BlackScholesMertonProcess(
-                    underlyingHandle,
-                    dividendYieldHandle,
-                    riskFreeRateHandle,
-                    volatilityHandle);
-
-                // Create option
-                var exercise = new AmericanExercise(parameters.ValuationDate, parameters.Expiry);
-                var payoff = new PlainVanillaPayoff(parameters.OptionType, parameters.Strike);
-                var option = new VanillaOption(payoff, exercise);
-
-                // Use DoubleBoundaryEngine for negative rates
-                using var doubleEngine = new Alaris.Double.DoubleBoundaryEngine(
-                    bsmProcess,
-                    underlyingQuote);
-
-                var result = doubleEngine.Calculate(option);
-
                 var timeToExpiry = CalculateTimeToExpiry(parameters.ValuationDate, parameters.Expiry);
-                var moneyness = parameters.UnderlyingPrice / parameters.Strike;
 
-                // Clean up
-                option.Dispose();
-                bsmProcess.Dispose();
-                volatilityHandle.Dispose();
-                flatVolTs.Dispose();
-                dividendYieldHandle.Dispose();
-                flatDividendTs.Dispose();
-                riskFreeRateHandle.Dispose();
-                flatRateTs.Dispose();
-                underlyingHandle.Dispose();
-                underlyingQuote.Dispose();
+                // Use DoubleBoundaryApproximation for Healy (2021) framework
+                var approx = new Alaris.Double.DoubleBoundaryApproximation(
+                    parameters.UnderlyingPrice,
+                    parameters.Strike,
+                    timeToExpiry,
+                    parameters.RiskFreeRate,
+                    parameters.DividendYield,
+                    parameters.ImpliedVolatility,
+                    parameters.OptionType == Option.Type.Call);
+
+                // Calculate option price using QD+ approximation + early exercise premium
+                var price = approx.ApproximateValue();
+
+                // Calculate Greeks using finite differences
+                var delta = CalculateDeltaWithDouble(parameters);
+                var gamma = CalculateGammaWithDouble(parameters);
+                var vega = CalculateVegaWithDouble(parameters);
+                var theta = CalculateThetaWithDouble(parameters);
+                var rho = CalculateRhoWithDouble(parameters);
+
+                var moneyness = parameters.UnderlyingPrice / parameters.Strike;
 
                 return new OptionPricing
                 {
-                    Price = result.Price,
-                    Delta = result.Delta,
-                    Gamma = result.Gamma,
-                    Vega = result.Vega,
-                    Theta = result.Theta,
-                    Rho = result.Rho,
+                    Price = price,
+                    Delta = delta,
+                    Gamma = gamma,
+                    Vega = vega,
+                    Theta = theta,
+                    Rho = rho,
                     ImpliedVolatility = parameters.ImpliedVolatility,
                     TimeToExpiry = timeToExpiry,
                     Moneyness = moneyness
@@ -415,10 +380,166 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Error pricing option with Alaris.Double");
+                _logger?.LogError(ex, "Error pricing option with Alaris.Double Healy (2021) framework");
                 throw;
             }
         });
+    }
+
+    // Greek calculations for Alaris.Double (Healy 2021 framework)
+
+    private double CalculateDeltaWithDouble(OptionParameters parameters)
+    {
+        var originalSpot = parameters.UnderlyingPrice;
+        var timeToExpiry = CalculateTimeToExpiry(parameters.ValuationDate, parameters.Expiry);
+
+        // Up bump
+        var paramsUp = CloneParameters(parameters);
+        paramsUp.UnderlyingPrice = originalSpot + BumpSize;
+        var approxUp = new Alaris.Double.DoubleBoundaryApproximation(
+            paramsUp.UnderlyingPrice, paramsUp.Strike, timeToExpiry,
+            paramsUp.RiskFreeRate, paramsUp.DividendYield, paramsUp.ImpliedVolatility,
+            paramsUp.OptionType == Option.Type.Call);
+        var priceUp = approxUp.ApproximateValue();
+
+        // Down bump
+        var paramsDown = CloneParameters(parameters);
+        paramsDown.UnderlyingPrice = originalSpot - BumpSize;
+        var approxDown = new Alaris.Double.DoubleBoundaryApproximation(
+            paramsDown.UnderlyingPrice, paramsDown.Strike, timeToExpiry,
+            paramsDown.RiskFreeRate, paramsDown.DividendYield, paramsDown.ImpliedVolatility,
+            paramsDown.OptionType == Option.Type.Call);
+        var priceDown = approxDown.ApproximateValue();
+
+        return (priceUp - priceDown) / (2 * BumpSize);
+    }
+
+    private double CalculateGammaWithDouble(OptionParameters parameters)
+    {
+        var originalSpot = parameters.UnderlyingPrice;
+        var timeToExpiry = CalculateTimeToExpiry(parameters.ValuationDate, parameters.Expiry);
+
+        // Original price
+        var approxOriginal = new Alaris.Double.DoubleBoundaryApproximation(
+            originalSpot, parameters.Strike, timeToExpiry,
+            parameters.RiskFreeRate, parameters.DividendYield, parameters.ImpliedVolatility,
+            parameters.OptionType == Option.Type.Call);
+        var priceOriginal = approxOriginal.ApproximateValue();
+
+        // Up bump
+        var paramsUp = CloneParameters(parameters);
+        paramsUp.UnderlyingPrice = originalSpot + BumpSize;
+        var approxUp = new Alaris.Double.DoubleBoundaryApproximation(
+            paramsUp.UnderlyingPrice, paramsUp.Strike, timeToExpiry,
+            paramsUp.RiskFreeRate, paramsUp.DividendYield, paramsUp.ImpliedVolatility,
+            paramsUp.OptionType == Option.Type.Call);
+        var priceUp = approxUp.ApproximateValue();
+
+        // Down bump
+        var paramsDown = CloneParameters(parameters);
+        paramsDown.UnderlyingPrice = originalSpot - BumpSize;
+        var approxDown = new Alaris.Double.DoubleBoundaryApproximation(
+            paramsDown.UnderlyingPrice, paramsDown.Strike, timeToExpiry,
+            paramsDown.RiskFreeRate, paramsDown.DividendYield, paramsDown.ImpliedVolatility,
+            paramsDown.OptionType == Option.Type.Call);
+        var priceDown = approxDown.ApproximateValue();
+
+        return (priceUp - 2 * priceOriginal + priceDown) / (BumpSize * BumpSize);
+    }
+
+    private double CalculateVegaWithDouble(OptionParameters parameters)
+    {
+        var originalVol = parameters.ImpliedVolatility;
+        var timeToExpiry = CalculateTimeToExpiry(parameters.ValuationDate, parameters.Expiry);
+
+        // Up bump
+        var paramsUp = CloneParameters(parameters);
+        paramsUp.ImpliedVolatility = originalVol + VolBumpSize;
+        var approxUp = new Alaris.Double.DoubleBoundaryApproximation(
+            paramsUp.UnderlyingPrice, paramsUp.Strike, timeToExpiry,
+            paramsUp.RiskFreeRate, paramsUp.DividendYield, paramsUp.ImpliedVolatility,
+            paramsUp.OptionType == Option.Type.Call);
+        var priceUp = approxUp.ApproximateValue();
+
+        // Down bump
+        var paramsDown = CloneParameters(parameters);
+        paramsDown.ImpliedVolatility = originalVol - VolBumpSize;
+        var approxDown = new Alaris.Double.DoubleBoundaryApproximation(
+            paramsDown.UnderlyingPrice, paramsDown.Strike, timeToExpiry,
+            paramsDown.RiskFreeRate, paramsDown.DividendYield, paramsDown.ImpliedVolatility,
+            paramsDown.OptionType == Option.Type.Call);
+        var priceDown = approxDown.ApproximateValue();
+
+        return (priceUp - priceDown) / (2 * VolBumpSize);
+    }
+
+    private double CalculateThetaWithDouble(OptionParameters parameters)
+    {
+        var originalDate = parameters.ValuationDate;
+        var timeToExpiry = CalculateTimeToExpiry(parameters.ValuationDate, parameters.Expiry);
+
+        // Original price
+        var approxOriginal = new Alaris.Double.DoubleBoundaryApproximation(
+            parameters.UnderlyingPrice, parameters.Strike, timeToExpiry,
+            parameters.RiskFreeRate, parameters.DividendYield, parameters.ImpliedVolatility,
+            parameters.OptionType == Option.Type.Call);
+        var priceOriginal = approxOriginal.ApproximateValue();
+
+        // Forward date by 1 day
+        var dayBump = 1;
+        var forwardDate = originalDate.Add(new Period(dayBump, TimeUnit.Days));
+        var timeToExpiryForward = CalculateTimeToExpiry(forwardDate, parameters.Expiry);
+
+        var approxForward = new Alaris.Double.DoubleBoundaryApproximation(
+            parameters.UnderlyingPrice, parameters.Strike, timeToExpiryForward,
+            parameters.RiskFreeRate, parameters.DividendYield, parameters.ImpliedVolatility,
+            parameters.OptionType == Option.Type.Call);
+        var priceForward = approxForward.ApproximateValue();
+
+        // Theta is price change per day (negative for time decay)
+        return (priceForward - priceOriginal) / dayBump;
+    }
+
+    private double CalculateRhoWithDouble(OptionParameters parameters)
+    {
+        var originalRate = parameters.RiskFreeRate;
+        var timeToExpiry = CalculateTimeToExpiry(parameters.ValuationDate, parameters.Expiry);
+        var rateBump = 0.01; // 1% rate bump
+
+        // Up bump
+        var paramsUp = CloneParameters(parameters);
+        paramsUp.RiskFreeRate = originalRate + rateBump;
+        var approxUp = new Alaris.Double.DoubleBoundaryApproximation(
+            paramsUp.UnderlyingPrice, paramsUp.Strike, timeToExpiry,
+            paramsUp.RiskFreeRate, paramsUp.DividendYield, paramsUp.ImpliedVolatility,
+            paramsUp.OptionType == Option.Type.Call);
+        var priceUp = approxUp.ApproximateValue();
+
+        // Down bump
+        var paramsDown = CloneParameters(parameters);
+        paramsDown.RiskFreeRate = originalRate - rateBump;
+        var approxDown = new Alaris.Double.DoubleBoundaryApproximation(
+            paramsDown.UnderlyingPrice, paramsDown.Strike, timeToExpiry,
+            paramsDown.RiskFreeRate, paramsDown.DividendYield, paramsDown.ImpliedVolatility,
+            paramsDown.OptionType == Option.Type.Call);
+        var priceDown = approxDown.ApproximateValue();
+
+        return (priceUp - priceDown) / (2 * rateBump);
+    }
+
+    private OptionParameters CloneParameters(OptionParameters original)
+    {
+        return new OptionParameters
+        {
+            UnderlyingPrice = original.UnderlyingPrice,
+            Strike = original.Strike,
+            Expiry = original.Expiry,
+            ImpliedVolatility = original.ImpliedVolatility,
+            RiskFreeRate = original.RiskFreeRate,
+            DividendYield = original.DividendYield,
+            OptionType = original.OptionType,
+            ValuationDate = original.ValuationDate
+        };
     }
 
     // Helper methods for Greek calculations
@@ -511,19 +632,26 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
         return (priceUp - priceDown) / (2 * VolBumpSize);
     }
 
-    private double CalculateThetaQuantlib(VanillaOption option, OptionParameters parameters)
+    private double CalculateThetaQuantlib(VanillaOption option, FdBlackScholesVanillaEngine engine,
+        BlackScholesMertonProcess process, OptionParameters parameters)
     {
         var originalDate = parameters.ValuationDate;
-        var dayBump = 1; // 1 day
+        var priceOriginal = option.NPV();
 
-        // Forward date by 1 day
+        // Forward date by 1 day and recalculate
+        var dayBump = 1; // 1 day
         var forwardDate = originalDate.Add(new Period(dayBump, TimeUnit.Days));
         Settings.instance().setEvaluationDate(forwardDate);
-        var priceForward = option.NPV();
 
-        // Restore date and get original price
+        // Recreate engine to force recalculation with new date
+        var forwardEngine = new FdBlackScholesVanillaEngine(process, 100, 100);
+        option.setPricingEngine(forwardEngine);
+        var priceForward = option.NPV();
+        forwardEngine.Dispose();
+
+        // Restore original date and engine
         Settings.instance().setEvaluationDate(originalDate);
-        var priceOriginal = option.NPV();
+        option.setPricingEngine(engine);
 
         // Theta is price change per day (negative for time decay)
         return (priceForward - priceOriginal) / dayBump;
