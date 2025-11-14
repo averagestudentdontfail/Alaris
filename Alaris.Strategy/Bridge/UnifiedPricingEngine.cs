@@ -35,27 +35,37 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
     }
 
     /// <summary>
-    /// Determines the appropriate pricing regime based on interest rate and dividend yield.
+    /// Determines the appropriate pricing regime based on interest rate, dividend yield, and option type.
     /// </summary>
     /// <param name="riskFreeRate">The risk-free interest rate (can be negative).</param>
     /// <param name="dividendYield">The continuous dividend yield (can be negative).</param>
+    /// <param name="isCall">True for call options, false for put options.</param>
     /// <returns>The pricing regime to use.</returns>
-    public static PricingRegime DetermineRegime(double riskFreeRate, double dividendYield)
+    public static PricingRegime DetermineRegime(double riskFreeRate, double dividendYield, bool isCall)
     {
         if (riskFreeRate >= 0)
         {
-            // Standard regime: positive rates
+            // Check for call double boundary: 0 < r < q
+            if (isCall && dividendYield > riskFreeRate)
+            {
+                return PricingRegime.DoubleBoundary;
+            }
+            // Standard regime: positive rates, single boundary
             return PricingRegime.PositiveRates;
-        }
-        else if (dividendYield < riskFreeRate)
-        {
-            // Double boundary regime: r < 0 and q < r
-            return PricingRegime.DoubleBoundary;
         }
         else
         {
-            // Negative rates but no double boundary: r < 0 and q >= r
-            return PricingRegime.NegativeRatesSingleBoundary;
+            // Negative rate regime
+            if (!isCall && dividendYield < riskFreeRate)
+            {
+                // Put double boundary regime: q < r < 0
+                return PricingRegime.DoubleBoundary;
+            }
+            else
+            {
+                // Negative rates but single boundary
+                return PricingRegime.NegativeRatesSingleBoundary;
+            }
         }
     }
 
@@ -67,13 +77,15 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
         ArgumentNullException.ThrowIfNull(parameters);
         parameters.Validate();
 
-        var regime = DetermineRegime(parameters.RiskFreeRate, parameters.DividendYield);
+        var isCall = parameters.OptionType == Option.Type.Call;
+        var regime = DetermineRegime(parameters.RiskFreeRate, parameters.DividendYield, isCall);
 
         _logger?.LogDebug(
-            "Pricing option: S={S}, K={K}, r={r}, q={q}, σ={sigma}, T={T:F4}, Regime={regime}",
+            "Pricing option: S={S}, K={K}, r={r}, q={q}, σ={sigma}, T={T:F4}, Type={type}, Regime={regime}",
             parameters.UnderlyingPrice, parameters.Strike, parameters.RiskFreeRate,
             parameters.DividendYield, parameters.ImpliedVolatility,
             CalculateTimeToExpiry(parameters.ValuationDate, parameters.Expiry),
+            isCall ? "Call" : "Put",
             regime);
 
         return regime switch
@@ -638,16 +650,25 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
         var originalDate = parameters.ValuationDate;
         var priceOriginal = option.NPV();
 
-        // Forward date by 1 day and recalculate
+        // Forward date by 1 day - need to recreate option with new exercise dates
         var dayBump = 1; // 1 day
         var forwardDate = originalDate.Add(new Period(dayBump, TimeUnit.Days));
         Settings.instance().setEvaluationDate(forwardDate);
 
-        // Recreate engine to force recalculation with new date
+        // Recreate option with new evaluation date as exercise start
+        var forwardExercise = new AmericanExercise(forwardDate, parameters.Expiry);
+        var payoff = new PlainVanillaPayoff(parameters.OptionType, parameters.Strike);
+        var forwardOption = new VanillaOption(payoff, forwardExercise);
+
+        // Price with forward date
         var forwardEngine = new FdBlackScholesVanillaEngine(process, 100, 100);
-        option.setPricingEngine(forwardEngine);
-        var priceForward = option.NPV();
+        forwardOption.setPricingEngine(forwardEngine);
+        var priceForward = forwardOption.NPV();
+
+        // Clean up forward objects
+        forwardOption.Dispose();
         forwardEngine.Dispose();
+        forwardExercise.Dispose();
 
         // Restore original date and engine
         Settings.instance().setEvaluationDate(originalDate);
