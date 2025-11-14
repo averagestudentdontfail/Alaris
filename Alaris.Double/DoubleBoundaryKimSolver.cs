@@ -202,36 +202,10 @@ public sealed class DoubleBoundaryKimSolver
                 // Early convergence: if BOTH boundaries show minimal change on first iteration
                 if (maxUpperChange < TOLERANCE * 10 && maxLowerChange < TOLERANCE * 10)
                 {
-                    // Two possible scenarios:
-                    // 1. Input is already optimal (QD+ perfect) - preserve it
-                    // 2. Input is so bad that solver can't move (stuck) - fall back to QD+
-
-                    // Distinguish by checking if input is reasonable
-                    // For puts: upper should be 60%-90% of strike, lower should be 45%-85% of strike
-                    // Tighter bounds to exclude clearly wrong inputs like (50,40)
-                    double upperRatio = upperInitial[m - 1] / _strike;
-                    double lowerRatio = lowerInitial[m - 1] / _strike;
-
-                    bool upperReasonable = upperRatio >= 0.60 && upperRatio < 0.90;
-                    bool lowerReasonable = lowerRatio >= 0.45 && lowerRatio < 0.85;
-                    bool orderingCorrect = upperInitial[m - 1] > lowerInitial[m - 1];
-
-                    if (upperReasonable && lowerReasonable && orderingCorrect)
-                    {
-                        // Input is reasonable and converged - it's optimal, preserve it
-                        return (upperInitial, lowerInitial);
-                    }
-                    else
-                    {
-                        // Input is unreasonable and solver is stuck - fall back to fresh QD+
-                        var qdplus = new QdPlusApproximation(
-                            _spot, _strike, _maturity, _rate, _dividendYield, _volatility, _isCall);
-                        var (qdUpper, qdLower) = qdplus.CalculateBoundaries();
-
-                        double[] qdUpperArray = Enumerable.Repeat(qdUpper, m).ToArray();
-                        double[] qdLowerArray = Enumerable.Repeat(qdLower, m).ToArray();
-                        return (qdUpperArray, qdLowerArray);
-                    }
+                    // Input showed minimal change on first iteration
+                    // Since pre-check already validated reasonableness, input must be optimal
+                    // (unreasonable inputs would have been rejected by pre-check)
+                    return (upperInitial, lowerInitial);
                 }
             }
 
