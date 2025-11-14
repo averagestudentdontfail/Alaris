@@ -211,7 +211,8 @@
         </member>
         <member name="M:Alaris.Strategy.Bridge.UnifiedPricingEngine.PriceWithDouble(Alaris.Strategy.Model.OptionParameters)">
             <summary>
-            Prices an option using the Alaris.Double engine (double boundary method for negative rates).
+            Prices an option using the Alaris.Double Healy (2021) framework for negative rates.
+            Uses DoubleBoundaryApproximation with QD+ method and early exercise premium calculation.
             </summary>
         </member>
         <member name="T:Alaris.Strategy.Bridge.PricingRegime">
