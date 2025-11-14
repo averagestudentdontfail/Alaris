@@ -124,18 +124,21 @@ public sealed class DoubleBoundaryKimSolver
         _lowerRatioHistory.Clear();
         _currentIteration = 0;
 
+        double previousMaxChange = double.MaxValue;
+        int stagnationCount = 0;
+
         for (int iter = 0; iter < MAX_ITERATIONS; iter++)
         {
             _currentIteration = iter;
             double maxChange = 0.0;
             double[] upperNew = new double[m];
             double[] lowerNew = new double[m];
-            
+
             // FP-B' iteration (Equation 33)
             for (int i = 0; i < m; i++)
             {
                 double ti = i * _maturity / (m - 1);
-                
+
                 // Skip points before crossing time
                 if (ti < crossingTime - NUMERICAL_EPSILON)
                 {
@@ -143,26 +146,49 @@ public sealed class DoubleBoundaryKimSolver
                     lowerNew[i] = lower[i];
                     continue;
                 }
-                
+
                 // Update upper boundary using FP-B (Equations 30-32)
                 upperNew[i] = SolveUpperBoundaryPoint(ti, upper, lower, crossingTime);
-                
+
                 // CRITICAL: Update lower boundary using FP-B' (Equations 33-35)
                 // Uses the JUST-COMPUTED upper boundary (upperNew) instead of old value
                 double[] tempUpper = (double[])upper.Clone();
                 tempUpper[i] = upperNew[i]; // Use new upper value
                 lowerNew[i] = SolveLowerBoundaryPointStabilized(ti, lower, tempUpper, crossingTime);
-                
+
                 // Enforce constraints
                 (upperNew[i], lowerNew[i]) = EnforceConstraints(upperNew[i], lowerNew[i], ti);
-                
+
                 maxChange = Math.Max(maxChange, Math.Abs(upperNew[i] - upper[i]));
                 maxChange = Math.Max(maxChange, Math.Abs(lowerNew[i] - lower[i]));
             }
-            
+
+            // Early convergence: if input is already optimal, return it unchanged
+            if (iter == 0 && maxChange < TOLERANCE * 10)
+            {
+                // Input is already converged - return original values
+                return (upperInitial, lowerInitial);
+            }
+
+            // Stagnation detection: if making no progress, we're stuck
+            if (iter > 3 && Math.Abs(maxChange - previousMaxChange) < TOLERANCE)
+            {
+                stagnationCount++;
+                if (stagnationCount > 3)
+                {
+                    // Stuck - return current best attempt
+                    break;
+                }
+            }
+            else
+            {
+                stagnationCount = 0;
+            }
+
+            previousMaxChange = maxChange;
             upper = upperNew;
             lower = lowerNew;
-            
+
             if (maxChange < TOLERANCE)
                 break;
         }
