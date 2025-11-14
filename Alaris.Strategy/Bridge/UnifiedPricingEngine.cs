@@ -10,9 +10,9 @@ namespace Alaris.Strategy.Bridge;
 /// </summary>
 /// <remarks>
 /// Regime Detection:
-/// - If r >= 0: Use Alaris.Quantlib (standard American option pricing)
-/// - If r < 0 and q < r: Use Alaris.Double (double boundary method for negative rates)
-/// - If r < 0 and q >= r: Use Alaris.Quantlib (single boundary still applies)
+/// - If r &gt;= 0: Use Alaris.Quantlib (standard American option pricing)
+/// - If r &lt; 0 and q &lt; r: Use Alaris.Double (double boundary method for negative rates)
+/// - If r &lt; 0 and q &gt;= r: Use Alaris.Quantlib (single boundary still applies)
 /// </remarks>
 public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
 {
@@ -105,7 +105,8 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
         ArgumentNullException.ThrowIfNull(parameters);
         parameters.Validate();
 
-        var regime = DetermineRegime(parameters.RiskFreeRate, parameters.DividendYield);
+        var isCall = parameters.OptionType == Option.Type.Call;
+        var regime = DetermineRegime(parameters.RiskFreeRate, parameters.DividendYield, isCall);
 
         _logger?.LogInformation(
             "Pricing calendar spread: Regime={regime}, Strike={strike}, Front={frontDte}, Back={backDte}",
@@ -762,19 +763,19 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
 public enum PricingRegime
 {
     /// <summary>
-    /// Standard regime with positive interest rates (r >= 0).
+    /// Standard regime with positive interest rates (r &gt;= 0).
     /// Uses Alaris.Quantlib with single boundary.
     /// </summary>
     PositiveRates,
 
     /// <summary>
-    /// Double boundary regime with negative rates where q < r < 0.
+    /// Double boundary regime with negative rates where q &lt; r &lt; 0.
     /// Uses Alaris.Double with double boundary method.
     /// </summary>
     DoubleBoundary,
 
     /// <summary>
-    /// Negative rates but single boundary regime where r < 0 and q >= r.
+    /// Negative rates but single boundary regime where r &lt; 0 and q &gt;= r.
     /// Uses Alaris.Quantlib with single boundary.
     /// </summary>
     NegativeRatesSingleBoundary

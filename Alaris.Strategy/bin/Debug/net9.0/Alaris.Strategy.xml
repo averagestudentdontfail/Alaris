@@ -174,19 +174,31 @@
             Validates the calendar spread parameters.
             </summary>
         </member>
-        <!-- Badly formed XML comment ignored for member "T:Alaris.Strategy.Bridge.UnifiedPricingEngine" -->
+        <member name="T:Alaris.Strategy.Bridge.UnifiedPricingEngine">
+            <summary>
+            Unified pricing engine that automatically selects between Alaris.Double and Alaris.Quantlib
+            based on interest rate regime. Supports both positive and negative interest rates.
+            </summary>
+            <remarks>
+            Regime Detection:
+            - If r &gt;= 0: Use Alaris.Quantlib (standard American option pricing)
+            - If r &lt; 0 and q &lt; r: Use Alaris.Double (double boundary method for negative rates)
+            - If r &lt; 0 and q &gt;= r: Use Alaris.Quantlib (single boundary still applies)
+            </remarks>
+        </member>
         <member name="M:Alaris.Strategy.Bridge.UnifiedPricingEngine.#ctor(Microsoft.Extensions.Logging.ILogger{Alaris.Strategy.Bridge.UnifiedPricingEngine})">
             <summary>
             Initializes a new instance of the UnifiedPricingEngine.
             </summary>
             <param name="logger">Optional logger for diagnostics.</param>
         </member>
-        <member name="M:Alaris.Strategy.Bridge.UnifiedPricingEngine.DetermineRegime(System.Double,System.Double)">
+        <member name="M:Alaris.Strategy.Bridge.UnifiedPricingEngine.DetermineRegime(System.Double,System.Double,System.Boolean)">
             <summary>
-            Determines the appropriate pricing regime based on interest rate and dividend yield.
+            Determines the appropriate pricing regime based on interest rate, dividend yield, and option type.
             </summary>
             <param name="riskFreeRate">The risk-free interest rate (can be negative).</param>
             <param name="dividendYield">The continuous dividend yield (can be negative).</param>
+            <param name="isCall">True for call options, false for put options.</param>
             <returns>The pricing regime to use.</returns>
         </member>
         <member name="M:Alaris.Strategy.Bridge.UnifiedPricingEngine.PriceOption(Alaris.Strategy.Model.OptionParameters)">
@@ -222,12 +234,22 @@
         </member>
         <member name="F:Alaris.Strategy.Bridge.PricingRegime.PositiveRates">
             <summary>
-            Standard regime with positive interest rates (r >= 0).
+            Standard regime with positive interest rates (r &gt;= 0).
             Uses Alaris.Quantlib with single boundary.
             </summary>
         </member>
-        <!-- Badly formed XML comment ignored for member "F:Alaris.Strategy.Bridge.PricingRegime.DoubleBoundary" -->
-        <!-- Badly formed XML comment ignored for member "F:Alaris.Strategy.Bridge.PricingRegime.NegativeRatesSingleBoundary" -->
+        <member name="F:Alaris.Strategy.Bridge.PricingRegime.DoubleBoundary">
+            <summary>
+            Double boundary regime with negative rates where q &lt; r &lt; 0.
+            Uses Alaris.Double with double boundary method.
+            </summary>
+        </member>
+        <member name="F:Alaris.Strategy.Bridge.PricingRegime.NegativeRatesSingleBoundary">
+            <summary>
+            Negative rates but single boundary regime where r &lt; 0 and q &gt;= r.
+            Uses Alaris.Quantlib with single boundary.
+            </summary>
+        </member>
         <member name="T:Alaris.Strategy.Control">
             <summary>
             Main control class for the earnings volatility calendar spread strategy.
