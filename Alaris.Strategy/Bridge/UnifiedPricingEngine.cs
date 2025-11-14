@@ -293,7 +293,8 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
                 var fdEngine = new FdBlackScholesVanillaEngine(bsmProcess, 100, 100);
                 option.setPricingEngine(fdEngine);
 
-                // Calculate price
+                // Calculate price - force recalculation to avoid stale cache
+                option.setPricingEngine(fdEngine);
                 var price = option.NPV();
 
                 // Calculate Greeks using finite differences
