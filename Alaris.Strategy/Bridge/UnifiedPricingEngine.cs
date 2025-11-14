@@ -582,6 +582,7 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
     {
         var originalSpot = underlyingQuote.value();
         option.setPricingEngine(engine); // Ensure fresh calculation
+        option.setPricingEngine(engine); // Force complete cache invalidation
         var priceOriginal = option.NPV();
 
         // Up bump
