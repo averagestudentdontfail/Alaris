@@ -105,11 +105,13 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
         ArgumentNullException.ThrowIfNull(parameters);
         parameters.Validate();
 
-        var regime = DetermineRegime(parameters.RiskFreeRate, parameters.DividendYield);
+        var isCall = parameters.OptionType == Option.Type.Call;
+        var regime = DetermineRegime(parameters.RiskFreeRate, parameters.DividendYield, isCall);
 
         _logger?.LogInformation(
-            "Pricing calendar spread: Regime={regime}, Strike={strike}, Front={frontDte}, Back={backDte}",
+            "Pricing calendar spread: Regime={regime}, Type={type}, Strike={strike}, Front={frontDte}, Back={backDte}",
             regime,
+            isCall ? "Call" : "Put",
             parameters.Strike,
             CalculateDaysToExpiry(parameters.ValuationDate, parameters.FrontExpiry),
             CalculateDaysToExpiry(parameters.ValuationDate, parameters.BackExpiry));
@@ -152,16 +154,14 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
         var spreadTheta = backPricing.Theta - frontPricing.Theta;
         var spreadRho = backPricing.Rho - frontPricing.Rho;
 
-        // Estimate max profit and max loss
         // Max loss is the debit paid (spread cost)
         var maxLoss = spreadCost;
 
-        // Max profit occurs when underlying is at strike at front expiration
-        // Approximation: back option retains most value, front expires worthless
-        var maxProfit = EstimateMaxProfit(backPricing, frontPricing, spreadCost);
+        // Calculate accurate max profit using grid search at front expiration
+        var maxProfit = await CalculateMaxProfit(parameters, spreadCost);
 
-        // Breakeven is approximate (requires more sophisticated modeling)
-        var breakEven = parameters.Strike;
+        // Calculate accurate breakeven using numerical solver
+        var breakEven = await CalculateBreakEven(parameters, spreadCost);
 
         return new CalendarSpreadPricing
         {
@@ -765,12 +765,145 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
         return (priceUp - priceDown) / (2 * rateBump);
     }
 
-    private double EstimateMaxProfit(OptionPricing backOption, OptionPricing frontOption, double spreadCost)
+    /// <summary>
+    /// Calculates the maximum profit potential of a calendar spread using grid search.
+    /// </summary>
+    /// <param name="parameters">Calendar spread parameters.</param>
+    /// <param name="spreadCost">The initial cost of the spread (debit paid).</param>
+    /// <returns>Maximum profit potential at front expiration.</returns>
+    private async Task<double> CalculateMaxProfit(CalendarSpreadParameters parameters, double spreadCost)
     {
-        // Simplified estimation: assumes front option expires worthless
-        // and back option retains significant value
-        // More accurate calculation would require Monte Carlo or grid search
-        return backOption.Price * 0.8; // Conservative estimate
+        // Grid search across underlying price range at front expiration
+        // We're looking for the price that maximizes: BackValue(S) - FrontValue(S) - SpreadCost
+
+        var strike = parameters.Strike;
+        var underlyingMin = strike * 0.5;  // Search from 50% to 150% of strike
+        var underlyingMax = strike * 1.5;
+        var gridPoints = 100;
+        var step = (underlyingMax - underlyingMin) / gridPoints;
+
+        var maxProfitValue = double.NegativeInfinity;
+
+        for (int i = 0; i <= gridPoints; i++)
+        {
+            var underlyingPrice = underlyingMin + i * step;
+
+            // Calculate front option value at expiration (intrinsic value only)
+            var frontValue = CalculateIntrinsicValue(underlyingPrice, strike, parameters.OptionType);
+
+            // Calculate back option value at front expiration (has time value remaining)
+            var backParams = new OptionParameters
+            {
+                UnderlyingPrice = underlyingPrice,
+                Strike = strike,
+                Expiry = parameters.BackExpiry,
+                ImpliedVolatility = parameters.ImpliedVolatility,
+                RiskFreeRate = parameters.RiskFreeRate,
+                DividendYield = parameters.DividendYield,
+                OptionType = parameters.OptionType,
+                ValuationDate = parameters.FrontExpiry  // Value at front expiration
+            };
+
+            var backPricing = await PriceOption(backParams);
+
+            // P&L = Value of long back - Value of short front - Initial cost
+            var profitLoss = backPricing.Price - frontValue - spreadCost;
+
+            if (profitLoss > maxProfitValue)
+            {
+                maxProfitValue = profitLoss;
+            }
+        }
+
+        return Math.Max(0, maxProfitValue); // Max profit cannot be negative
+    }
+
+    /// <summary>
+    /// Calculates the breakeven point(s) for a calendar spread using bisection method.
+    /// </summary>
+    /// <param name="parameters">Calendar spread parameters.</param>
+    /// <param name="spreadCost">The initial cost of the spread (debit paid).</param>
+    /// <returns>Approximate breakeven underlying price at front expiration.</returns>
+    private async Task<double> CalculateBreakEven(CalendarSpreadParameters parameters, double spreadCost)
+    {
+        // Use bisection to find underlying price where spread P&L = 0
+        // At breakeven: BackValue(S) - FrontValue(S) = SpreadCost
+
+        var strike = parameters.Strike;
+        var tolerance = 0.01; // $0.01 tolerance
+        var maxIterations = 50;
+
+        // Calendar spreads typically have breakeven near the strike
+        // Search in a reasonable range around strike
+        var lowerBound = strike * 0.7;
+        var upperBound = strike * 1.3;
+
+        for (int iter = 0; iter < maxIterations; iter++)
+        {
+            var midPoint = (lowerBound + upperBound) / 2.0;
+
+            // Calculate spread value at this underlying price
+            var frontValue = CalculateIntrinsicValue(midPoint, strike, parameters.OptionType);
+
+            var backParams = new OptionParameters
+            {
+                UnderlyingPrice = midPoint,
+                Strike = strike,
+                Expiry = parameters.BackExpiry,
+                ImpliedVolatility = parameters.ImpliedVolatility,
+                RiskFreeRate = parameters.RiskFreeRate,
+                DividendYield = parameters.DividendYield,
+                OptionType = parameters.OptionType,
+                ValuationDate = parameters.FrontExpiry
+            };
+
+            var backPricing = await PriceOption(backParams);
+            var spreadValue = backPricing.Price - frontValue;
+            var profitLoss = spreadValue - spreadCost;
+
+            if (Math.Abs(profitLoss) < tolerance)
+            {
+                return midPoint; // Found breakeven
+            }
+
+            // Adjust search bounds based on whether we're above or below breakeven
+            if (profitLoss > 0)
+            {
+                // Spread is profitable, breakeven is at a more extreme price
+                // For calendar spreads, max profit is typically near strike
+                // If we're profitable at midpoint, breakeven is further out
+                if (midPoint > strike)
+                    lowerBound = midPoint;
+                else
+                    upperBound = midPoint;
+            }
+            else
+            {
+                // Spread is unprofitable, breakeven is closer to strike
+                if (midPoint > strike)
+                    upperBound = midPoint;
+                else
+                    lowerBound = midPoint;
+            }
+        }
+
+        // Return strike as default if no convergence (calendar spreads typically break even near strike)
+        return strike;
+    }
+
+    /// <summary>
+    /// Calculates the intrinsic value of an option at expiration.
+    /// </summary>
+    private static double CalculateIntrinsicValue(double underlyingPrice, double strike, Option.Type optionType)
+    {
+        if (optionType == Option.Type.Call)
+        {
+            return Math.Max(0, underlyingPrice - strike);
+        }
+        else
+        {
+            return Math.Max(0, strike - underlyingPrice);
+        }
     }
 
     private static double CalculateTimeToExpiry(Date valuationDate, Date expiryDate)
