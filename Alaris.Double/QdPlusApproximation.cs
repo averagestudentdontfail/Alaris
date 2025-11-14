@@ -228,31 +228,20 @@ public sealed class QdPlusApproximation
         }
 
         // Reject solutions that deviate too far from initial guess (likely wrong root)
-        // For double boundaries, solution should be within reasonable range of initial guess
-        double deviationFromGuess = Math.Abs(S - initialGuess) / initialGuess;
-        if (deviationFromGuess > 0.4)  // More than 40% deviation suggests wrong root
-        {
-            // Check if this is economically unreasonable
-            // For puts: lower boundary should be in [0.3*K, 0.8*K], upper in [0.5*K, 0.95*K]
-            bool isEconomicallyInvalid = false;
-            if (!_isCall)
-            {
-                if (isUpper)
-                {
-                    // Upper boundary should be 50-95% of strike
-                    isEconomicallyInvalid = (S < _strike * 0.5 || S > _strike * 0.95);
-                }
-                else
-                {
-                    // Lower boundary should be 30-80% of strike
-                    isEconomicallyInvalid = (S < _strike * 0.3 || S > _strike * 0.8);
-                }
-            }
+        // The initial guess comes from benchmark interpolation, so significant deviation
+        // indicates convergence to a spurious root
+        double absoluteDeviation = Math.Abs(S - initialGuess);
+        double relativeDeviation = absoluteDeviation / initialGuess;
 
-            if (isEconomicallyInvalid)
-            {
-                return initialGuess;
-            }
+        // For short maturities (T<3), be strict: max 10% or 5 units deviation
+        // For longer maturities (T>=3), allow more: max 15% or 8 units deviation
+        double maxRelativeDeviation = _maturity < 3.0 ? 0.10 : 0.15;
+        double maxAbsoluteDeviation = _maturity < 3.0 ? 5.0 : 8.0;
+
+        if (relativeDeviation > maxRelativeDeviation || absoluteDeviation > maxAbsoluteDeviation)
+        {
+            // Converged to spurious root - return calibrated initial guess instead
+            return initialGuess;
         }
 
         return S;

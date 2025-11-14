@@ -196,9 +196,9 @@ public sealed class DoubleBoundaryKimSolver
 
         double ratio = Ni / Di;
 
-        // For puts, ratio should be < 1 (boundary < strike)
-        // Tighten threshold - correct ratio for Healy benchmark is ~0.70
-        if (!_isCall && ratio >= 0.80)
+        // For puts, ratio must be < 1 (boundary < strike) - this is a physical constraint
+        // Only reject if ratio > 1.0 (physically impossible), not at arbitrary threshold
+        if (!_isCall && ratio >= 1.0)
             return InterpolateBoundary(upper, ti);
 
         double result = _strike * ratio;
@@ -207,21 +207,10 @@ public sealed class DoubleBoundaryKimSolver
         if (double.IsNaN(result) || double.IsInfinity(result))
             return InterpolateBoundary(upper, ti);
 
-        // Sanity check: Kim refinement shouldn't deviate too far from initial guess
-        // If change is > 3%, likely converging to wrong solution
-        double currentBoundary = InterpolateBoundary(upper, ti);
-        double percentChange = Math.Abs(result - currentBoundary) / currentBoundary;
-        if (percentChange > 0.03) // Max 3% change per iteration
-        {
-            // Damp the change to prevent large jumps
-            double damped = currentBoundary + 0.03 * Math.Sign(result - currentBoundary) * currentBoundary;
-            result = damped;
-        }
-
-        // For puts, upper boundary must be less than strike
+        // For puts, upper boundary must be less than strike and positive
         if (!_isCall)
         {
-            result = Math.Min(result, _strike * 0.98);  // Stay below strike with margin
+            result = Math.Min(result, _strike * 0.999);  // Stay below strike (but allow close values)
             result = Math.Max(result, NUMERICAL_EPSILON);  // Must be positive
         }
 
@@ -252,32 +241,18 @@ public sealed class DoubleBoundaryKimSolver
         double ratio = NiPrime / DiPrime;
         double upperAtTi = InterpolateBoundary(upperNew, ti);
 
-        // For puts, lower boundary ratio should be < upper/strike
-        // Tighten threshold - correct ratio for Healy benchmark is ~0.59
-        if (!_isCall && ratio >= 0.70)
-            return InterpolateBoundary(lowerOld, ti);
-
+        // For puts, lower boundary must be < upper boundary - this is a physical constraint
+        // Only reject if result would exceed upper (physically impossible)
         double result = _strike * ratio;
 
         // Safeguard against unreasonable values
         if (double.IsNaN(result) || double.IsInfinity(result))
             return InterpolateBoundary(lowerOld, ti);
 
-        // Sanity check: Kim refinement shouldn't deviate too far from initial guess
-        // If change is > 3%, likely converging to wrong solution
-        double currentBoundary = InterpolateBoundary(lowerOld, ti);
-        double percentChange = Math.Abs(result - currentBoundary) / currentBoundary;
-        if (percentChange > 0.03) // Max 3% change per iteration
-        {
-            // Damp the change to prevent large jumps
-            double damped = currentBoundary + 0.03 * Math.Sign(result - currentBoundary) * currentBoundary;
-            result = damped;
-        }
-
         // For puts, lower boundary must be less than upper and positive
         if (!_isCall)
         {
-            result = Math.Min(result, upperAtTi * 0.95); // Keep well below upper
+            result = Math.Min(result, upperAtTi * 0.999); // Stay below upper (but allow close values)
             result = Math.Max(result, NUMERICAL_EPSILON); // Keep positive
         }
 
