@@ -651,24 +651,55 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
         var originalDate = parameters.ValuationDate;
         var priceOriginal = option.NPV();
 
-        // Forward date by 1 day - need to recreate option with new exercise dates
+        // Forward date by 1 day - need to recreate EVERYTHING with new date
         var dayBump = 1; // 1 day
         var forwardDate = originalDate.Add(new Period(dayBump, TimeUnit.Days));
         Settings.instance().setEvaluationDate(forwardDate);
+
+        // Recreate term structures anchored to forward date
+        var dayCounter = new Actual365Fixed();
+
+        var underlyingQuote = new SimpleQuote(parameters.UnderlyingPrice);
+        var underlyingHandle = new QuoteHandle(underlyingQuote);
+
+        var flatRateTs = new FlatForward(forwardDate, parameters.RiskFreeRate, dayCounter);
+        var riskFreeRateHandle = new YieldTermStructureHandle(flatRateTs);
+
+        var flatDividendTs = new FlatForward(forwardDate, parameters.DividendYield, dayCounter);
+        var dividendYieldHandle = new YieldTermStructureHandle(flatDividendTs);
+
+        var flatVolTs = new BlackConstantVol(forwardDate, new TARGET(), parameters.ImpliedVolatility, dayCounter);
+        var volatilityHandle = new BlackVolTermStructureHandle(flatVolTs);
+
+        // Recreate BSM process with new term structures
+        var forwardProcess = new BlackScholesMertonProcess(
+            underlyingHandle,
+            dividendYieldHandle,
+            riskFreeRateHandle,
+            volatilityHandle);
 
         // Recreate option with new evaluation date as exercise start
         var forwardExercise = new AmericanExercise(forwardDate, parameters.Expiry);
         var payoff = new PlainVanillaPayoff(parameters.OptionType, parameters.Strike);
         var forwardOption = new VanillaOption(payoff, forwardExercise);
 
-        // Price with forward date
-        var forwardEngine = new FdBlackScholesVanillaEngine(process, 100, 100);
+        // Price with forward date and forward process
+        var forwardEngine = new FdBlackScholesVanillaEngine(forwardProcess, 100, 100);
         forwardOption.setPricingEngine(forwardEngine);
         var priceForward = forwardOption.NPV();
 
-        // Clean up forward objects
-        forwardOption.Dispose();
+        // Clean up forward objects (in reverse order)
         forwardEngine.Dispose();
+        forwardOption.Dispose();
+        forwardProcess.Dispose();
+        volatilityHandle.Dispose();
+        flatVolTs.Dispose();
+        dividendYieldHandle.Dispose();
+        flatDividendTs.Dispose();
+        riskFreeRateHandle.Dispose();
+        flatRateTs.Dispose();
+        underlyingHandle.Dispose();
+        underlyingQuote.Dispose();
         forwardExercise.Dispose();
 
         // Restore original date and engine
