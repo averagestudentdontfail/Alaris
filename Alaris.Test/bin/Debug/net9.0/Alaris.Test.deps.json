@@ -433,6 +433,7 @@
       },
       "Alaris.Strategy/1.0.0": {
         "dependencies": {
+          "Alaris.Double": "1.0.0",
           "Alaris.Quantlib": "1.0.0",
           "MathNet.Numerics": "5.0.0",
           "Microsoft.Extensions.Logging.Abstractions": "9.0.0"

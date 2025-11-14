@@ -22,3 +22,6 @@
 /home/sunny/.project/Alaris/Alaris.Strategy/obj/Debug/net9.0/Alaris.Strategy.xml
 /home/sunny/.project/Alaris/Alaris.Strategy/obj/Debug/net9.0/Alaris.Strategy.pdb
 /home/sunny/.project/Alaris/Alaris.Strategy/obj/Debug/net9.0/ref/Alaris.Strategy.dll
+/home/sunny/.project/Alaris/Alaris.Strategy/bin/Debug/net9.0/Alaris.Double.dll
+/home/sunny/.project/Alaris/Alaris.Strategy/bin/Debug/net9.0/Alaris.Double.pdb
+/home/sunny/.project/Alaris/Alaris.Strategy/bin/Debug/net9.0/Alaris.Double.xml

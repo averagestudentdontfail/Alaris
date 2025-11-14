@@ -174,6 +174,59 @@
             Validates the calendar spread parameters.
             </summary>
         </member>
+        <!-- Badly formed XML comment ignored for member "T:Alaris.Strategy.Bridge.UnifiedPricingEngine" -->
+        <member name="M:Alaris.Strategy.Bridge.UnifiedPricingEngine.#ctor(Microsoft.Extensions.Logging.ILogger{Alaris.Strategy.Bridge.UnifiedPricingEngine})">
+            <summary>
+            Initializes a new instance of the UnifiedPricingEngine.
+            </summary>
+            <param name="logger">Optional logger for diagnostics.</param>
+        </member>
+        <member name="M:Alaris.Strategy.Bridge.UnifiedPricingEngine.DetermineRegime(System.Double,System.Double)">
+            <summary>
+            Determines the appropriate pricing regime based on interest rate and dividend yield.
+            </summary>
+            <param name="riskFreeRate">The risk-free interest rate (can be negative).</param>
+            <param name="dividendYield">The continuous dividend yield (can be negative).</param>
+            <returns>The pricing regime to use.</returns>
+        </member>
+        <member name="M:Alaris.Strategy.Bridge.UnifiedPricingEngine.PriceOption(Alaris.Strategy.Model.OptionParameters)">
+            <summary>
+            Prices a single American option using the appropriate pricing engine.
+            </summary>
+        </member>
+        <member name="M:Alaris.Strategy.Bridge.UnifiedPricingEngine.PriceCalendarSpread(Alaris.Strategy.Bridge.CalendarSpreadParameters)">
+            <summary>
+            Prices a calendar spread using the appropriate pricing engine for each leg.
+            </summary>
+        </member>
+        <member name="M:Alaris.Strategy.Bridge.UnifiedPricingEngine.CalculateImpliedVolatility(System.Double,Alaris.Strategy.Model.OptionParameters)">
+            <summary>
+            Calculates implied volatility from market price using bisection method.
+            </summary>
+        </member>
+        <member name="M:Alaris.Strategy.Bridge.UnifiedPricingEngine.PriceWithQuantlib(Alaris.Strategy.Model.OptionParameters)">
+            <summary>
+            Prices an option using the Alaris.Quantlib engine (standard American option pricing).
+            </summary>
+        </member>
+        <member name="M:Alaris.Strategy.Bridge.UnifiedPricingEngine.PriceWithDouble(Alaris.Strategy.Model.OptionParameters)">
+            <summary>
+            Prices an option using the Alaris.Double engine (double boundary method for negative rates).
+            </summary>
+        </member>
+        <member name="T:Alaris.Strategy.Bridge.PricingRegime">
+            <summary>
+            Represents the pricing regime based on interest rate conditions.
+            </summary>
+        </member>
+        <member name="F:Alaris.Strategy.Bridge.PricingRegime.PositiveRates">
+            <summary>
+            Standard regime with positive interest rates (r >= 0).
+            Uses Alaris.Quantlib with single boundary.
+            </summary>
+        </member>
+        <!-- Badly formed XML comment ignored for member "F:Alaris.Strategy.Bridge.PricingRegime.DoubleBoundary" -->
+        <!-- Badly formed XML comment ignored for member "F:Alaris.Strategy.Bridge.PricingRegime.NegativeRatesSingleBoundary" -->
         <member name="T:Alaris.Strategy.Control">
             <summary>
             Main control class for the earnings volatility calendar spread strategy.

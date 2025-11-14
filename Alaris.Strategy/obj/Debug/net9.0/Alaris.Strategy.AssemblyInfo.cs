@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyDescriptionAttribute("Earnings volatility calendar spread trading strategies based on academic research")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+373bb5ae0a12da9ba1c20b30a6dedfc90c279ab6")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+fdb0904d3cbb54ddbeec40c706d588282d005987")]
 [assembly: System.Reflection.AssemblyProductAttribute("Alaris.Strategy")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Alaris.Strategy")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

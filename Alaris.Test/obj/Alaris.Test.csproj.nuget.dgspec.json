@@ -158,6 +158,9 @@
           "net9.0": {
             "targetAlias": "net9.0",
             "projectReferences": {
+              "/home/sunny/.project/Alaris/Alaris.Double/Alaris.Double.csproj": {
+                "projectPath": "/home/sunny/.project/Alaris/Alaris.Double/Alaris.Double.csproj"
+              },
               "/home/sunny/.project/Alaris/Alaris.Quantlib/Alaris.Quantlib.csproj": {
                 "projectPath": "/home/sunny/.project/Alaris/Alaris.Quantlib/Alaris.Quantlib.csproj"
               }

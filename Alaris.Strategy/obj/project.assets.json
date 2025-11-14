@@ -50,6 +50,30 @@
           "buildTransitive/net8.0/Microsoft.Extensions.Logging.Abstractions.targets": {}
         }
       },
+      "System.Memory/4.5.5": {
+        "type": "package",
+        "compile": {
+          "ref/netcoreapp2.1/_._": {}
+        },
+        "runtime": {
+          "lib/netcoreapp2.1/_._": {}
+        }
+      },
+      "Alaris.Double/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v9.0",
+        "dependencies": {
+          "Alaris.Quantlib": "1.0.0",
+          "MathNet.Numerics": "5.0.0",
+          "System.Memory": "4.5.5"
+        },
+        "compile": {
+          "bin/placeholder/Alaris.Double.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/Alaris.Double.dll": {}
+        }
+      },
       "Alaris.Quantlib/1.0.0": {
         "type": "project",
         "framework": ".NETCoreApp,Version=v9.0",
@@ -186,6 +210,34 @@
         "useSharedDesignerContext.txt"
       ]
     },
+    "System.Memory/4.5.5": {
+      "sha512": "XIWiDvKPXaTveaB7HVganDlOCRoj03l+jrwNvcge/t8vhGYKvqV+dMv6G4SAX2NoNmN0wZfVPTAlFwZcZvVOUw==",
+      "type": "package",
+      "path": "system.memory/4.5.5",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "LICENSE.TXT",
+        "THIRD-PARTY-NOTICES.TXT",
+        "lib/net461/System.Memory.dll",
+        "lib/net461/System.Memory.xml",
+        "lib/netcoreapp2.1/_._",
+        "lib/netstandard1.1/System.Memory.dll",
+        "lib/netstandard1.1/System.Memory.xml",
+        "lib/netstandard2.0/System.Memory.dll",
+        "lib/netstandard2.0/System.Memory.xml",
+        "ref/netcoreapp2.1/_._",
+        "system.memory.4.5.5.nupkg.sha512",
+        "system.memory.nuspec",
+        "useSharedDesignerContext.txt",
+        "version.txt"
+      ]
+    },
+    "Alaris.Double/1.0.0": {
+      "type": "project",
+      "path": "../Alaris.Double/Alaris.Double.csproj",
+      "msbuildProject": "../Alaris.Double/Alaris.Double.csproj"
+    },
     "Alaris.Quantlib/1.0.0": {
       "type": "project",
       "path": "../Alaris.Quantlib/Alaris.Quantlib.csproj",
@@ -194,6 +246,7 @@
   },
   "projectFileDependencyGroups": {
     "net9.0": [
+      "Alaris.Double >= 1.0.0",
       "Alaris.Quantlib >= 1.0.0",
       "MathNet.Numerics >= 5.0.0",
       "Microsoft.Extensions.Logging.Abstractions >= 9.0.0"
@@ -224,6 +277,9 @@
         "net9.0": {
           "targetAlias": "net9.0",
           "projectReferences": {
+            "/home/sunny/.project/Alaris/Alaris.Double/Alaris.Double.csproj": {
+              "projectPath": "/home/sunny/.project/Alaris/Alaris.Double/Alaris.Double.csproj"
+            },
             "/home/sunny/.project/Alaris/Alaris.Quantlib/Alaris.Quantlib.csproj": {
               "projectPath": "/home/sunny/.project/Alaris/Alaris.Quantlib/Alaris.Quantlib.csproj"
             }
