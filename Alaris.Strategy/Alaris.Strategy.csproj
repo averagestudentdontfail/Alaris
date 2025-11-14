@@ -16,6 +16,7 @@
   <!-- Project Dependencies -->
   <ItemGroup>
     <ProjectReference Include="..\Alaris.Quantlib\Alaris.Quantlib.csproj" />
+    <ProjectReference Include="..\Alaris.Double\Alaris.Double.csproj" />
   </ItemGroup>
 
   <!-- NuGet Package Dependencies -->
