@@ -370,8 +370,8 @@ public sealed class QdPlusApproximation
             double putUpperBase = InterpolateBenchmark(T, isUpper: true);
             double putLowerBase = InterpolateBenchmark(T, isUpper: false);
 
-            // Apply volatility adjustment
-            double volAdjustment = (sigmaFactor - 1.0) * 2.0; // ±2% per 1% vol change
+            // Apply volatility adjustment (same sign logic as puts)
+            double volAdjustment = -(sigmaFactor - 1.0) * K * 0.03;
 
             if (isUpper)
             {
@@ -393,7 +393,9 @@ public sealed class QdPlusApproximation
             double baseGuess = InterpolateBenchmark(T, isUpper);
 
             // Apply volatility adjustment
-            double volAdjustment = (sigmaFactor - 1.0) * 2.0; // ±2% per 1% vol change
+            // Higher volatility -> earlier exercise -> LOWER boundaries for puts
+            // Negative sign because higher vol means wider exercise region (lower boundaries)
+            double volAdjustment = -(sigmaFactor - 1.0) * K * 0.03; // -3% of strike per 1% vol increase
             return baseGuess + volAdjustment;
         }
     }
