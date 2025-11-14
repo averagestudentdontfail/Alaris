@@ -299,9 +299,9 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
                 // Calculate Greeks using finite differences
                 var delta = CalculateDelta(option, underlyingQuote, bsmProcess);
                 var gamma = CalculateGamma(option, underlyingQuote, bsmProcess);
-                var vega = CalculateVegaQuantlib(option, flatVolTs, bsmProcess, parameters);
+                var vega = CalculateVegaQuantlib(option, flatVolTs, bsmProcess, parameters, fdEngine);
                 var theta = CalculateThetaQuantlib(option, fdEngine, bsmProcess, parameters);
-                var rho = CalculateRhoQuantlib(option, flatRateTs, bsmProcess, parameters);
+                var rho = CalculateRhoQuantlib(option, flatRateTs, bsmProcess, parameters, fdEngine);
 
                 var timeToExpiry = CalculateTimeToExpiry(parameters.ValuationDate, parameters.Expiry);
                 var moneyness = parameters.UnderlyingPrice / parameters.Strike;
@@ -594,7 +594,7 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
     }
 
     private double CalculateVegaQuantlib(VanillaOption option, BlackConstantVol volTs,
-        BlackScholesMertonProcess process, OptionParameters parameters)
+        BlackScholesMertonProcess process, OptionParameters parameters, FdBlackScholesVanillaEngine originalEngine)
     {
         var originalVol = parameters.ImpliedVolatility;
         var dayCounter = new Actual365Fixed();
@@ -640,6 +640,9 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
         processUp.Dispose();
         volHandleUp.Dispose();
         volUp.Dispose();
+
+        // Restore original engine
+        option.setPricingEngine(originalEngine);
 
         return (priceUp - priceDown) / (2 * VolBumpSize);
     }
@@ -710,7 +713,7 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
     }
 
     private double CalculateRhoQuantlib(VanillaOption option, FlatForward rateTs,
-        BlackScholesMertonProcess process, OptionParameters parameters)
+        BlackScholesMertonProcess process, OptionParameters parameters, FdBlackScholesVanillaEngine originalEngine)
     {
         var originalRate = parameters.RiskFreeRate;
         var dayCounter = new Actual365Fixed();
@@ -755,6 +758,9 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
         processUp.Dispose();
         rateHandleUp.Dispose();
         rateUp.Dispose();
+
+        // Restore original engine
+        option.setPricingEngine(originalEngine);
 
         return (priceUp - priceDown) / (2 * rateBump);
     }
