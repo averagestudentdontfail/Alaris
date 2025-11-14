@@ -165,12 +165,12 @@ public sealed class DoubleBoundaryKimSolver
                 // Enforce constraints
                 (upperNew[i], lowerNew[i]) = EnforceConstraints(upperNew[i], lowerNew[i], ti);
 
-                double upperChange = Math.Abs(upperNew[i] - upper[i]);
-                double lowerChange = Math.Abs(lowerNew[i] - lower[i]);
+                double upperDelta = Math.Abs(upperNew[i] - upper[i]);
+                double lowerDelta = Math.Abs(lowerNew[i] - lower[i]);
 
-                maxUpperChange = Math.Max(maxUpperChange, upperChange);
-                maxLowerChange = Math.Max(maxLowerChange, lowerChange);
-                maxChange = Math.Max(maxChange, Math.Max(upperChange, lowerChange));
+                maxUpperChange = Math.Max(maxUpperChange, upperDelta);
+                maxLowerChange = Math.Max(maxLowerChange, lowerDelta);
+                maxChange = Math.Max(maxChange, Math.Max(upperDelta, lowerDelta));
             }
 
             // Track first iteration changes per boundary
