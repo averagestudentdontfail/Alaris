@@ -227,6 +227,12 @@
             Uses DoubleBoundaryApproximation with QD+ method and early exercise premium calculation.
             </summary>
         </member>
+        <member name="M:Alaris.Strategy.Bridge.UnifiedPricingEngine.PriceOptionSync(Alaris.Strategy.Model.OptionParameters)">
+            <summary>
+            Synchronously prices an option for Greek calculations (QuantLib only).
+            Creates a complete, fresh pricing infrastructure for accurate finite differences.
+            </summary>
+        </member>
         <member name="M:Alaris.Strategy.Bridge.UnifiedPricingEngine.CalculateMaxProfit(Alaris.Strategy.Bridge.CalendarSpreadParameters,System.Double)">
             <summary>
             Calculates the maximum profit potential of a calendar spread using grid search.
