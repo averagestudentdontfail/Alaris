@@ -566,19 +566,42 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
     {
         var originalSpot = underlyingQuote.value();
 
-        // Up bump
-        underlyingQuote.setValue(originalSpot + BumpSize);
-        option.setPricingEngine(engine); // Force recalculation
+        // Up bump - create new quote, process, and engine
+        var quoteUp = new SimpleQuote(originalSpot + BumpSize);
+        var handleUp = new QuoteHandle(quoteUp);
+        var processUp = new BlackScholesMertonProcess(
+            handleUp,
+            process.dividendYield(),
+            process.riskFreeRate(),
+            process.blackVolatility());
+        var engineUp = new FdBlackScholesVanillaEngine(processUp, 100, 100);
+        option.setPricingEngine(engineUp);
         var priceUp = option.NPV();
 
-        // Down bump
-        underlyingQuote.setValue(originalSpot - BumpSize);
-        option.setPricingEngine(engine); // Force recalculation
+        // Down bump - create new quote, process, and engine
+        var quoteDown = new SimpleQuote(originalSpot - BumpSize);
+        var handleDown = new QuoteHandle(quoteDown);
+        var processDown = new BlackScholesMertonProcess(
+            handleDown,
+            process.dividendYield(),
+            process.riskFreeRate(),
+            process.blackVolatility());
+        var engineDown = new FdBlackScholesVanillaEngine(processDown, 100, 100);
+        option.setPricingEngine(engineDown);
         var priceDown = option.NPV();
 
-        // Restore
-        underlyingQuote.setValue(originalSpot);
-        option.setPricingEngine(engine); // Restore state
+        // Clean up
+        engineDown.Dispose();
+        processDown.Dispose();
+        handleDown.Dispose();
+        quoteDown.Dispose();
+        engineUp.Dispose();
+        processUp.Dispose();
+        handleUp.Dispose();
+        quoteUp.Dispose();
+
+        // Restore original engine
+        option.setPricingEngine(engine);
 
         return (priceUp - priceDown) / (2 * BumpSize);
     }
@@ -586,23 +609,46 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
     private double CalculateGamma(VanillaOption option, SimpleQuote underlyingQuote, BlackScholesMertonProcess process, FdBlackScholesVanillaEngine engine)
     {
         var originalSpot = underlyingQuote.value();
-        option.setPricingEngine(engine); // Ensure fresh calculation
-        option.setPricingEngine(engine); // Force complete cache invalidation
+
+        // Original price
         var priceOriginal = option.NPV();
 
-        // Up bump
-        underlyingQuote.setValue(originalSpot + BumpSize);
-        option.setPricingEngine(engine); // Force recalculation
+        // Up bump - create new quote, process, and engine
+        var quoteUp = new SimpleQuote(originalSpot + BumpSize);
+        var handleUp = new QuoteHandle(quoteUp);
+        var processUp = new BlackScholesMertonProcess(
+            handleUp,
+            process.dividendYield(),
+            process.riskFreeRate(),
+            process.blackVolatility());
+        var engineUp = new FdBlackScholesVanillaEngine(processUp, 100, 100);
+        option.setPricingEngine(engineUp);
         var priceUp = option.NPV();
 
-        // Down bump
-        underlyingQuote.setValue(originalSpot - BumpSize);
-        option.setPricingEngine(engine); // Force recalculation
+        // Down bump - create new quote, process, and engine
+        var quoteDown = new SimpleQuote(originalSpot - BumpSize);
+        var handleDown = new QuoteHandle(quoteDown);
+        var processDown = new BlackScholesMertonProcess(
+            handleDown,
+            process.dividendYield(),
+            process.riskFreeRate(),
+            process.blackVolatility());
+        var engineDown = new FdBlackScholesVanillaEngine(processDown, 100, 100);
+        option.setPricingEngine(engineDown);
         var priceDown = option.NPV();
 
-        // Restore
-        underlyingQuote.setValue(originalSpot);
-        option.setPricingEngine(engine); // Restore state
+        // Clean up
+        engineDown.Dispose();
+        processDown.Dispose();
+        handleDown.Dispose();
+        quoteDown.Dispose();
+        engineUp.Dispose();
+        processUp.Dispose();
+        handleUp.Dispose();
+        quoteUp.Dispose();
+
+        // Restore original engine
+        option.setPricingEngine(engine);
 
         return (priceUp - 2 * priceOriginal + priceDown) / (BumpSize * BumpSize);
     }
