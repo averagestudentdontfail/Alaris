@@ -588,9 +588,10 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
             dayCounter);
         var dividendYieldHandle = new YieldTermStructureHandle(flatDividendTs);
 
+        var calendar = new TARGET();
         var flatVolTs = new BlackConstantVol(
             parameters.ValuationDate,
-            new TARGET(),
+            calendar,
             parameters.ImpliedVolatility,
             dayCounter);
         var volatilityHandle = new BlackVolTermStructureHandle(flatVolTs);
@@ -615,9 +616,12 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
         // Clean up (dispose in reverse order of creation)
         engine.Dispose();
         option.Dispose();
+        payoff.Dispose();
+        exercise.Dispose();
         bsmProcess.Dispose();
         volatilityHandle.Dispose();
         flatVolTs.Dispose();
+        calendar.Dispose();
         dividendYieldHandle.Dispose();
         flatDividendTs.Dispose();
         riskFreeRateHandle.Dispose();
