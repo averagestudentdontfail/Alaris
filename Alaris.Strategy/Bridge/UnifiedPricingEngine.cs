@@ -305,9 +305,9 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
                 // Calculate Greeks using finite differences
                 var delta = CalculateDelta(parameters);
                 var gamma = CalculateGamma(parameters);
-                var vega = CalculateVegaQuantlib(option, flatVolTs, bsmProcess, parameters, fdEngine);
-                var theta = CalculateThetaQuantlib(option, fdEngine, bsmProcess, parameters);
-                var rho = CalculateRhoQuantlib(option, flatRateTs, bsmProcess, parameters, fdEngine);
+                var vega = CalculateVega(parameters);
+                var theta = CalculateTheta(parameters);
+                var rho = CalculateRho(parameters);
 
                 var timeToExpiry = CalculateTimeToExpiry(parameters.ValuationDate, parameters.Expiry);
                 var moneyness = parameters.UnderlyingPrice / parameters.Strike;
@@ -665,6 +665,59 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
         var priceDown = PriceOptionSync(paramsDown);
 
         return (priceUp - 2 * priceOriginal + priceDown) / (BumpSize * BumpSize);
+    }
+
+    private double CalculateVega(OptionParameters parameters)
+    {
+        var originalVol = parameters.ImpliedVolatility;
+
+        // Price with up bump
+        var paramsUp = CloneParameters(parameters);
+        paramsUp.ImpliedVolatility = originalVol + VolBumpSize;
+        var priceUp = PriceOptionSync(paramsUp);
+
+        // Price with down bump
+        var paramsDown = CloneParameters(parameters);
+        paramsDown.ImpliedVolatility = originalVol - VolBumpSize;
+        var priceDown = PriceOptionSync(paramsDown);
+
+        return (priceUp - priceDown) / (2 * VolBumpSize);
+    }
+
+    private double CalculateTheta(OptionParameters parameters)
+    {
+        var originalDate = parameters.ValuationDate;
+
+        // Original price
+        var priceOriginal = PriceOptionSync(parameters);
+
+        // Price with forward date (1 day)
+        var dayBump = 1;
+        var forwardDate = originalDate.Add(new Period(dayBump, TimeUnit.Days));
+        var paramsForward = CloneParameters(parameters);
+        paramsForward.ValuationDate = forwardDate;
+        var priceForward = PriceOptionSync(paramsForward);
+
+        // Theta is price change per day (negative for time decay)
+        return (priceForward - priceOriginal) / dayBump;
+    }
+
+    private double CalculateRho(OptionParameters parameters)
+    {
+        var originalRate = parameters.RiskFreeRate;
+        var rateBump = 0.01; // 1% rate bump
+
+        // Price with up bump
+        var paramsUp = CloneParameters(parameters);
+        paramsUp.RiskFreeRate = originalRate + rateBump;
+        var priceUp = PriceOptionSync(paramsUp);
+
+        // Price with down bump
+        var paramsDown = CloneParameters(parameters);
+        paramsDown.RiskFreeRate = originalRate - rateBump;
+        var priceDown = PriceOptionSync(paramsDown);
+
+        return (priceUp - priceDown) / (2 * rateBump);
     }
 
     private double CalculateVegaQuantlib(VanillaOption option, BlackConstantVol volTs,
