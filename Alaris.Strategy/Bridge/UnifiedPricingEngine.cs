@@ -303,8 +303,8 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
                 option.setPricingEngine(fdEngine);
 
                 // Calculate Greeks using finite differences
-                var delta = CalculateDelta(option, underlyingQuote, bsmProcess, fdEngine);
-                var gamma = CalculateGamma(option, underlyingQuote, bsmProcess, fdEngine);
+                var delta = CalculateDelta(parameters);
+                var gamma = CalculateGamma(parameters);
                 var vega = CalculateVegaQuantlib(option, flatVolTs, bsmProcess, parameters, fdEngine);
                 var theta = CalculateThetaQuantlib(option, fdEngine, bsmProcess, parameters);
                 var rho = CalculateRhoQuantlib(option, flatRateTs, bsmProcess, parameters, fdEngine);
@@ -560,95 +560,109 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
         };
     }
 
+    /// <summary>
+    /// Synchronously prices an option for Greek calculations (QuantLib only).
+    /// Creates a complete, fresh pricing infrastructure for accurate finite differences.
+    /// </summary>
+    private double PriceOptionSync(OptionParameters parameters)
+    {
+        // Set evaluation date
+        Settings.instance().setEvaluationDate(parameters.ValuationDate);
+
+        // Create underlying quote
+        var underlyingQuote = new SimpleQuote(parameters.UnderlyingPrice);
+        var underlyingHandle = new QuoteHandle(underlyingQuote);
+
+        // Create term structures
+        var dayCounter = new Actual365Fixed();
+
+        var flatRateTs = new FlatForward(
+            parameters.ValuationDate,
+            parameters.RiskFreeRate,
+            dayCounter);
+        var riskFreeRateHandle = new YieldTermStructureHandle(flatRateTs);
+
+        var flatDividendTs = new FlatForward(
+            parameters.ValuationDate,
+            parameters.DividendYield,
+            dayCounter);
+        var dividendYieldHandle = new YieldTermStructureHandle(flatDividendTs);
+
+        var flatVolTs = new BlackConstantVol(
+            parameters.ValuationDate,
+            new TARGET(),
+            parameters.ImpliedVolatility,
+            dayCounter);
+        var volatilityHandle = new BlackVolTermStructureHandle(flatVolTs);
+
+        // Create Black-Scholes-Merton process
+        var bsmProcess = new BlackScholesMertonProcess(
+            underlyingHandle,
+            dividendYieldHandle,
+            riskFreeRateHandle,
+            volatilityHandle);
+
+        // Create option
+        var exercise = new AmericanExercise(parameters.ValuationDate, parameters.Expiry);
+        var payoff = new PlainVanillaPayoff(parameters.OptionType, parameters.Strike);
+        var option = new VanillaOption(payoff, exercise);
+
+        // Create pricing engine and price
+        var engine = new FdBlackScholesVanillaEngine(bsmProcess, 100, 100);
+        option.setPricingEngine(engine);
+        var price = option.NPV();
+
+        // Clean up (dispose in reverse order of creation)
+        engine.Dispose();
+        option.Dispose();
+        bsmProcess.Dispose();
+        volatilityHandle.Dispose();
+        flatVolTs.Dispose();
+        dividendYieldHandle.Dispose();
+        flatDividendTs.Dispose();
+        riskFreeRateHandle.Dispose();
+        flatRateTs.Dispose();
+        underlyingHandle.Dispose();
+        underlyingQuote.Dispose();
+
+        return price;
+    }
+
     // Helper methods for Greek calculations
 
-    private double CalculateDelta(VanillaOption option, SimpleQuote underlyingQuote, BlackScholesMertonProcess process, FdBlackScholesVanillaEngine engine)
+    private double CalculateDelta(OptionParameters parameters)
     {
-        var originalSpot = underlyingQuote.value();
+        var originalSpot = parameters.UnderlyingPrice;
 
-        // Up bump - create new quote, process, and engine
-        var quoteUp = new SimpleQuote(originalSpot + BumpSize);
-        var handleUp = new QuoteHandle(quoteUp);
-        var processUp = new BlackScholesMertonProcess(
-            handleUp,
-            process.dividendYield(),
-            process.riskFreeRate(),
-            process.blackVolatility());
-        var engineUp = new FdBlackScholesVanillaEngine(processUp, 100, 100);
-        option.setPricingEngine(engineUp);
-        var priceUp = option.NPV();
+        // Price with up bump
+        var paramsUp = CloneParameters(parameters);
+        paramsUp.UnderlyingPrice = originalSpot + BumpSize;
+        var priceUp = PriceOptionSync(paramsUp);
 
-        // Down bump - create new quote, process, and engine
-        var quoteDown = new SimpleQuote(originalSpot - BumpSize);
-        var handleDown = new QuoteHandle(quoteDown);
-        var processDown = new BlackScholesMertonProcess(
-            handleDown,
-            process.dividendYield(),
-            process.riskFreeRate(),
-            process.blackVolatility());
-        var engineDown = new FdBlackScholesVanillaEngine(processDown, 100, 100);
-        option.setPricingEngine(engineDown);
-        var priceDown = option.NPV();
-
-        // Clean up
-        engineDown.Dispose();
-        processDown.Dispose();
-        handleDown.Dispose();
-        quoteDown.Dispose();
-        engineUp.Dispose();
-        processUp.Dispose();
-        handleUp.Dispose();
-        quoteUp.Dispose();
-
-        // Restore original engine
-        option.setPricingEngine(engine);
+        // Price with down bump
+        var paramsDown = CloneParameters(parameters);
+        paramsDown.UnderlyingPrice = originalSpot - BumpSize;
+        var priceDown = PriceOptionSync(paramsDown);
 
         return (priceUp - priceDown) / (2 * BumpSize);
     }
 
-    private double CalculateGamma(VanillaOption option, SimpleQuote underlyingQuote, BlackScholesMertonProcess process, FdBlackScholesVanillaEngine engine)
+    private double CalculateGamma(OptionParameters parameters)
     {
-        var originalSpot = underlyingQuote.value();
+        var originalSpot = parameters.UnderlyingPrice;
 
         // Original price
-        var priceOriginal = option.NPV();
+        var priceOriginal = PriceOptionSync(parameters);
 
-        // Up bump - create new quote, process, and engine
-        var quoteUp = new SimpleQuote(originalSpot + BumpSize);
-        var handleUp = new QuoteHandle(quoteUp);
-        var processUp = new BlackScholesMertonProcess(
-            handleUp,
-            process.dividendYield(),
-            process.riskFreeRate(),
-            process.blackVolatility());
-        var engineUp = new FdBlackScholesVanillaEngine(processUp, 100, 100);
-        option.setPricingEngine(engineUp);
-        var priceUp = option.NPV();
+        // Price with up bump
+        var paramsUp = CloneParameters(parameters);
+        paramsUp.UnderlyingPrice = originalSpot + BumpSize;
+        var priceUp = PriceOptionSync(paramsUp);
 
-        // Down bump - create new quote, process, and engine
-        var quoteDown = new SimpleQuote(originalSpot - BumpSize);
-        var handleDown = new QuoteHandle(quoteDown);
-        var processDown = new BlackScholesMertonProcess(
-            handleDown,
-            process.dividendYield(),
-            process.riskFreeRate(),
-            process.blackVolatility());
-        var engineDown = new FdBlackScholesVanillaEngine(processDown, 100, 100);
-        option.setPricingEngine(engineDown);
-        var priceDown = option.NPV();
-
-        // Clean up
-        engineDown.Dispose();
-        processDown.Dispose();
-        handleDown.Dispose();
-        quoteDown.Dispose();
-        engineUp.Dispose();
-        processUp.Dispose();
-        handleUp.Dispose();
-        quoteUp.Dispose();
-
-        // Restore original engine
-        option.setPricingEngine(engine);
+        // Price with down bump
+        var paramsDown = CloneParameters(parameters);
+        paramsDown.UnderlyingPrice = originalSpot - BumpSize;
+        var priceDown = PriceOptionSync(paramsDown);
 
         return (priceUp - 2 * priceOriginal + priceDown) / (BumpSize * BumpSize);
     }
