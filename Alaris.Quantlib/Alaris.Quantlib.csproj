@@ -13,12 +13,16 @@
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
 
-    <!-- Suppress common warnings from SWIG-generated code -->
+    <!-- Suppress common warnings from SWIG-generated code and native loader -->
     <!-- CS1591: Missing XML documentation -->
+    <!-- CS0108: Member hides inherited member (SWIG inheritance patterns) -->
     <!-- CA5392: P/Invoke security (requires DefaultDllImportSearchPaths) -->
     <!-- CA1062: Validate public arguments (SWIG doesn't generate guard clauses) -->
     <!-- CA2000: Dispose objects (SWIG manages lifecycle differently) -->
-    <NoWarn>$(NoWarn);CS1591;CA5392;CA1062;CA2000</NoWarn>
+    <!-- CA1031: Generic exception catches (Native.cs catches during library loading) -->
+    <!-- CA1805: Explicit initialization to default (code generator pattern) -->
+    <!-- CA1310: String culture sensitivity (Native.cs path checking) -->
+    <NoWarn>$(NoWarn);CS1591;CS0108;CA5392;CA1062;CA2000;CA1031;CA1805;CA1310</NoWarn>
   </PropertyGroup>
 
   <PropertyGroup>
