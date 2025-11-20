@@ -335,30 +335,26 @@ catch (QuantLibException ex) { /* handle QuantLib errors */ }
 
 ## Change Log
 
-### 2025-11-20 - Week 1: Enable Enforcement (**COMPLETE** ✅)
+### 2025-11-20 - Week 1: Enable Enforcement + Alaris.Double Remediation (**COMPLETE** ✅)
+
+**Phase 1: Infrastructure Setup**
 - ✅ Added `TreatWarningsAsErrors=true` to Alaris.Strategy.csproj
 - ✅ Added `TreatWarningsAsErrors=true` to Alaris.Double.csproj
-- ✅ Created Directory.Build.props with centralized build settings:
-  - Language compliance (LTS C#, strict mode)
-  - Warning enforcement (Level 5, treat as errors)
-  - Null safety (nullable enabled)
-  - Static analysis (EnableNETAnalyzers, latest-all)
-  - Deterministic builds
-- ✅ Created .editorconfig with comprehensive analyzer rules:
-  - 100+ analyzer rules configured
-  - LOC-1 through LOC-5 enforcement
-  - Code style preferences
-  - Formatting rules
-- ✅ Ran full solution build and identified 10,744 errors (all in Alaris.Quantlib)
-- ✅ Excluded Alaris.Quantlib from strict enforcement:
-  - Documented rationale: SWIG-generated code, not authored
-  - Suppressed: CS1591, CS0108, CA5392, CA1062, CA2000, CA1031, CA1805, CA1310
-  - Created exemption EX-002 in exemptions.md
-  - Documented decision in warning-baseline.txt
-- ✅ Verified exclusion approach with iterative builds
-- 📊 **Phase 2 Complete: 100%** - Build-time enforcement operational
+- ✅ Created Directory.Build.props with centralized build settings
+- ✅ Created .editorconfig with 100+ analyzer rules
+- ✅ Excluded Alaris.Quantlib from enforcement (10,744 SWIG violations)
 
-**Key Achievement**: Successfully isolated SWIG-generated code (10,744+ violations) from authored code enforcement, enabling zero-warning builds for components we control.
+**Phase 2: Alaris.Double Full Remediation (186 → 0 violations)**
+- ✅ Fixed 4 high-priority violations (CA1031, CS1570)
+- ✅ Fixed 7 design issues (CA1819, CA1051, CA2225, CA1805, IDE0044, CA1716)
+- ✅ Fixed 172 code style violations (IDE0011, IDE0008, IDE0048, IDE0047)
+- ✅ Created .compliance/alaris-double-violations.md
+- 📊 **Alaris.Double: 100% COMPLIANT** (first zero-violation component)
+
+**Key Achievements**:
+1. Isolated SWIG-generated code (10,744+ violations)
+2. **Alaris.Double: 186 → 0 violations** (~2 hours)
+3. Established remediation patterns for remaining components
 
 ### 2025-11-20 - Baseline Assessment
 - ✅ Completed Phase 1: Assessment & Baseline

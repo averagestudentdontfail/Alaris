@@ -75,10 +75,10 @@ public sealed class DoubleBoundarySolver
     public DoubleBoundaryResult Solve()
     {
         // Stage 1: QD+ approximation
-        var qdplus = new QdPlusApproximation(
-            _spot, _strike, _maturity, _rate, 
+        QdPlusApproximation qdplus = new QdPlusApproximation(
+            _spot, _strike, _maturity, _rate,
             _dividendYield, _volatility, _isCall);
-        
+
         var (upperInitial, lowerInitial) = qdplus.CalculateBoundaries();
         
         // Check regime
@@ -119,11 +119,11 @@ public sealed class DoubleBoundarySolver
         }
 
         // Stage 2: Kim refinement with FP-B' stabilization
-        var kimSolver = new DoubleBoundaryKimSolver(
+        DoubleBoundaryKimSolver kimSolver = new DoubleBoundaryKimSolver(
             _spot, _strike, _maturity, _rate,
             _dividendYield, _volatility, _isCall,
             _collocationPoints);
-        
+
         var (upperRefined, lowerRefined, crossingTime) = kimSolver.SolveBoundaries(
             upperInitial, lowerInitial);
         
@@ -171,34 +171,50 @@ public sealed class DoubleBoundarySolver
     private bool ValidateBoundaries(double upper, double lower)
     {
         if (double.IsNaN(upper) || double.IsNaN(lower))
+        {
             return false;
-        
+        }
+
         if (double.IsInfinity(upper) && double.IsInfinity(lower))
+        {
             return false;
+        }
         
         if (!_isCall)
         {
             // Put validation
             if (!double.IsPositiveInfinity(upper) && upper > _strike)
+            {
                 return false;
-            
+            }
+
             if (!double.IsNegativeInfinity(lower) && lower < 0)
+            {
                 return false;
-            
+            }
+
             if (!double.IsInfinity(upper) && !double.IsInfinity(lower) && lower >= upper)
+            {
                 return false;
+            }
         }
         else
         {
             // Call validation
             if (!double.IsPositiveInfinity(upper) && upper < _strike)
+            {
                 return false;
-            
+            }
+
             if (!double.IsNegativeInfinity(lower) && lower < 0)
+            {
                 return false;
-            
+            }
+
             if (!double.IsInfinity(upper) && !double.IsInfinity(lower) && lower >= upper)
+            {
                 return false;
+            }
         }
         
         return true;
@@ -268,10 +284,10 @@ public sealed class DoubleBoundaryResult
     /// <summary>
     /// Optional: Full upper boundary path across time points.
     /// </summary>
-    public double[]? UpperBoundaryPath { get; set; }
-    
+    public System.Collections.Generic.IReadOnlyList<double>? UpperBoundaryPath { get; set; }
+
     /// <summary>
     /// Optional: Full lower boundary path across time points.
     /// </summary>
-    public double[]? LowerBoundaryPath { get; set; }
+    public System.Collections.Generic.IReadOnlyList<double>? LowerBoundaryPath { get; set; }
 }
