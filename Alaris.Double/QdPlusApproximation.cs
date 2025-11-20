@@ -683,7 +683,8 @@ public sealed class QdPlusApproximation
         double t4 = t3 * t;
         double t5 = t4 * t;
 
-        double y = 1.0 - ((a1 * t) + (a2 * t2) + (a3 * t3) + (a4 * t4) + (a5 * t5)) * Math.Exp(-((x * x)));
+        // Added parentheses around multiplication term for clarity (IDE0048)
+        double y = 1.0 - (((a1 * t) + (a2 * t2) + (a3 * t3) + (a4 * t4) + (a5 * t5)) * Math.Exp(-(x * x)));
 
         return sign * y;
     }
