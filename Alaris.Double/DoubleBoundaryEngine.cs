@@ -138,58 +138,50 @@ public sealed class DoubleBoundaryEngine : IDisposable
     /// </summary>
     private double CalculateVega(VanillaOption option)
     {
-        try
+        // Get current volatility term structure
+        BlackVolTermStructure volTS = _process.blackVolatility();
+        BlackVolTermStructure currentVol = volTS.currentLink();
+
+        // Vega calculation function with process reconstruction
+        Func<double, double> vegaFunc = (volShift) =>
         {
-            // Get current volatility term structure
-            var volTS = _process.blackVolatility();
-            var currentVol = volTS.currentLink();
+            // Get reference date and day counter from original vol structure
+            Date refDate = currentVol.referenceDate();
+            DayCounter dayCounter = currentVol.dayCounter();
 
-            // Vega calculation function with process reconstruction
-            Func<double, double> vegaFunc = (volShift) =>
-            {
-                // Get reference date and day counter from original vol structure
-                var refDate = currentVol.referenceDate();
-                var dayCounter = currentVol.dayCounter();
-                
-                // Create bumped volatility (add shift to original volatility)
-                var bumpedVol = new BlackConstantVol(
-                    refDate,
-                    new TARGET(),
-                    currentVol.blackVol(refDate, 0.0) + volShift,
-                    dayCounter);
+            // Create bumped volatility (add shift to original volatility)
+            BlackConstantVol bumpedVol = new BlackConstantVol(
+                refDate,
+                new TARGET(),
+                currentVol.blackVol(refDate, 0.0) + volShift,
+                dayCounter);
 
-                // Create new process with bumped volatility
-                var bumpedProcess = new BlackScholesMertonProcess(
-                    _process.stateVariable(),
-                    _process.dividendYield(),
-                    _process.riskFreeRate(),
-                    new BlackVolTermStructureHandle(bumpedVol));
+            // Create new process with bumped volatility
+            BlackScholesMertonProcess bumpedProcess = new BlackScholesMertonProcess(
+                _process.stateVariable(),
+                _process.dividendYield(),
+                _process.riskFreeRate(),
+                new BlackVolTermStructureHandle(bumpedVol));
 
-                var bumpedEngine = new QdFpAmericanEngine(bumpedProcess);
-                option.setPricingEngine(bumpedEngine);
-                double price = option.NPV();
+            QdFpAmericanEngine bumpedEngine = new QdFpAmericanEngine(bumpedProcess);
+            option.setPricingEngine(bumpedEngine);
+            double price = option.NPV();
 
-                // Clean up
-                bumpedEngine.Dispose();
-                bumpedProcess.Dispose();
-                bumpedVol.Dispose();
+            // Clean up
+            bumpedEngine.Dispose();
+            bumpedProcess.Dispose();
+            bumpedVol.Dispose();
 
-                return price;
-            };
+            return price;
+        };
 
-            // Use central finite differences
-            double vega = _differentiator.EvaluateDerivative(vegaFunc, 0.0, 1);
+        // Use central finite differences
+        double vega = _differentiator.EvaluateDerivative(vegaFunc, 0.0, 1);
 
-            // Restore original engine
-            option.setPricingEngine(_engine);
+        // Restore original engine
+        option.setPricingEngine(_engine);
 
-            return vega;
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Vega calculation failed: {ex.Message}");
-            return 0.0;
-        }
+        return vega;
     }
 
     /// <summary>
@@ -198,36 +190,28 @@ public sealed class DoubleBoundaryEngine : IDisposable
     /// </summary>
     private double CalculateTheta(VanillaOption option)
     {
-        try
+        Date originalDate = Settings.instance().getEvaluationDate();
+
+        Func<double, double> thetaFunc = (timeShift) =>
         {
-            var originalDate = Settings.instance().getEvaluationDate();
+            // Shift evaluation date
+            int daysShift = (int)(timeShift * 365);
+            Date shiftedDate = originalDate.Add(new Period(daysShift, TimeUnit.Days));
+            Settings.instance().setEvaluationDate(shiftedDate);
 
-            Func<double, double> thetaFunc = (timeShift) =>
-            {
-                // Shift evaluation date
-                int daysShift = (int)(timeShift * 365);
-                var shiftedDate = originalDate.Add(new Period(daysShift, TimeUnit.Days));
-                Settings.instance().setEvaluationDate(shiftedDate);
+            double price = option.NPV();
 
-                double price = option.NPV();
+            return price;
+        };
 
-                return price;
-            };
+        // Use central finite differences
+        double theta = _differentiator.EvaluateDerivative(thetaFunc, 0.0, 1);
 
-            // Use central finite differences
-            double theta = _differentiator.EvaluateDerivative(thetaFunc, 0.0, 1);
+        // Restore original date
+        Settings.instance().setEvaluationDate(originalDate);
 
-            // Restore original date
-            Settings.instance().setEvaluationDate(originalDate);
-
-            // Convert to per-day theta (conventionally negative)
-            return theta;
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Theta calculation failed: {ex.Message}");
-            return 0.0;
-        }
+        // Convert to per-day theta (conventionally negative)
+        return theta;
     }
 
     /// <summary>
@@ -236,57 +220,49 @@ public sealed class DoubleBoundaryEngine : IDisposable
     /// </summary>
     private double CalculateRho(VanillaOption option)
     {
-        try
+        // Get current rate term structure
+        YieldTermStructureHandle rateTS = _process.riskFreeRate();
+        YieldTermStructure currentRate = rateTS.currentLink();
+
+        Func<double, double> rhoFunc = (rateShift) =>
         {
-            // Get current rate term structure
-            var rateTS = _process.riskFreeRate();
-            var currentRate = rateTS.currentLink();
+            Date refDate = currentRate.referenceDate();
+            DayCounter dayCounter = currentRate.dayCounter();
 
-            Func<double, double> rhoFunc = (rateShift) =>
-            {
-                var refDate = currentRate.referenceDate();
-                var dayCounter = currentRate.dayCounter();
-                
-                // Create bumped rate structure
-                // Extract the rate value using .rate() method from InterestRate object
-                var bumpedRateTS = new FlatForward(
-                    refDate,
-                    currentRate.zeroRate(refDate, dayCounter, Compounding.Continuous, Frequency.Annual).rate() + rateShift,
-                    dayCounter);
+            // Create bumped rate structure
+            // Extract the rate value using .rate() method from InterestRate object
+            FlatForward bumpedRateTS = new FlatForward(
+                refDate,
+                currentRate.zeroRate(refDate, dayCounter, Compounding.Continuous, Frequency.Annual).rate() + rateShift,
+                dayCounter);
 
-                // Create new process with bumped rate
-                var bumpedProcess = new BlackScholesMertonProcess(
-                    _process.stateVariable(),
-                    _process.dividendYield(),
-                    new YieldTermStructureHandle(bumpedRateTS),
-                    _process.blackVolatility());
+            // Create new process with bumped rate
+            BlackScholesMertonProcess bumpedProcess = new BlackScholesMertonProcess(
+                _process.stateVariable(),
+                _process.dividendYield(),
+                new YieldTermStructureHandle(bumpedRateTS),
+                _process.blackVolatility());
 
-                var bumpedEngine = new QdFpAmericanEngine(bumpedProcess);
-                option.setPricingEngine(bumpedEngine);
-                double price = option.NPV();
+            QdFpAmericanEngine bumpedEngine = new QdFpAmericanEngine(bumpedProcess);
+            option.setPricingEngine(bumpedEngine);
+            double price = option.NPV();
 
-                // Clean up
-                bumpedEngine.Dispose();
-                bumpedProcess.Dispose();
-                bumpedRateTS.Dispose();
+            // Clean up
+            bumpedEngine.Dispose();
+            bumpedProcess.Dispose();
+            bumpedRateTS.Dispose();
 
-                return price;
-            };
+            return price;
+        };
 
-            // Use central finite differences (symmetric bumping)
-            double rho = _differentiator.EvaluateDerivative(rhoFunc, 0.0, 1);
+        // Use central finite differences (symmetric bumping)
+        double rho = _differentiator.EvaluateDerivative(rhoFunc, 0.0, 1);
 
-            // Restore original engine
-            option.setPricingEngine(_engine);
+        // Restore original engine
+        option.setPricingEngine(_engine);
 
-            // Scale to per 1% (0.01) change
-            return rho * 0.01;
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Rho calculation failed: {ex.Message}");
-            return 0.0;
-        }
+        // Scale to per 1% (0.01) change
+        return rho * 0.01;
     }
 
     /// <summary>
