@@ -6,6 +6,12 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+    <!-- LOC-1 Rule 2: Zero Warnings - Treat all warnings as errors -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningLevel>5</WarningLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+
     <Description>Earnings volatility calendar spread trading strategies based on academic research</Description>
     <Authors>Kiran K. Nath</Authors>
     <Version>1.0.0</Version>

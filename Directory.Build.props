@@ -1,0 +1,61 @@
+<Project>
+  <!--
+    Directory.Build.props - Centralized build configuration for Alaris solution
+
+    This file applies to all projects in the solution and enforces the
+    High-Integrity Coding Standard (Version 1.2, based on JPL/MISRA/DO-178B).
+
+    Individual projects can override these settings in their .csproj files if needed.
+  -->
+
+  <PropertyGroup Label="LOC-1: Language Compliance">
+    <!-- Use .NET 9.0 LTS with latest stable C# version -->
+    <TargetFramework>net9.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Features>strict</Features>
+  </PropertyGroup>
+
+  <PropertyGroup Label="LOC-1 Rule 2: Zero Warnings">
+    <!-- Treat all warnings as errors - fail fast on code quality issues -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningLevel>5</WarningLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+
+  <PropertyGroup Label="LOC-3 Rule 7: Null Safety">
+    <!-- Enable nullable reference types for compile-time null safety -->
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Static Analysis">
+    <!-- Enable .NET analyzers for additional code quality checks -->
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest-all</AnalysisLevel>
+    <AnalysisMode>All</AnalysisMode>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Build Output">
+    <!-- Generate deterministic builds for reproducibility -->
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Common Metadata">
+    <!-- Default metadata for all projects -->
+    <Authors>Kiran K. Nath</Authors>
+    <Company>Alaris</Company>
+    <Product>Alaris Options Pricing System</Product>
+    <Copyright>Copyright © 2025 Kiran K. Nath</Copyright>
+  </PropertyGroup>
+
+  <!--
+    Suppressed Warnings:
+    - CS1591: Missing XML documentation comments
+      Rationale: Documentation is important but should not block compilation.
+                 Individual projects can enable this if desired.
+  -->
+  <PropertyGroup Label="Warning Suppressions">
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+</Project>
