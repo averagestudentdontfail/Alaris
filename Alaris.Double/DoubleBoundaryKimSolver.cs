@@ -32,12 +32,17 @@ public sealed class DoubleBoundaryKimSolver
     private readonly double _dividendYield;
     private readonly double _volatility;
     private readonly bool _isCall;
-    public readonly int _collocationPoints;
+    private readonly int _collocationPoints;
+
+    /// <summary>
+    /// Number of collocation points used for boundary refinement.
+    /// </summary>
+    public int CollocationPoints => _collocationPoints;
 
     // Ratio history tracking for divergence detection
-    private System.Collections.Generic.Dictionary<int, System.Collections.Generic.List<double>> _upperRatioHistory = new();
-    private System.Collections.Generic.Dictionary<int, System.Collections.Generic.List<double>> _lowerRatioHistory = new();
-    private int _currentIteration = 0;
+    private readonly System.Collections.Generic.Dictionary<int, System.Collections.Generic.List<double>> _upperRatioHistory = new();
+    private readonly System.Collections.Generic.Dictionary<int, System.Collections.Generic.List<double>> _lowerRatioHistory = new();
+    private int _currentIteration;
 
     private const double TOLERANCE = 1e-6;
     private const int MAX_ITERATIONS = 100;
@@ -142,7 +147,7 @@ public sealed class DoubleBoundaryKimSolver
         if (!upperReasonable || !lowerReasonable || !orderingCorrect)
         {
             // Input is unreasonable - don't waste time iterating, fall back to fresh QD+ immediately
-            var qdplus = new QdPlusApproximation(
+            QdPlusApproximation qdplus = new QdPlusApproximation(
                 _spot, _strike, _maturity, _rate, _dividendYield, _volatility, _isCall);
             var (qdUpper, qdLower) = qdplus.CalculateBoundaries();
 
@@ -163,7 +168,7 @@ public sealed class DoubleBoundaryKimSolver
             // FP-B' iteration (Equation 33)
             for (int i = 0; i < m; i++)
             {
-                double ti = i * _maturity / (m - 1);
+                double ti = (i * _maturity) / (m - 1);
 
                 // Skip points before crossing time
                 if (ti < crossingTime - NUMERICAL_EPSILON)
@@ -216,7 +221,7 @@ public sealed class DoubleBoundaryKimSolver
                 if (stagnationCount > 3)
                 {
                     // Stuck - fall back to fresh QD+ computation
-                    var qdplus = new QdPlusApproximation(
+                    QdPlusApproximation qdplus = new QdPlusApproximation(
                         _spot, _strike, _maturity, _rate, _dividendYield, _volatility, _isCall);
                     var (qdUpper, qdLower) = qdplus.CalculateBoundaries();
 
@@ -294,25 +299,33 @@ public sealed class DoubleBoundaryKimSolver
 
         // Check for NaN or invalid values
         if (double.IsNaN(Ni) || double.IsNaN(Di) || Math.Abs(Di) < NUMERICAL_EPSILON)
+        {
             return InterpolateBoundary(upper, ti);
+        }
 
         // For negative rates, N and D can become negative or produce ratios > 1
         // Add safeguards to prevent divergence
         if (Math.Abs(Di) < NUMERICAL_EPSILON || Ni < 0 || Di < 0)
+        {
             return InterpolateBoundary(upper, ti);
+        }
 
         double ratio = Ni / Di;
 
         // For puts, ratio must be < 1 (boundary < strike) - this is a physical constraint
         // Only reject if ratio > 1.0 (physically impossible), not at arbitrary threshold
         if (!_isCall && ratio >= 1.0)
+        {
             return InterpolateBoundary(upper, ti);
+        }
 
         double result = _strike * ratio;
 
         // Safeguard against unreasonable values
         if (double.IsNaN(result) || double.IsInfinity(result))
+        {
             return InterpolateBoundary(upper, ti);
+        }
 
         // For puts, upper boundary must be less than strike and positive
         if (!_isCall)
@@ -343,7 +356,9 @@ public sealed class DoubleBoundaryKimSolver
         // For negative rates, N' and D' can become negative or produce ratios > 1
         // Add safeguards to prevent divergence
         if (Math.Abs(DiPrime) < NUMERICAL_EPSILON || NiPrime < 0 || DiPrime < 0)
+        {
             return InterpolateBoundary(lowerOld, ti);
+        }
 
         double ratio = NiPrime / DiPrime;
         double upperAtTi = InterpolateBoundary(upperNew, ti);
@@ -354,7 +369,9 @@ public sealed class DoubleBoundaryKimSolver
 
         // Safeguard against unreasonable values
         if (double.IsNaN(result) || double.IsInfinity(result))
+        {
             return InterpolateBoundary(lowerOld, ti);
+        }
 
         // For puts, lower boundary must be less than upper and positive
         if (!_isCall)
@@ -377,22 +394,28 @@ public sealed class DoubleBoundaryKimSolver
 
         // Check for invalid boundary value
         if (double.IsNaN(Bi) || Bi <= 0)
+        {
             return double.NaN;
+        }
 
         // Non-integral term
         double tauToMaturity = _maturity - ti;
         if (tauToMaturity < NUMERICAL_EPSILON)
+        {
             return 1.0; // At maturity, N = 1
+        }
 
         double d2Terminal = CalculateD2(Bi, _strike, tauToMaturity);
-        double nonIntegral = 1.0 - Math.Exp(-_rate * tauToMaturity) * NormalCDF(-d2Terminal);
+        double nonIntegral = 1.0 - (Math.Exp(-_rate * tauToMaturity) * NormalCDF(-d2Terminal));
 
         // Integral term (Equation 27 structure)
         double integral = CalculateIntegralTermN(ti, Bi, upper, lower, crossingTime);
 
         // Check for NaN in integral
         if (double.IsNaN(integral))
+        {
             return nonIntegral; // Fall back to non-integral term
+        }
 
         return nonIntegral - integral;
     }
@@ -408,22 +431,28 @@ public sealed class DoubleBoundaryKimSolver
 
         // Check for invalid boundary value
         if (double.IsNaN(Bi) || Bi <= 0)
+        {
             return double.NaN;
+        }
 
         // Non-integral term
         double tauToMaturity = _maturity - ti;
         if (tauToMaturity < NUMERICAL_EPSILON)
+        {
             return 1.0; // At maturity, D = 1
+        }
 
         double d1Terminal = CalculateD1(Bi, _strike, tauToMaturity);
-        double nonIntegral = 1.0 - Math.Exp(-_dividendYield * tauToMaturity) * NormalCDF(-d1Terminal);
+        double nonIntegral = 1.0 - (Math.Exp(-_dividendYield * tauToMaturity) * NormalCDF(-d1Terminal));
 
         // Integral term
         double integral = CalculateIntegralTermD(ti, Bi, upper, lower, crossingTime);
 
         // Check for NaN in integral
         if (double.IsNaN(integral))
+        {
             return nonIntegral; // Fall back to non-integral term
+        }
 
         return nonIntegral - integral;
     }
@@ -437,10 +466,10 @@ public sealed class DoubleBoundaryKimSolver
         
         // Standard N term
         double N = CalculateNumerator(ti, upper, lower, crossingTime, false);
-        
+
         // Additional stabilization term: (B^l_i/K) * integral
-        double additionalTerm = (Bi / _strike) * CalculateIntegralTermD(ti, Bi, upper, lower, crossingTime);
-        
+        double additionalTerm = Bi / _strike * CalculateIntegralTermD(ti, Bi, upper, lower, crossingTime);
+
         return N + additionalTerm;
     }
     
@@ -454,8 +483,8 @@ public sealed class DoubleBoundaryKimSolver
         // Simplified form - only non-integral term
         double tauToMaturity = _maturity - ti;
         double d1Terminal = CalculateD1(Bi, _strike, tauToMaturity);
-        
-        return 1.0 - Math.Exp(-_dividendYield * tauToMaturity) * NormalCDF(-d1Terminal);
+
+        return 1.0 - (Math.Exp(-_dividendYield * tauToMaturity) * NormalCDF(-d1Terminal));
     }
     
     /// <summary>
@@ -468,7 +497,9 @@ public sealed class DoubleBoundaryKimSolver
         double tStart = Math.Max(ti, crossingTime);
 
         if (tStart >= _maturity)
+        {
             return 0.0;
+        }
 
         // Trapezoidal integration
         int nSteps = INTEGRATION_POINTS;
@@ -476,7 +507,7 @@ public sealed class DoubleBoundaryKimSolver
 
         for (int j = 0; j <= nSteps; j++)
         {
-            double t = tStart + j * dt;
+            double t = tStart + (j * dt);
             double upperVal = InterpolateBoundary(upper, t);
             double lowerVal = InterpolateBoundary(lower, t);
 
@@ -487,26 +518,30 @@ public sealed class DoubleBoundaryKimSolver
 
             double tau = t - ti;
             if (tau < NUMERICAL_EPSILON)
+            {
                 continue;
+            }
 
             double d2Upper = CalculateD2(Bi, upperVal, tau);
             double d2Lower = CalculateD2(Bi, lowerVal, tau);
 
-            double integrand = _rate * Math.Exp(-_rate * tau) *
+            double integrand = (_rate * Math.Exp(-_rate * tau)) *
                               (NormalCDF(-d2Upper) - NormalCDF(-d2Lower));
 
             // Check for NaN in integrand
             if (double.IsNaN(integrand) || double.IsInfinity(integrand))
+            {
                 continue; // Skip this point
+            }
 
             // Trapezoidal rule weights
             double weight = (j == 0 || j == nSteps) ? 0.5 : 1.0;
-            integral += weight * integrand * dt;
+            integral += (weight * integrand) * dt;
         }
 
         return integral;
     }
-    
+
     /// <summary>
     /// Calculates integral term for denominator (q-weighted).
     /// </summary>
@@ -517,7 +552,9 @@ public sealed class DoubleBoundaryKimSolver
         double tStart = Math.Max(ti, crossingTime);
 
         if (tStart >= _maturity)
+        {
             return 0.0;
+        }
 
         // Trapezoidal integration
         int nSteps = INTEGRATION_POINTS;
@@ -525,7 +562,7 @@ public sealed class DoubleBoundaryKimSolver
 
         for (int j = 0; j <= nSteps; j++)
         {
-            double t = tStart + j * dt;
+            double t = tStart + (j * dt);
             double upperVal = InterpolateBoundary(upper, t);
             double lowerVal = InterpolateBoundary(lower, t);
 
@@ -536,26 +573,30 @@ public sealed class DoubleBoundaryKimSolver
 
             double tau = t - ti;
             if (tau < NUMERICAL_EPSILON)
+            {
                 continue;
+            }
 
             double d1Upper = CalculateD1(Bi, upperVal, tau);
             double d1Lower = CalculateD1(Bi, lowerVal, tau);
 
-            double integrand = _dividendYield * Math.Exp(-_dividendYield * tau) *
+            double integrand = (_dividendYield * Math.Exp(-_dividendYield * tau)) *
                               (NormalCDF(-d1Upper) - NormalCDF(-d1Lower));
 
             // Check for NaN in integrand
             if (double.IsNaN(integrand) || double.IsInfinity(integrand))
+            {
                 continue; // Skip this point
+            }
 
             // Trapezoidal rule weights
             double weight = (j == 0 || j == nSteps) ? 0.5 : 1.0;
-            integral += weight * integrand * dt;
+            integral += (weight * integrand) * dt;
         }
 
         return integral;
     }
-    
+
     /// <summary>
     /// Finds initial crossing time estimate.
     /// </summary>
@@ -566,7 +607,7 @@ public sealed class DoubleBoundaryKimSolver
         {
             if (upper[i] <= lower[i])
             {
-                return i * _maturity / (_collocationPoints - 1);
+                return (i * _maturity) / (_collocationPoints - 1);
             }
         }
         
@@ -579,7 +620,9 @@ public sealed class DoubleBoundaryKimSolver
     private double RefineCrossingTime(double[] upper, double[] lower, double initialCrossing)
     {
         if (initialCrossing <= 0 || initialCrossing >= _maturity)
+        {
             return initialCrossing;
+        }
         
         // Binary search refinement
         double left = Math.Max(0, initialCrossing - 0.1);
@@ -610,10 +653,12 @@ public sealed class DoubleBoundaryKimSolver
     private void AdjustCrossingInitialGuess(double[] upper, double[] lower, double crossingTime)
     {
         if (crossingTime <= 0 || crossingTime >= _maturity)
+        {
             return;
+        }
         
         // Find crossing index
-        int crossingIndex = (int)(crossingTime / _maturity * (_collocationPoints - 1));
+        int crossingIndex = (int)((crossingTime / _maturity) * (_collocationPoints - 1));
         
         // Set boundaries equal at and before crossing
         double crossingValue = (upper[crossingIndex] + lower[crossingIndex]) / 2.0;
@@ -668,14 +713,16 @@ public sealed class DoubleBoundaryKimSolver
     private double InterpolateBoundary(double[] boundary, double t)
     {
         if (boundary.Length == 1)
+        {
             return boundary[0];
-        
-        double index = t / _maturity * (boundary.Length - 1);
+        }
+
+        double index = (t / _maturity) * (boundary.Length - 1);
         int i0 = (int)Math.Floor(index);
         int i1 = Math.Min(i0 + 1, boundary.Length - 1);
         double alpha = index - i0;
-        
-        return boundary[i0] * (1.0 - alpha) + boundary[i1] * alpha;
+
+        return (boundary[i0] * (1.0 - alpha)) + (boundary[i1] * alpha);
     }
     
     /// <summary>
@@ -684,13 +731,15 @@ public sealed class DoubleBoundaryKimSolver
     private double CalculateD1(double S, double K, double tau)
     {
         if (tau <= NUMERICAL_EPSILON)
+        {
             return 0.0;
+        }
         
         double sigma = _volatility;
         double r = _rate;
         double q = _dividendYield;
-        
-        return (Math.Log(S / K) + (r - q + 0.5 * sigma * sigma) * tau) / (sigma * Math.Sqrt(tau));
+
+        return (Math.Log(S / K) + ((r - q + (0.5 * sigma * sigma)) * tau)) / (sigma * Math.Sqrt(tau));
     }
     
     /// <summary>
@@ -699,9 +748,11 @@ public sealed class DoubleBoundaryKimSolver
     private double CalculateD2(double S, double K, double tau)
     {
         if (tau <= NUMERICAL_EPSILON)
+        {
             return 0.0;
-        
-        return CalculateD1(S, K, tau) - _volatility * Math.Sqrt(tau);
+        }
+
+        return CalculateD1(S, K, tau) - (_volatility * Math.Sqrt(tau));
     }
     
     /// <summary>
@@ -709,7 +760,7 @@ public sealed class DoubleBoundaryKimSolver
     /// </summary>
     private static double NormalCDF(double x)
     {
-        return 0.5 * (1.0 + Erf(x / Math.Sqrt(2.0)));
+        return (0.5 * (1.0 + Erf(x / Math.Sqrt(2.0))));
     }
     
     /// <summary>
@@ -727,15 +778,15 @@ public sealed class DoubleBoundaryKimSolver
         
         int sign = x < 0 ? -1 : 1;
         x = Math.Abs(x);
-        
-        double t = 1.0 / (1.0 + p * x);
+
+        double t = 1.0 / (1.0 + (p * x));
         double t2 = t * t;
         double t3 = t2 * t;
         double t4 = t3 * t;
         double t5 = t4 * t;
-        
-        double y = 1.0 - (a1 * t + a2 * t2 + a3 * t3 + a4 * t4 + a5 * t5) * Math.Exp(-x * x);
-        
+
+        double y = 1.0 - ((a1 * t + a2 * t2 + a3 * t3 + a4 * t4 + a5 * t5) * Math.Exp(-(x * x)));
+
         return sign * y;
     }
 
@@ -750,7 +801,9 @@ public sealed class DoubleBoundaryKimSolver
     {
         // Need at least 2 iterations to detect trend
         if (ratioHistory.Count < 2)
+        {
             return false;
+        }
 
         // Check if last 2-3 values are consistently increasing toward 1.0
         int checkCount = Math.Min(3, ratioHistory.Count);
@@ -758,7 +811,7 @@ public sealed class DoubleBoundaryKimSolver
 
         for (int i = ratioHistory.Count - checkCount + 1; i < ratioHistory.Count; i++)
         {
-            if (ratioHistory[i] <= ratioHistory[i - 1] + NUMERICAL_EPSILON)
+            if (ratioHistory[i] <= (ratioHistory[i - 1] + NUMERICAL_EPSILON))
             {
                 increasing = false;
                 break;
@@ -777,7 +830,7 @@ public sealed class DoubleBoundaryKimSolver
     private int GetPointIndex(double ti)
     {
         // Map time to collocation point index
-        return (int)Math.Round(ti / _maturity * (_collocationPoints - 1));
+        return (int)Math.Round((ti / _maturity) * (_collocationPoints - 1));
     }
 
     /// <summary>
@@ -822,8 +875,8 @@ public sealed class DoubleBoundaryKimSolver
         }
 
         // PAV algorithm for non-decreasing (increasing) constraint
-        var poolValues = new System.Collections.Generic.List<double>();
-        var poolSizes = new System.Collections.Generic.List<int>();
+        System.Collections.Generic.List<double> poolValues = new System.Collections.Generic.List<double>();
+        System.Collections.Generic.List<int> poolSizes = new System.Collections.Generic.List<int>();
 
         for (int i = 0; i < n; i++)
         {
@@ -835,8 +888,8 @@ public sealed class DoubleBoundaryKimSolver
                    poolValues[^1] < poolValues[^2])
             {
                 // Merge last two pools (weighted average)
-                double sum1 = poolValues[^1] * poolSizes[^1];
-                double sum2 = poolValues[^2] * poolSizes[^2];
+                double sum1 = (poolValues[^1] * poolSizes[^1]);
+                double sum2 = (poolValues[^2] * poolSizes[^2]);
                 int totalSize = poolSizes[^1] + poolSizes[^2];
 
                 poolValues.RemoveAt(poolValues.Count - 1);
@@ -870,7 +923,9 @@ public sealed class DoubleBoundaryKimSolver
     {
         int n = boundary.Length;
         if (n < 5)
+        {
             return boundary;
+        }
 
         double[] smoothed = (double[])boundary.Clone();
 
@@ -884,7 +939,7 @@ public sealed class DoubleBoundaryKimSolver
             double sum = 0;
             for (int j = -2; j <= 2; j++)
             {
-                sum += boundary[i + j] * weights[j + 2];
+                sum += (boundary[i + j] * weights[j + 2]);
             }
             smoothed[i] = sum;
         }
@@ -893,12 +948,12 @@ public sealed class DoubleBoundaryKimSolver
         if (n >= 3)
         {
             // First point: weighted average of first 3 points
-            smoothed[0] = (5.0 * boundary[0] + 2.0 * boundary[1] - boundary[2]) / 6.0;
+            smoothed[0] = ((5.0 * boundary[0]) + (2.0 * boundary[1]) - boundary[2]) / 6.0;
             smoothed[1] = (boundary[0] + boundary[1] + boundary[2]) / 3.0;
 
             // Last point: weighted average of last 3 points
             smoothed[n - 2] = (boundary[n - 3] + boundary[n - 2] + boundary[n - 1]) / 3.0;
-            smoothed[n - 1] = (-boundary[n - 3] + 2.0 * boundary[n - 2] + 5.0 * boundary[n - 1]) / 6.0;
+            smoothed[n - 1] = (-boundary[n - 3] + (2.0 * boundary[n - 2]) + (5.0 * boundary[n - 1])) / 6.0;
         }
 
         return smoothed;

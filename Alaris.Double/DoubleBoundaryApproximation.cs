@@ -38,13 +38,21 @@ public sealed class DoubleBoundaryApproximation
         bool isCall)
     {
         if (spot <= 0)
+        {
             throw new System.ArgumentException("Spot price must be positive", nameof(spot));
+        }
         if (strike <= 0)
+        {
             throw new System.ArgumentException("Strike price must be positive", nameof(strike));
+        }
         if (maturity <= 0)
+        {
             throw new System.ArgumentException("Maturity must be positive", nameof(maturity));
+        }
         if (volatility <= 0)
+        {
             throw new System.ArgumentException("Volatility must be positive", nameof(volatility));
+        }
         
         _spot = spot;
         _strike = strike;
@@ -60,9 +68,9 @@ public sealed class DoubleBoundaryApproximation
     /// </summary>
     public BoundaryResult CalculateBoundaries()
     {
-        var solver = new QdPlusApproximation(
+        QdPlusApproximation solver = new QdPlusApproximation(
             _spot, _strike, _maturity, _rate, _dividendYield, _volatility, _isCall);
-        
+
         var (upper, lower) = solver.CalculateBoundaries();
         
         bool boundariesCross = _isCall ? (upper <= lower) : (lower >= upper);
@@ -81,7 +89,7 @@ public sealed class DoubleBoundaryApproximation
     /// </summary>
     public double ApproximateValue()
     {
-        var boundaries = CalculateBoundaries();
+        BoundaryResult boundaries = CalculateBoundaries();
         
         if (boundaries.BoundariesCross || !boundaries.IsValid)
         {
@@ -158,12 +166,12 @@ public sealed class DoubleBoundaryApproximation
     {
         double h = 1.0 - System.Math.Exp(-_rate * _maturity);
         double sigma2 = _volatility * _volatility;
-        double alpha = 2.0 * _rate / sigma2;
-        double beta = 2.0 * (_rate - _dividendYield) / sigma2;
-        
-        double discriminant = System.Math.Sqrt((beta - 1) * (beta - 1) + 4.0 * alpha / h);
-        double lambda1 = (-(beta - 1) - discriminant) / 2.0;
-        double lambda2 = (-(beta - 1) + discriminant) / 2.0;
+        double alpha = (2.0 * _rate) / sigma2;
+        double beta = (2.0 * (_rate - _dividendYield)) / sigma2;
+
+        double discriminant = System.Math.Sqrt(((beta - 1) * (beta - 1)) + ((4.0 * alpha) / h));
+        double lambda1 = ((-(beta - 1)) - discriminant) / 2.0;
+        double lambda2 = ((-(beta - 1)) + discriminant) / 2.0;
         
         return (lambda1, lambda2);
     }
@@ -190,7 +198,7 @@ public sealed class DoubleBoundaryApproximation
     {
         double S = spot ?? _spot;
         double d1 = CalculateD1(S);
-        double d2 = d1 - _volatility * System.Math.Sqrt(_maturity);
+        double d2 = d1 - (_volatility * System.Math.Sqrt(_maturity));
         
         double discountFactor = System.Math.Exp(-_rate * _maturity);
         double dividendFactor = System.Math.Exp(-_dividendYield * _maturity);
@@ -222,8 +230,8 @@ public sealed class DoubleBoundaryApproximation
     /// </summary>
     private double CalculateD1(double S)
     {
-        double numerator = System.Math.Log(S / _strike) 
-                         + (_rate - _dividendYield + 0.5 * _volatility * _volatility) * _maturity;
+        double numerator = System.Math.Log(S / _strike)
+                         + ((_rate - _dividendYield + (0.5 * _volatility * _volatility)) * _maturity);
         return numerator / (_volatility * System.Math.Sqrt(_maturity));
     }
     
@@ -232,9 +240,15 @@ public sealed class DoubleBoundaryApproximation
     /// </summary>
     private double NormalCDF(double x)
     {
-        if (x > 8.0) return 1.0;
-        if (x < -8.0) return 0.0;
-        return 0.5 * (1.0 + Erf(x / System.Math.Sqrt(2.0)));
+        if (x > 8.0)
+        {
+            return 1.0;
+        }
+        if (x < -8.0)
+        {
+            return 0.0;
+        }
+        return (0.5 * (1.0 + Erf(x / System.Math.Sqrt(2.0))));
     }
     
     /// <summary>
@@ -251,10 +265,10 @@ public sealed class DoubleBoundaryApproximation
         
         int sign = x < 0 ? -1 : 1;
         x = System.Math.Abs(x);
-        
-        double t = 1.0 / (1.0 + p * x);
-        double y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * System.Math.Exp(-x * x);
-        
+
+        double t = 1.0 / (1.0 + (p * x));
+        double y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * System.Math.Exp(-(x * x));
+
         return sign * y;
     }
 }

@@ -86,15 +86,15 @@ public sealed class QdPlusApproximation
     private (double Upper, double Lower) CalculateDoubleBoundariesPut()
     {
         double h = 1.0 - Math.Exp(-_rate * _maturity);
-        
+
         // Handle near-zero h with Taylor expansion
         if (Math.Abs(h) < NUMERICAL_EPSILON)
         {
             return ApproximateForSmallH();
         }
-        
+
         double sigma2 = _volatility * _volatility;
-        double omega = 2.0 * (_rate - _dividendYield) / sigma2;
+        double omega = (2.0 * (_rate - _dividendYield)) / sigma2;
         
         // Calculate characteristic equation roots
         var (lambda1, lambda2) = CalculateLambdaRoots(h, omega, sigma2);
@@ -126,17 +126,17 @@ public sealed class QdPlusApproximation
     private (double Lambda1, double Lambda2) CalculateLambdaRoots(double h, double omega, double sigma2)
     {
         // Discriminant: (ω - 1)² + 8r/(σ²h)
-        double discriminant = (omega - 1.0) * (omega - 1.0) + 8.0 * _rate / (sigma2 * h);
-        
+        double discriminant = ((omega - 1.0) * (omega - 1.0)) + ((8.0 * _rate) / (sigma2 * h));
+
         if (discriminant < 0)
         {
             return CalculateComplexLambdaApproximation(omega);
         }
-        
+
         double sqrtDiscriminant = Math.Sqrt(discriminant);
-        double lambda1 = (-(omega - 1.0) + sqrtDiscriminant) / 2.0;
-        double lambda2 = (-(omega - 1.0) - sqrtDiscriminant) / 2.0;
-        
+        double lambda1 = ((-(omega - 1.0)) + sqrtDiscriminant) / 2.0;
+        double lambda2 = ((-(omega - 1.0)) - sqrtDiscriminant) / 2.0;
+
         return (lambda1, lambda2);
     }
     
@@ -198,7 +198,7 @@ public sealed class QdPlusApproximation
             else
             {
                 // Full Super Halley correction
-                correction = (1.0 + 0.5 * Lf / (1.0 - Lf)) * f / df;
+                correction = (1.0 + ((0.5 * Lf) / (1.0 - Lf))) * f / df;
             }
             
             S = S - correction;
@@ -220,7 +220,7 @@ public sealed class QdPlusApproximation
         }
 
         // Reject solutions too close to strike (likely spurious roots)
-        double distanceFromStrike = Math.Abs(S - _strike) / _strike;
+        double distanceFromStrike = (Math.Abs(S - _strike)) / _strike;
         if (distanceFromStrike < 0.05)
         {
             // Return initial guess if converged to spurious root
@@ -273,8 +273,8 @@ public sealed class QdPlusApproximation
         }
 
         // Black-Scholes parameters
-        double d1 = (Math.Log(S / K) + (r - q + 0.5 * sigma2) * T) / (sigma * Math.Sqrt(T));
-        double d2 = d1 - sigma * Math.Sqrt(T);
+        double d1 = (Math.Log(S / K) + ((r - q + (0.5 * sigma2)) * T)) / (sigma * Math.Sqrt(T));
+        double d2 = d1 - (sigma * Math.Sqrt(T));
 
         double Phi_d1 = NormalCDF(d1);
         double Phi_d2 = NormalCDF(d2);
@@ -283,15 +283,15 @@ public sealed class QdPlusApproximation
 
         // European option value
         double VE = _isCall ?
-            S * Math.Exp(-q * T) * Phi_d1 - K * Math.Exp(-r * T) * Phi_d2 :
-            K * Math.Exp(-r * T) * (1.0 - Phi_d2) - S * Math.Exp(-q * T) * (1.0 - Phi_d1);
+            (S * Math.Exp(-q * T) * Phi_d1) - (K * Math.Exp(-r * T) * Phi_d2) :
+            (K * Math.Exp(-r * T) * (1.0 - Phi_d2)) - (S * Math.Exp(-q * T) * (1.0 - Phi_d1));
 
         // Theta calculation (time derivative)
         double theta = CalculateThetaBS(S, d1, d2, phi_d1, phi_d2);
 
         // Healy Equation 10 parameters
-        double alpha = 2.0 * r / sigma2;
-        double beta = 2.0 * (r - q) / sigma2;
+        double alpha = (2.0 * r) / sigma2;
+        double beta = (2.0 * (r - q)) / sigma2;
 
         // Lambda derivative with respect to h
         double lambdaPrime = CalculateLambdaPrime(lambda, h, sigma2);
@@ -304,7 +304,7 @@ public sealed class QdPlusApproximation
         // Safeguard against division by near-zero (intrinsic - VE)
         // At the boundary, intrinsic > VE, so this should be positive
         // If it's too small, use a simplified approximation
-        double term1 = (1.0 - h) * alpha / (2.0 * lambda + beta - 1.0);
+        double term1 = ((1.0 - h) * alpha) / ((2.0 * lambda) + beta - 1.0);
         double term2;
 
         if (Math.Abs(intrinsicMinusVE) < NUMERICAL_EPSILON ||
@@ -315,11 +315,11 @@ public sealed class QdPlusApproximation
         }
         else
         {
-            term2 = (1.0 / h) - theta / (r * intrinsicMinusVE);
+            term2 = (1.0 / h) - (theta / (r * intrinsicMinusVE));
         }
 
-        double term3 = lambdaPrime / (2.0 * lambda + beta - 1.0);
-        double c0 = -term1 * term2 + term3;
+        double term3 = lambdaPrime / ((2.0 * lambda) + beta - 1.0);
+        double c0 = (-term1 * term2) + term3;
 
         // Clamp c0 to reasonable range to prevent overflow in exp(c0)
         c0 = Math.Max(Math.Min(c0, 10.0), -10.0);
@@ -329,16 +329,16 @@ public sealed class QdPlusApproximation
         double Klambda = Math.Pow(K, lambda);
         double exp_c0 = Math.Exp(c0);
 
-        double f = Slambda - Klambda * exp_c0;
+        double f = Slambda - (Klambda * exp_c0);
 
         // First derivative: df/dS = λS^(λ-1) - K^λ * exp(c0) * dc0/dS
         double df = lambda * Math.Pow(S, lambda - 1.0);
         double dc0_dS = CalculateDc0DS(S, theta, d1, phi_d1, sigma, T);
-        df -= Klambda * exp_c0 * dc0_dS;
+        df -= (Klambda * exp_c0) * dc0_dS;
 
         // Second derivative: d²f/dS² = λ(λ-1)S^(λ-2) - K^λ * exp(c0) * (dc0/dS)²
-        double d2f = lambda * (lambda - 1.0) * Math.Pow(S, lambda - 2.0);
-        d2f -= Klambda * exp_c0 * dc0_dS * dc0_dS;
+        double d2f = (lambda * (lambda - 1.0)) * Math.Pow(S, lambda - 2.0);
+        d2f -= (Klambda * exp_c0) * dc0_dS * dc0_dS;
 
         return (f, df, d2f);
     }
@@ -360,7 +360,7 @@ public sealed class QdPlusApproximation
             double putLowerBase = InterpolateBenchmark(T, isUpper: false);
 
             // Apply volatility adjustment (same sign logic as puts)
-            double volAdjustment = -(sigmaFactor - 1.0) * K * 0.03;
+            double volAdjustment = (-(sigmaFactor - 1.0)) * K * 0.03;
 
             if (isUpper)
             {
@@ -384,7 +384,7 @@ public sealed class QdPlusApproximation
             // Apply volatility adjustment
             // Higher volatility -> earlier exercise -> LOWER boundaries for puts
             // Negative sign because higher vol means wider exercise region (lower boundaries)
-            double volAdjustment = -(sigmaFactor - 1.0) * K * 0.03; // -3% of strike per 1% vol increase
+            double volAdjustment = (-(sigmaFactor - 1.0)) * K * 0.03; // -3% of strike per 1% vol increase
             return baseGuess + volAdjustment;
         }
     }
@@ -406,9 +406,13 @@ public sealed class QdPlusApproximation
 
         // Handle extrapolation for very short or very long maturities
         if (T <= knownT[0])
+        {
             return knownValues[0];
+        }
         if (T >= knownT[^1])
+        {
             return knownValues[^1];
+        }
 
         // Linear interpolation between bracketing benchmarks
         for (int i = 0; i < knownT.Length - 1; i++)
@@ -422,7 +426,7 @@ public sealed class QdPlusApproximation
 
                 // Linear interpolation
                 double alpha = (T - t0) / (t1 - t0);
-                return v0 + alpha * (v1 - v0);
+                return v0 + (alpha * (v1 - v0));
             }
         }
 
@@ -443,8 +447,8 @@ public sealed class QdPlusApproximation
         if (_isCall)
         {
             // For calls: boundaries above strike (mirror of put case)
-            double putUpper = K * (1.0 - 0.2 * sigma * sqrtT);
-            double putLower = K * (0.5 + 0.1 * sigma * sqrtT);
+            double putUpper = K * (1.0 - ((0.2 * sigma) * sqrtT));
+            double putLower = K * (0.5 + ((0.1 * sigma) * sqrtT));
 
             double upper = K + (K - putLower); // ~1.5K - 0.1*sigma*sqrtT
             double lower = K + (K - putUpper); // ~K + 0.2*sigma*sqrtT
@@ -454,8 +458,8 @@ public sealed class QdPlusApproximation
         else
         {
             // For puts: boundaries below strike
-            double upper = K * (1.0 - 0.2 * sigma * sqrtT);
-            double lower = K * (0.5 + 0.1 * sigma * sqrtT);
+            double upper = K * (1.0 - ((0.2 * sigma) * sqrtT));
+            double lower = K * (0.5 + ((0.1 * sigma) * sqrtT));
 
             return (upper, lower);
         }
@@ -478,8 +482,8 @@ public sealed class QdPlusApproximation
             // For calls in double boundary regime (0 < r < q):
             // Boundaries are ABOVE strike, symmetric to put case
             // Use mirror formula: K + (K - put_boundary)
-            double putUpperEquiv = K * (0.74 - 0.012 * sqrtT * sigmaFactor);
-            double putLowerEquiv = K * (0.64 - 0.018 * sqrtT * sigmaFactor);
+            double putUpperEquiv = K * (0.74 - ((0.012 * sqrtT) * sigmaFactor));
+            double putLowerEquiv = K * (0.64 - ((0.018 * sqrtT) * sigmaFactor));
 
             // Mirror around strike to get call boundaries
             double upper = K + (K - putLowerEquiv); // ~136-142
@@ -488,7 +492,7 @@ public sealed class QdPlusApproximation
             // Ensure boundaries are above strike and don't cross
             upper = Math.Max(upper, K * 1.2);
             lower = Math.Max(lower, K * 1.05);
-            lower = Math.Min(lower, upper - K * 0.05);
+            lower = Math.Min(lower, upper - (K * 0.05));
 
             return (upper, lower);
         }
@@ -496,13 +500,13 @@ public sealed class QdPlusApproximation
         {
             // For puts: Calibrated formula based on Healy benchmarks:
             // T=1: (73.5, 63.5), T=5: (71.6, 61.6), T=10: (69.62, 58.72), T=15: (68, 57)
-            double upper = K * (0.74 - 0.012 * sqrtT * sigmaFactor);
-            double lower = K * (0.64 - 0.018 * sqrtT * sigmaFactor);
+            double upper = K * (0.74 - ((0.012 * sqrtT) * sigmaFactor));
+            double lower = K * (0.64 - ((0.018 * sqrtT) * sigmaFactor));
 
             // Ensure boundaries don't go negative or cross
             upper = Math.Max(upper, K * 0.5);
             lower = Math.Max(lower, K * 0.3);
-            lower = Math.Min(lower, upper - K * 0.05);
+            lower = Math.Min(lower, upper - (K * 0.05));
 
             return (upper, lower);
         }
@@ -514,7 +518,7 @@ public sealed class QdPlusApproximation
     /// </summary>
     private (double Lambda1, double Lambda2) CalculateComplexLambdaApproximation(double omega)
     {
-        double realPart = -(omega - 1.0) / 2.0;
+        double realPart = (-(omega - 1.0)) / 2.0;
         double offset = 0.5;
         return (realPart + offset, realPart - offset);
     }
@@ -526,7 +530,7 @@ public sealed class QdPlusApproximation
     {
         double h = 1.0 - Math.Exp(-_rate * _maturity);
         double sigma2 = _volatility * _volatility;
-        double omega = 2.0 * (_rate - _dividendYield) / sigma2;
+        double omega = (2.0 * (_rate - _dividendYield)) / sigma2;
         
         var (lambda1, lambda2) = CalculateLambdaRoots(h, omega, sigma2);
         double lambda = Math.Max(lambda1, lambda2);
@@ -541,7 +545,7 @@ public sealed class QdPlusApproximation
     {
         double h = 1.0 - Math.Exp(-_rate * _maturity);
         double sigma2 = _volatility * _volatility;
-        double omega = 2.0 * (_rate - _dividendYield) / sigma2;
+        double omega = (2.0 * (_rate - _dividendYield)) / sigma2;
         
         var (lambda1, lambda2) = CalculateLambdaRoots(h, omega, sigma2);
         double lambda = Math.Min(lambda1, lambda2);
@@ -556,7 +560,7 @@ public sealed class QdPlusApproximation
     {
         double h = 1.0 - Math.Exp(-_rate * _maturity);
         double sigma2 = _volatility * _volatility;
-        double omega = 2.0 * (_rate - _dividendYield) / sigma2;
+        double omega = (2.0 * (_rate - _dividendYield)) / sigma2;
         
         var (lambda1, lambda2) = CalculateLambdaRoots(h, omega, sigma2);
         
@@ -591,16 +595,16 @@ public sealed class QdPlusApproximation
         
         if (_isCall)
         {
-            double term1 = -S * phi_d1 * sigma * Math.Exp(-q * T) / (2.0 * Math.Sqrt(T));
-            double term2 = q * S * Math.Exp(-q * T) * NormalCDF(d1);
-            double term3 = -r * K * Math.Exp(-r * T) * NormalCDF(d2);
+            double term1 = ((-S * phi_d1) * sigma * Math.Exp(-q * T)) / (2.0 * Math.Sqrt(T));
+            double term2 = (q * S) * Math.Exp(-q * T) * NormalCDF(d1);
+            double term3 = (-r * K) * Math.Exp(-r * T) * NormalCDF(d2);
             return term1 + term2 + term3;
         }
         else
         {
-            double term1 = -S * phi_d1 * sigma * Math.Exp(-q * T) / (2.0 * Math.Sqrt(T));
-            double term2 = -q * S * Math.Exp(-q * T) * (1.0 - NormalCDF(d1));
-            double term3 = r * K * Math.Exp(-r * T) * (1.0 - NormalCDF(d2));
+            double term1 = ((-S * phi_d1) * sigma * Math.Exp(-q * T)) / (2.0 * Math.Sqrt(T));
+            double term2 = ((-q * S) * Math.Exp(-q * T)) * (1.0 - NormalCDF(d1));
+            double term3 = ((r * K) * Math.Exp(-r * T)) * (1.0 - NormalCDF(d2));
             return term1 + term2 + term3;
         }
     }
@@ -610,50 +614,52 @@ public sealed class QdPlusApproximation
     /// </summary>
     private double CalculateLambdaPrime(double lambda, double h, double sigma2)
     {
-        double omega = 2.0 * (_rate - _dividendYield) / sigma2;
-        double discriminant = (omega - 1.0) * (omega - 1.0) + 8.0 * _rate / (sigma2 * h);
-        
+        double omega = (2.0 * (_rate - _dividendYield)) / sigma2;
+        double discriminant = ((omega - 1.0) * (omega - 1.0)) + ((8.0 * _rate) / (sigma2 * h));
+
         if (discriminant <= 0)
+        {
             return 0.0;
-        
+        }
+
         double sqrtDiscriminant = Math.Sqrt(discriminant);
-        double sign = lambda > -(omega - 1.0) / 2.0 ? 1.0 : -1.0;
-        
-        return sign * 4.0 * _rate / (sigma2 * h * h * sqrtDiscriminant);
+        double sign = lambda > ((-(omega - 1.0)) / 2.0) ? 1.0 : -1.0;
+
+        return (sign * 4.0 * _rate) / (sigma2 * h * h * sqrtDiscriminant);
     }
-    
+
     /// <summary>
     /// Calculates derivative of c0 with respect to S.
     /// Simplified approximation for numerical stability.
     /// </summary>
-    private double CalculateDc0DS(double S, double theta, double d1, double phi_d1, 
+    private double CalculateDc0DS(double S, double theta, double d1, double phi_d1,
         double sigma, double T)
     {
         double K = _strike;
         double sqrtT = Math.Sqrt(T);
-        
-        double dtheta_dS = phi_d1 * _dividendYield * Math.Exp(-_dividendYield * T);
+
+        double dtheta_dS = (phi_d1 * _dividendYield) * Math.Exp(-_dividendYield * T);
         double dVE_dS = Math.Exp(-_dividendYield * T) * NormalCDF(d1);
-        
-        return -dtheta_dS / (_rate * (S - K)) + theta * dVE_dS / (_rate * (S - K) * (S - K));
+
+        return (-dtheta_dS / (_rate * (S - K))) + ((theta * dVE_dS) / (_rate * (S - K) * (S - K)));
     }
-    
+
     /// <summary>
     /// Standard normal cumulative distribution function.
     /// </summary>
     private static double NormalCDF(double x)
     {
-        return 0.5 * (1.0 + Erf(x / Math.Sqrt(2.0)));
+        return (0.5 * (1.0 + Erf(x / Math.Sqrt(2.0))));
     }
-    
+
     /// <summary>
     /// Standard normal probability density function.
     /// </summary>
     private static double NormalPDF(double x)
     {
-        return Math.Exp(-0.5 * x * x) / Math.Sqrt(2.0 * Math.PI);
+        return Math.Exp((-0.5 * x) * x) / Math.Sqrt(2.0 * Math.PI);
     }
-    
+
     /// <summary>
     /// Error function (Abramowitz and Stegun approximation).
     /// </summary>
@@ -665,18 +671,18 @@ public sealed class QdPlusApproximation
         const double a4 = -1.453152027;
         const double a5 = 1.061405429;
         const double p = 0.3275911;
-        
+
         int sign = x < 0 ? -1 : 1;
         x = Math.Abs(x);
-        
-        double t = 1.0 / (1.0 + p * x);
+
+        double t = 1.0 / (1.0 + (p * x));
         double t2 = t * t;
         double t3 = t2 * t;
         double t4 = t3 * t;
         double t5 = t4 * t;
-        
-        double y = 1.0 - (a1 * t + a2 * t2 + a3 * t3 + a4 * t4 + a5 * t5) * Math.Exp(-x * x);
-        
+
+        double y = 1.0 - ((a1 * t + a2 * t2 + a3 * t3 + a4 * t4 + a5 * t5) * Math.Exp(-(x * x)));
+
         return sign * y;
     }
 }
