@@ -79,7 +79,7 @@ public sealed class DoubleBoundarySolver
             _spot, _strike, _maturity, _rate,
             _dividendYield, _volatility, _isCall);
 
-        var (upperInitial, lowerInitial) = qdplus.CalculateBoundaries();
+        (double upperInitial, double lowerInitial) = qdplus.CalculateBoundaries();
         
         // Check regime
         bool isDoubleBoundary = DetectDoubleBoundaryRegime();
@@ -124,7 +124,7 @@ public sealed class DoubleBoundarySolver
             _dividendYield, _volatility, _isCall,
             _collocationPoints);
 
-        var (upperRefined, lowerRefined, crossingTime) = kimSolver.SolveBoundaries(
+        (double[] upperRefined, double[] lowerRefined, double crossingTime) = kimSolver.SolveBoundaries(
             upperInitial, lowerInitial);
         
         // Extract boundary values at maturity
