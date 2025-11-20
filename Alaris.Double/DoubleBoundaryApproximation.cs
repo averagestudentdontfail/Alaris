@@ -71,7 +71,7 @@ public sealed class DoubleBoundaryApproximation
         QdPlusApproximation solver = new QdPlusApproximation(
             _spot, _strike, _maturity, _rate, _dividendYield, _volatility, _isCall);
 
-        var (upper, lower) = solver.CalculateBoundaries();
+        (double upper, double lower) = solver.CalculateBoundaries();
         
         bool boundariesCross = _isCall ? (upper <= lower) : (lower >= upper);
         
@@ -136,7 +136,7 @@ public sealed class DoubleBoundaryApproximation
     /// </remarks>
     private double CalculateEarlyExercisePremium(BoundaryResult boundaries)
     {
-        var (lambda1, lambda2) = CalculateLambdas();
+        (double lambda1, double lambda2) = CalculateLambdas();
         
         // Check which region the spot price falls into
         if (_spot >= boundaries.UpperBoundary)
@@ -166,12 +166,12 @@ public sealed class DoubleBoundaryApproximation
     {
         double h = 1.0 - System.Math.Exp(-_rate * _maturity);
         double sigma2 = _volatility * _volatility;
-        double alpha = (2.0 * _rate) / sigma2;
-        double beta = (2.0 * (_rate - _dividendYield)) / sigma2;
+        double alpha = 2.0 * _rate / sigma2;
+        double beta = 2.0 * (_rate - _dividendYield) / sigma2;
 
-        double discriminant = System.Math.Sqrt(((beta - 1) * (beta - 1)) + ((4.0 * alpha) / h));
-        double lambda1 = ((-(beta - 1)) - discriminant) / 2.0;
-        double lambda2 = ((-(beta - 1)) + discriminant) / 2.0;
+        double discriminant = System.Math.Sqrt((beta - 1) * (beta - 1) + 4.0 * alpha / h);
+        double lambda1 = (-(beta - 1) - discriminant) / 2.0;
+        double lambda2 = (-(beta - 1) + discriminant) / 2.0;
         
         return (lambda1, lambda2);
     }
@@ -205,13 +205,13 @@ public sealed class DoubleBoundaryApproximation
         
         if (_isCall)
         {
-            return S * dividendFactor * NormalCDF(d1) 
-                 - _strike * discountFactor * NormalCDF(d2);
+            return (S * dividendFactor * NormalCDF(d1))
+                 - (_strike * discountFactor * NormalCDF(d2));
         }
         else
         {
-            return _strike * discountFactor * NormalCDF(-d2) 
-                 - S * dividendFactor * NormalCDF(-d1);
+            return (_strike * discountFactor * NormalCDF(-d2))
+                 - (S * dividendFactor * NormalCDF(-d1));
         }
     }
     
@@ -231,7 +231,7 @@ public sealed class DoubleBoundaryApproximation
     private double CalculateD1(double S)
     {
         double numerator = System.Math.Log(S / _strike)
-                         + ((_rate - _dividendYield + (0.5 * _volatility * _volatility)) * _maturity);
+                         + (_rate - _dividendYield + 0.5 * _volatility * _volatility) * _maturity;
         return numerator / (_volatility * System.Math.Sqrt(_maturity));
     }
     
@@ -248,7 +248,7 @@ public sealed class DoubleBoundaryApproximation
         {
             return 0.0;
         }
-        return (0.5 * (1.0 + Erf(x / System.Math.Sqrt(2.0))));
+        return 0.5 * (1.0 + Erf(x / System.Math.Sqrt(2.0)));
     }
     
     /// <summary>
@@ -266,8 +266,8 @@ public sealed class DoubleBoundaryApproximation
         int sign = x < 0 ? -1 : 1;
         x = System.Math.Abs(x);
 
-        double t = 1.0 / (1.0 + (p * x));
-        double y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * System.Math.Exp(-(x * x));
+        double t = 1.0 / (1.0 + p * x);
+        double y = 1.0 - ((((a5 * t + a4) * t + a3) * t + a2) * t + a1) * t * System.Math.Exp(-x * x);
 
         return sign * y;
     }
