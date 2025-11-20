@@ -14,7 +14,9 @@
 
 All 186 violations have been successfully fixed. Alaris.Double now builds cleanly with `TreatWarningsAsErrors=true`.
 
-**Commit**: `35b73cd` - "Complete Alaris.Double Coding Standard Compliance (186 → 0 violations)"
+**Commits**:
+- `35b73cd` - "Complete Alaris.Double Coding Standard Compliance (186 → 0 violations)"
+- `ae7cb61` - "Fix Remaining Violations in Alaris.Double (88 → 0)" - Fixed over-parenthesization
 
 ---
 
