@@ -169,7 +169,7 @@ public sealed class DoubleBoundaryApproximation
         double alpha = 2.0 * _rate / sigma2;
         double beta = 2.0 * (_rate - _dividendYield) / sigma2;
 
-        double discriminant = System.Math.Sqrt((beta - 1) * (beta - 1) + 4.0 * alpha / h);
+        double discriminant = System.Math.Sqrt(((beta - 1) * (beta - 1)) + (4.0 * alpha / h));
         double lambda1 = (-(beta - 1) - discriminant) / 2.0;
         double lambda2 = (-(beta - 1) + discriminant) / 2.0;
         
@@ -231,7 +231,7 @@ public sealed class DoubleBoundaryApproximation
     private double CalculateD1(double S)
     {
         double numerator = System.Math.Log(S / _strike)
-                         + (_rate - _dividendYield + 0.5 * _volatility * _volatility) * _maturity;
+                         + ((_rate - _dividendYield + (0.5 * _volatility * _volatility)) * _maturity);
         return numerator / (_volatility * System.Math.Sqrt(_maturity));
     }
     
@@ -266,8 +266,8 @@ public sealed class DoubleBoundaryApproximation
         int sign = x < 0 ? -1 : 1;
         x = System.Math.Abs(x);
 
-        double t = 1.0 / (1.0 + p * x);
-        double y = 1.0 - ((((a5 * t + a4) * t + a3) * t + a2) * t + a1) * t * System.Math.Exp(-x * x);
+        double t = 1.0 / (1.0 + (p * x));
+        double y = 1.0 - (((((((a5 * t) + a4) * t) + a3) * t) + a2) * t) + a1) * t) * System.Math.Exp(-x * x);
 
         return sign * y;
     }
