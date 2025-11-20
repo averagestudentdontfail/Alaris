@@ -15,7 +15,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCopyrightAttribute("Copyright © 2025")]
 [assembly: System.Reflection.AssemblyDescriptionAttribute("QuantLib C# bindings via SWIG for the Alaris quantitative finance system")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+6d2764828efb19831a349e4d43c660faea282b2a")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+85758bedfe1037b1f8afbe1f773f128348ef4e23")]
 [assembly: System.Reflection.AssemblyProductAttribute("Alaris.Quantlib")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Alaris.Quantlib")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -10,13 +10,14 @@
 using System;
 using System.Reflection;
 
-[assembly: System.Reflection.AssemblyCompanyAttribute("Kiran K. Nath")]
+[assembly: System.Reflection.AssemblyCompanyAttribute("Alaris")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
+[assembly: System.Reflection.AssemblyCopyrightAttribute("Copyright © 2025 Kiran K. Nath")]
 [assembly: System.Reflection.AssemblyDescriptionAttribute(("American option pricing engine with double boundary support for negative interest" +
     " rate regimes"))]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+592cbaa41039cdf08b762451d7cd6da577b1f504")]
-[assembly: System.Reflection.AssemblyProductAttribute("Alaris.Double")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+85758bedfe1037b1f8afbe1f773f128348ef4e23")]
+[assembly: System.Reflection.AssemblyProductAttribute("Alaris Options Pricing System")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Alaris.Double")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
 
