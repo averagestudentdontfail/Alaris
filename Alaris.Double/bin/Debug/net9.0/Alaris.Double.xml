@@ -142,6 +142,13 @@
             </summary>
             <param name="engine">The DoubleBoundaryEngine to convert.</param>
         </member>
+        <member name="M:Alaris.Double.DoubleBoundaryEngine.ToPricingEngine(Alaris.Double.DoubleBoundaryEngine)">
+            <summary>
+            Converts DoubleBoundaryEngine to PricingEngine (alternate method for implicit operator).
+            </summary>
+            <param name="engine">The DoubleBoundaryEngine to convert.</param>
+            <returns>The underlying QdFpAmericanEngine as PricingEngine.</returns>
+        </member>
         <member name="M:Alaris.Double.DoubleBoundaryEngine.GetPricingEngine">
             <summary>
             Gets the underlying PricingEngine for explicit use with VanillaOption.
@@ -266,6 +273,11 @@
             </para>
             </remarks>
         </member>
+        <member name="P:Alaris.Double.DoubleBoundaryKimSolver.CollocationPoints">
+            <summary>
+            Number of collocation points used for boundary refinement.
+            </summary>
+        </member>
         <member name="M:Alaris.Double.DoubleBoundaryKimSolver.#ctor(System.Double,System.Double,System.Double,System.Double,System.Double,System.Double,System.Boolean,System.Int32)">
             <summary>
             Initializes a new Kim solver for double boundaries.
@@ -341,7 +353,11 @@
             Finds initial crossing time estimate.
             </summary>
         </member>
-        <!-- Badly formed XML comment ignored for member "M:Alaris.Double.DoubleBoundaryKimSolver.RefineCrossingTime(System.Double[],System.Double[],System.Double)" -->
+        <member name="M:Alaris.Double.DoubleBoundaryKimSolver.RefineCrossingTime(System.Double[],System.Double[],System.Double)">
+            <summary>
+            Refines crossing time estimate to achieve Δt &lt; threshold.
+            </summary>
+        </member>
         <member name="M:Alaris.Double.DoubleBoundaryKimSolver.AdjustCrossingInitialGuess(System.Double[],System.Double[],System.Double)">
             <summary>
             Adjusts initial guess when boundaries cross (Healy p.12).

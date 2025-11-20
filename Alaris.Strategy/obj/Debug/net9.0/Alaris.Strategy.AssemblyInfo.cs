@@ -10,12 +10,13 @@
 using System;
 using System.Reflection;
 
-[assembly: System.Reflection.AssemblyCompanyAttribute("Kiran K. Nath")]
+[assembly: System.Reflection.AssemblyCompanyAttribute("Alaris")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
+[assembly: System.Reflection.AssemblyCopyrightAttribute("Copyright © 2025 Kiran K. Nath")]
 [assembly: System.Reflection.AssemblyDescriptionAttribute("Earnings volatility calendar spread trading strategies based on academic research")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+592cbaa41039cdf08b762451d7cd6da577b1f504")]
-[assembly: System.Reflection.AssemblyProductAttribute("Alaris.Strategy")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+14c6d4fc42e7053ebe66e653638f9e2cf0a5815c")]
+[assembly: System.Reflection.AssemblyProductAttribute("Alaris Options Pricing System")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Alaris.Strategy")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
 
