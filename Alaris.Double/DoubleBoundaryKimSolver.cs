@@ -168,7 +168,7 @@ public sealed class DoubleBoundaryKimSolver
             // FP-B' iteration (Equation 33)
             for (int i = 0; i < m; i++)
             {
-                double ti = (i * _maturity) / (m - 1);
+                double ti = i * _maturity / (m - 1);
 
                 // Skip points before crossing time
                 if (ti < crossingTime - NUMERICAL_EPSILON)
@@ -408,7 +408,7 @@ public sealed class DoubleBoundaryKimSolver
         }
 
         double d2Terminal = CalculateD2(Bi, _strike, tauToMaturity);
-        double nonIntegral = 1.0 - Math.Exp(-_rate * tauToMaturity) * NormalCDF(-d2Terminal);
+        double nonIntegral = 1.0 - (Math.Exp(-_rate * tauToMaturity) * NormalCDF(-d2Terminal));
 
         // Integral term (Equation 27 structure)
         double integral = CalculateIntegralTermN(ti, Bi, upper, lower, crossingTime);
@@ -445,7 +445,7 @@ public sealed class DoubleBoundaryKimSolver
         }
 
         double d1Terminal = CalculateD1(Bi, _strike, tauToMaturity);
-        double nonIntegral = 1.0 - Math.Exp(-_dividendYield * tauToMaturity) * NormalCDF(-d1Terminal);
+        double nonIntegral = 1.0 - (Math.Exp(-_dividendYield * tauToMaturity) * NormalCDF(-d1Terminal));
 
         // Integral term
         double integral = CalculateIntegralTermD(ti, Bi, upper, lower, crossingTime);
@@ -470,7 +470,7 @@ public sealed class DoubleBoundaryKimSolver
         double N = CalculateNumerator(ti, upper, lower, crossingTime, false);
 
         // Additional stabilization term: (B^l_i/K) * integral
-        double additionalTerm = (Bi / _strike) * CalculateIntegralTermD(ti, Bi, upper, lower, crossingTime);
+        double additionalTerm = Bi / _strike * CalculateIntegralTermD(ti, Bi, upper, lower, crossingTime);
 
         return N + additionalTerm;
     }
@@ -486,7 +486,7 @@ public sealed class DoubleBoundaryKimSolver
         double tauToMaturity = _maturity - ti;
         double d1Terminal = CalculateD1(Bi, _strike, tauToMaturity);
 
-        return 1.0 - Math.Exp(-_dividendYield * tauToMaturity) * NormalCDF(-d1Terminal);
+        return 1.0 - (Math.Exp(-_dividendYield * tauToMaturity) * NormalCDF(-d1Terminal));
     }
     
     /// <summary>
@@ -728,7 +728,7 @@ public sealed class DoubleBoundaryKimSolver
         int i1 = Math.Min(i0 + 1, boundary.Length - 1);
         double alpha = index - i0;
 
-        return boundary[i0] * (1.0 - alpha) + boundary[i1] * alpha;
+        return (boundary[i0] * (1.0 - alpha)) + (boundary[i1] * alpha);
     }
     
     /// <summary>
@@ -745,7 +745,7 @@ public sealed class DoubleBoundaryKimSolver
         double r = _rate;
         double q = _dividendYield;
 
-        return (Math.Log(S / K) + (r - q + 0.5 * sigma * sigma) * tau) / (sigma * Math.Sqrt(tau));
+        return (Math.Log(S / K) + ((r - q + (0.5 * sigma * sigma)) * tau)) / (sigma * Math.Sqrt(tau));
     }
     
     /// <summary>
@@ -758,7 +758,7 @@ public sealed class DoubleBoundaryKimSolver
             return 0.0;
         }
 
-        return CalculateD1(S, K, tau) - _volatility * Math.Sqrt(tau);
+        return CalculateD1(S, K, tau) - (_volatility * Math.Sqrt(tau));
     }
     
     /// <summary>
@@ -785,13 +785,13 @@ public sealed class DoubleBoundaryKimSolver
         int sign = x < 0 ? -1 : 1;
         x = Math.Abs(x);
 
-        double t = 1.0 / (1.0 + p * x);
+        double t = 1.0 / (1.0 + (p * x));
         double t2 = t * t;
         double t3 = t2 * t;
         double t4 = t3 * t;
         double t5 = t4 * t;
 
-        double y = 1.0 - (a1 * t + a2 * t2 + a3 * t3 + a4 * t4 + a5 * t5) * Math.Exp(-x * x);
+        double y = 1.0 - ((a1 * t) + (a2 * t2) + (a3 * t3) + (a4 * t4) + (a5 * t5)) * Math.Exp(-x * x);
 
         return sign * y;
     }
@@ -954,12 +954,12 @@ public sealed class DoubleBoundaryKimSolver
         if (n >= 3)
         {
             // First point: weighted average of first 3 points
-            smoothed[0] = (5.0 * boundary[0] + 2.0 * boundary[1] - boundary[2]) / 6.0;
+            smoothed[0] = ((5.0 * boundary[0]) + (2.0 * boundary[1]) - boundary[2]) / 6.0;
             smoothed[1] = (boundary[0] + boundary[1] + boundary[2]) / 3.0;
 
             // Last point: weighted average of last 3 points
             smoothed[n - 2] = (boundary[n - 3] + boundary[n - 2] + boundary[n - 1]) / 3.0;
-            smoothed[n - 1] = (-boundary[n - 3] + 2.0 * boundary[n - 2] + 5.0 * boundary[n - 1]) / 6.0;
+            smoothed[n - 1] = ((-boundary[n - 3]) + (2.0 * boundary[n - 2]) + (5.0 * boundary[n - 1])) / 6.0;
         }
 
         return smoothed;
