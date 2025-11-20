@@ -7,7 +7,18 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
-    <NoWarn>$(NoWarn);CS1591</NoWarn>
+
+    <!-- Exclude SWIG-generated code from strict enforcement -->
+    <!-- This is auto-generated C++/CLI wrapper code, not authored by us -->
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
+
+    <!-- Suppress common warnings from SWIG-generated code -->
+    <!-- CS1591: Missing XML documentation -->
+    <!-- CA5392: P/Invoke security (requires DefaultDllImportSearchPaths) -->
+    <!-- CA1062: Validate public arguments (SWIG doesn't generate guard clauses) -->
+    <!-- CA2000: Dispose objects (SWIG manages lifecycle differently) -->
+    <NoWarn>$(NoWarn);CS1591;CA5392;CA1062;CA2000</NoWarn>
   </PropertyGroup>
 
   <PropertyGroup>
