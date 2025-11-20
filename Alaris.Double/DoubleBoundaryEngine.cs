@@ -54,7 +54,14 @@ public sealed class DoubleBoundaryEngine : IDisposable
     /// Implicit conversion to PricingEngine for seamless integration with QuantLib VanillaOption.
     /// </summary>
     /// <param name="engine">The DoubleBoundaryEngine to convert.</param>
-    public static implicit operator PricingEngine(DoubleBoundaryEngine engine)
+    public static implicit operator PricingEngine(DoubleBoundaryEngine engine) => ToPricingEngine(engine);
+
+    /// <summary>
+    /// Converts DoubleBoundaryEngine to PricingEngine (alternate method for implicit operator).
+    /// </summary>
+    /// <param name="engine">The DoubleBoundaryEngine to convert.</param>
+    /// <returns>The underlying QdFpAmericanEngine as PricingEngine.</returns>
+    public static PricingEngine ToPricingEngine(DoubleBoundaryEngine engine)
     {
         ArgumentNullException.ThrowIfNull(engine);
         return engine._engine;
@@ -119,7 +126,7 @@ public sealed class DoubleBoundaryEngine : IDisposable
         // Calculate Rho (sensitivity to interest rate)
         double rho = CalculateRho(option);
 
-        var result = new OptionResult
+        OptionResult result = new OptionResult
         {
             Price = basePrice,
             Delta = delta,
@@ -139,7 +146,7 @@ public sealed class DoubleBoundaryEngine : IDisposable
     private double CalculateVega(VanillaOption option)
     {
         // Get current volatility term structure
-        BlackVolTermStructure volTS = _process.blackVolatility();
+        BlackVolTermStructureHandle volTS = _process.blackVolatility();
         BlackVolTermStructure currentVol = volTS.currentLink();
 
         // Vega calculation function with process reconstruction
@@ -274,8 +281,8 @@ public sealed class DoubleBoundaryEngine : IDisposable
     {
         ArgumentNullException.ThrowIfNull(option);
 
-        var stopwatch = Stopwatch.StartNew();
-        var result = Calculate(option);
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        OptionResult result = Calculate(option);
         stopwatch.Stop();
 
         return (result, stopwatch.ElapsedMilliseconds);
@@ -300,12 +307,16 @@ public sealed class DoubleBoundaryEngine : IDisposable
         int steps = 20)
     {
         ArgumentNullException.ThrowIfNull(option);
-        
+
         if (spotMin >= spotMax)
+        {
             throw new ArgumentException("spotMin must be less than spotMax");
-        
+        }
+
         if (steps < 2)
+        {
             throw new ArgumentException("steps must be at least 2");
+        }
 
         if (_underlyingQuote is null)
         {
@@ -313,8 +324,8 @@ public sealed class DoubleBoundaryEngine : IDisposable
                 "Cannot perform sensitivity analysis: underlying quote not available");
         }
 
-        var originalSpot = _underlyingQuote.value();
-        var results = new Dictionary<double, OptionResult>(steps);
+        double originalSpot = _underlyingQuote.value();
+        Dictionary<double, OptionResult> results = new Dictionary<double, OptionResult>(steps);
 
         try
         {
@@ -322,10 +333,10 @@ public sealed class DoubleBoundaryEngine : IDisposable
 
             for (int i = 0; i < steps; i++)
             {
-                double spot = spotMin + i * stepSize;
+                double spot = spotMin + (i * stepSize);
                 _underlyingQuote.setValue(spot);
-                
-                var result = Calculate(option);
+
+                OptionResult result = Calculate(option);
                 results[spot] = result;
             }
         }
@@ -344,7 +355,9 @@ public sealed class DoubleBoundaryEngine : IDisposable
     public void Dispose()
     {
         if (_disposed)
+        {
             return;
+        }
 
         _engine?.Dispose();
         _disposed = true;

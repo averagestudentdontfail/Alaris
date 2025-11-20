@@ -14,7 +14,9 @@
     <Authors>Kiran K. Nath</Authors>
     <Version>1.0.0</Version>
     <!-- Suppress XML documentation warnings for missing comments -->
-    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <!-- CA1716: Namespace 'Alaris.Double' intentionally uses 'Double' (refers to double boundary, not the primitive type) -->
+    <!-- Renaming would be a breaking change for all consumers. Acceptable per project naming convention. -->
+    <NoWarn>$(NoWarn);CS1591;CA1716</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
