@@ -126,7 +126,7 @@ public sealed class QdPlusApproximation
     private (double Lambda1, double Lambda2) CalculateLambdaRoots(double h, double omega, double sigma2)
     {
         // Discriminant: (ω - 1)² + 8r/(σ²h)
-        double discriminant = (omega - 1.0) * (omega - 1.0) + 8.0 * _rate / (sigma2 * h);
+        double discriminant = ((omega - 1.0) * (omega - 1.0)) + (8.0 * _rate / (sigma2 * h));
 
         if (discriminant < 0)
         {
@@ -200,7 +200,7 @@ public sealed class QdPlusApproximation
             else
             {
                 // Full Super Halley correction
-                correction = (1.0 + 0.5 * Lf / (1.0 - Lf)) * (f / df);
+                correction = (1.0 + (0.5 * Lf / (1.0 - Lf))) * (f / df);
             }
             
             S = S - correction;
@@ -222,7 +222,7 @@ public sealed class QdPlusApproximation
         }
 
         // Reject solutions too close to strike (likely spurious roots)
-        double distanceFromStrike = (Math.Abs(S - _strike)) / _strike;
+        double distanceFromStrike = Math.Abs(S - _strike) / _strike;
         if (distanceFromStrike < 0.05)
         {
             // Return initial guess if converged to spurious root
@@ -275,8 +275,8 @@ public sealed class QdPlusApproximation
         }
 
         // Black-Scholes parameters
-        double d1 = (Math.Log(S / K) + (r - q + 0.5 * sigma2) * T) / (sigma * Math.Sqrt(T));
-        double d2 = d1 - sigma * Math.Sqrt(T);
+        double d1 = (Math.Log(S / K) + ((r - q + (0.5 * sigma2)) * T)) / (sigma * Math.Sqrt(T));
+        double d2 = d1 - (sigma * Math.Sqrt(T));
 
         double Phi_d1 = NormalCDF(d1);
         double Phi_d2 = NormalCDF(d2);
@@ -306,7 +306,7 @@ public sealed class QdPlusApproximation
         // Safeguard against division by near-zero (intrinsic - VE)
         // At the boundary, intrinsic > VE, so this should be positive
         // If it's too small, use a simplified approximation
-        double term1 = ((1.0 - h) * alpha) / ((2.0 * lambda) + beta - 1.0);
+        double term1 = (1.0 - h) * alpha / ((2.0 * lambda) + beta - 1.0);
         double term2;
 
         if (Math.Abs(intrinsicMinusVE) < NUMERICAL_EPSILON ||
@@ -336,11 +336,11 @@ public sealed class QdPlusApproximation
         // First derivative: df/dS = λS^(λ-1) - K^λ * exp(c0) * dc0/dS
         double df = lambda * Math.Pow(S, lambda - 1.0);
         double dc0_dS = CalculateDc0DS(S, theta, d1, phi_d1, sigma, T);
-        df -= (Klambda * exp_c0) * dc0_dS;
+        df -= Klambda * exp_c0 * dc0_dS;
 
         // Second derivative: d²f/dS² = λ(λ-1)S^(λ-2) - K^λ * exp(c0) * (dc0/dS)²
-        double d2f = (lambda * (lambda - 1.0)) * Math.Pow(S, lambda - 2.0);
-        d2f -= (Klambda * exp_c0) * dc0_dS * dc0_dS;
+        double d2f = lambda * (lambda - 1.0) * Math.Pow(S, lambda - 2.0);
+        d2f -= Klambda * exp_c0 * dc0_dS * dc0_dS;
 
         return (f, df, d2f);
     }
@@ -428,7 +428,7 @@ public sealed class QdPlusApproximation
 
                 // Linear interpolation
                 double alpha = (T - t0) / (t1 - t0);
-                return v0 + alpha * (v1 - v0);
+                return v0 + (alpha * (v1 - v0));
             }
         }
 
@@ -449,8 +449,8 @@ public sealed class QdPlusApproximation
         if (_isCall)
         {
             // For calls: boundaries above strike (mirror of put case)
-            double putUpper = K * (1.0 - 0.2 * sigma * sqrtT);
-            double putLower = K * (0.5 + 0.1 * sigma * sqrtT);
+            double putUpper = K * (1.0 - (0.2 * sigma * sqrtT));
+            double putLower = K * (0.5 + (0.1 * sigma * sqrtT));
 
             double upper = K + (K - putLower); // ~1.5K - 0.1*sigma*sqrtT
             double lower = K + (K - putUpper); // ~K + 0.2*sigma*sqrtT
@@ -460,8 +460,8 @@ public sealed class QdPlusApproximation
         else
         {
             // For puts: boundaries below strike
-            double upper = K * (1.0 - 0.2 * sigma * sqrtT);
-            double lower = K * (0.5 + 0.1 * sigma * sqrtT);
+            double upper = K * (1.0 - (0.2 * sigma * sqrtT));
+            double lower = K * (0.5 + (0.1 * sigma * sqrtT));
 
             return (upper, lower);
         }
@@ -484,8 +484,8 @@ public sealed class QdPlusApproximation
             // For calls in double boundary regime (0 < r < q):
             // Boundaries are ABOVE strike, symmetric to put case
             // Use mirror formula: K + (K - put_boundary)
-            double putUpperEquiv = K * (0.74 - 0.012 * sqrtT * sigmaFactor);
-            double putLowerEquiv = K * (0.64 - 0.018 * sqrtT * sigmaFactor);
+            double putUpperEquiv = K * (0.74 - (0.012 * sqrtT * sigmaFactor));
+            double putLowerEquiv = K * (0.64 - (0.018 * sqrtT * sigmaFactor));
 
             // Mirror around strike to get call boundaries
             double upper = K + (K - putLowerEquiv); // ~136-142
@@ -502,8 +502,8 @@ public sealed class QdPlusApproximation
         {
             // For puts: Calibrated formula based on Healy benchmarks:
             // T=1: (73.5, 63.5), T=5: (71.6, 61.6), T=10: (69.62, 58.72), T=15: (68, 57)
-            double upper = K * (0.74 - 0.012 * sqrtT * sigmaFactor);
-            double lower = K * (0.64 - 0.018 * sqrtT * sigmaFactor);
+            double upper = K * (0.74 - (0.012 * sqrtT * sigmaFactor));
+            double lower = K * (0.64 - (0.018 * sqrtT * sigmaFactor));
 
             // Ensure boundaries don't go negative or cross
             upper = Math.Max(upper, K * 0.5);
@@ -597,14 +597,14 @@ public sealed class QdPlusApproximation
         
         if (_isCall)
         {
-            double term1 = (-S * phi_d1 * sigma * Math.Exp(-q * T)) / (2.0 * Math.Sqrt(T));
+            double term1 = -S * phi_d1 * sigma * Math.Exp(-q * T) / (2.0 * Math.Sqrt(T));
             double term2 = q * S * Math.Exp(-q * T) * NormalCDF(d1);
             double term3 = -r * K * Math.Exp(-r * T) * NormalCDF(d2);
             return term1 + term2 + term3;
         }
         else
         {
-            double term1 = (-S * phi_d1 * sigma * Math.Exp(-q * T)) / (2.0 * Math.Sqrt(T));
+            double term1 = -S * phi_d1 * sigma * Math.Exp(-q * T) / (2.0 * Math.Sqrt(T));
             double term2 = -q * S * Math.Exp(-q * T) * (1.0 - NormalCDF(d1));
             double term3 = r * K * Math.Exp(-r * T) * (1.0 - NormalCDF(d2));
             return term1 + term2 + term3;
@@ -617,7 +617,7 @@ public sealed class QdPlusApproximation
     private double CalculateLambdaPrime(double lambda, double h, double sigma2)
     {
         double omega = 2.0 * (_rate - _dividendYield) / sigma2;
-        double discriminant = (omega - 1.0) * (omega - 1.0) + 8.0 * _rate / (sigma2 * h);
+        double discriminant = ((omega - 1.0) * (omega - 1.0)) + (8.0 * _rate / (sigma2 * h));
 
         if (discriminant <= 0)
         {
@@ -643,7 +643,7 @@ public sealed class QdPlusApproximation
         double dtheta_dS = phi_d1 * _dividendYield * Math.Exp(-_dividendYield * T);
         double dVE_dS = Math.Exp(-_dividendYield * T) * NormalCDF(d1);
 
-        return -dtheta_dS / (_rate * (S - K)) + theta * dVE_dS / (_rate * (S - K) * (S - K));
+        return (-dtheta_dS / (_rate * (S - K))) + (theta * dVE_dS / (_rate * (S - K) * (S - K)));
     }
 
     /// <summary>
@@ -677,13 +677,13 @@ public sealed class QdPlusApproximation
         int sign = x < 0 ? -1 : 1;
         x = Math.Abs(x);
 
-        double t = 1.0 / (1.0 + p * x);
+        double t = 1.0 / (1.0 + (p * x));
         double t2 = t * t;
         double t3 = t2 * t;
         double t4 = t3 * t;
         double t5 = t4 * t;
 
-        double y = 1.0 - (a1 * t + a2 * t2 + a3 * t3 + a4 * t4 + a5 * t5) * Math.Exp(-x * x);
+        double y = 1.0 - ((a1 * t) + (a2 * t2) + (a3 * t3) + (a4 * t4) + (a5 * t5)) * Math.Exp(-x * x);
 
         return sign * y;
     }
