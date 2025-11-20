@@ -267,7 +267,11 @@ public sealed class DoubleBoundaryApproximation
         x = System.Math.Abs(x);
 
         double t = 1.0 / (1.0 + (p * x));
-        double y = 1.0 - (((((((a5 * t) + a4) * t) + a3) * t) + a2) * t) + a1) * t) * System.Math.Exp(-x * x);
+        double t2 = t * t;
+        double t3 = t2 * t;
+        double t4 = t3 * t;
+        double t5 = t4 * t;
+        double y = 1.0 - ((a1 * t) + (a2 * t2) + (a3 * t3) + (a4 * t4) + (a5 * t5)) * System.Math.Exp(-x * x);
 
         return sign * y;
     }
