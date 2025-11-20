@@ -574,7 +574,7 @@ public sealed class DoubleBoundaryKimSolver
     }
     
     /// <summary>
-    /// Refines crossing time estimate to achieve Δt < threshold.
+    /// Refines crossing time estimate to achieve Δt &lt; threshold.
     /// </summary>
     private double RefineCrossingTime(double[] upper, double[] lower, double initialCrossing)
     {
