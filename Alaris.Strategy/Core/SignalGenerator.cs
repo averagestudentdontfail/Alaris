@@ -76,10 +76,7 @@ public sealed class SignalGenerator
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(symbol);
 
-        if (_logger != null)
-        {
-            LogGeneratingSignal(_logger, symbol, earningsDate, null);
-        }
+        SafeLog(() => LogGeneratingSignal(_logger, symbol, earningsDate, null));
 
         Signal signal = new Signal
         {
@@ -94,10 +91,7 @@ public sealed class SignalGenerator
             List<PriceBar> priceHistory = _marketData.GetHistoricalPrices(symbol, 90).ToList();
             if (priceHistory.Count < 30)
             {
-                if (_logger != null)
-                {
-                    LogInsufficientPriceHistory(_logger, symbol, null);
-                }
+                SafeLog(() => LogInsufficientPriceHistory(_logger, symbol, null));
                 signal.Strength = SignalStrength.Avoid;
                 return signal;
             }
@@ -109,10 +103,7 @@ public sealed class SignalGenerator
             OptionChain optionChain = _marketData.GetOptionChain(symbol, evaluationDate);
             if (optionChain.Expiries.Count == 0)
             {
-                if (_logger != null)
-                {
-                    LogNoOptionData(_logger, symbol, null);
-                }
+                SafeLog(() => LogNoOptionData(_logger, symbol, null));
                 signal.Strength = SignalStrength.Avoid;
                 return signal;
             }
@@ -121,10 +112,7 @@ public sealed class SignalGenerator
             List<TermStructurePoint> termPoints = ExtractTermStructurePoints(optionChain, evaluationDate);
             if (termPoints.Count < 2)
             {
-                if (_logger != null)
-                {
-                    LogInsufficientTermStructure(_logger, symbol, null);
-                }
+                SafeLog(() => LogInsufficientTermStructure(_logger, symbol, null));
                 signal.Strength = SignalStrength.Avoid;
                 return signal;
             }
@@ -155,17 +143,21 @@ public sealed class SignalGenerator
 
             signal.EvaluateStrength();
 
-            if (_logger != null)
-            {
-                LogSignalGenerated(_logger, symbol, signal.Strength, signal.IVRVRatio, signal.TermStructureSlope, signal.AverageVolume, null);
-            }
+            SafeLog(() => LogSignalGenerated(_logger, symbol, signal.Strength, signal.IVRVRatio, signal.TermStructureSlope, signal.AverageVolume, null));
         }
-        catch (Exception ex)
+        catch (ArgumentException ex)
         {
-            if (_logger != null)
-            {
-                LogErrorGeneratingSignal(_logger, symbol, ex);
-            }
+            SafeLog(() => LogErrorGeneratingSignal(_logger, symbol, ex));
+            throw;
+        }
+        catch (InvalidOperationException ex)
+        {
+            SafeLog(() => LogErrorGeneratingSignal(_logger, symbol, ex));
+            throw;
+        }
+        catch (DivideByZeroException ex)
+        {
+            SafeLog(() => LogErrorGeneratingSignal(_logger, symbol, ex));
             throw;
         }
 
@@ -289,5 +281,27 @@ public sealed class SignalGenerator
 
         double totalWeight = spreads.Sum(s => s.weight);
         return spreads.Sum(s => s.spread * s.weight) / totalWeight;
+    }
+
+    /// <summary>
+    /// Safely executes logging operation with fault isolation (Rule 15).
+    /// Prevents logging failures from crashing critical paths.
+    /// </summary>
+    private void SafeLog(Action logAction)
+    {
+        if (_logger == null)
+        {
+            return;
+        }
+
+        try
+        {
+            logAction();
+        }
+        catch (Exception)
+        {
+            // Swallow logging exceptions to prevent them from crashing the application
+            // This is acceptable per Rule 10 for non-critical subsystems (Rule 15: Fault Isolation)
+        }
     }
 }

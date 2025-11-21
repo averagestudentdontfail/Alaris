@@ -86,10 +86,7 @@ public sealed class Control
 
             if (signal.Strength == SignalStrength.Avoid)
             {
-                if (_logger != null)
-                {
-                    LogSignalAvoid(_logger, symbol, null);
-                }
+                SafeLog(() => LogSignalAvoid(_logger, symbol, null));
                 return opportunity;
             }
 
@@ -106,17 +103,16 @@ public sealed class Control
                 signal);
             opportunity.PositionSize = positionSize;
 
-            if (_logger != null)
-            {
-                LogOpportunityEvaluated(_logger, symbol, signal.Strength, positionSize.Contracts, spreadPricing.SpreadCost, null);
-            }
+            SafeLog(() => LogOpportunityEvaluated(_logger, symbol, signal.Strength, positionSize.Contracts, spreadPricing.SpreadCost, null));
         }
-        catch (Exception ex)
+        catch (ArgumentException ex)
         {
-            if (_logger != null)
-            {
-                LogErrorEvaluatingOpportunity(_logger, symbol, ex);
-            }
+            SafeLog(() => LogErrorEvaluatingOpportunity(_logger, symbol, ex));
+            throw;
+        }
+        catch (InvalidOperationException ex)
+        {
+            SafeLog(() => LogErrorEvaluatingOpportunity(_logger, symbol, ex));
             throw;
         }
 
@@ -177,6 +173,28 @@ public sealed class Control
         // SWIG-generated Date constructor: Date(int day, Month month, int year)
         Month month = (Month)date.Month;
         return new Date(date.Day, month, date.Year);
+    }
+
+    /// <summary>
+    /// Safely executes logging operation with fault isolation (Rule 15).
+    /// Prevents logging failures from crashing critical paths.
+    /// </summary>
+    private void SafeLog(Action logAction)
+    {
+        if (_logger == null)
+        {
+            return;
+        }
+
+        try
+        {
+            logAction();
+        }
+        catch (Exception)
+        {
+            // Swallow logging exceptions to prevent them from crashing the application
+            // This is acceptable per Rule 10 for non-critical subsystems (Rule 15: Fault Isolation)
+        }
     }
 }
 
