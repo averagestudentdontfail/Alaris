@@ -111,13 +111,13 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
         bool isCall = parameters.OptionType == Option.Type.Call;
         PricingRegime regime = DetermineRegime(parameters.RiskFreeRate, parameters.DividendYield, isCall);
 
-        if (_logger != null)
+        SafeLog(() =>
         {
             double timeToExpiry = CalculateTimeToExpiry(parameters.ValuationDate, parameters.Expiry);
             string paramsStr = $"r={parameters.RiskFreeRate:F4}, q={parameters.DividendYield:F4}, σ={parameters.ImpliedVolatility:F4}, T={timeToExpiry:F4}";
             LogPricingOption(_logger, parameters.UnderlyingPrice, parameters.Strike, paramsStr,
                 isCall ? "Call" : "Put", regime, null);
-        }
+        });
 
         return regime switch
         {
@@ -139,12 +139,9 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
         bool isCall = parameters.OptionType == Option.Type.Call;
         PricingRegime regime = DetermineRegime(parameters.RiskFreeRate, parameters.DividendYield, isCall);
 
-        if (_logger != null)
-        {
-            LogPricingCalendarSpread(_logger, regime, isCall ? "Call" : "Put", parameters.Strike,
-                CalculateDaysToExpiry(parameters.ValuationDate, parameters.FrontExpiry),
-                CalculateDaysToExpiry(parameters.ValuationDate, parameters.BackExpiry), null);
-        }
+        SafeLog(() => LogPricingCalendarSpread(_logger, regime, isCall ? "Call" : "Put", parameters.Strike,
+            CalculateDaysToExpiry(parameters.ValuationDate, parameters.FrontExpiry),
+            CalculateDaysToExpiry(parameters.ValuationDate, parameters.BackExpiry), null));
 
         // Price front month (short position)
         OptionParameters frontParams = new OptionParameters
@@ -266,10 +263,7 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
             iterations++;
         }
 
-        if (_logger != null)
-        {
-            LogImpliedVolatilityConverged(_logger, iterations, volMid, null);
-        }
+        SafeLog(() => LogImpliedVolatilityConverged(_logger, iterations, volMid, null));
 
         return volMid;
     }
@@ -377,12 +371,14 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
                     Moneyness = moneyness
                 };
             }
-            catch (Exception ex)
+            catch (ArgumentException ex)
             {
-                if (_logger != null)
-                {
-                    LogErrorPricingQuantlib(_logger, ex);
-                }
+                SafeLog(() => LogErrorPricingQuantlib(_logger, ex));
+                throw;
+            }
+            catch (InvalidOperationException ex)
+            {
+                SafeLog(() => LogErrorPricingQuantlib(_logger, ex));
                 throw;
             }
         });
@@ -438,12 +434,14 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
                     Moneyness = moneyness
                 };
             }
-            catch (Exception ex)
+            catch (ArgumentException ex)
             {
-                if (_logger != null)
-                {
-                    LogErrorPricingDouble(_logger, ex);
-                }
+                SafeLog(() => LogErrorPricingDouble(_logger, ex));
+                throw;
+            }
+            catch (InvalidOperationException ex)
+            {
+                SafeLog(() => LogErrorPricingDouble(_logger, ex));
                 throw;
             }
         });
@@ -1126,6 +1124,28 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
     private static int CalculateDaysToExpiry(Date valuationDate, Date expiryDate)
     {
         return expiryDate.serialNumber() - valuationDate.serialNumber();
+    }
+
+    /// <summary>
+    /// Safely executes logging operation with fault isolation (Rule 15).
+    /// Prevents logging failures from crashing critical paths.
+    /// </summary>
+    private void SafeLog(Action logAction)
+    {
+        if (_logger == null)
+        {
+            return;
+        }
+
+        try
+        {
+            logAction();
+        }
+        catch (Exception)
+        {
+            // Swallow logging exceptions to prevent them from crashing the application
+            // This is acceptable per Rule 10 for non-critical subsystems (Rule 15: Fault Isolation)
+        }
     }
 
     public void Dispose()
