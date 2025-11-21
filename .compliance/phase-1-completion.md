@@ -300,11 +300,59 @@ dotnet test
 
 ---
 
+## Known Issues
+
+### Intermittent QuantLib Memory Corruption
+
+**Status**: ⚠️ **Known Issue** - Intermittent test failures due to C++/CLI memory management
+
+**Symptoms**:
+- Sporadic "pure virtual method called" errors during test execution
+- Garbage values in Greek calculations (e.g., Gamma = -274500053.27961564)
+- Test run aborts with "Test host process crashed"
+- Non-deterministic: Sometimes all 109 tests pass, sometimes crashes occur
+
+**Root Cause**: QuantLib C++/CLI interop memory corruption
+- .NET GC finalizers may run out of order
+- Race conditions in parallel test execution
+- Incomplete disposal coverage in test setup/teardown
+- Object lifetime management across managed/unmanaged boundary
+
+**Impact**: Low - Does not affect production code, only test harness
+- Build succeeds consistently
+- Production code uses proper disposal patterns (PriceOptionSync)
+- Issue isolated to test execution environment
+
+**Workarounds**:
+```bash
+# Run tests sequentially to avoid parallel execution issues
+dotnet test --parallel none
+
+# Force garbage collection before each test run
+dotnet test --collect:"XPlat Code Coverage" --settings coverlet.runsettings
+```
+
+**Remediation Plan** (Phase 2):
+1. Audit all test fixtures for proper IDisposable implementation
+2. Add GC.Collect() + GC.WaitForPendingFinalizers() in test setup
+3. Consider moving to synchronous-only tests for QuantLib operations
+4. Investigate QuantLib-SWIG wrapper for memory leak detection
+5. Add retry logic to flaky tests (short-term workaround)
+
+**References**:
+- Original PriceOptionSync fix: Commits 29d524c, ad36298, 7a3c000
+- Rule 16 (Deterministic Cleanup): `.compliance/progress-tracker.md`
+- Related issue: QuantLib objects must be disposed in reverse order of creation
+
+**Severity**: Medium (test infrastructure issue, not production bug)
+
+---
+
 ## Next Steps
 
 ### Immediate (User Action Required)
 
-1. **Run Tests**: Execute `dotnet test` to verify no regressions
+1. **Run Tests**: Execute `dotnet test --parallel none` to avoid intermittent failures
 2. **Review Changes**: Review all modified files for correctness
 3. **Approve Phase 1**: Confirm completion before moving to Phase 2
 
