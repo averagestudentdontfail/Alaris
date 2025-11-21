@@ -115,7 +115,7 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
         {
             double timeToExpiry = CalculateTimeToExpiry(parameters.ValuationDate, parameters.Expiry);
             string paramsStr = $"r={parameters.RiskFreeRate:F4}, q={parameters.DividendYield:F4}, σ={parameters.ImpliedVolatility:F4}, T={timeToExpiry:F4}";
-            LogPricingOption(_logger, parameters.UnderlyingPrice, parameters.Strike, paramsStr,
+            LogPricingOption(_logger!, parameters.UnderlyingPrice, parameters.Strike, paramsStr,
                 isCall ? "Call" : "Put", regime, null);
         });
 
@@ -139,7 +139,7 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
         bool isCall = parameters.OptionType == Option.Type.Call;
         PricingRegime regime = DetermineRegime(parameters.RiskFreeRate, parameters.DividendYield, isCall);
 
-        SafeLog(() => LogPricingCalendarSpread(_logger, regime, isCall ? "Call" : "Put", parameters.Strike,
+        SafeLog(() => LogPricingCalendarSpread(_logger!, regime, isCall ? "Call" : "Put", parameters.Strike,
             CalculateDaysToExpiry(parameters.ValuationDate, parameters.FrontExpiry),
             CalculateDaysToExpiry(parameters.ValuationDate, parameters.BackExpiry), null));
 
@@ -263,7 +263,7 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
             iterations++;
         }
 
-        SafeLog(() => LogImpliedVolatilityConverged(_logger, iterations, volMid, null));
+        SafeLog(() => LogImpliedVolatilityConverged(_logger!, iterations, volMid, null));
 
         return volMid;
     }
@@ -373,12 +373,12 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
             }
             catch (ArgumentException ex)
             {
-                SafeLog(() => LogErrorPricingQuantlib(_logger, ex));
+                SafeLog(() => LogErrorPricingQuantlib(_logger!, ex));
                 throw;
             }
             catch (InvalidOperationException ex)
             {
-                SafeLog(() => LogErrorPricingQuantlib(_logger, ex));
+                SafeLog(() => LogErrorPricingQuantlib(_logger!, ex));
                 throw;
             }
         });
@@ -436,12 +436,12 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
             }
             catch (ArgumentException ex)
             {
-                SafeLog(() => LogErrorPricingDouble(_logger, ex));
+                SafeLog(() => LogErrorPricingDouble(_logger!, ex));
                 throw;
             }
             catch (InvalidOperationException ex)
             {
-                SafeLog(() => LogErrorPricingDouble(_logger, ex));
+                SafeLog(() => LogErrorPricingDouble(_logger!, ex));
                 throw;
             }
         });
@@ -1137,6 +1137,7 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
             return;
         }
 
+#pragma warning disable CA1031 // Do not catch general exception types
         try
         {
             logAction();
@@ -1146,6 +1147,7 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
             // Swallow logging exceptions to prevent them from crashing the application
             // This is acceptable per Rule 10 for non-critical subsystems (Rule 15: Fault Isolation)
         }
+#pragma warning restore CA1031
     }
 
     public void Dispose()
