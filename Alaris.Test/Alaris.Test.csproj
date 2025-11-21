@@ -8,7 +8,9 @@
     <IsTestProject>true</IsTestProject>
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <!-- Suppress documentation warnings and test-specific style warnings -->
-    <NoWarn>$(NoWarn);CS1591;IDE0008;IDE0048</NoWarn>
+    <!-- CA1515: Test classes need to be public for xUnit discovery -->
+    <!-- CA2007: ConfigureAwait not needed in test code -->
+    <NoWarn>$(NoWarn);CS1591;IDE0008;IDE0048;CA1515;CA2007</NoWarn>
   </PropertyGroup>
 
   <!-- xUnit configuration to disable parallel execution (workaround for QuantLib memory issues) -->

@@ -5,6 +5,9 @@
 # 1. Builds with TreatWarningsAsErrors to catch all analyzer violations
 # 2. Runs full test suite
 # 3. Validates compliance with LOC rules
+#
+# Note: Alaris.Quantlib and Alaris.Lean are excluded from strict analysis
+# as they contain SWIG-generated and external code.
 
 name: CI
 
@@ -39,7 +42,6 @@ jobs:
       - name: Build (with analyzers)
         run: dotnet build --no-restore --configuration Release
         env:
-          # Enable CI-specific build settings from Directory.Build.props
           CI: true
 
       - name: Run tests
@@ -61,17 +63,20 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore
 
-      - name: Run analyzers (format check)
-        run: dotnet format --verify-no-changes --verbosity diagnostic
-        continue-on-error: true
-
-      - name: Build with all analyzers
+      - name: Analyze core projects (excludes external code)
         run: |
-          dotnet build --configuration Release \
-            /p:EnforceCodeStyleInBuild=true \
-            /p:TreatWarningsAsErrors=true \
-            /p:AnalysisLevel=latest-all \
-            /p:AnalysisMode=All
+          # Build only core Alaris projects with strict analysis
+          # Excludes: Alaris.Quantlib (SWIG-generated), Alaris.Lean (external)
+          for project in Alaris.Double Alaris.Strategy Alaris.Events Alaris.Test; do
+            if [ -d "$project" ]; then
+              echo "=== Analyzing $project ==="
+              dotnet build "$project" --configuration Release \
+                /p:EnforceCodeStyleInBuild=true \
+                /p:TreatWarningsAsErrors=true \
+                /p:AnalysisLevel=latest-all \
+                /p:AnalysisMode=All
+            fi
+          done
 
   compliance-report:
     name: Compliance Check
@@ -101,3 +106,7 @@ jobs:
           echo "- LOC-3 Rule 10: Specific Exceptions (CA1031=error)"
           echo "- LOC-4 Rule 13: Small Functions (CA1502 complexity check)"
           echo "- LOC-5 Rule 16: Deterministic Cleanup (CA2000, CA2213=error)"
+          echo ""
+          echo "=== Excluded from strict analysis ==="
+          echo "- Alaris.Quantlib: SWIG-generated C++/CLI wrapper"
+          echo "- Alaris.Lean: External QuantConnect library"
