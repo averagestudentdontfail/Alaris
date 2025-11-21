@@ -11,8 +11,6 @@ namespace Alaris.Test.Unit;
 /// </summary>
 public class QdPlusApproximationTests
 {
-    private const double NUMERICAL_TOLERANCE = 1e-6;
-    
     [Fact]
     public void QdPlus_CalculatesLambdaRoots_Correctly()
     {

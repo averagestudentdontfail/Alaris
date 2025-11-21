@@ -10,10 +10,11 @@ namespace Alaris.Test.Unit;
 /// Unit tests for the UnifiedPricingEngine component.
 /// Tests regime detection, pricing accuracy, and calendar spread calculations.
 /// </summary>
-public class UnifiedPricingEngineTests : IDisposable
+public sealed class UnifiedPricingEngineTests : IDisposable
 {
     private readonly UnifiedPricingEngine _engine;
     private readonly Date _valuationDate;
+    private bool _disposed;
 
     public UnifiedPricingEngineTests()
     {
@@ -433,6 +434,20 @@ public class UnifiedPricingEngineTests : IDisposable
 
     public void Dispose()
     {
-        _engine.Dispose();
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    private void Dispose(bool disposing)
+    {
+        if (!_disposed)
+        {
+            if (disposing)
+            {
+                _engine?.Dispose();
+                _valuationDate?.Dispose();
+            }
+            _disposed = true;
+        }
     }
 }
