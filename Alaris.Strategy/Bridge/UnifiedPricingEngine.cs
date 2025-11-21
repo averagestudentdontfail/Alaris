@@ -324,14 +324,15 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
         SimpleQuote underlyingQuote = new SimpleQuote(parameters.UnderlyingPrice);
         QuoteHandle underlyingHandle = new QuoteHandle(underlyingQuote);
 
-        // Create term structures (day counter, rate, dividend, volatility)
+        // Create term structures (day counter, rate, dividend, volatility, calendar)
         (Actual365Fixed dayCounter,
          FlatForward flatRateTs,
          YieldTermStructureHandle riskFreeRateHandle,
          FlatForward flatDividendTs,
          YieldTermStructureHandle dividendYieldHandle,
          BlackConstantVol flatVolTs,
-         BlackVolTermStructureHandle volatilityHandle) termStructures =
+         BlackVolTermStructureHandle volatilityHandle,
+         TARGET calendar) termStructures =
             CreateTermStructures(parameters);
 
         // Create Black-Scholes-Merton process
@@ -363,6 +364,7 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
         bsmProcess.Dispose();
         termStructures.volatilityHandle.Dispose();
         termStructures.flatVolTs.Dispose();
+        termStructures.calendar.Dispose();
         termStructures.dividendYieldHandle.Dispose();
         termStructures.flatDividendTs.Dispose();
         termStructures.riskFreeRateHandle.Dispose();
@@ -384,7 +386,8 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
                     FlatForward flatDividendTs,
                     YieldTermStructureHandle dividendYieldHandle,
                     BlackConstantVol flatVolTs,
-                    BlackVolTermStructureHandle volatilityHandle)
+                    BlackVolTermStructureHandle volatilityHandle,
+                    TARGET calendar)
         CreateTermStructures(OptionParameters parameters)
     {
         Actual365Fixed dayCounter = new Actual365Fixed();
@@ -401,14 +404,15 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
             dayCounter);
         YieldTermStructureHandle dividendYieldHandle = new YieldTermStructureHandle(flatDividendTs);
 
+        TARGET calendar = new TARGET();
         BlackConstantVol flatVolTs = new BlackConstantVol(
             parameters.ValuationDate,
-            new TARGET(),
+            calendar,
             parameters.ImpliedVolatility,
             dayCounter);
         BlackVolTermStructureHandle volatilityHandle = new BlackVolTermStructureHandle(flatVolTs);
 
-        return (dayCounter, flatRateTs, riskFreeRateHandle, flatDividendTs, dividendYieldHandle, flatVolTs, volatilityHandle);
+        return (dayCounter, flatRateTs, riskFreeRateHandle, flatDividendTs, dividendYieldHandle, flatVolTs, volatilityHandle, calendar);
     }
 
     /// <summary>
