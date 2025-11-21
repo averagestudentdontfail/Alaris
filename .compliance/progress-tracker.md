@@ -170,4 +170,24 @@
 
 ---
 
-*Updated: 2025-11-21 | Next Review: Phase 4 kickoff*
+*Updated: 2025-11-21 | Next Review: Phase 5 planning*
+
+---
+
+## Phase 5: Continuous Compliance (Planned)
+
+**Target**: 2026-Q1
+
+### Remaining Rules
+
+| Rule | Description | Status | Effort |
+|------|-------------|--------|--------|
+| 8 | Limited Scope | Pending | Medium - field visibility audit |
+| 14 | Clear LINQ | Pending | Low - query complexity review |
+
+### Phase 5 Objectives
+
+1. **Rule 8 (Limited Scope)**: Audit field/property visibility, minimize public surface area
+2. **Rule 14 (Clear LINQ)**: Review complex LINQ queries, ensure readability
+3. **CI Integration**: Add compliance checks to build pipeline
+4. **Validation Tests**: Add benchmark tests in `Alaris.Test/Benchmark/` for ongoing performance validation

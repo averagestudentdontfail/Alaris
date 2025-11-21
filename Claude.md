@@ -229,10 +229,16 @@ dotnet build && dotnet test
 - Span<T> for variance calculations
 - ~6,000 allocations eliminated per pricing cycle
 
-### Remaining Work
+### Next Phase: Phase 5 - Continuous Compliance (2026-Q1)
 
-- Rule 8 (Limited Scope): Requires detailed review
-- Rule 14 (Clear LINQ): Requires audit
+| Rule | Description | Effort |
+|------|-------------|--------|
+| 8 | Limited Scope | Medium - field visibility audit |
+| 14 | Clear LINQ | Low - query complexity review |
+
+**Additional Objectives**:
+- CI integration for compliance checks
+- Ongoing performance validation via `Alaris.Test/Benchmark/`
 
 ---
 
