@@ -354,6 +354,9 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
         // Create pricing engine and calculate price
         FdBlackScholesVanillaEngine priceEngine = new FdBlackScholesVanillaEngine(bsmProcess, timeSteps, priceSteps);
         option.setPricingEngine(priceEngine);
+
+        // Ensure evaluation date is set correctly before pricing (critical for QuantLib)
+        Settings.instance().setEvaluationDate(parameters.ValuationDate);
         double price = option.NPV();
 
         // Clean up (dispose in reverse order of creation)
