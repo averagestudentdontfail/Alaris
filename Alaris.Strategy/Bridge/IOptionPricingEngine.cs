@@ -49,29 +49,29 @@ public sealed class CalendarSpreadParameters
     public double Strike { get; init; }
 
     /// <summary>
-    /// Gets the front month (short) expiration date.
+    /// Gets or sets the front month (short) expiration date.
     /// </summary>
-    public Date FrontExpiry { get; init; } = new();
+    public Date FrontExpiry { get; set; } = new();
 
     /// <summary>
-    /// Gets the back month (long) expiration date.
+    /// Gets or sets the back month (long) expiration date.
     /// </summary>
-    public Date BackExpiry { get; init; } = new();
+    public Date BackExpiry { get; set; } = new();
 
     /// <summary>
-    /// Gets the implied volatility to use for pricing.
+    /// Gets or sets the implied volatility to use for pricing.
     /// </summary>
-    public double ImpliedVolatility { get; init; }
+    public double ImpliedVolatility { get; set; }
 
     /// <summary>
-    /// Gets the risk-free interest rate (can be negative).
+    /// Gets or sets the risk-free interest rate (can be negative).
     /// </summary>
-    public double RiskFreeRate { get; init; }
+    public double RiskFreeRate { get; set; }
 
     /// <summary>
-    /// Gets the continuous dividend yield (can be negative).
+    /// Gets or sets the continuous dividend yield (can be negative).
     /// </summary>
-    public double DividendYield { get; init; }
+    public double DividendYield { get; set; }
 
     /// <summary>
     /// Gets the option type (Call or Put).
