@@ -327,8 +327,8 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
                 // Create pricing engine for main price (using FD for Americans by default)
                 // Adaptive grid sizing: short maturities need more time steps
                 double timeToExpiry = CalculateTimeToExpiry(parameters.ValuationDate, parameters.Expiry);
-                uint timeSteps = (uint)Math.Max(100, (int)(timeToExpiry * 365 * 2)); // At least 2 steps per day
-                uint priceSteps = 100; // Spatial grid
+                int timeSteps = Math.Max(100, (int)(timeToExpiry * 365 * 2)); // At least 2 steps per day
+                int priceSteps = 100; // Spatial grid
 
                 FdBlackScholesVanillaEngine priceEngine = new FdBlackScholesVanillaEngine(bsmProcess, timeSteps, priceSteps);
                 option.setPricingEngine(priceEngine);
@@ -659,8 +659,8 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
 
         // Create pricing engine and price (adaptive grid for short maturities)
         double timeToExpiry = CalculateTimeToExpiry(parameters.ValuationDate, parameters.Expiry);
-        uint timeSteps = (uint)Math.Max(100, (int)(timeToExpiry * 365 * 2)); // At least 2 steps per day
-        uint priceSteps = 100;
+        int timeSteps = Math.Max(100, (int)(timeToExpiry * 365 * 2)); // At least 2 steps per day
+        int priceSteps = 100;
 
         FdBlackScholesVanillaEngine engine = new FdBlackScholesVanillaEngine(bsmProcess, timeSteps, priceSteps);
         option.setPricingEngine(engine);
