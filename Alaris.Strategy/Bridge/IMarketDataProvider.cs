@@ -90,15 +90,23 @@ public sealed class PriceBar
     public void Validate()
     {
         if (High < Low)
+        {
             throw new InvalidOperationException($"High ({High}) cannot be less than Low ({Low})");
+        }
 
         if (High < Open || High < Close)
+        {
             throw new InvalidOperationException($"High ({High}) must be >= Open ({Open}) and Close ({Close})");
+        }
 
         if (Low > Open || Low > Close)
+        {
             throw new InvalidOperationException($"Low ({Low}) must be <= Open ({Open}) and Close ({Close})");
+        }
 
         if (Volume < 0)
+        {
             throw new InvalidOperationException($"Volume ({Volume}) cannot be negative");
+        }
     }
 }

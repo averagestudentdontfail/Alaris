@@ -74,9 +74,9 @@ public sealed class Signal
     /// </summary>
     public void EvaluateStrength()
     {
-        var volumePass = Criteria.GetValueOrDefault("Volume", false);
-        var ivRvPass = Criteria.GetValueOrDefault("IV/RV", false);
-        var tsPass = Criteria.GetValueOrDefault("TermSlope", false);
+        bool volumePass = Criteria.GetValueOrDefault("Volume", false);
+        bool ivRvPass = Criteria.GetValueOrDefault("IV/RV", false);
+        bool tsPass = Criteria.GetValueOrDefault("TermSlope", false);
 
         Strength = (volumePass, ivRvPass, tsPass) switch
         {

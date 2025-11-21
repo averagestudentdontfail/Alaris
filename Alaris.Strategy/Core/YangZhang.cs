@@ -115,7 +115,7 @@ public sealed class YangZhangEstimator
     /// <summary>
     /// Calculates a rolling Yang-Zhang volatility series.
     /// </summary>
-    public List<(DateTime Date, double Volatility)> CalculateRolling(
+    public IReadOnlyList<(DateTime Date, double Volatility)> CalculateRolling(
         IReadOnlyList<PriceBar> priceBars,
         int window,
         bool annualized = true)
