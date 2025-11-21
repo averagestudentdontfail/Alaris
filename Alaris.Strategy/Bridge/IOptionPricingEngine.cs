@@ -39,49 +39,49 @@ public interface IOptionPricingEngine
 public sealed class CalendarSpreadParameters
 {
     /// <summary>
-    /// Gets or sets the current price of the underlying security.
+    /// Gets the current price of the underlying security.
     /// </summary>
-    public double UnderlyingPrice { get; set; }
+    public double UnderlyingPrice { get; init; }
 
     /// <summary>
-    /// Gets or sets the strike price (same for both legs).
+    /// Gets the strike price (same for both legs).
     /// </summary>
-    public double Strike { get; set; }
+    public double Strike { get; init; }
 
     /// <summary>
-    /// Gets or sets the front month (short) expiration date.
+    /// Gets the front month (short) expiration date.
     /// </summary>
-    public Date FrontExpiry { get; set; } = new();
+    public Date FrontExpiry { get; init; } = new();
 
     /// <summary>
-    /// Gets or sets the back month (long) expiration date.
+    /// Gets the back month (long) expiration date.
     /// </summary>
-    public Date BackExpiry { get; set; } = new();
+    public Date BackExpiry { get; init; } = new();
 
     /// <summary>
-    /// Gets or sets the implied volatility to use for pricing.
+    /// Gets the implied volatility to use for pricing.
     /// </summary>
-    public double ImpliedVolatility { get; set; }
+    public double ImpliedVolatility { get; init; }
 
     /// <summary>
-    /// Gets or sets the risk-free interest rate (can be negative).
+    /// Gets the risk-free interest rate (can be negative).
     /// </summary>
-    public double RiskFreeRate { get; set; }
+    public double RiskFreeRate { get; init; }
 
     /// <summary>
-    /// Gets or sets the continuous dividend yield (can be negative).
+    /// Gets the continuous dividend yield (can be negative).
     /// </summary>
-    public double DividendYield { get; set; }
+    public double DividendYield { get; init; }
 
     /// <summary>
-    /// Gets or sets the option type (Call or Put).
+    /// Gets the option type (Call or Put).
     /// </summary>
-    public Option.Type OptionType { get; set; }
+    public Option.Type OptionType { get; init; }
 
     /// <summary>
-    /// Gets or sets the valuation date.
+    /// Gets the valuation date.
     /// </summary>
-    public Date ValuationDate { get; set; } = new();
+    public Date ValuationDate { get; init; } = new();
 
     /// <summary>
     /// Validates the calendar spread parameters.

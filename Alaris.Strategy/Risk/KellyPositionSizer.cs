@@ -223,29 +223,29 @@ public sealed class KellyPositionSizer
 public sealed class Trade
 {
     /// <summary>
-    /// Gets or sets the trade entry date.
+    /// Gets the trade entry date.
     /// </summary>
-    public DateTime EntryDate { get; set; }
+    public DateTime EntryDate { get; init; }
 
     /// <summary>
-    /// Gets or sets the trade exit date.
+    /// Gets the trade exit date.
     /// </summary>
-    public DateTime ExitDate { get; set; }
+    public DateTime ExitDate { get; init; }
 
     /// <summary>
-    /// Gets or sets the profit or loss (negative for loss).
+    /// Gets the profit or loss (negative for loss).
     /// </summary>
-    public double ProfitLoss { get; set; }
+    public double ProfitLoss { get; init; }
 
     /// <summary>
-    /// Gets or sets the underlying symbol.
+    /// Gets the underlying symbol.
     /// </summary>
-    public string Symbol { get; set; } = string.Empty;
+    public string Symbol { get; init; } = string.Empty;
 
     /// <summary>
-    /// Gets or sets the trade type/strategy.
+    /// Gets the trade type/strategy.
     /// </summary>
-    public string Strategy { get; set; } = string.Empty;
+    public string Strategy { get; init; } = string.Empty;
 
     /// <summary>
     /// Gets the holding period in days.

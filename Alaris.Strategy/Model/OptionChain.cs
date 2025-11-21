@@ -11,19 +11,19 @@ public sealed class OptionChain
     public IList<OptionExpiry> Expiries { get; } = new List<OptionExpiry>();
 
     /// <summary>
-    /// Gets or sets the underlying security symbol.
+    /// Gets the underlying security symbol.
     /// </summary>
-    public string Symbol { get; set; } = string.Empty;
+    public string Symbol { get; init; } = string.Empty;
 
     /// <summary>
-    /// Gets or sets the current price of the underlying security.
+    /// Gets the current price of the underlying security.
     /// </summary>
-    public double UnderlyingPrice { get; set; }
+    public double UnderlyingPrice { get; init; }
 
     /// <summary>
-    /// Gets or sets the timestamp when this option chain was retrieved.
+    /// Gets the timestamp when this option chain was retrieved.
     /// </summary>
-    public DateTime Timestamp { get; set; }
+    public DateTime Timestamp { get; init; }
 }
 
 /// <summary>
@@ -32,9 +32,9 @@ public sealed class OptionChain
 public sealed class OptionExpiry
 {
     /// <summary>
-    /// Gets or sets the expiration date for these options.
+    /// Gets the expiration date for these options.
     /// </summary>
-    public DateTime ExpiryDate { get; set; }
+    public DateTime ExpiryDate { get; init; }
 
     /// <summary>
     /// Gets the list of call option contracts.

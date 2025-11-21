@@ -205,12 +205,12 @@ public sealed class Control
 /// </summary>
 public sealed class TradingOpportunity
 {
-    public string Symbol { get; set; } = string.Empty;
-    public DateTime EarningsDate { get; set; }
-    public DateTime EvaluationDate { get; set; }
-    public Signal? Signal { get; set; }
-    public CalendarSpreadPricing? SpreadPricing { get; set; }
-    public PositionSize? PositionSize { get; set; }
+    public string Symbol { get; init; } = string.Empty;
+    public DateTime EarningsDate { get; init; }
+    public DateTime EvaluationDate { get; init; }
+    public Signal? Signal { get; init; }
+    public CalendarSpreadPricing? SpreadPricing { get; init; }
+    public PositionSize? PositionSize { get; init; }
 
     /// <summary>
     /// Gets whether this opportunity is actionable.

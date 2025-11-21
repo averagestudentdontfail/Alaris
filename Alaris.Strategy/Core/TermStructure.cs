@@ -119,24 +119,24 @@ public sealed class TermStructure
 public sealed class TermStructurePoint
 {
     /// <summary>
-    /// Gets or sets the number of days until option expiration.
+    /// Gets the number of days until option expiration.
     /// </summary>
-    public int DaysToExpiry { get; set; }
+    public int DaysToExpiry { get; init; }
 
     /// <summary>
-    /// Gets or sets the implied volatility (annual, as a decimal).
+    /// Gets the implied volatility (annual, as a decimal).
     /// </summary>
-    public double ImpliedVolatility { get; set; }
+    public double ImpliedVolatility { get; init; }
 
     /// <summary>
-    /// Gets or sets the strike price of the option.
+    /// Gets the strike price of the option.
     /// </summary>
-    public double Strike { get; set; }
+    public double Strike { get; init; }
 
     /// <summary>
-    /// Gets or sets optional metadata about the option contract.
+    /// Gets optional metadata about the option contract.
     /// </summary>
-    public string? Metadata { get; set; }
+    public string? Metadata { get; init; }
 }
 
 /// <summary>
@@ -145,20 +145,20 @@ public sealed class TermStructurePoint
 public sealed class TermStructureAnalysis
 {
     /// <summary>
-    /// Gets or sets the intercept of the linear regression (IV at DTE=0).
+    /// Gets the intercept of the linear regression (IV at DTE=0).
     /// </summary>
-    public double Intercept { get; set; }
+    public double Intercept { get; init; }
 
     /// <summary>
-    /// Gets or sets the slope of the term structure.
+    /// Gets the slope of the term structure.
     /// Negative slope indicates inverted term structure (backwardation).
     /// </summary>
-    public double Slope { get; set; }
+    public double Slope { get; init; }
 
     /// <summary>
-    /// Gets or sets the R-squared value of the linear fit.
+    /// Gets the R-squared value of the linear fit.
     /// </summary>
-    public double RSquared { get; set; }
+    public double RSquared { get; init; }
 
     /// <summary>
     /// Gets the original data points used in the analysis.
