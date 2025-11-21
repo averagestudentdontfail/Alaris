@@ -39,6 +39,15 @@ public interface IMarketDataProvider
     public Task<IReadOnlyList<DateTime>> GetEarningsDates(string symbol);
 
     /// <summary>
+    /// Gets historical earnings announcement dates for calibrating the L&amp;S model.
+    /// Reference: Leung &amp; Santoli (2014) Section 5.2 - calibrating sigma_e.
+    /// </summary>
+    /// <param name="symbol">The security symbol.</param>
+    /// <param name="lookbackQuarters">Number of quarters to look back (default 12 = 3 years).</param>
+    /// <returns>List of historical earnings dates in descending order.</returns>
+    public Task<IReadOnlyList<DateTime>> GetHistoricalEarningsDates(string symbol, int lookbackQuarters = 12);
+
+    /// <summary>
     /// Checks if market data is available for a symbol.
     /// </summary>
     public Task<bool> IsDataAvailable(string symbol);

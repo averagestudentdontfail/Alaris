@@ -69,6 +69,59 @@ public sealed class Signal
     /// </summary>
     public double RealizedVolatility30 { get; set; }
 
+    // ============================================================================
+    // Leung & Santoli (2014) Model Properties
+    // ============================================================================
+
+    /// <summary>
+    /// Gets or sets the calibrated earnings jump volatility (sigma_e) from historical EA moves.
+    /// This is the standard deviation of log-returns on earnings announcement dates.
+    /// Reference: Leung & Santoli (2014) Section 5.2
+    /// </summary>
+    public double EarningsJumpVolatility { get; set; }
+
+    /// <summary>
+    /// Gets or sets the theoretical pre-EA implied volatility from L&S model.
+    /// Formula: I(t) = sqrt(sigma^2 + sigma_e^2 / (T-t))
+    /// Reference: Leung & Santoli (2014) Equation 2.4
+    /// </summary>
+    public double TheoreticalIV { get; set; }
+
+    /// <summary>
+    /// Gets or sets the IV mispricing signal (market IV - theoretical IV).
+    /// Positive: market IV overpriced relative to historical earnings behavior.
+    /// Negative: market IV underpriced relative to historical earnings behavior.
+    /// </summary>
+    public double IVMispricingSignal { get; set; }
+
+    /// <summary>
+    /// Gets or sets the expected IV crush magnitude in volatility points.
+    /// Computed as: pre-EA IV - base volatility (sigma)
+    /// </summary>
+    public double ExpectedIVCrush { get; set; }
+
+    /// <summary>
+    /// Gets or sets the IV crush ratio (crush / pre-EA IV).
+    /// Represents the expected percentage drop in IV after earnings.
+    /// </summary>
+    public double IVCrushRatio { get; set; }
+
+    /// <summary>
+    /// Gets or sets the base (diffusion) volatility sigma.
+    /// This is the volatility excluding the earnings jump component.
+    /// </summary>
+    public double BaseVolatility { get; set; }
+
+    /// <summary>
+    /// Gets or sets the number of historical earnings used for calibration.
+    /// </summary>
+    public int HistoricalEarningsCount { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the L&S model calibration is valid.
+    /// </summary>
+    public bool IsLeungSantoliCalibrated { get; set; }
+
     /// <summary>
     /// Evaluates all criteria and determines signal strength.
     /// </summary>
