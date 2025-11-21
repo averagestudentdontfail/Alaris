@@ -87,8 +87,8 @@ public sealed class SignalGenerator
 
         try
         {
-            // Get historical price data for realized volatility calculation
-            List<PriceBar> priceHistory = _marketData.GetHistoricalPrices(symbol, 90).ToList();
+            // Fetch and validate market data
+            (List<PriceBar> priceHistory, OptionChain optionChain) = FetchMarketData(symbol, evaluationDate);
             if (priceHistory.Count < 30)
             {
                 SafeLog(() => LogInsufficientPriceHistory(_logger!, symbol, null));
@@ -96,11 +96,6 @@ public sealed class SignalGenerator
                 return signal;
             }
 
-            // Calculate 30-day Yang-Zhang realized volatility
-            signal.RealizedVolatility30 = _yangZhang.Calculate(priceHistory, 30);
-
-            // Get option chain for implied volatility analysis
-            OptionChain optionChain = _marketData.GetOptionChain(symbol, evaluationDate);
             if (optionChain.Expiries.Count == 0)
             {
                 SafeLog(() => LogNoOptionData(_logger!, symbol, null));
@@ -108,41 +103,10 @@ public sealed class SignalGenerator
                 return signal;
             }
 
-            // Extract term structure points
-            List<TermStructurePoint> termPoints = ExtractTermStructurePoints(optionChain, evaluationDate);
-            if (termPoints.Count < 2)
-            {
-                SafeLog(() => LogInsufficientTermStructure(_logger!, symbol, null));
-                signal.Strength = SignalStrength.Avoid;
-                return signal;
-            }
+            // Calculate signal metrics
+            CalculateSignalMetrics(signal, priceHistory, optionChain, earningsDate, evaluationDate);
 
-            // Analyze term structure
-            TermStructureAnalysis termAnalysis = _termAnalyzer.Analyze(termPoints);
-            signal.TermStructureSlope = termAnalysis.Slope;
-            signal.ImpliedVolatility30 = termAnalysis.GetIVAt(30);
-
-            // Calculate IV/RV ratio
-            signal.IVRVRatio = (signal.RealizedVolatility30 > 0)
-                ? (signal.ImpliedVolatility30 / signal.RealizedVolatility30)
-                : 0;
-
-            // Calculate average volume
-            signal.AverageVolume = (long)priceHistory.TakeLast(30).Average(p => p.Volume);
-
-            // Calculate expected move from ATM straddle
-            signal.ExpectedMove = CalculateExpectedMove(optionChain, earningsDate, evaluationDate);
-
-            // Evaluate criteria
-            signal.Criteria["Volume"] = signal.AverageVolume >= MinAverageVolume;
-            signal.Criteria["IV/RV"] = signal.IVRVRatio >= MinIvRvRatio;
-            signal.Criteria["TermSlope"] = signal.TermStructureSlope <= MaxTermSlope;
-
-            // Calculate volatility spread (Atilgan 2014)
-            signal.VolatilitySpread = CalculateVolatilitySpread(optionChain, evaluationDate);
-
-            signal.EvaluateStrength();
-
+            // Log final signal
             SafeLog(() => LogSignalGenerated(_logger!, symbol, signal.Strength, signal.IVRVRatio, signal.TermStructureSlope, signal.AverageVolume, null));
         }
         catch (ArgumentException ex)
@@ -162,6 +126,57 @@ public sealed class SignalGenerator
         }
 
         return signal;
+    }
+
+    /// <summary>
+    /// Fetches market data required for signal generation.
+    /// </summary>
+    private (List<PriceBar> priceHistory, OptionChain optionChain) FetchMarketData(string symbol, DateTime evaluationDate)
+    {
+        List<PriceBar> priceHistory = _marketData.GetHistoricalPrices(symbol, 90).ToList();
+        OptionChain optionChain = _marketData.GetOptionChain(symbol, evaluationDate);
+        return (priceHistory, optionChain);
+    }
+
+    /// <summary>
+    /// Calculates all signal metrics including volatility, term structure, and criteria.
+    /// </summary>
+    private void CalculateSignalMetrics(Signal signal, List<PriceBar> priceHistory, OptionChain optionChain, DateTime earningsDate, DateTime evaluationDate)
+    {
+        // Calculate 30-day Yang-Zhang realized volatility
+        signal.RealizedVolatility30 = _yangZhang.Calculate(priceHistory, 30);
+
+        // Extract and analyze term structure
+        List<TermStructurePoint> termPoints = ExtractTermStructurePoints(optionChain, evaluationDate);
+        if (termPoints.Count < 2)
+        {
+            SafeLog(() => LogInsufficientTermStructure(_logger!, signal.Symbol, null));
+            signal.Strength = SignalStrength.Avoid;
+            return;
+        }
+
+        TermStructureAnalysis termAnalysis = _termAnalyzer.Analyze(termPoints);
+        signal.TermStructureSlope = termAnalysis.Slope;
+        signal.ImpliedVolatility30 = termAnalysis.GetIVAt(30);
+
+        // Calculate IV/RV ratio
+        signal.IVRVRatio = (signal.RealizedVolatility30 > 0)
+            ? (signal.ImpliedVolatility30 / signal.RealizedVolatility30)
+            : 0;
+
+        // Calculate average volume
+        signal.AverageVolume = (long)priceHistory.TakeLast(30).Average(p => p.Volume);
+
+        // Calculate expected move and volatility spread
+        signal.ExpectedMove = CalculateExpectedMove(optionChain, earningsDate, evaluationDate);
+        signal.VolatilitySpread = CalculateVolatilitySpread(optionChain, evaluationDate);
+
+        // Evaluate criteria
+        signal.Criteria["Volume"] = signal.AverageVolume >= MinAverageVolume;
+        signal.Criteria["IV/RV"] = signal.IVRVRatio >= MinIvRvRatio;
+        signal.Criteria["TermSlope"] = signal.TermStructureSlope <= MaxTermSlope;
+
+        signal.EvaluateStrength();
     }
 
     /// <summary>

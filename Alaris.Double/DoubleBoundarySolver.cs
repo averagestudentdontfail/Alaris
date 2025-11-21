@@ -57,6 +57,32 @@ public sealed class DoubleBoundarySolver
         int collocationPoints = 50,
         bool useRefinement = true)
     {
+        // Rule 9: Guard Clauses
+        if (spot <= 0)
+        {
+            throw new ArgumentException("Spot price must be positive", nameof(spot));
+        }
+
+        if (strike <= 0)
+        {
+            throw new ArgumentException("Strike price must be positive", nameof(strike));
+        }
+
+        if (maturity <= 0)
+        {
+            throw new ArgumentException("Maturity must be positive", nameof(maturity));
+        }
+
+        if (volatility <= 0)
+        {
+            throw new ArgumentException("Volatility must be positive", nameof(volatility));
+        }
+
+        if (collocationPoints <= 0)
+        {
+            throw new ArgumentException("Collocation points must be positive", nameof(collocationPoints));
+        }
+
         _spot = spot;
         _strike = strike;
         _maturity = maturity;
@@ -74,51 +100,81 @@ public sealed class DoubleBoundarySolver
     /// <returns>Solution containing boundaries and metadata</returns>
     public DoubleBoundaryResult Solve()
     {
-        // Stage 1: QD+ approximation
+        // Stage 1: QD+ approximation for initial boundaries
+        (double upperInitial, double lowerInitial) = CalculateInitialBoundaries();
+
+        // Check regime and refinement settings
+        bool isDoubleBoundary = DetectDoubleBoundaryRegime();
+
+        if (!isDoubleBoundary)
+        {
+            return CreateSingleBoundaryResult(upperInitial, lowerInitial);
+        }
+
+        if (!_useRefinement)
+        {
+            return CreateQdOnlyResult(upperInitial, lowerInitial);
+        }
+
+        // Stage 2: Kim refinement with FP-B' stabilization
+        return ApplyKimRefinement(upperInitial, lowerInitial);
+    }
+
+    /// <summary>
+    /// Calculates initial boundary estimates using QD+ approximation.
+    /// </summary>
+    private (double upperInitial, double lowerInitial) CalculateInitialBoundaries()
+    {
         QdPlusApproximation qdplus = new QdPlusApproximation(
             _spot, _strike, _maturity, _rate,
             _dividendYield, _volatility, _isCall);
 
-        (double upperInitial, double lowerInitial) = qdplus.CalculateBoundaries();
-        
-        // Check regime
-        bool isDoubleBoundary = DetectDoubleBoundaryRegime();
-        
-        if (!isDoubleBoundary)
-        {
-            // Single boundary regime
-            return new DoubleBoundaryResult
-            {
-                UpperBoundary = upperInitial,
-                LowerBoundary = lowerInitial,
-                QdUpperBoundary = upperInitial,
-                QdLowerBoundary = lowerInitial,
-                CrossingTime = 0.0,
-                IsRefined = false,
-                Method = "QD+ (Single Boundary)",
-                IsValid = true,
-                Iterations = 0
-            };
-        }
-        
-        if (!_useRefinement)
-        {
-            // Return QD+ approximation without refinement
-            return new DoubleBoundaryResult
-            {
-                UpperBoundary = upperInitial,
-                LowerBoundary = lowerInitial,
-                QdUpperBoundary = upperInitial,
-                QdLowerBoundary = lowerInitial,
-                CrossingTime = 0.0,
-                IsRefined = false,
-                Method = "QD+ Approximation",
-                IsValid = ValidateBoundaries(upperInitial, lowerInitial),
-                Iterations = 0
-            };
-        }
+        return qdplus.CalculateBoundaries();
+    }
 
-        // Stage 2: Kim refinement with FP-B' stabilization
+    /// <summary>
+    /// Creates result for single boundary regime.
+    /// </summary>
+    private static DoubleBoundaryResult CreateSingleBoundaryResult(double upperInitial, double lowerInitial)
+    {
+        return new DoubleBoundaryResult
+        {
+            UpperBoundary = upperInitial,
+            LowerBoundary = lowerInitial,
+            QdUpperBoundary = upperInitial,
+            QdLowerBoundary = lowerInitial,
+            CrossingTime = 0.0,
+            IsRefined = false,
+            Method = "QD+ (Single Boundary)",
+            IsValid = true,
+            Iterations = 0
+        };
+    }
+
+    /// <summary>
+    /// Creates result using only QD+ approximation without refinement.
+    /// </summary>
+    private DoubleBoundaryResult CreateQdOnlyResult(double upperInitial, double lowerInitial)
+    {
+        return new DoubleBoundaryResult
+        {
+            UpperBoundary = upperInitial,
+            LowerBoundary = lowerInitial,
+            QdUpperBoundary = upperInitial,
+            QdLowerBoundary = lowerInitial,
+            CrossingTime = 0.0,
+            IsRefined = false,
+            Method = "QD+ Approximation",
+            IsValid = ValidateBoundaries(upperInitial, lowerInitial),
+            Iterations = 0
+        };
+    }
+
+    /// <summary>
+    /// Applies Kim refinement to initial QD+ boundaries.
+    /// </summary>
+    private DoubleBoundaryResult ApplyKimRefinement(double upperInitial, double lowerInitial)
+    {
         DoubleBoundaryKimSolver kimSolver = new DoubleBoundaryKimSolver(
             _spot, _strike, _maturity, _rate,
             _dividendYield, _volatility, _isCall,
@@ -126,12 +182,12 @@ public sealed class DoubleBoundarySolver
 
         (double[] upperRefined, double[] lowerRefined, double crossingTime) = kimSolver.SolveBoundaries(
             upperInitial, lowerInitial);
-        
+
         // Extract boundary values at maturity
         int lastIndex = upperRefined.Length - 1;
         double upperFinal = upperRefined[lastIndex];
         double lowerFinal = lowerRefined[lastIndex];
-        
+
         return new DoubleBoundaryResult
         {
             UpperBoundary = upperFinal,
