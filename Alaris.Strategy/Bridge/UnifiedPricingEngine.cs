@@ -20,11 +20,11 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
     private bool _disposed;
 
     // LoggerMessage delegates
-    private static readonly Action<ILogger, double, double, double, double, double, double, string, PricingRegime, Exception?> LogPricingOption =
-        LoggerMessage.Define<double, double, double, double, double, double, string, PricingRegime>(
+    private static readonly Action<ILogger, double, double, string, string, PricingRegime, Exception?> LogPricingOption =
+        LoggerMessage.Define<double, double, string, string, PricingRegime>(
             LogLevel.Debug,
             new EventId(1, nameof(LogPricingOption)),
-            "Pricing option: S={S}, K={K}, r={R}, q={Q}, σ={Sigma}, T={T:F4}, Type={Type}, Regime={Regime}");
+            "Pricing option: S={UnderlyingPrice}, K={Strike}, Params={Parameters}, Type={OptionType}, Regime={Regime}");
 
     private static readonly Action<ILogger, PricingRegime, string, double, int, int, Exception?> LogPricingCalendarSpread =
         LoggerMessage.Define<PricingRegime, string, double, int, int>(
@@ -113,9 +113,9 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
 
         if (_logger != null)
         {
-            LogPricingOption(_logger, parameters.UnderlyingPrice, parameters.Strike, parameters.RiskFreeRate,
-                parameters.DividendYield, parameters.ImpliedVolatility,
-                CalculateTimeToExpiry(parameters.ValuationDate, parameters.Expiry),
+            double timeToExpiry = CalculateTimeToExpiry(parameters.ValuationDate, parameters.Expiry);
+            string paramsStr = $"r={parameters.RiskFreeRate:F4}, q={parameters.DividendYield:F4}, σ={parameters.ImpliedVolatility:F4}, T={timeToExpiry:F4}";
+            LogPricingOption(_logger, parameters.UnderlyingPrice, parameters.Strike, paramsStr,
                 isCall ? "Call" : "Put", regime, null);
         }
 

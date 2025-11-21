@@ -1,7 +1,7 @@
-using Alaris.Event.Core;
+using Alaris.Events.Core;
 using System.Collections.Concurrent;
 
-namespace Alaris.Event.Infrastructure;
+namespace Alaris.Events.Infrastructure;
 
 /// <summary>
 /// In-memory implementation of IEventStore for development and testing.
@@ -16,11 +16,11 @@ namespace Alaris.Event.Infrastructure;
 public sealed class InMemoryEventStore : IEventStore
 {
     private readonly ConcurrentDictionary<long, EventEnvelope> _events = new();
-    private long _currentSequence = 0;
+    private long _currentSequence;
     private readonly object _lock = new();
 
     public Task<EventEnvelope> AppendAsync<TEvent>(
-        TEvent @event,
+        TEvent domainEvent,
         string? aggregateId = null,
         string? aggregateType = null,
         string? initiatedBy = null,
@@ -34,7 +34,7 @@ public sealed class InMemoryEventStore : IEventStore
         }
 
         EventEnvelope envelope = EventEnvelope.Create(
-            @event,
+            domainEvent,
             sequenceNumber,
             aggregateId,
             aggregateType,
