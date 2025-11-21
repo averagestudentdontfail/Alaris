@@ -50,39 +50,39 @@ public interface IMarketDataProvider
 public sealed class PriceBar
 {
     /// <summary>
-    /// Gets or sets the date of this price bar.
+    /// Gets the date of this price bar.
     /// </summary>
-    public DateTime Date { get; set; }
+    public DateTime Date { get; init; }
 
     /// <summary>
-    /// Gets or sets the opening price.
+    /// Gets the opening price.
     /// </summary>
-    public double Open { get; set; }
+    public double Open { get; init; }
 
     /// <summary>
-    /// Gets or sets the highest price during the period.
+    /// Gets the highest price during the period.
     /// </summary>
-    public double High { get; set; }
+    public double High { get; init; }
 
     /// <summary>
-    /// Gets or sets the lowest price during the period.
+    /// Gets the lowest price during the period.
     /// </summary>
-    public double Low { get; set; }
+    public double Low { get; init; }
 
     /// <summary>
-    /// Gets or sets the closing price.
+    /// Gets the closing price.
     /// </summary>
-    public double Close { get; set; }
+    public double Close { get; init; }
 
     /// <summary>
-    /// Gets or sets the trading volume.
+    /// Gets the trading volume.
     /// </summary>
-    public long Volume { get; set; }
+    public long Volume { get; init; }
 
     /// <summary>
-    /// Gets or sets the adjusted closing price (adjusted for splits/dividends).
+    /// Gets the adjusted closing price (adjusted for splits/dividends).
     /// </summary>
-    public double? AdjustedClose { get; set; }
+    public double? AdjustedClose { get; init; }
 
     /// <summary>
     /// Validates that OHLC data is consistent.

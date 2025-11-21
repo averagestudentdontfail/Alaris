@@ -285,47 +285,47 @@ public sealed class DoubleBoundaryResult
     /// <summary>
     /// Upper exercise boundary at maturity.
     /// </summary>
-    public double UpperBoundary { get; set; }
-    
+    public double UpperBoundary { get; init; }
+
     /// <summary>
     /// Lower exercise boundary at maturity.
     /// </summary>
-    public double LowerBoundary { get; set; }
-    
+    public double LowerBoundary { get; init; }
+
     /// <summary>
     /// Time when boundaries cross (0 if no crossing).
     /// </summary>
-    public double CrossingTime { get; set; }
-    
+    public double CrossingTime { get; init; }
+
     /// <summary>
     /// Indicates if Kim refinement was applied.
     /// </summary>
-    public bool IsRefined { get; set; }
-    
+    public bool IsRefined { get; init; }
+
     /// <summary>
     /// Method used for calculation.
     /// </summary>
-    public string Method { get; set; } = string.Empty;
-    
+    public string Method { get; init; } = string.Empty;
+
     /// <summary>
     /// Indicates if boundaries are valid.
     /// </summary>
-    public bool IsValid { get; set; }
-    
+    public bool IsValid { get; init; }
+
     /// <summary>
     /// Number of iterations or collocation points used.
     /// </summary>
-    public int Iterations { get; set; }
-    
+    public int Iterations { get; init; }
+
     /// <summary>
     /// QD+ upper boundary (before refinement).
     /// </summary>
-    public double QdUpperBoundary { get; set; }
-    
+    public double QdUpperBoundary { get; init; }
+
     /// <summary>
     /// QD+ lower boundary (before refinement).
     /// </summary>
-    public double QdLowerBoundary { get; set; }
+    public double QdLowerBoundary { get; init; }
     
     /// <summary>
     /// Improvement from QD+ to refined (upper boundary).
@@ -340,10 +340,10 @@ public sealed class DoubleBoundaryResult
     /// <summary>
     /// Optional: Full upper boundary path across time points.
     /// </summary>
-    public System.Collections.Generic.IReadOnlyList<double>? UpperBoundaryPath { get; set; }
+    public System.Collections.Generic.IReadOnlyList<double>? UpperBoundaryPath { get; init; }
 
     /// <summary>
     /// Optional: Full lower boundary path across time points.
     /// </summary>
-    public System.Collections.Generic.IReadOnlyList<double>? LowerBoundaryPath { get; set; }
+    public System.Collections.Generic.IReadOnlyList<double>? LowerBoundaryPath { get; init; }
 }

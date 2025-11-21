@@ -8,37 +8,37 @@ public sealed class PositionSize
     /// <summary>
     /// Gets or sets the number of option contracts to trade.
     /// </summary>
-    public int Contracts { get; set; }
+    public int Contracts { get; init; }
 
     /// <summary>
-    /// Gets or sets the percentage of portfolio allocated to this position.
+    /// Gets the percentage of portfolio allocated to this position.
     /// </summary>
-    public double AllocationPercent { get; set; }
+    public double AllocationPercent { get; init; }
 
     /// <summary>
-    /// Gets or sets the total dollar amount allocated.
+    /// Gets the total dollar amount allocated.
     /// </summary>
-    public double DollarAllocation { get; set; }
+    public double DollarAllocation { get; init; }
 
     /// <summary>
-    /// Gets or sets the maximum loss per contract.
+    /// Gets the maximum loss per contract.
     /// </summary>
-    public double MaxLossPerContract { get; set; }
+    public double MaxLossPerContract { get; init; }
 
     /// <summary>
-    /// Gets or sets the total risk for the position.
+    /// Gets the total risk for the position.
     /// </summary>
-    public double TotalRisk { get; set; }
+    public double TotalRisk { get; init; }
 
     /// <summary>
-    /// Gets or sets the expected profit per contract.
+    /// Gets the expected profit per contract.
     /// </summary>
-    public double ExpectedProfitPerContract { get; set; }
+    public double ExpectedProfitPerContract { get; init; }
 
     /// <summary>
-    /// Gets or sets the Kelly fraction used for sizing.
+    /// Gets the Kelly fraction used for sizing.
     /// </summary>
-    public double KellyFraction { get; set; }
+    public double KellyFraction { get; init; }
 
     /// <summary>
     /// Gets the risk/reward ratio.
