@@ -89,8 +89,8 @@ public class DoubleBoundaryIntegrationTests
         // Path should have correct number of points
         if (result.UpperBoundaryPath != null)
         {
-            result.UpperBoundaryPath.Length.Should().Be(collocationPoints);
-            result.LowerBoundaryPath!.Length.Should().Be(collocationPoints);
+            result.UpperBoundaryPath.Count.Should().Be(collocationPoints);
+            result.LowerBoundaryPath!.Count.Should().Be(collocationPoints);
         }
     }
     
@@ -178,8 +178,8 @@ public class DoubleBoundaryIntegrationTests
             // At crossing time, boundaries should be approximately equal
             if (result.UpperBoundaryPath != null && result.LowerBoundaryPath != null)
             {
-                int crossIndex = (int)(result.CrossingTime / 15.0 * (result.UpperBoundaryPath.Length - 1));
-                double diff = Math.Abs(result.UpperBoundaryPath[crossIndex] - 
+                int crossIndex = (int)(result.CrossingTime / 15.0 * (result.UpperBoundaryPath.Count - 1));
+                double diff = Math.Abs(result.UpperBoundaryPath[crossIndex] -
                                       result.LowerBoundaryPath[crossIndex]);
                 diff.Should().BeLessThan(2.0, "boundaries should be close at crossing time");
             }

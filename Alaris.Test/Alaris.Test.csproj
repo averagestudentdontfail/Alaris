@@ -7,7 +7,8 @@
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <EnableDynamicLoading>true</EnableDynamicLoading>
-    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <!-- Suppress documentation warnings and test-specific style warnings -->
+    <NoWarn>$(NoWarn);CS1591;IDE0008;IDE0048</NoWarn>
   </PropertyGroup>
 
   <!-- Test framework packages -->
