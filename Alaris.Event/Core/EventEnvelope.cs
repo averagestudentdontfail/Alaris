@@ -1,4 +1,4 @@
-namespace Alaris.Event.Core;
+namespace Alaris.Events.Core;
 
 /// <summary>
 /// Immutable envelope that wraps an event with metadata.

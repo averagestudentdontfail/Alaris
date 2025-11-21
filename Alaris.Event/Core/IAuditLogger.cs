@@ -1,4 +1,4 @@
-namespace Alaris.Event.Core;
+namespace Alaris.Events.Core;
 
 /// <summary>
 /// Interface for writing immutable audit logs.
@@ -15,7 +15,7 @@ public interface IAuditLogger
     /// </summary>
     /// <param name="entry">The audit entry to log.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    Task LogAsync(AuditEntry entry, CancellationToken cancellationToken = default);
+    public Task LogAsync(AuditEntry entry, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Retrieves audit entries for a specific entity.
@@ -24,7 +24,7 @@ public interface IAuditLogger
     /// <param name="entityId">The entity identifier.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>All audit entries for the entity.</returns>
-    Task<IReadOnlyList<AuditEntry>> GetEntriesForEntityAsync(
+    public Task<IReadOnlyList<AuditEntry>> GetEntriesForEntityAsync(
         string entityType,
         string entityId,
         CancellationToken cancellationToken = default);
@@ -35,7 +35,7 @@ public interface IAuditLogger
     /// <param name="initiatedBy">The user or system identifier.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>All audit entries initiated by the specified actor.</returns>
-    Task<IReadOnlyList<AuditEntry>> GetEntriesByInitiatorAsync(
+    public Task<IReadOnlyList<AuditEntry>> GetEntriesByInitiatorAsync(
         string initiatedBy,
         CancellationToken cancellationToken = default);
 
@@ -46,7 +46,7 @@ public interface IAuditLogger
     /// <param name="toUtc">End time (inclusive).</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Audit entries within the time range.</returns>
-    Task<IReadOnlyList<AuditEntry>> GetEntriesByTimeRangeAsync(
+    public Task<IReadOnlyList<AuditEntry>> GetEntriesByTimeRangeAsync(
         DateTime fromUtc,
         DateTime toUtc,
         CancellationToken cancellationToken = default);

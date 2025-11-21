@@ -1,4 +1,4 @@
-namespace Alaris.Event.Core;
+namespace Alaris.Events.Core;
 
 /// <summary>
 /// Base interface for all domain events in the system.
@@ -13,20 +13,20 @@ public interface IEvent
     /// <summary>
     /// Gets the unique identifier for this event.
     /// </summary>
-    Guid EventId { get; }
+    public Guid EventId { get; }
 
     /// <summary>
     /// Gets the UTC timestamp when this event occurred.
     /// </summary>
-    DateTime OccurredAtUtc { get; }
+    public DateTime OccurredAtUtc { get; }
 
     /// <summary>
     /// Gets the type name of this event for serialization/routing.
     /// </summary>
-    string EventType { get; }
+    public string EventType { get; }
 
     /// <summary>
     /// Gets the correlation ID for tracing related events across boundaries.
     /// </summary>
-    string? CorrelationId { get; }
+    public string? CorrelationId { get; }
 }

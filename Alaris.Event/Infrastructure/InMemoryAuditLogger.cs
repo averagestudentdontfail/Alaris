@@ -1,7 +1,7 @@
-using Alaris.Event.Core;
+using Alaris.Events.Core;
 using System.Collections.Concurrent;
 
-namespace Alaris.Event.Infrastructure;
+namespace Alaris.Events.Infrastructure;
 
 /// <summary>
 /// In-memory implementation of IAuditLogger for development and testing.

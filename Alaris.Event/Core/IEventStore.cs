@@ -1,4 +1,4 @@
-namespace Alaris.Event.Core;
+namespace Alaris.Events.Core;
 
 /// <summary>
 /// Interface for storing and retrieving events.
@@ -13,15 +13,15 @@ public interface IEventStore
     /// <summary>
     /// Appends an event to the event store.
     /// </summary>
-    /// <param name="event">The domain event to store.</param>
+    /// <param name="domainEvent">The domain event to store.</param>
     /// <param name="aggregateId">Optional aggregate identifier.</param>
     /// <param name="aggregateType">Optional aggregate type.</param>
     /// <param name="initiatedBy">The user or system that initiated this event.</param>
     /// <param name="metadata">Additional metadata for the event.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The stored event envelope with sequence number.</returns>
-    Task<EventEnvelope> AppendAsync<TEvent>(
-        TEvent @event,
+    public Task<EventEnvelope> AppendAsync<TEvent>(
+        TEvent domainEvent,
         string? aggregateId = null,
         string? aggregateType = null,
         string? initiatedBy = null,
@@ -34,7 +34,7 @@ public interface IEventStore
     /// <param name="aggregateId">The aggregate identifier.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>All events for the aggregate in chronological order.</returns>
-    Task<IReadOnlyList<EventEnvelope>> GetEventsForAggregateAsync(
+    public Task<IReadOnlyList<EventEnvelope>> GetEventsForAggregateAsync(
         string aggregateId,
         CancellationToken cancellationToken = default);
 
@@ -46,7 +46,7 @@ public interface IEventStore
     /// <param name="maxCount">Maximum number of events to retrieve.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Events in chronological order.</returns>
-    Task<IReadOnlyList<EventEnvelope>> GetEventsFromSequenceAsync(
+    public Task<IReadOnlyList<EventEnvelope>> GetEventsFromSequenceAsync(
         long fromSequenceNumber,
         int maxCount = 1000,
         CancellationToken cancellationToken = default);
@@ -54,7 +54,7 @@ public interface IEventStore
     /// <summary>
     /// Gets the current highest sequence number in the event store.
     /// </summary>
-    Task<long> GetCurrentSequenceNumberAsync(CancellationToken cancellationToken = default);
+    public Task<long> GetCurrentSequenceNumberAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Retrieves events by correlation ID for tracing.
@@ -62,7 +62,7 @@ public interface IEventStore
     /// <param name="correlationId">The correlation identifier.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>All events with the given correlation ID.</returns>
-    Task<IReadOnlyList<EventEnvelope>> GetEventsByCorrelationIdAsync(
+    public Task<IReadOnlyList<EventEnvelope>> GetEventsByCorrelationIdAsync(
         string correlationId,
         CancellationToken cancellationToken = default);
 
@@ -73,7 +73,7 @@ public interface IEventStore
     /// <param name="toUtc">End time (inclusive).</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Events within the time range.</returns>
-    Task<IReadOnlyList<EventEnvelope>> GetEventsByTimeRangeAsync(
+    public Task<IReadOnlyList<EventEnvelope>> GetEventsByTimeRangeAsync(
         DateTime fromUtc,
         DateTime toUtc,
         CancellationToken cancellationToken = default);
