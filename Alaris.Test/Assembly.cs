@@ -76,9 +76,21 @@ internal static class Assembly
                         return;
                     }
                 }
-                catch (Exception ex)
+                catch (DllNotFoundException ex)
                 {
-                    Console.WriteLine($"Failed to load {fileName}: {ex.Message}");
+                    Console.WriteLine($"DLL not found for {fileName}: {ex.Message}");
+                }
+                catch (BadImageFormatException ex)
+                {
+                    Console.WriteLine($"Invalid library format for {fileName}: {ex.Message}");
+                }
+                catch (ArgumentException ex)
+                {
+                    Console.WriteLine($"Invalid argument loading {fileName}: {ex.Message}");
+                }
+                catch (InvalidOperationException ex)
+                {
+                    Console.WriteLine($"Invalid operation loading {fileName}: {ex.Message}");
                 }
             }
         }

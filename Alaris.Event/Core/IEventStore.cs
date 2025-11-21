@@ -1,4 +1,4 @@
-namespace Alaris.Events.Core;
+namespace Alaris.Event.Core;
 
 /// <summary>
 /// Interface for storing and retrieving events.

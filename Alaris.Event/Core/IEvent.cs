@@ -1,4 +1,4 @@
-namespace Alaris.Events.Core;
+namespace Alaris.Event.Core;
 
 /// <summary>
 /// Base interface for all domain events in the system.

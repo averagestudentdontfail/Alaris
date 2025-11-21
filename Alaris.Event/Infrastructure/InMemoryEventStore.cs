@@ -1,7 +1,7 @@
-using Alaris.Events.Core;
+using Alaris.Event.Core;
 using System.Collections.Concurrent;
 
-namespace Alaris.Events.Infrastructure;
+namespace Alaris.Event.Infrastructure;
 
 /// <summary>
 /// In-memory implementation of IEventStore for development and testing.

@@ -1,6 +1,6 @@
-using Alaris.Events.Core;
+using Alaris.Event.Core;
 
-namespace Alaris.Events.Domain;
+namespace Alaris.Event.Domain;
 
 /// <summary>
 /// Event raised when a trading signal is generated for a symbol.
