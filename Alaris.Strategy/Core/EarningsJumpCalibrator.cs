@@ -360,7 +360,7 @@ public sealed class EarningsJumpCalibration
     public bool IsValid { get; set; }
 
     /// <summary>
-    /// Gets or sets the historical log-returns array.
+    /// Gets or sets the historical log-returns.
     /// </summary>
-    public double[] HistoricalMoves { get; set; } = Array.Empty<double>();
+    public IReadOnlyList<double> HistoricalMoves { get; set; } = Array.Empty<double>();
 }
