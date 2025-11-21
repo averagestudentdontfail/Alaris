@@ -1,3 +1,4 @@
+using System.Buffers;
 using MathNet.Numerics;
 using MathNet.Numerics.LinearRegression;
 
@@ -7,6 +8,9 @@ namespace Alaris.Strategy.Core;
 /// Analyzes the term structure of implied volatility.
 /// Used to identify inverted term structures that signal trading opportunities.
 /// </summary>
+/// <remarks>
+/// Optimized for Rule 5 (Zero-Allocation Hot Paths) using ArrayPool.
+/// </remarks>
 public sealed class TermStructure
 {
     /// <summary>
@@ -21,45 +25,88 @@ public sealed class TermStructure
             throw new ArgumentException("Need at least 2 points for term structure analysis", nameof(points));
         }
 
-        // Sort by days to expiry
-        List<TermStructurePoint> sortedPoints = points.OrderBy(p => p.DaysToExpiry).ToList();
+        int n = points.Count;
 
-        // Extract arrays for regression
-        double[] dte = sortedPoints.Select(p => (double)p.DaysToExpiry).ToArray();
-        double[] iv = sortedPoints.Select(p => p.ImpliedVolatility).ToArray();
+        // Rule 5: Use ArrayPool for temporary arrays
+        double[] dte = ArrayPool<double>.Shared.Rent(n);
+        double[] iv = ArrayPool<double>.Shared.Rent(n);
+        int[] indices = ArrayPool<int>.Shared.Rent(n);
 
-        // Perform linear regression: IV = intercept + slope * DTE
-        (double intercept, double slope) = SimpleRegression.Fit(dte, iv);
-
-        TermStructureAnalysis analysis = new TermStructureAnalysis
+        try
         {
-            Intercept = intercept,
-            Slope = slope,
-            RSquared = CalculateRSquared(dte, iv, intercept, slope)
-        };
+            // Initialize indices for sorting
+            for (int i = 0; i < n; i++)
+            {
+                indices[i] = i;
+            }
 
-        // Add sorted points to the collection
-        foreach (TermStructurePoint point in sortedPoints)
-        {
-            analysis.Points.Add(point);
+            // Sort indices by DaysToExpiry (avoids creating sorted list)
+            Array.Sort(indices, 0, n, Comparer<int>.Create((a, b) =>
+                points[a].DaysToExpiry.CompareTo(points[b].DaysToExpiry)));
+
+            // Extract sorted values into arrays
+            for (int i = 0; i < n; i++)
+            {
+                int idx = indices[i];
+                dte[i] = points[idx].DaysToExpiry;
+                iv[i] = points[idx].ImpliedVolatility;
+            }
+
+            // Perform linear regression: IV = intercept + slope * DTE
+            // Note: SimpleRegression.Fit only reads the arrays
+            (double intercept, double slope) = SimpleRegression.Fit(
+                dte.AsSpan(0, n).ToArray(),
+                iv.AsSpan(0, n).ToArray());
+
+            double rSquared = CalculateRSquaredOptimized(dte.AsSpan(0, n), iv.AsSpan(0, n), intercept, slope);
+
+            TermStructureAnalysis analysis = new TermStructureAnalysis
+            {
+                Intercept = intercept,
+                Slope = slope,
+                RSquared = rSquared
+            };
+
+            // Add sorted points to the collection
+            for (int i = 0; i < n; i++)
+            {
+                analysis.Points.Add(points[indices[i]]);
+            }
+
+            return analysis;
         }
-
-        return analysis;
+        finally
+        {
+            ArrayPool<double>.Shared.Return(dte);
+            ArrayPool<double>.Shared.Return(iv);
+            ArrayPool<int>.Shared.Return(indices);
+        }
     }
 
     /// <summary>
-    /// Calculates R-squared for the linear fit.
+    /// Calculates R-squared for the linear fit using Span (zero allocation).
     /// </summary>
-    private static double CalculateRSquared(double[] x, double[] y, double intercept, double slope)
+    private static double CalculateRSquaredOptimized(ReadOnlySpan<double> x, ReadOnlySpan<double> y, double intercept, double slope)
     {
-        double yMean = y.Average();
-        double ssTotal = y.Sum(yi => Math.Pow(yi - yMean, 2));
+        // Calculate mean
+        double ySum = 0;
+        for (int i = 0; i < y.Length; i++)
+        {
+            ySum += y[i];
+        }
+        double yMean = ySum / y.Length;
 
-        double ssResidual = 0.0;
+        // Calculate SS Total and SS Residual in single pass
+        double ssTotal = 0;
+        double ssResidual = 0;
         for (int i = 0; i < x.Length; i++)
         {
+            double yDiff = y[i] - yMean;
+            ssTotal += yDiff * yDiff;
+
             double predicted = intercept + (slope * x[i]);
-            ssResidual += Math.Pow(y[i] - predicted, 2);
+            double residual = y[i] - predicted;
+            ssResidual += residual * residual;
         }
 
         return 1.0 - (ssResidual / ssTotal);
