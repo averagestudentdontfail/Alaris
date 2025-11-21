@@ -20,11 +20,6 @@ namespace Alaris.Strategy.Core;
 public sealed class LeungSantoliModel
 {
     /// <summary>
-    /// Default base volatility if not provided (20% annualized).
-    /// </summary>
-    private const double DefaultBaseVolatility = 0.20;
-
-    /// <summary>
     /// Minimum time to expiry to avoid division by zero (1 hour in years).
     /// </summary>
     private const double MinTimeToExpiry = 1.0 / (252.0 * 6.5); // ~1 hour in trading years
