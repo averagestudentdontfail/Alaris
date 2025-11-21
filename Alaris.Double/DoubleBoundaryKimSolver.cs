@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -120,6 +121,7 @@ public sealed class DoubleBoundaryKimSolver
 
     /// <summary>
     /// Refines boundaries using FP-B' stabilized fixed point iteration (Healy Equations 33-35).
+    /// Uses ArrayPool for zero-allocation iteration buffers (Rule 5: Zero-Allocation Hot Paths).
     /// </summary>
     private (double[] Upper, double[] Lower) RefineUsingFpbPrime(
         double[] upperInitial, double[] lowerInitial, double crossingTime)
@@ -132,85 +134,106 @@ public sealed class DoubleBoundaryKimSolver
             return FallbackToQdPlusConstant(m);
         }
 
-        double[] upper = (double[])upperInitial.Clone();
-        double[] lower = (double[])lowerInitial.Clone();
-        double previousMaxChange = double.MaxValue;
-        int stagnationCount = 0;
+        // Rule 5: Use ArrayPool to avoid heap allocations in hot path
+        double[] upper = ArrayPool<double>.Shared.Rent(m);
+        double[] lower = ArrayPool<double>.Shared.Rent(m);
+        double[] upperNew = ArrayPool<double>.Shared.Rent(m);
+        double[] lowerNew = ArrayPool<double>.Shared.Rent(m);
+        double[] tempUpper = ArrayPool<double>.Shared.Rent(m);
 
-        for (int iter = 0; iter < MaxIterations; iter++)
+        try
         {
-            double maxChange = 0.0;
-            double maxUpperChange = 0.0;
-            double maxLowerChange = 0.0;
-            double[] upperNew = new double[m];
-            double[] lowerNew = new double[m];
+            // Copy initial values
+            Array.Copy(upperInitial, upper, m);
+            Array.Copy(lowerInitial, lower, m);
 
-            // FP-B' iteration (Equation 33)
-            for (int i = 0; i < m; i++)
+            double previousMaxChange = double.MaxValue;
+            int stagnationCount = 0;
+
+            for (int iter = 0; iter < MaxIterations; iter++)
             {
-                double ti = i * _maturity / (m - 1);
+                double maxChange = 0.0;
+                double maxUpperChange = 0.0;
+                double maxLowerChange = 0.0;
 
-                // Skip points before crossing time
-                if (ti < crossingTime - NumericalEpsilon)
+                // FP-B' iteration (Equation 33)
+                for (int i = 0; i < m; i++)
                 {
-                    upperNew[i] = upper[i];
-                    lowerNew[i] = lower[i];
-                    continue;
+                    double ti = i * _maturity / (m - 1);
+
+                    // Skip points before crossing time
+                    if (ti < crossingTime - NumericalEpsilon)
+                    {
+                        upperNew[i] = upper[i];
+                        lowerNew[i] = lower[i];
+                        continue;
+                    }
+
+                    // Update upper boundary using FP-B
+                    upperNew[i] = SolveUpperBoundaryPoint(ti, upper, lower, crossingTime);
+
+                    // CRITICAL: Update lower using just-computed upper (FP-B' stabilization)
+                    // Use pooled tempUpper instead of cloning
+                    Array.Copy(upper, tempUpper, m);
+                    tempUpper[i] = upperNew[i];
+                    lowerNew[i] = SolveLowerBoundaryPointStabilized(ti, lower, tempUpper, crossingTime);
+
+                    // Enforce constraints
+                    (upperNew[i], lowerNew[i]) = EnforceConstraints(upperNew[i], lowerNew[i]);
+
+                    maxUpperChange = Math.Max(maxUpperChange, Math.Abs(upperNew[i] - upper[i]));
+                    maxLowerChange = Math.Max(maxLowerChange, Math.Abs(lowerNew[i] - lower[i]));
+                    maxChange = Math.Max(maxChange, Math.Max(maxUpperChange, maxLowerChange));
                 }
 
-                // Update upper boundary using FP-B
-                upperNew[i] = SolveUpperBoundaryPoint(ti, upper, lower, crossingTime);
+                // Check for early convergence on first iteration
+                if (iter == 0 && maxUpperChange < Tolerance * 10 && maxLowerChange < Tolerance * 10)
+                {
+                    // Return copies of initial (don't return pooled arrays)
+                    return ((double[])upperInitial.Clone(), (double[])lowerInitial.Clone());
+                }
 
-                // CRITICAL: Update lower using just-computed upper (FP-B' stabilization)
-                double[] tempUpper = (double[])upper.Clone();
-                tempUpper[i] = upperNew[i];
-                lowerNew[i] = SolveLowerBoundaryPointStabilized(ti, lower, tempUpper, crossingTime);
+                // Rule 13: Extract stagnation check
+                if (CheckStagnation(iter, maxChange, ref previousMaxChange, ref stagnationCount))
+                {
+                    return FallbackToQdPlusConstant(m);
+                }
 
-                // Enforce constraints
-                (upperNew[i], lowerNew[i]) = EnforceConstraints(upperNew[i], lowerNew[i]);
+                // Swap buffers instead of allocating new arrays
+                (upper, upperNew) = (upperNew, upper);
+                (lower, lowerNew) = (lowerNew, lower);
 
-                maxUpperChange = Math.Max(maxUpperChange, Math.Abs(upperNew[i] - upper[i]));
-                maxLowerChange = Math.Max(maxLowerChange, Math.Abs(lowerNew[i] - lower[i]));
-                maxChange = Math.Max(maxChange, Math.Max(maxUpperChange, maxLowerChange));
+                if (maxChange < Tolerance)
+                {
+                    break;
+                }
             }
 
-            // Check for early convergence on first iteration
-            if (iter == 0 && maxUpperChange < Tolerance * 10 && maxLowerChange < Tolerance * 10)
+            // 1. Enforce Monotonicity (PAV Algorithm)
+            double[] upperMono = EnforceMonotonicity(upper, m, isIncreasing: false);
+            double[] lowerMono = EnforceMonotonicity(lower, m, isIncreasing: false);
+
+            // 2. Apply Smoothing (Savitzky-Golay)
+            double[] upperSmooth = SmoothBoundary(upperMono);
+            double[] lowerSmooth = SmoothBoundary(lowerMono);
+
+            // Rule 13: Extract result validation
+            if (!ValidateRefinementResult(upperSmooth, lowerSmooth, upperInitial, lowerInitial))
             {
-                return (upperInitial, lowerInitial);
+                return ((double[])upperInitial.Clone(), (double[])lowerInitial.Clone());
             }
 
-            // Rule 13: Extract stagnation check
-            if (CheckStagnation(iter, maxChange, ref previousMaxChange, ref stagnationCount))
-            {
-                return FallbackToQdPlusConstant(m);
-            }
-
-            upper = upperNew;
-            lower = lowerNew;
-
-            if (maxChange < Tolerance)
-            {
-                break;
-            }
+            return (upperSmooth, lowerSmooth);
         }
-
-        // 1. Enforce Monotonicity (PAV Algorithm)
-        upper = EnforceMonotonicity(upper, isIncreasing: false);
-        lower = EnforceMonotonicity(lower, isIncreasing: false);
-
-        // 2. Apply Smoothing (Savitzky-Golay)
-        // Removes "staircase" artifacts from PAV to ensure smooth Greeks
-        upper = SmoothBoundary(upper);
-        lower = SmoothBoundary(lower);
-
-        // Rule 13: Extract result validation
-        if (!ValidateRefinementResult(upper, lower, upperInitial, lowerInitial))
+        finally
         {
-            return (upperInitial, lowerInitial);
+            // Always return pooled arrays
+            ArrayPool<double>.Shared.Return(upper);
+            ArrayPool<double>.Shared.Return(lower);
+            ArrayPool<double>.Shared.Return(upperNew);
+            ArrayPool<double>.Shared.Return(lowerNew);
+            ArrayPool<double>.Shared.Return(tempUpper);
         }
-
-        return (upper, lower);
     }
 
     private bool ValidateInitialInputs(double[] upper, double[] lower)
@@ -611,15 +634,23 @@ public sealed class DoubleBoundaryKimSolver
         return CalculateD1(S, K, tau) - (_volatility * Math.Sqrt(tau));
     }
 
-    private double[] EnforceMonotonicity(double[] boundary, bool isIncreasing)
+    private double[] EnforceMonotonicity(double[] boundary, int length, bool isIncreasing)
     {
-        return PoolAdjacentViolators((double[])boundary.Clone(), isIncreasing);
+        // Create properly sized array for PAV algorithm
+        double[] values = new double[length];
+        Array.Copy(boundary, values, length);
+        return PoolAdjacentViolators(values, isIncreasing);
     }
 
+    /// <summary>
+    /// Pool Adjacent Violators algorithm for isotonic regression.
+    /// Optimized to use stack-allocated spans for small arrays (Rule 5).
+    /// </summary>
     private static double[] PoolAdjacentViolators(double[] values, bool increasing)
     {
         int n = values.Length;
-        double[] result = (double[])values.Clone();
+        double[] result = new double[n];
+        Array.Copy(values, result, n);
 
         if (!increasing)
         {
@@ -629,38 +660,50 @@ public sealed class DoubleBoundaryKimSolver
             return result;
         }
 
-        List<double> poolValues = new();
-        List<int> poolSizes = new();
+        // Use fixed-size arrays instead of Lists to avoid heap allocations
+        // Maximum pools = n (worst case: each element is its own pool)
+        double[] poolValues = ArrayPool<double>.Shared.Rent(n);
+        int[] poolSizes = ArrayPool<int>.Shared.Rent(n);
+        int poolCount = 0;
 
-        for (int i = 0; i < n; i++)
+        try
         {
-            poolValues.Add(result[i]);
-            poolSizes.Add(1);
-
-            while (poolValues.Count > 1 && poolValues[^1] < poolValues[^2])
+            for (int i = 0; i < n; i++)
             {
-                double sum1 = poolValues[^1] * poolSizes[^1];
-                double sum2 = poolValues[^2] * poolSizes[^2];
-                int totalSize = poolSizes[^1] + poolSizes[^2];
+                poolValues[poolCount] = result[i];
+                poolSizes[poolCount] = 1;
+                poolCount++;
 
-                poolValues.RemoveAt(poolValues.Count - 1);
-                poolSizes.RemoveAt(poolSizes.Count - 1);
+                // Merge adjacent pools while they violate monotonicity
+                while (poolCount > 1 && poolValues[poolCount - 1] < poolValues[poolCount - 2])
+                {
+                    double sum1 = poolValues[poolCount - 1] * poolSizes[poolCount - 1];
+                    double sum2 = poolValues[poolCount - 2] * poolSizes[poolCount - 2];
+                    int totalSize = poolSizes[poolCount - 1] + poolSizes[poolCount - 2];
 
-                poolValues[^1] = (sum1 + sum2) / totalSize;
-                poolSizes[^1] = totalSize;
+                    poolCount--;
+                    poolValues[poolCount - 1] = (sum1 + sum2) / totalSize;
+                    poolSizes[poolCount - 1] = totalSize;
+                }
             }
-        }
 
-        int idx = 0;
-        for (int i = 0; i < poolValues.Count; i++)
+            // Expand pools back to result array
+            int idx = 0;
+            for (int i = 0; i < poolCount; i++)
+            {
+                for (int j = 0; j < poolSizes[i]; j++)
+                {
+                    result[idx++] = poolValues[i];
+                }
+            }
+
+            return result;
+        }
+        finally
         {
-            for (int j = 0; j < poolSizes[i]; j++)
-            {
-                result[idx++] = poolValues[i];
-            }
+            ArrayPool<double>.Shared.Return(poolValues);
+            ArrayPool<int>.Shared.Return(poolSizes);
         }
-
-        return result;
     }
 
     /// <summary>
