@@ -81,13 +81,19 @@ public sealed class CalendarSpreadPricing
     public void Validate()
     {
         if (SpreadCost < 0)
+        {
             throw new InvalidOperationException("Calendar spread should have positive cost (debit spread)");
+        }
 
-        if (BackOption.Price <= 0 || FrontOption.Price <= 0)
+        if ((BackOption.Price <= 0) || (FrontOption.Price <= 0))
+        {
             throw new InvalidOperationException("Option prices must be positive");
+        }
 
         if (Math.Abs(SpreadCost - (BackOption.Price - FrontOption.Price)) > 0.01)
+        {
             throw new InvalidOperationException("Spread cost inconsistent with option prices");
+        }
     }
 }
 

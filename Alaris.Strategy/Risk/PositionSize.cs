@@ -53,13 +53,19 @@ public sealed class PositionSize
     public void Validate(double maxAllocationPercent = 0.10)
     {
         if (Contracts < 0)
+        {
             throw new InvalidOperationException("Cannot have negative contracts");
+        }
 
         if (AllocationPercent > maxAllocationPercent)
+        {
             throw new InvalidOperationException(
                 $"Allocation {AllocationPercent:P2} exceeds maximum {maxAllocationPercent:P2}");
+        }
 
         if (TotalRisk > DollarAllocation)
+        {
             throw new InvalidOperationException("Total risk cannot exceed dollar allocation");
+        }
     }
 }

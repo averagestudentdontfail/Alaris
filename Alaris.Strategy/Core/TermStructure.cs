@@ -12,22 +12,24 @@ public sealed class TermStructure
     /// <summary>
     /// Analyzes a set of term structure points and calculates slope/intercept.
     /// </summary>
-    public TermStructureAnalysis Analyze(List<TermStructurePoint> points)
+    public TermStructureAnalysis Analyze(IReadOnlyList<TermStructurePoint> points)
     {
         ArgumentNullException.ThrowIfNull(points);
 
         if (points.Count < 2)
+        {
             throw new ArgumentException("Need at least 2 points for term structure analysis", nameof(points));
+        }
 
         // Sort by days to expiry
-        var sortedPoints = points.OrderBy(p => p.DaysToExpiry).ToList();
+        List<TermStructurePoint> sortedPoints = points.OrderBy(p => p.DaysToExpiry).ToList();
 
         // Extract arrays for regression
-        var dte = sortedPoints.Select(p => (double)p.DaysToExpiry).ToArray();
-        var iv = sortedPoints.Select(p => p.ImpliedVolatility).ToArray();
+        double[] dte = sortedPoints.Select(p => (double)p.DaysToExpiry).ToArray();
+        double[] iv = sortedPoints.Select(p => p.ImpliedVolatility).ToArray();
 
         // Perform linear regression: IV = intercept + slope * DTE
-        var (intercept, slope) = SimpleRegression.Fit(dte, iv);
+        (double intercept, double slope) = SimpleRegression.Fit(dte, iv);
 
         return new TermStructureAnalysis
         {
@@ -43,13 +45,13 @@ public sealed class TermStructure
     /// </summary>
     private static double CalculateRSquared(double[] x, double[] y, double intercept, double slope)
     {
-        var yMean = y.Average();
-        var ssTotal = y.Sum(yi => Math.Pow(yi - yMean, 2));
-        
-        var ssResidual = 0.0;
+        double yMean = y.Average();
+        double ssTotal = y.Sum(yi => Math.Pow(yi - yMean, 2));
+
+        double ssResidual = 0.0;
         for (int i = 0; i < x.Length; i++)
         {
-            var predicted = intercept + slope * x[i];
+            double predicted = intercept + (slope * x[i]);
             ssResidual += Math.Pow(y[i] - predicted, 2);
         }
 
@@ -105,9 +107,9 @@ public sealed class TermStructureAnalysis
     public double RSquared { get; set; }
 
     /// <summary>
-    /// Gets or sets the original data points used in the analysis.
+    /// Gets the original data points used in the analysis.
     /// </summary>
-    public List<TermStructurePoint> Points { get; set; } = new();
+    public IList<TermStructurePoint> Points { get; } = new List<TermStructurePoint>();
 
     /// <summary>
     /// Gets the implied volatility at a specific number of days to expiry.
@@ -138,7 +140,7 @@ public sealed class TermStructureAnalyzer
     /// <summary>
     /// Analyzes term structure points.
     /// </summary>
-    public TermStructureAnalysis Analyze(List<TermStructurePoint> points)
+    public TermStructureAnalysis Analyze(IReadOnlyList<TermStructurePoint> points)
     {
         return _termStructure.Analyze(points);
     }

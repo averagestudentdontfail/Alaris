@@ -52,18 +52,28 @@ public sealed class OptionParameters
     public void Validate()
     {
         if (UnderlyingPrice <= 0)
+        {
             throw new ArgumentException("Underlying price must be positive.", nameof(UnderlyingPrice));
+        }
 
         if (Strike <= 0)
+        {
             throw new ArgumentException("Strike price must be positive.", nameof(Strike));
+        }
 
         if (ImpliedVolatility < 0)
+        {
             throw new ArgumentException("Implied volatility cannot be negative.", nameof(ImpliedVolatility));
+        }
 
         if (Expiry is null)
+        {
             throw new ArgumentException("Expiry date must be set.", nameof(Expiry));
+        }
 
         if (ValuationDate is null)
+        {
             throw new ArgumentException("Valuation date must be set.", nameof(ValuationDate));
+        }
     }
 }
