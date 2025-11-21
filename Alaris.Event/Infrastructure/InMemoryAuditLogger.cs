@@ -1,7 +1,8 @@
-using Alaris.Event.Core;
+using Alaris.Eventing.Core;
 using System.Collections.Concurrent;
 
-namespace Alaris.Event.Infrastructure;
+// IDE0130: Namespace does not match folder structure - suppressed because "Event" is a reserved keyword (CA1716)
+namespace Alaris.Eventing.Infrastructure;
 
 /// <summary>
 /// In-memory implementation of IAuditLogger for development and testing.

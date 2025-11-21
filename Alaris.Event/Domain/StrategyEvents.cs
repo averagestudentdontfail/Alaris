@@ -1,6 +1,7 @@
-using Alaris.Event.Core;
+using Alaris.Eventing.Core;
 
-namespace Alaris.Event.Domain;
+// IDE0130: Namespace does not match folder structure - suppressed because "Event" is a reserved keyword (CA1716)
+namespace Alaris.Eventing.Domain;
 
 /// <summary>
 /// Event raised when a trading signal is generated for a symbol.

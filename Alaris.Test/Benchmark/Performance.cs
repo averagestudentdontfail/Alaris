@@ -289,7 +289,7 @@ public class DoubleBoundaryBenchmarkTests
         result.IsValid.Should().BeTrue("result should be valid even in worst case");
     }
     
-    private class TestCase
+    private sealed class TestCase
     {
         public double Spot { get; set; }
         public double Strike { get; set; }

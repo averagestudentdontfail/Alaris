@@ -297,7 +297,7 @@ public class DoubleBoundaryValidationTest
         if (crossingTime > 0 && crossingTime < 10.0)
         {
             // Check boundaries are equal at crossing time
-            int crossingIndex = (int)(crossingTime / 10.0 * (kimSolver._collocationPoints - 1));
+            int crossingIndex = (int)(crossingTime / 10.0 * (upperRefined.Count - 1));
             double boundaryDiff = Math.Abs(upperRefined[crossingIndex] - lowerRefined[crossingIndex]);
             
             boundaryDiff.Should().BeLessThan(1.0,

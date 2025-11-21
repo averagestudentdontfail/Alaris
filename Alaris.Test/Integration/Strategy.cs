@@ -419,7 +419,7 @@ public class StrategyIntegrationTests
 }
 
 // Mock implementations for testing
-internal class MockMarketDataProvider : IMarketDataProvider
+internal sealed class MockMarketDataProvider : IMarketDataProvider
 {
     public OptionChain GetOptionChain(string symbol, DateTime date)
     {
@@ -532,7 +532,7 @@ internal class MockMarketDataProvider : IMarketDataProvider
     }
 }
 
-internal class MockPricingEngine : IOptionPricingEngine
+internal sealed class MockPricingEngine : IOptionPricingEngine
 {
     public Task<OptionPricing> PriceOption(OptionParameters parameters)
     {

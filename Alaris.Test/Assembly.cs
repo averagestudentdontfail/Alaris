@@ -10,7 +10,7 @@ namespace Alaris.Test;
 /// </summary>
 internal static class Assembly
 {
-    private static bool _initialized = false;
+    private static bool _initialized;
     private static readonly object _lock = new object();
 
     /// <summary>
@@ -23,7 +23,9 @@ internal static class Assembly
         lock (_lock)
         {
             if (_initialized)
+            {
                 return;
+            }
 
             PreloadNativeLibraries();
             _initialized = true;
