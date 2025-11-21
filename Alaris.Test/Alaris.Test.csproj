@@ -11,6 +11,13 @@
     <NoWarn>$(NoWarn);CS1591;IDE0008;IDE0048</NoWarn>
   </PropertyGroup>
 
+  <!-- xUnit configuration to disable parallel execution (workaround for QuantLib memory issues) -->
+  <ItemGroup>
+    <Content Include="xunit.runner.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
   <!-- Test framework packages -->
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
