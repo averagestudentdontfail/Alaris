@@ -36,13 +36,36 @@ public sealed class YangZhangEstimator
         // Take the most recent 'window' bars plus one for calculating opening returns
         List<PriceBar> recentBars = priceBars.TakeLast(window + 1).ToList();
 
-        // Calculate normalized log returns
-        int n = window;
-        List<double> openReturns = new List<double>(n);
-        List<double> closeReturns = new List<double>(n);
-        List<double> rogersReturns = new List<double>(n);
+        // Calculate log returns
+        (List<double> openReturns, List<double> closeReturns, List<double> rogersReturns) =
+            CalculateLogReturns(recentBars, window);
 
-        for (int i = 1; i <= n; i++)
+        // Calculate Yang-Zhang variance
+        double yangZhangVariance = CalculateYangZhangVariance(openReturns, closeReturns, rogersReturns, window);
+
+        // Standard deviation (volatility)
+        double volatility = Math.Sqrt(Math.Max(0, yangZhangVariance));
+
+        // Annualize if requested
+        if (annualized)
+        {
+            volatility *= Math.Sqrt(TradingDaysPerYear);
+        }
+
+        return volatility;
+    }
+
+    /// <summary>
+    /// Calculates open, close, and Rogers-Satchell log returns.
+    /// </summary>
+    private static (List<double> openReturns, List<double> closeReturns, List<double> rogersReturns)
+        CalculateLogReturns(List<PriceBar> recentBars, int window)
+    {
+        List<double> openReturns = new List<double>(window);
+        List<double> closeReturns = new List<double>(window);
+        List<double> rogersReturns = new List<double>(window);
+
+        for (int i = 1; i <= window; i++)
         {
             PriceBar current = recentBars[i];
             PriceBar previous = recentBars[i - 1];
@@ -55,46 +78,31 @@ public sealed class YangZhangEstimator
             double c = Math.Log(current.Close / current.Open);
             closeReturns.Add(c);
 
-            // Rogers-Satchell component for intraday volatility
-            // u_i = ln(High_i / Open_i)
+            // Rogers-Satchell component: RS_i = u_i(u_i - c_i) + d_i(d_i - c_i)
             double u = Math.Log(current.High / current.Open);
-
-            // d_i = ln(Low_i / Open_i)
             double d = Math.Log(current.Low / current.Open);
-
-            // RS_i = u_i(u_i - c_i) + d_i(d_i - c_i)
             double rs = (u * (u - c)) + (d * (d - c));
             rogersReturns.Add(rs);
         }
 
+        return (openReturns, closeReturns, rogersReturns);
+    }
+
+    /// <summary>
+    /// Calculates Yang-Zhang variance from return components.
+    /// </summary>
+    private static double CalculateYangZhangVariance(List<double> openReturns, List<double> closeReturns, List<double> rogersReturns, int window)
+    {
         // Calculate variance components
-        // σ_o² = (1/(n-1)) * Σ(o_i - ō)²
         double openVariance = Variance(openReturns);
-
-        // σ_c² = (1/(n-1)) * Σ(c_i - c̄)²
         double closeVariance = Variance(closeReturns);
-
-        // σ_rs² = (1/n) * Σ(RS_i)
         double rogersVariance = rogersReturns.Average();
 
-        // Calculate the weight k
-        // k = 0.34 / (1.34 + (n+1)/(n-1))
-        double k = 0.34 / (1.34 + ((n + 1.0) / (n - 1.0)));
+        // Calculate the weight k = 0.34 / (1.34 + (n+1)/(n-1))
+        double k = 0.34 / (1.34 + ((window + 1.0) / (window - 1.0)));
 
-        // Yang-Zhang variance estimator
-        // σ_yz² = σ_o² + k·σ_c² + (1-k)·σ_rs²
-        double yangZhangVariance = openVariance + (k * closeVariance) + ((1 - k) * rogersVariance);
-
-        // Standard deviation (volatility)
-        double volatility = Math.Sqrt(Math.Max(0, yangZhangVariance));
-
-        // Annualize if requested
-        if (annualized)
-        {
-            volatility *= Math.Sqrt(TradingDaysPerYear);
-        }
-
-        return volatility;
+        // Yang-Zhang variance: σ_yz² = σ_o² + k·σ_c² + (1-k)·σ_rs²
+        return openVariance + (k * closeVariance) + ((1 - k) * rogersVariance);
     }
 
     /// <summary>

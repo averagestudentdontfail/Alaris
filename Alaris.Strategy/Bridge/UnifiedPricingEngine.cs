@@ -143,67 +143,60 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
             CalculateDaysToExpiry(parameters.ValuationDate, parameters.FrontExpiry),
             CalculateDaysToExpiry(parameters.ValuationDate, parameters.BackExpiry), null));
 
-        // Price front month (short position)
-        OptionParameters frontParams = new OptionParameters
-        {
-            UnderlyingPrice = parameters.UnderlyingPrice,
-            Strike = parameters.Strike,
-            Expiry = parameters.FrontExpiry,
-            ImpliedVolatility = parameters.ImpliedVolatility,
-            RiskFreeRate = parameters.RiskFreeRate,
-            DividendYield = parameters.DividendYield,
-            OptionType = parameters.OptionType,
-            ValuationDate = parameters.ValuationDate
-        };
+        // Price both legs of the spread
+        OptionPricing frontPricing = await PriceOption(CreateOptionParameters(parameters, parameters.FrontExpiry)).ConfigureAwait(false);
+        OptionPricing backPricing = await PriceOption(CreateOptionParameters(parameters, parameters.BackExpiry)).ConfigureAwait(false);
 
-        OptionPricing frontPricing = await PriceOption(frontParams).ConfigureAwait(false);
-
-        // Price back month (long position)
-        OptionParameters backParams = new OptionParameters
-        {
-            UnderlyingPrice = parameters.UnderlyingPrice,
-            Strike = parameters.Strike,
-            Expiry = parameters.BackExpiry,
-            ImpliedVolatility = parameters.ImpliedVolatility,
-            RiskFreeRate = parameters.RiskFreeRate,
-            DividendYield = parameters.DividendYield,
-            OptionType = parameters.OptionType,
-            ValuationDate = parameters.ValuationDate
-        };
-
-        OptionPricing backPricing = await PriceOption(backParams).ConfigureAwait(false);
-
-        // Calculate spread Greeks (long back - short front)
+        // Calculate spread metrics
         double spreadCost = backPricing.Price - frontPricing.Price;
-        double spreadDelta = backPricing.Delta - frontPricing.Delta;
-        double spreadGamma = backPricing.Gamma - frontPricing.Gamma;
-        double spreadVega = backPricing.Vega - frontPricing.Vega;
-        double spreadTheta = backPricing.Theta - frontPricing.Theta;
-        double spreadRho = backPricing.Rho - frontPricing.Rho;
-
-        // Max loss is the debit paid (spread cost)
-        double maxLoss = spreadCost;
-
-        // Calculate accurate max profit using grid search at front expiration
         double maxProfit = await CalculateMaxProfit(parameters, spreadCost).ConfigureAwait(false);
-
-        // Calculate accurate breakeven using numerical solver
         double breakEven = await CalculateBreakEven(parameters, spreadCost).ConfigureAwait(false);
 
+        return BuildCalendarSpreadPricing(frontPricing, backPricing, spreadCost, maxProfit, breakEven);
+    }
+
+    /// <summary>
+    /// Creates option parameters from calendar spread parameters for a specific expiry.
+    /// </summary>
+    private static OptionParameters CreateOptionParameters(CalendarSpreadParameters parameters, Date expiry)
+    {
+        return new OptionParameters
+        {
+            UnderlyingPrice = parameters.UnderlyingPrice,
+            Strike = parameters.Strike,
+            Expiry = expiry,
+            ImpliedVolatility = parameters.ImpliedVolatility,
+            RiskFreeRate = parameters.RiskFreeRate,
+            DividendYield = parameters.DividendYield,
+            OptionType = parameters.OptionType,
+            ValuationDate = parameters.ValuationDate
+        };
+    }
+
+    /// <summary>
+    /// Builds CalendarSpreadPricing result from option pricings and spread metrics.
+    /// </summary>
+    private static CalendarSpreadPricing BuildCalendarSpreadPricing(
+        OptionPricing frontPricing,
+        OptionPricing backPricing,
+        double spreadCost,
+        double maxProfit,
+        double breakEven)
+    {
         return new CalendarSpreadPricing
         {
             FrontOption = frontPricing,
             BackOption = backPricing,
             SpreadCost = spreadCost,
-            SpreadDelta = spreadDelta,
-            SpreadGamma = spreadGamma,
-            SpreadVega = spreadVega,
-            SpreadTheta = spreadTheta,
-            SpreadRho = spreadRho,
+            SpreadDelta = backPricing.Delta - frontPricing.Delta,
+            SpreadGamma = backPricing.Gamma - frontPricing.Gamma,
+            SpreadVega = backPricing.Vega - frontPricing.Vega,
+            SpreadTheta = backPricing.Theta - frontPricing.Theta,
+            SpreadRho = backPricing.Rho - frontPricing.Rho,
             MaxProfit = maxProfit,
-            MaxLoss = maxLoss,
+            MaxLoss = spreadCost,
             BreakEven = breakEven,
-            HasPositiveExpectedValue = spreadVega > 0 && spreadTheta > 0
+            HasPositiveExpectedValue = (backPricing.Vega - frontPricing.Vega) > 0 && (backPricing.Theta - frontPricing.Theta) > 0
         };
     }
 
@@ -280,61 +273,11 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
                 // Set evaluation date
                 Settings.instance().setEvaluationDate(parameters.ValuationDate);
 
-                // Create underlying quote
-                SimpleQuote underlyingQuote = new SimpleQuote(parameters.UnderlyingPrice);
-                QuoteHandle underlyingHandle = new QuoteHandle(underlyingQuote);
-
-                // Create term structures
-                Actual365Fixed dayCounter = new Actual365Fixed();
-
-                FlatForward flatRateTs = new FlatForward(
-                    parameters.ValuationDate,
-                    parameters.RiskFreeRate,
-                    dayCounter);
-                YieldTermStructureHandle riskFreeRateHandle = new YieldTermStructureHandle(flatRateTs);
-
-                FlatForward flatDividendTs = new FlatForward(
-                    parameters.ValuationDate,
-                    parameters.DividendYield,
-                    dayCounter);
-                YieldTermStructureHandle dividendYieldHandle = new YieldTermStructureHandle(flatDividendTs);
-
-                BlackConstantVol flatVolTs = new BlackConstantVol(
-                    parameters.ValuationDate,
-                    new TARGET(),
-                    parameters.ImpliedVolatility,
-                    dayCounter);
-                BlackVolTermStructureHandle volatilityHandle = new BlackVolTermStructureHandle(flatVolTs);
-
-                // Create Black-Scholes-Merton process
-                BlackScholesMertonProcess bsmProcess = new BlackScholesMertonProcess(
-                    underlyingHandle,
-                    dividendYieldHandle,
-                    riskFreeRateHandle,
-                    volatilityHandle);
-
-                // Create option
-                AmericanExercise exercise = new AmericanExercise(parameters.ValuationDate, parameters.Expiry);
-                PlainVanillaPayoff payoff = new PlainVanillaPayoff(parameters.OptionType, parameters.Strike);
-                VanillaOption option = new VanillaOption(payoff, exercise);
-
-                // Create pricing engine for main price (using FD for Americans by default)
-                // Adaptive grid sizing: short maturities need more time steps
+                // Calculate time to expiry for adaptive grid sizing
                 double timeToExpiry = CalculateTimeToExpiry(parameters.ValuationDate, parameters.Expiry);
-                uint timeSteps = (uint)Math.Max(100, (int)(timeToExpiry * 365 * 2)); // At least 2 steps per day
-                uint priceSteps = 100; // Spatial grid
 
-                FdBlackScholesVanillaEngine priceEngine = new FdBlackScholesVanillaEngine(bsmProcess, timeSteps, priceSteps);
-                option.setPricingEngine(priceEngine);
-
-                // Ensure evaluation date is set correctly before pricing
-                Settings.instance().setEvaluationDate(parameters.ValuationDate);
-                double price = option.NPV();
-                priceEngine.Dispose();
-
-                // Create fresh pricing engine for Greek calculations (reuse adaptive grid)
-                FdBlackScholesVanillaEngine fdEngine = new FdBlackScholesVanillaEngine(bsmProcess, timeSteps, priceSteps);
-                option.setPricingEngine(fdEngine);
+                // Create QuantLib infrastructure and price the option
+                double price = PriceWithQuantLibInfrastructure(parameters, timeToExpiry);
 
                 // Calculate Greeks using finite differences
                 double delta = CalculateDelta(parameters);
@@ -344,19 +287,6 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
                 double rho = CalculateRho(parameters);
 
                 double moneyness = (parameters.UnderlyingPrice / parameters.Strike);
-
-                // Clean up (dispose in reverse order of creation)
-                fdEngine.Dispose();
-                option.Dispose();
-                bsmProcess.Dispose();
-                volatilityHandle.Dispose();
-                flatVolTs.Dispose();
-                dividendYieldHandle.Dispose();
-                flatDividendTs.Dispose();
-                riskFreeRateHandle.Dispose();
-                flatRateTs.Dispose();
-                underlyingHandle.Dispose();
-                underlyingQuote.Dispose();
 
                 return new OptionPricing
                 {
@@ -382,6 +312,103 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
                 throw;
             }
         });
+    }
+
+    /// <summary>
+    /// Creates QuantLib infrastructure and prices an option.
+    /// Handles object creation and proper disposal in reverse order.
+    /// </summary>
+    private static double PriceWithQuantLibInfrastructure(OptionParameters parameters, double timeToExpiry)
+    {
+        // Create underlying quote
+        SimpleQuote underlyingQuote = new SimpleQuote(parameters.UnderlyingPrice);
+        QuoteHandle underlyingHandle = new QuoteHandle(underlyingQuote);
+
+        // Create term structures (day counter, rate, dividend, volatility)
+        (Actual365Fixed dayCounter,
+         FlatForward flatRateTs,
+         YieldTermStructureHandle riskFreeRateHandle,
+         FlatForward flatDividendTs,
+         YieldTermStructureHandle dividendYieldHandle,
+         BlackConstantVol flatVolTs,
+         BlackVolTermStructureHandle volatilityHandle) termStructures =
+            CreateTermStructures(parameters);
+
+        // Create Black-Scholes-Merton process
+        BlackScholesMertonProcess bsmProcess = new BlackScholesMertonProcess(
+            underlyingHandle,
+            termStructures.dividendYieldHandle,
+            termStructures.riskFreeRateHandle,
+            termStructures.volatilityHandle);
+
+        // Create option
+        AmericanExercise exercise = new AmericanExercise(parameters.ValuationDate, parameters.Expiry);
+        PlainVanillaPayoff payoff = new PlainVanillaPayoff(parameters.OptionType, parameters.Strike);
+        VanillaOption option = new VanillaOption(payoff, exercise);
+
+        // Adaptive grid sizing: short maturities need more time steps
+        uint timeSteps = (uint)Math.Max(100, (int)(timeToExpiry * 365 * 2));
+        uint priceSteps = 100;
+
+        // Create pricing engine and calculate price
+        FdBlackScholesVanillaEngine priceEngine = new FdBlackScholesVanillaEngine(bsmProcess, timeSteps, priceSteps);
+        option.setPricingEngine(priceEngine);
+        double price = option.NPV();
+
+        // Clean up (dispose in reverse order of creation)
+        priceEngine.Dispose();
+        option.Dispose();
+        payoff.Dispose();
+        exercise.Dispose();
+        bsmProcess.Dispose();
+        termStructures.volatilityHandle.Dispose();
+        termStructures.flatVolTs.Dispose();
+        termStructures.dividendYieldHandle.Dispose();
+        termStructures.flatDividendTs.Dispose();
+        termStructures.riskFreeRateHandle.Dispose();
+        termStructures.flatRateTs.Dispose();
+        termStructures.dayCounter.Dispose();
+        underlyingHandle.Dispose();
+        underlyingQuote.Dispose();
+
+        return price;
+    }
+
+    /// <summary>
+    /// Creates QuantLib term structures for option pricing.
+    /// Returns tuple of all created objects for proper disposal.
+    /// </summary>
+    private static (Actual365Fixed dayCounter,
+                    FlatForward flatRateTs,
+                    YieldTermStructureHandle riskFreeRateHandle,
+                    FlatForward flatDividendTs,
+                    YieldTermStructureHandle dividendYieldHandle,
+                    BlackConstantVol flatVolTs,
+                    BlackVolTermStructureHandle volatilityHandle)
+        CreateTermStructures(OptionParameters parameters)
+    {
+        Actual365Fixed dayCounter = new Actual365Fixed();
+
+        FlatForward flatRateTs = new FlatForward(
+            parameters.ValuationDate,
+            parameters.RiskFreeRate,
+            dayCounter);
+        YieldTermStructureHandle riskFreeRateHandle = new YieldTermStructureHandle(flatRateTs);
+
+        FlatForward flatDividendTs = new FlatForward(
+            parameters.ValuationDate,
+            parameters.DividendYield,
+            dayCounter);
+        YieldTermStructureHandle dividendYieldHandle = new YieldTermStructureHandle(flatDividendTs);
+
+        BlackConstantVol flatVolTs = new BlackConstantVol(
+            parameters.ValuationDate,
+            new TARGET(),
+            parameters.ImpliedVolatility,
+            dayCounter);
+        BlackVolTermStructureHandle volatilityHandle = new BlackVolTermStructureHandle(flatVolTs);
+
+        return (dayCounter, flatRateTs, riskFreeRateHandle, flatDividendTs, dividendYieldHandle, flatVolTs, volatilityHandle);
     }
 
     /// <summary>
@@ -1025,15 +1052,11 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
     /// <returns>Approximate breakeven underlying price at front expiration.</returns>
     private async Task<double> CalculateBreakEven(CalendarSpreadParameters parameters, double spreadCost)
     {
-        // Use bisection to find underlying price where spread P&L = 0
-        // At breakeven: BackValue(S) - FrontValue(S) = SpreadCost
-
         double strike = parameters.Strike;
         double tolerance = 0.01; // $0.01 tolerance
         int maxIterations = 50;
 
         // Calendar spreads typically have breakeven near the strike
-        // Search in a reasonable range around strike
         double lowerBound = (strike * 0.7);
         double upperBound = (strike * 1.3);
 
@@ -1041,61 +1064,57 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
         {
             double midPoint = ((lowerBound + upperBound) / 2.0);
 
-            // Calculate spread value at this underlying price
-            double frontValue = CalculateIntrinsicValue(midPoint, strike, parameters.OptionType);
-
-            OptionParameters backParams = new OptionParameters
-            {
-                UnderlyingPrice = midPoint,
-                Strike = strike,
-                Expiry = parameters.BackExpiry,
-                ImpliedVolatility = parameters.ImpliedVolatility,
-                RiskFreeRate = parameters.RiskFreeRate,
-                DividendYield = parameters.DividendYield,
-                OptionType = parameters.OptionType,
-                ValuationDate = parameters.FrontExpiry
-            };
-
-            OptionPricing backPricing = await PriceOption(backParams).ConfigureAwait(false);
-            double spreadValue = (backPricing.Price - frontValue);
-            double profitLoss = (spreadValue - spreadCost);
+            // Calculate profit/loss at this price point
+            double profitLoss = await CalculateSpreadProfitLoss(parameters, midPoint, spreadCost).ConfigureAwait(false);
 
             if (Math.Abs(profitLoss) < tolerance)
             {
                 return midPoint; // Found breakeven
             }
 
-            // Adjust search bounds based on whether we're above or below breakeven
-            if (profitLoss > 0)
-            {
-                // Spread is profitable, breakeven is at a more extreme price
-                // For calendar spreads, max profit is typically near strike
-                // If we're profitable at midpoint, breakeven is further out
-                if (midPoint > strike)
-                {
-                    lowerBound = midPoint;
-                }
-                else
-                {
-                    upperBound = midPoint;
-                }
-            }
-            else
-            {
-                // Spread is unprofitable, breakeven is closer to strike
-                if (midPoint > strike)
-                {
-                    upperBound = midPoint;
-                }
-                else
-                {
-                    lowerBound = midPoint;
-                }
-            }
+            // Adjust search bounds using bisection logic
+            (lowerBound, upperBound) = AdjustBisectionBounds(profitLoss, midPoint, strike, lowerBound, upperBound);
         }
 
-        // Return strike as default if no convergence (calendar spreads typically break even near strike)
+        // Return strike as default if no convergence
         return strike;
+    }
+
+    /// <summary>
+    /// Calculates the profit/loss of a calendar spread at a given underlying price.
+    /// </summary>
+    private async Task<double> CalculateSpreadProfitLoss(CalendarSpreadParameters parameters, double underlyingPrice, double spreadCost)
+    {
+        // Front option intrinsic value at expiration
+        double frontValue = CalculateIntrinsicValue(underlyingPrice, parameters.Strike, parameters.OptionType);
+
+        // Back option still has time value
+        OptionParameters backParams = CreateOptionParameters(parameters, parameters.BackExpiry);
+        backParams.UnderlyingPrice = underlyingPrice;
+        backParams.ValuationDate = parameters.FrontExpiry;
+
+        OptionPricing backPricing = await PriceOption(backParams).ConfigureAwait(false);
+
+        // P&L = BackValue - FrontValue - InitialCost
+        return (backPricing.Price - frontValue - spreadCost);
+    }
+
+    /// <summary>
+    /// Adjusts bisection search bounds based on profit/loss and strike relationship.
+    /// </summary>
+    private static (double lowerBound, double upperBound) AdjustBisectionBounds(
+        double profitLoss, double midPoint, double strike, double lowerBound, double upperBound)
+    {
+        if (profitLoss > 0)
+        {
+            // Spread is profitable, breakeven is further from strike
+            return midPoint > strike ? (midPoint, upperBound) : (lowerBound, midPoint);
+        }
+        else
+        {
+            // Spread is unprofitable, breakeven is closer to strike
+            return midPoint > strike ? (lowerBound, midPoint) : (midPoint, upperBound);
+        }
     }
 
     /// <summary>
