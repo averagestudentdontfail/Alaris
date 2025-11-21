@@ -76,14 +76,14 @@ public sealed class Signal
     /// <summary>
     /// Gets or sets the calibrated earnings jump volatility (sigma_e) from historical EA moves.
     /// This is the standard deviation of log-returns on earnings announcement dates.
-    /// Reference: Leung & Santoli (2014) Section 5.2
+    /// Reference: Leung &amp; Santoli (2014) Section 5.2
     /// </summary>
     public double EarningsJumpVolatility { get; set; }
 
     /// <summary>
-    /// Gets or sets the theoretical pre-EA implied volatility from L&S model.
+    /// Gets or sets the theoretical pre-EA implied volatility from L&amp;S model.
     /// Formula: I(t) = sqrt(sigma^2 + sigma_e^2 / (T-t))
-    /// Reference: Leung & Santoli (2014) Equation 2.4
+    /// Reference: Leung &amp; Santoli (2014) Equation 2.4
     /// </summary>
     public double TheoreticalIV { get; set; }
 
@@ -118,7 +118,7 @@ public sealed class Signal
     public int HistoricalEarningsCount { get; set; }
 
     /// <summary>
-    /// Gets or sets whether the L&S model calibration is valid.
+    /// Gets or sets whether the L&amp;S model calibration is valid.
     /// </summary>
     public bool IsLeungSantoliCalibrated { get; set; }
 

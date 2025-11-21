@@ -1,3 +1,4 @@
+using Alaris.Strategy.Bridge;
 using Alaris.Strategy.Model;
 using Microsoft.Extensions.Logging;
 
