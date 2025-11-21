@@ -6,9 +6,9 @@ namespace Alaris.Strategy.Model;
 public sealed class OptionChain
 {
     /// <summary>
-    /// Gets or sets the list of option expiration dates and their associated contracts.
+    /// Gets the list of option expiration dates and their associated contracts.
     /// </summary>
-    public List<OptionExpiry> Expiries { get; set; } = new();
+    public IList<OptionExpiry> Expiries { get; } = new List<OptionExpiry>();
 
     /// <summary>
     /// Gets or sets the underlying security symbol.
@@ -37,14 +37,14 @@ public sealed class OptionExpiry
     public DateTime ExpiryDate { get; set; }
 
     /// <summary>
-    /// Gets or sets the list of call option contracts.
+    /// Gets the list of call option contracts.
     /// </summary>
-    public List<OptionContract> Calls { get; set; } = new();
+    public IList<OptionContract> Calls { get; } = new List<OptionContract>();
 
     /// <summary>
-    /// Gets or sets the list of put option contracts.
+    /// Gets the list of put option contracts.
     /// </summary>
-    public List<OptionContract> Puts { get; set; } = new();
+    public IList<OptionContract> Puts { get; } = new List<OptionContract>();
 
     /// <summary>
     /// Gets the number of days until expiration from a given date.

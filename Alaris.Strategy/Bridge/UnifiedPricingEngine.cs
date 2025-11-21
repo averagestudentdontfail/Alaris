@@ -77,11 +77,11 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
         ArgumentNullException.ThrowIfNull(parameters);
         parameters.Validate();
 
-        var isCall = parameters.OptionType == Option.Type.Call;
-        var regime = DetermineRegime(parameters.RiskFreeRate, parameters.DividendYield, isCall);
+        bool isCall = parameters.OptionType == Option.Type.Call;
+        PricingRegime regime = DetermineRegime(parameters.RiskFreeRate, parameters.DividendYield, isCall);
 
         _logger?.LogDebug(
-            "Pricing option: S={S}, K={K}, r={r}, q={q}, σ={sigma}, T={T:F4}, Type={type}, Regime={regime}",
+            "Pricing option: S={S}, K={K}, r={R}, q={Q}, σ={Sigma}, T={T:F4}, Type={Type}, Regime={Regime}",
             parameters.UnderlyingPrice, parameters.Strike, parameters.RiskFreeRate,
             parameters.DividendYield, parameters.ImpliedVolatility,
             CalculateTimeToExpiry(parameters.ValuationDate, parameters.Expiry),
@@ -90,9 +90,9 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
 
         return regime switch
         {
-            PricingRegime.PositiveRates => await PriceWithQuantlib(parameters),
-            PricingRegime.DoubleBoundary => await PriceWithDouble(parameters),
-            PricingRegime.NegativeRatesSingleBoundary => await PriceWithQuantlib(parameters),
+            PricingRegime.PositiveRates => await PriceWithQuantlib(parameters).ConfigureAwait(false),
+            PricingRegime.DoubleBoundary => await PriceWithDouble(parameters).ConfigureAwait(false),
+            PricingRegime.NegativeRatesSingleBoundary => await PriceWithQuantlib(parameters).ConfigureAwait(false),
             _ => throw new InvalidOperationException($"Unknown pricing regime: {regime}")
         };
     }
@@ -105,11 +105,11 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
         ArgumentNullException.ThrowIfNull(parameters);
         parameters.Validate();
 
-        var isCall = parameters.OptionType == Option.Type.Call;
-        var regime = DetermineRegime(parameters.RiskFreeRate, parameters.DividendYield, isCall);
+        bool isCall = parameters.OptionType == Option.Type.Call;
+        PricingRegime regime = DetermineRegime(parameters.RiskFreeRate, parameters.DividendYield, isCall);
 
         _logger?.LogInformation(
-            "Pricing calendar spread: Regime={regime}, Type={type}, Strike={strike}, Front={frontDte}, Back={backDte}",
+            "Pricing calendar spread: Regime={Regime}, Type={Type}, Strike={Strike}, Front={FrontDte}, Back={BackDte}",
             regime,
             isCall ? "Call" : "Put",
             parameters.Strike,
@@ -117,7 +117,7 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
             CalculateDaysToExpiry(parameters.ValuationDate, parameters.BackExpiry));
 
         // Price front month (short position)
-        var frontParams = new OptionParameters
+        OptionParameters frontParams = new OptionParameters
         {
             UnderlyingPrice = parameters.UnderlyingPrice,
             Strike = parameters.Strike,
@@ -129,10 +129,10 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
             ValuationDate = parameters.ValuationDate
         };
 
-        var frontPricing = await PriceOption(frontParams);
+        OptionPricing frontPricing = await PriceOption(frontParams).ConfigureAwait(false);
 
         // Price back month (long position)
-        var backParams = new OptionParameters
+        OptionParameters backParams = new OptionParameters
         {
             UnderlyingPrice = parameters.UnderlyingPrice,
             Strike = parameters.Strike,
@@ -144,24 +144,24 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
             ValuationDate = parameters.ValuationDate
         };
 
-        var backPricing = await PriceOption(backParams);
+        OptionPricing backPricing = await PriceOption(backParams).ConfigureAwait(false);
 
         // Calculate spread Greeks (long back - short front)
-        var spreadCost = backPricing.Price - frontPricing.Price;
-        var spreadDelta = backPricing.Delta - frontPricing.Delta;
-        var spreadGamma = backPricing.Gamma - frontPricing.Gamma;
-        var spreadVega = backPricing.Vega - frontPricing.Vega;
-        var spreadTheta = backPricing.Theta - frontPricing.Theta;
-        var spreadRho = backPricing.Rho - frontPricing.Rho;
+        double spreadCost = backPricing.Price - frontPricing.Price;
+        double spreadDelta = backPricing.Delta - frontPricing.Delta;
+        double spreadGamma = backPricing.Gamma - frontPricing.Gamma;
+        double spreadVega = backPricing.Vega - frontPricing.Vega;
+        double spreadTheta = backPricing.Theta - frontPricing.Theta;
+        double spreadRho = backPricing.Rho - frontPricing.Rho;
 
         // Max loss is the debit paid (spread cost)
-        var maxLoss = spreadCost;
+        double maxLoss = spreadCost;
 
         // Calculate accurate max profit using grid search at front expiration
-        var maxProfit = await CalculateMaxProfit(parameters, spreadCost);
+        double maxProfit = await CalculateMaxProfit(parameters, spreadCost).ConfigureAwait(false);
 
         // Calculate accurate breakeven using numerical solver
-        var breakEven = await CalculateBreakEven(parameters, spreadCost);
+        double breakEven = await CalculateBreakEven(parameters, spreadCost).ConfigureAwait(false);
 
         return new CalendarSpreadPricing
         {
@@ -188,7 +188,9 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
         ArgumentNullException.ThrowIfNull(parameters);
 
         if (marketPrice <= 0)
+        {
             throw new ArgumentException("Market price must be positive", nameof(marketPrice));
+        }
 
         // Use bisection method to find IV
         double volLow = 0.01;  // 1% vol
@@ -196,11 +198,11 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
         double volMid = 0;
         int iterations = 0;
 
-        while (iterations < MaxIVIterations && (volHigh - volLow) > IVTolerance)
+        while (iterations < MaxIVIterations && ((volHigh - volLow) > IVTolerance))
         {
-            volMid = (volLow + volHigh) / 2.0;
+            volMid = ((volLow + volHigh) / 2.0);
 
-            var testParams = new OptionParameters
+            OptionParameters testParams = new OptionParameters
             {
                 UnderlyingPrice = parameters.UnderlyingPrice,
                 Strike = parameters.Strike,
@@ -212,11 +214,13 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
                 ValuationDate = parameters.ValuationDate
             };
 
-            var pricing = await PriceOption(testParams);
-            var priceDiff = pricing.Price - marketPrice;
+            OptionPricing pricing = await PriceOption(testParams).ConfigureAwait(false);
+            double priceDiff = pricing.Price - marketPrice;
 
             if (Math.Abs(priceDiff) < IVTolerance)
+            {
                 break;
+            }
 
             if (priceDiff > 0)
             {
@@ -233,7 +237,7 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
         }
 
         _logger?.LogDebug(
-            "Implied volatility calculation converged in {iterations} iterations: IV={iv:F4}",
+            "Implied volatility calculation converged in {Iterations} iterations: IV={Iv:F4}",
             iterations, volMid);
 
         return volMid;
@@ -252,65 +256,65 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
                 Settings.instance().setEvaluationDate(parameters.ValuationDate);
 
                 // Create underlying quote
-                var underlyingQuote = new SimpleQuote(parameters.UnderlyingPrice);
-                var underlyingHandle = new QuoteHandle(underlyingQuote);
+                SimpleQuote underlyingQuote = new SimpleQuote(parameters.UnderlyingPrice);
+                QuoteHandle underlyingHandle = new QuoteHandle(underlyingQuote);
 
                 // Create term structures
-                var dayCounter = new Actual365Fixed();
+                Actual365Fixed dayCounter = new Actual365Fixed();
 
-                var flatRateTs = new FlatForward(
+                FlatForward flatRateTs = new FlatForward(
                     parameters.ValuationDate,
                     parameters.RiskFreeRate,
                     dayCounter);
-                var riskFreeRateHandle = new YieldTermStructureHandle(flatRateTs);
+                YieldTermStructureHandle riskFreeRateHandle = new YieldTermStructureHandle(flatRateTs);
 
-                var flatDividendTs = new FlatForward(
+                FlatForward flatDividendTs = new FlatForward(
                     parameters.ValuationDate,
                     parameters.DividendYield,
                     dayCounter);
-                var dividendYieldHandle = new YieldTermStructureHandle(flatDividendTs);
+                YieldTermStructureHandle dividendYieldHandle = new YieldTermStructureHandle(flatDividendTs);
 
-                var flatVolTs = new BlackConstantVol(
+                BlackConstantVol flatVolTs = new BlackConstantVol(
                     parameters.ValuationDate,
                     new TARGET(),
                     parameters.ImpliedVolatility,
                     dayCounter);
-                var volatilityHandle = new BlackVolTermStructureHandle(flatVolTs);
+                BlackVolTermStructureHandle volatilityHandle = new BlackVolTermStructureHandle(flatVolTs);
 
                 // Create Black-Scholes-Merton process
-                var bsmProcess = new BlackScholesMertonProcess(
+                BlackScholesMertonProcess bsmProcess = new BlackScholesMertonProcess(
                     underlyingHandle,
                     dividendYieldHandle,
                     riskFreeRateHandle,
                     volatilityHandle);
 
                 // Create option
-                var exercise = new AmericanExercise(parameters.ValuationDate, parameters.Expiry);
-                var payoff = new PlainVanillaPayoff(parameters.OptionType, parameters.Strike);
-                var option = new VanillaOption(payoff, exercise);
+                AmericanExercise exercise = new AmericanExercise(parameters.ValuationDate, parameters.Expiry);
+                PlainVanillaPayoff payoff = new PlainVanillaPayoff(parameters.OptionType, parameters.Strike);
+                VanillaOption option = new VanillaOption(payoff, exercise);
 
                 // Create pricing engine for main price (using FD for Americans by default)
-                var priceEngine = new FdBlackScholesVanillaEngine(bsmProcess, 100, 100);
+                FdBlackScholesVanillaEngine priceEngine = new FdBlackScholesVanillaEngine(bsmProcess, 100, 100);
                 option.setPricingEngine(priceEngine);
 
                 // Ensure evaluation date is set correctly before pricing
                 Settings.instance().setEvaluationDate(parameters.ValuationDate);
-                var price = option.NPV();
+                double price = option.NPV();
                 priceEngine.Dispose();
 
                 // Create fresh pricing engine for Greek calculations
-                var fdEngine = new FdBlackScholesVanillaEngine(bsmProcess, 100, 100);
+                FdBlackScholesVanillaEngine fdEngine = new FdBlackScholesVanillaEngine(bsmProcess, 100, 100);
                 option.setPricingEngine(fdEngine);
 
                 // Calculate Greeks using finite differences
-                var delta = CalculateDelta(parameters);
-                var gamma = CalculateGamma(parameters);
-                var vega = CalculateVega(parameters);
-                var theta = CalculateTheta(parameters);
-                var rho = CalculateRho(parameters);
+                double delta = CalculateDelta(parameters);
+                double gamma = CalculateGamma(parameters);
+                double vega = CalculateVega(parameters);
+                double theta = CalculateTheta(parameters);
+                double rho = CalculateRho(parameters);
 
-                var timeToExpiry = CalculateTimeToExpiry(parameters.ValuationDate, parameters.Expiry);
-                var moneyness = parameters.UnderlyingPrice / parameters.Strike;
+                double timeToExpiry = CalculateTimeToExpiry(parameters.ValuationDate, parameters.Expiry);
+                double moneyness = (parameters.UnderlyingPrice / parameters.Strike);
 
                 // Clean up (dispose in reverse order of creation)
                 fdEngine.Dispose();
@@ -359,10 +363,10 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
                 // Set evaluation date
                 Settings.instance().setEvaluationDate(parameters.ValuationDate);
 
-                var timeToExpiry = CalculateTimeToExpiry(parameters.ValuationDate, parameters.Expiry);
+                double timeToExpiry = CalculateTimeToExpiry(parameters.ValuationDate, parameters.Expiry);
 
                 // Use DoubleBoundaryApproximation for Healy (2021) framework
-                var approx = new Alaris.Double.DoubleBoundaryApproximation(
+                Alaris.Double.DoubleBoundaryApproximation approx = new Alaris.Double.DoubleBoundaryApproximation(
                     parameters.UnderlyingPrice,
                     parameters.Strike,
                     timeToExpiry,
@@ -372,16 +376,16 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
                     parameters.OptionType == Option.Type.Call);
 
                 // Calculate option price using QD+ approximation + early exercise premium
-                var price = approx.ApproximateValue();
+                double price = approx.ApproximateValue();
 
                 // Calculate Greeks using finite differences
-                var delta = CalculateDeltaWithDouble(parameters);
-                var gamma = CalculateGammaWithDouble(parameters);
-                var vega = CalculateVegaWithDouble(parameters);
-                var theta = CalculateThetaWithDouble(parameters);
-                var rho = CalculateRhoWithDouble(parameters);
+                double delta = CalculateDeltaWithDouble(parameters);
+                double gamma = CalculateGammaWithDouble(parameters);
+                double vega = CalculateVegaWithDouble(parameters);
+                double theta = CalculateThetaWithDouble(parameters);
+                double rho = CalculateRhoWithDouble(parameters);
 
-                var moneyness = parameters.UnderlyingPrice / parameters.Strike;
+                double moneyness = (parameters.UnderlyingPrice / parameters.Strike);
 
                 return new OptionPricing
                 {
@@ -408,141 +412,145 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
 
     private double CalculateDeltaWithDouble(OptionParameters parameters)
     {
-        var originalSpot = parameters.UnderlyingPrice;
-        var timeToExpiry = CalculateTimeToExpiry(parameters.ValuationDate, parameters.Expiry);
+        double originalSpot = parameters.UnderlyingPrice;
+        double timeToExpiry = CalculateTimeToExpiry(parameters.ValuationDate, parameters.Expiry);
 
         // Up bump
-        var paramsUp = CloneParameters(parameters);
+        OptionParameters paramsUp = CloneParameters(parameters);
         paramsUp.UnderlyingPrice = originalSpot + BumpSize;
-        var approxUp = new Alaris.Double.DoubleBoundaryApproximation(
+        Alaris.Double.DoubleBoundaryApproximation approxUp = new Alaris.Double.DoubleBoundaryApproximation(
             paramsUp.UnderlyingPrice, paramsUp.Strike, timeToExpiry,
             paramsUp.RiskFreeRate, paramsUp.DividendYield, paramsUp.ImpliedVolatility,
             paramsUp.OptionType == Option.Type.Call);
-        var priceUp = approxUp.ApproximateValue();
+        double priceUp = approxUp.ApproximateValue();
 
         // Down bump
-        var paramsDown = CloneParameters(parameters);
+        OptionParameters paramsDown = CloneParameters(parameters);
         paramsDown.UnderlyingPrice = originalSpot - BumpSize;
-        var approxDown = new Alaris.Double.DoubleBoundaryApproximation(
+        Alaris.Double.DoubleBoundaryApproximation approxDown = new Alaris.Double.DoubleBoundaryApproximation(
             paramsDown.UnderlyingPrice, paramsDown.Strike, timeToExpiry,
             paramsDown.RiskFreeRate, paramsDown.DividendYield, paramsDown.ImpliedVolatility,
             paramsDown.OptionType == Option.Type.Call);
-        var priceDown = approxDown.ApproximateValue();
+        double priceDown = approxDown.ApproximateValue();
 
-        return (priceUp - priceDown) / (2 * BumpSize);
+        return ((priceUp - priceDown) / (2 * BumpSize));
     }
 
     private double CalculateGammaWithDouble(OptionParameters parameters)
     {
-        var originalSpot = parameters.UnderlyingPrice;
-        var timeToExpiry = CalculateTimeToExpiry(parameters.ValuationDate, parameters.Expiry);
+        double originalSpot = parameters.UnderlyingPrice;
+        double timeToExpiry = CalculateTimeToExpiry(parameters.ValuationDate, parameters.Expiry);
 
         // Original price
-        var approxOriginal = new Alaris.Double.DoubleBoundaryApproximation(
+        Alaris.Double.DoubleBoundaryApproximation approxOriginal = new Alaris.Double.DoubleBoundaryApproximation(
             originalSpot, parameters.Strike, timeToExpiry,
             parameters.RiskFreeRate, parameters.DividendYield, parameters.ImpliedVolatility,
             parameters.OptionType == Option.Type.Call);
-        var priceOriginal = approxOriginal.ApproximateValue();
+        double priceOriginal = approxOriginal.ApproximateValue();
 
         // Up bump
-        var paramsUp = CloneParameters(parameters);
+        OptionParameters paramsUp = CloneParameters(parameters);
         paramsUp.UnderlyingPrice = originalSpot + BumpSize;
-        var approxUp = new Alaris.Double.DoubleBoundaryApproximation(
+        Alaris.Double.DoubleBoundaryApproximation approxUp = new Alaris.Double.DoubleBoundaryApproximation(
             paramsUp.UnderlyingPrice, paramsUp.Strike, timeToExpiry,
             paramsUp.RiskFreeRate, paramsUp.DividendYield, paramsUp.ImpliedVolatility,
             paramsUp.OptionType == Option.Type.Call);
-        var priceUp = approxUp.ApproximateValue();
+        double priceUp = approxUp.ApproximateValue();
 
         // Down bump
-        var paramsDown = CloneParameters(parameters);
+        OptionParameters paramsDown = CloneParameters(parameters);
         paramsDown.UnderlyingPrice = originalSpot - BumpSize;
-        var approxDown = new Alaris.Double.DoubleBoundaryApproximation(
+        Alaris.Double.DoubleBoundaryApproximation approxDown = new Alaris.Double.DoubleBoundaryApproximation(
             paramsDown.UnderlyingPrice, paramsDown.Strike, timeToExpiry,
             paramsDown.RiskFreeRate, paramsDown.DividendYield, paramsDown.ImpliedVolatility,
             paramsDown.OptionType == Option.Type.Call);
-        var priceDown = approxDown.ApproximateValue();
+        double priceDown = approxDown.ApproximateValue();
 
-        return (priceUp - 2 * priceOriginal + priceDown) / (BumpSize * BumpSize);
+        return ((priceUp - (2 * priceOriginal) + priceDown) / (BumpSize * BumpSize));
     }
 
     private double CalculateVegaWithDouble(OptionParameters parameters)
     {
-        var originalVol = parameters.ImpliedVolatility;
-        var timeToExpiry = CalculateTimeToExpiry(parameters.ValuationDate, parameters.Expiry);
+        double originalVol = parameters.ImpliedVolatility;
+        double timeToExpiry = CalculateTimeToExpiry(parameters.ValuationDate, parameters.Expiry);
 
         // Up bump
-        var paramsUp = CloneParameters(parameters);
+        OptionParameters paramsUp = CloneParameters(parameters);
         paramsUp.ImpliedVolatility = originalVol + VolBumpSize;
-        var approxUp = new Alaris.Double.DoubleBoundaryApproximation(
+        Alaris.Double.DoubleBoundaryApproximation approxUp = new Alaris.Double.DoubleBoundaryApproximation(
             paramsUp.UnderlyingPrice, paramsUp.Strike, timeToExpiry,
             paramsUp.RiskFreeRate, paramsUp.DividendYield, paramsUp.ImpliedVolatility,
             paramsUp.OptionType == Option.Type.Call);
-        var priceUp = approxUp.ApproximateValue();
+        double priceUp = approxUp.ApproximateValue();
 
         // Down bump
-        var paramsDown = CloneParameters(parameters);
+        OptionParameters paramsDown = CloneParameters(parameters);
         paramsDown.ImpliedVolatility = originalVol - VolBumpSize;
-        var approxDown = new Alaris.Double.DoubleBoundaryApproximation(
+        Alaris.Double.DoubleBoundaryApproximation approxDown = new Alaris.Double.DoubleBoundaryApproximation(
             paramsDown.UnderlyingPrice, paramsDown.Strike, timeToExpiry,
             paramsDown.RiskFreeRate, paramsDown.DividendYield, paramsDown.ImpliedVolatility,
             paramsDown.OptionType == Option.Type.Call);
-        var priceDown = approxDown.ApproximateValue();
+        double priceDown = approxDown.ApproximateValue();
 
-        return (priceUp - priceDown) / (2 * VolBumpSize);
+        return ((priceUp - priceDown) / (2 * VolBumpSize));
     }
 
     private double CalculateThetaWithDouble(OptionParameters parameters)
     {
-        var originalDate = parameters.ValuationDate;
-        var timeToExpiry = CalculateTimeToExpiry(parameters.ValuationDate, parameters.Expiry);
+        Date originalDate = parameters.ValuationDate;
+        double timeToExpiry = CalculateTimeToExpiry(parameters.ValuationDate, parameters.Expiry);
 
         // Original price
-        var approxOriginal = new Alaris.Double.DoubleBoundaryApproximation(
+        Alaris.Double.DoubleBoundaryApproximation approxOriginal = new Alaris.Double.DoubleBoundaryApproximation(
             parameters.UnderlyingPrice, parameters.Strike, timeToExpiry,
             parameters.RiskFreeRate, parameters.DividendYield, parameters.ImpliedVolatility,
             parameters.OptionType == Option.Type.Call);
-        var priceOriginal = approxOriginal.ApproximateValue();
+        double priceOriginal = approxOriginal.ApproximateValue();
 
         // Forward date by 1 day
-        var dayBump = 1;
-        var forwardDate = originalDate.Add(new Period(dayBump, TimeUnit.Days));
-        var timeToExpiryForward = CalculateTimeToExpiry(forwardDate, parameters.Expiry);
+        int dayBump = 1;
+        Period period = new Period(dayBump, TimeUnit.Days);
+        Date forwardDate = originalDate.Add(period);
+        double timeToExpiryForward = CalculateTimeToExpiry(forwardDate, parameters.Expiry);
 
-        var approxForward = new Alaris.Double.DoubleBoundaryApproximation(
+        Alaris.Double.DoubleBoundaryApproximation approxForward = new Alaris.Double.DoubleBoundaryApproximation(
             parameters.UnderlyingPrice, parameters.Strike, timeToExpiryForward,
             parameters.RiskFreeRate, parameters.DividendYield, parameters.ImpliedVolatility,
             parameters.OptionType == Option.Type.Call);
-        var priceForward = approxForward.ApproximateValue();
+        double priceForward = approxForward.ApproximateValue();
+
+        // Clean up
+        period.Dispose();
 
         // Theta is price change per day (negative for time decay)
-        return (priceForward - priceOriginal) / dayBump;
+        return ((priceForward - priceOriginal) / dayBump);
     }
 
     private double CalculateRhoWithDouble(OptionParameters parameters)
     {
-        var originalRate = parameters.RiskFreeRate;
-        var timeToExpiry = CalculateTimeToExpiry(parameters.ValuationDate, parameters.Expiry);
-        var rateBump = 0.01; // 1% rate bump
+        double originalRate = parameters.RiskFreeRate;
+        double timeToExpiry = CalculateTimeToExpiry(parameters.ValuationDate, parameters.Expiry);
+        double rateBump = 0.01; // 1% rate bump
 
         // Up bump
-        var paramsUp = CloneParameters(parameters);
+        OptionParameters paramsUp = CloneParameters(parameters);
         paramsUp.RiskFreeRate = originalRate + rateBump;
-        var approxUp = new Alaris.Double.DoubleBoundaryApproximation(
+        Alaris.Double.DoubleBoundaryApproximation approxUp = new Alaris.Double.DoubleBoundaryApproximation(
             paramsUp.UnderlyingPrice, paramsUp.Strike, timeToExpiry,
             paramsUp.RiskFreeRate, paramsUp.DividendYield, paramsUp.ImpliedVolatility,
             paramsUp.OptionType == Option.Type.Call);
-        var priceUp = approxUp.ApproximateValue();
+        double priceUp = approxUp.ApproximateValue();
 
         // Down bump
-        var paramsDown = CloneParameters(parameters);
+        OptionParameters paramsDown = CloneParameters(parameters);
         paramsDown.RiskFreeRate = originalRate - rateBump;
-        var approxDown = new Alaris.Double.DoubleBoundaryApproximation(
+        Alaris.Double.DoubleBoundaryApproximation approxDown = new Alaris.Double.DoubleBoundaryApproximation(
             paramsDown.UnderlyingPrice, paramsDown.Strike, timeToExpiry,
             paramsDown.RiskFreeRate, paramsDown.DividendYield, paramsDown.ImpliedVolatility,
             paramsDown.OptionType == Option.Type.Call);
-        var priceDown = approxDown.ApproximateValue();
+        double priceDown = approxDown.ApproximateValue();
 
-        return (priceUp - priceDown) / (2 * rateBump);
+        return ((priceUp - priceDown) / (2 * rateBump));
     }
 
     private OptionParameters CloneParameters(OptionParameters original)
@@ -570,48 +578,48 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
         Settings.instance().setEvaluationDate(parameters.ValuationDate);
 
         // Create underlying quote
-        var underlyingQuote = new SimpleQuote(parameters.UnderlyingPrice);
-        var underlyingHandle = new QuoteHandle(underlyingQuote);
+        SimpleQuote underlyingQuote = new SimpleQuote(parameters.UnderlyingPrice);
+        QuoteHandle underlyingHandle = new QuoteHandle(underlyingQuote);
 
         // Create term structures
-        var dayCounter = new Actual365Fixed();
+        Actual365Fixed dayCounter = new Actual365Fixed();
 
-        var flatRateTs = new FlatForward(
+        FlatForward flatRateTs = new FlatForward(
             parameters.ValuationDate,
             parameters.RiskFreeRate,
             dayCounter);
-        var riskFreeRateHandle = new YieldTermStructureHandle(flatRateTs);
+        YieldTermStructureHandle riskFreeRateHandle = new YieldTermStructureHandle(flatRateTs);
 
-        var flatDividendTs = new FlatForward(
+        FlatForward flatDividendTs = new FlatForward(
             parameters.ValuationDate,
             parameters.DividendYield,
             dayCounter);
-        var dividendYieldHandle = new YieldTermStructureHandle(flatDividendTs);
+        YieldTermStructureHandle dividendYieldHandle = new YieldTermStructureHandle(flatDividendTs);
 
-        var calendar = new TARGET();
-        var flatVolTs = new BlackConstantVol(
+        TARGET calendar = new TARGET();
+        BlackConstantVol flatVolTs = new BlackConstantVol(
             parameters.ValuationDate,
             calendar,
             parameters.ImpliedVolatility,
             dayCounter);
-        var volatilityHandle = new BlackVolTermStructureHandle(flatVolTs);
+        BlackVolTermStructureHandle volatilityHandle = new BlackVolTermStructureHandle(flatVolTs);
 
         // Create Black-Scholes-Merton process
-        var bsmProcess = new BlackScholesMertonProcess(
+        BlackScholesMertonProcess bsmProcess = new BlackScholesMertonProcess(
             underlyingHandle,
             dividendYieldHandle,
             riskFreeRateHandle,
             volatilityHandle);
 
         // Create option
-        var exercise = new AmericanExercise(parameters.ValuationDate, parameters.Expiry);
-        var payoff = new PlainVanillaPayoff(parameters.OptionType, parameters.Strike);
-        var option = new VanillaOption(payoff, exercise);
+        AmericanExercise exercise = new AmericanExercise(parameters.ValuationDate, parameters.Expiry);
+        PlainVanillaPayoff payoff = new PlainVanillaPayoff(parameters.OptionType, parameters.Strike);
+        VanillaOption option = new VanillaOption(payoff, exercise);
 
         // Create pricing engine and price
-        var engine = new FdBlackScholesVanillaEngine(bsmProcess, 100, 100);
+        FdBlackScholesVanillaEngine engine = new FdBlackScholesVanillaEngine(bsmProcess, 100, 100);
         option.setPricingEngine(engine);
-        var price = option.NPV();
+        double price = option.NPV();
 
         // Clean up (dispose in reverse order of creation)
         engine.Dispose();
@@ -626,6 +634,7 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
         flatDividendTs.Dispose();
         riskFreeRateHandle.Dispose();
         flatRateTs.Dispose();
+        dayCounter.Dispose();
         underlyingHandle.Dispose();
         underlyingQuote.Dispose();
 
@@ -636,249 +645,264 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
 
     private double CalculateDelta(OptionParameters parameters)
     {
-        var originalSpot = parameters.UnderlyingPrice;
+        double originalSpot = parameters.UnderlyingPrice;
 
         // Price with up bump
-        var paramsUp = CloneParameters(parameters);
+        OptionParameters paramsUp = CloneParameters(parameters);
         paramsUp.UnderlyingPrice = originalSpot + BumpSize;
-        var priceUp = PriceOptionSync(paramsUp);
+        double priceUp = PriceOptionSync(paramsUp);
 
         // Price with down bump
-        var paramsDown = CloneParameters(parameters);
+        OptionParameters paramsDown = CloneParameters(parameters);
         paramsDown.UnderlyingPrice = originalSpot - BumpSize;
-        var priceDown = PriceOptionSync(paramsDown);
+        double priceDown = PriceOptionSync(paramsDown);
 
-        return (priceUp - priceDown) / (2 * BumpSize);
+        return ((priceUp - priceDown) / (2 * BumpSize));
     }
 
     private double CalculateGamma(OptionParameters parameters)
     {
-        var originalSpot = parameters.UnderlyingPrice;
+        double originalSpot = parameters.UnderlyingPrice;
 
         // Original price
-        var priceOriginal = PriceOptionSync(parameters);
+        double priceOriginal = PriceOptionSync(parameters);
 
         // Price with up bump
-        var paramsUp = CloneParameters(parameters);
+        OptionParameters paramsUp = CloneParameters(parameters);
         paramsUp.UnderlyingPrice = originalSpot + BumpSize;
-        var priceUp = PriceOptionSync(paramsUp);
+        double priceUp = PriceOptionSync(paramsUp);
 
         // Price with down bump
-        var paramsDown = CloneParameters(parameters);
+        OptionParameters paramsDown = CloneParameters(parameters);
         paramsDown.UnderlyingPrice = originalSpot - BumpSize;
-        var priceDown = PriceOptionSync(paramsDown);
+        double priceDown = PriceOptionSync(paramsDown);
 
-        return (priceUp - 2 * priceOriginal + priceDown) / (BumpSize * BumpSize);
+        return ((priceUp - (2 * priceOriginal) + priceDown) / (BumpSize * BumpSize));
     }
 
     private double CalculateVega(OptionParameters parameters)
     {
-        var originalVol = parameters.ImpliedVolatility;
+        double originalVol = parameters.ImpliedVolatility;
 
         // Price with up bump
-        var paramsUp = CloneParameters(parameters);
+        OptionParameters paramsUp = CloneParameters(parameters);
         paramsUp.ImpliedVolatility = originalVol + VolBumpSize;
-        var priceUp = PriceOptionSync(paramsUp);
+        double priceUp = PriceOptionSync(paramsUp);
 
         // Price with down bump
-        var paramsDown = CloneParameters(parameters);
+        OptionParameters paramsDown = CloneParameters(parameters);
         paramsDown.ImpliedVolatility = originalVol - VolBumpSize;
-        var priceDown = PriceOptionSync(paramsDown);
+        double priceDown = PriceOptionSync(paramsDown);
 
-        return (priceUp - priceDown) / (2 * VolBumpSize);
+        return ((priceUp - priceDown) / (2 * VolBumpSize));
     }
 
     private double CalculateTheta(OptionParameters parameters)
     {
-        var originalDate = parameters.ValuationDate;
+        Date originalDate = parameters.ValuationDate;
 
         // Original price
-        var priceOriginal = PriceOptionSync(parameters);
+        double priceOriginal = PriceOptionSync(parameters);
 
         // Price with forward date (1 day)
-        var dayBump = 1;
-        var forwardDate = originalDate.Add(new Period(dayBump, TimeUnit.Days));
-        var paramsForward = CloneParameters(parameters);
+        int dayBump = 1;
+        Period period = new Period(dayBump, TimeUnit.Days);
+        Date forwardDate = originalDate.Add(period);
+        OptionParameters paramsForward = CloneParameters(parameters);
         paramsForward.ValuationDate = forwardDate;
-        var priceForward = PriceOptionSync(paramsForward);
+        double priceForward = PriceOptionSync(paramsForward);
+
+        // Clean up
+        period.Dispose();
 
         // Theta is price change per day (negative for time decay)
-        return (priceForward - priceOriginal) / dayBump;
+        return ((priceForward - priceOriginal) / dayBump);
     }
 
     private double CalculateRho(OptionParameters parameters)
     {
-        var originalRate = parameters.RiskFreeRate;
-        var rateBump = 0.01; // 1% rate bump
+        double originalRate = parameters.RiskFreeRate;
+        double rateBump = 0.01; // 1% rate bump
 
         // Price with up bump
-        var paramsUp = CloneParameters(parameters);
+        OptionParameters paramsUp = CloneParameters(parameters);
         paramsUp.RiskFreeRate = originalRate + rateBump;
-        var priceUp = PriceOptionSync(paramsUp);
+        double priceUp = PriceOptionSync(paramsUp);
 
         // Price with down bump
-        var paramsDown = CloneParameters(parameters);
+        OptionParameters paramsDown = CloneParameters(parameters);
         paramsDown.RiskFreeRate = originalRate - rateBump;
-        var priceDown = PriceOptionSync(paramsDown);
+        double priceDown = PriceOptionSync(paramsDown);
 
-        return (priceUp - priceDown) / (2 * rateBump);
+        return ((priceUp - priceDown) / (2 * rateBump));
     }
 
     private double CalculateVegaQuantlib(VanillaOption option, BlackConstantVol volTs,
         BlackScholesMertonProcess process, OptionParameters parameters, FdBlackScholesVanillaEngine originalEngine)
     {
-        var originalVol = parameters.ImpliedVolatility;
-        var dayCounter = new Actual365Fixed();
+        double originalVol = parameters.ImpliedVolatility;
+        Actual365Fixed dayCounter = new Actual365Fixed();
 
         // Up bump
-        var volUp = new BlackConstantVol(
+        TARGET calendarUp = new TARGET();
+        BlackConstantVol volUp = new BlackConstantVol(
             parameters.ValuationDate,
-            new TARGET(),
+            calendarUp,
             originalVol + VolBumpSize,
             dayCounter);
-        var volHandleUp = new BlackVolTermStructureHandle(volUp);
-        var processUp = new BlackScholesMertonProcess(
+        BlackVolTermStructureHandle volHandleUp = new BlackVolTermStructureHandle(volUp);
+        BlackScholesMertonProcess processUp = new BlackScholesMertonProcess(
             process.stateVariable(),
             process.dividendYield(),
             process.riskFreeRate(),
             volHandleUp);
-        var engineUp = new FdBlackScholesVanillaEngine(processUp, 100, 100);
+        FdBlackScholesVanillaEngine engineUp = new FdBlackScholesVanillaEngine(processUp, 100, 100);
         option.setPricingEngine(engineUp);
-        var priceUp = option.NPV();
+        double priceUp = option.NPV();
 
         // Down bump
-        var volDown = new BlackConstantVol(
+        TARGET calendarDown = new TARGET();
+        BlackConstantVol volDown = new BlackConstantVol(
             parameters.ValuationDate,
-            new TARGET(),
+            calendarDown,
             originalVol - VolBumpSize,
             dayCounter);
-        var volHandleDown = new BlackVolTermStructureHandle(volDown);
-        var processDown = new BlackScholesMertonProcess(
+        BlackVolTermStructureHandle volHandleDown = new BlackVolTermStructureHandle(volDown);
+        BlackScholesMertonProcess processDown = new BlackScholesMertonProcess(
             process.stateVariable(),
             process.dividendYield(),
             process.riskFreeRate(),
             volHandleDown);
-        var engineDown = new FdBlackScholesVanillaEngine(processDown, 100, 100);
+        FdBlackScholesVanillaEngine engineDown = new FdBlackScholesVanillaEngine(processDown, 100, 100);
         option.setPricingEngine(engineDown);
-        var priceDown = option.NPV();
+        double priceDown = option.NPV();
 
         // Clean up
         engineDown.Dispose();
         processDown.Dispose();
         volHandleDown.Dispose();
         volDown.Dispose();
+        calendarDown.Dispose();
         engineUp.Dispose();
         processUp.Dispose();
         volHandleUp.Dispose();
         volUp.Dispose();
+        calendarUp.Dispose();
+        dayCounter.Dispose();
 
         // Restore original engine
         option.setPricingEngine(originalEngine);
 
-        return (priceUp - priceDown) / (2 * VolBumpSize);
+        return ((priceUp - priceDown) / (2 * VolBumpSize));
     }
 
     private double CalculateThetaQuantlib(VanillaOption option, FdBlackScholesVanillaEngine engine,
         BlackScholesMertonProcess process, OptionParameters parameters)
     {
-        var originalDate = parameters.ValuationDate;
-        var priceOriginal = option.NPV();
+        Date originalDate = parameters.ValuationDate;
+        double priceOriginal = option.NPV();
 
         // Forward date by 1 day - need to recreate EVERYTHING with new date
-        var dayBump = 1; // 1 day
-        var forwardDate = originalDate.Add(new Period(dayBump, TimeUnit.Days));
+        int dayBump = 1; // 1 day
+        Period period = new Period(dayBump, TimeUnit.Days);
+        Date forwardDate = originalDate.Add(period);
         Settings.instance().setEvaluationDate(forwardDate);
 
         // Recreate term structures anchored to forward date
-        var dayCounter = new Actual365Fixed();
+        Actual365Fixed dayCounter = new Actual365Fixed();
 
-        var underlyingQuote = new SimpleQuote(parameters.UnderlyingPrice);
-        var underlyingHandle = new QuoteHandle(underlyingQuote);
+        SimpleQuote underlyingQuote = new SimpleQuote(parameters.UnderlyingPrice);
+        QuoteHandle underlyingHandle = new QuoteHandle(underlyingQuote);
 
-        var flatRateTs = new FlatForward(forwardDate, parameters.RiskFreeRate, dayCounter);
-        var riskFreeRateHandle = new YieldTermStructureHandle(flatRateTs);
+        FlatForward flatRateTs = new FlatForward(forwardDate, parameters.RiskFreeRate, dayCounter);
+        YieldTermStructureHandle riskFreeRateHandle = new YieldTermStructureHandle(flatRateTs);
 
-        var flatDividendTs = new FlatForward(forwardDate, parameters.DividendYield, dayCounter);
-        var dividendYieldHandle = new YieldTermStructureHandle(flatDividendTs);
+        FlatForward flatDividendTs = new FlatForward(forwardDate, parameters.DividendYield, dayCounter);
+        YieldTermStructureHandle dividendYieldHandle = new YieldTermStructureHandle(flatDividendTs);
 
-        var flatVolTs = new BlackConstantVol(forwardDate, new TARGET(), parameters.ImpliedVolatility, dayCounter);
-        var volatilityHandle = new BlackVolTermStructureHandle(flatVolTs);
+        TARGET calendar = new TARGET();
+        BlackConstantVol flatVolTs = new BlackConstantVol(forwardDate, calendar, parameters.ImpliedVolatility, dayCounter);
+        BlackVolTermStructureHandle volatilityHandle = new BlackVolTermStructureHandle(flatVolTs);
 
         // Recreate BSM process with new term structures
-        var forwardProcess = new BlackScholesMertonProcess(
+        BlackScholesMertonProcess forwardProcess = new BlackScholesMertonProcess(
             underlyingHandle,
             dividendYieldHandle,
             riskFreeRateHandle,
             volatilityHandle);
 
         // Recreate option with new evaluation date as exercise start
-        var forwardExercise = new AmericanExercise(forwardDate, parameters.Expiry);
-        var payoff = new PlainVanillaPayoff(parameters.OptionType, parameters.Strike);
-        var forwardOption = new VanillaOption(payoff, forwardExercise);
+        AmericanExercise forwardExercise = new AmericanExercise(forwardDate, parameters.Expiry);
+        PlainVanillaPayoff payoff = new PlainVanillaPayoff(parameters.OptionType, parameters.Strike);
+        VanillaOption forwardOption = new VanillaOption(payoff, forwardExercise);
 
         // Price with forward date and forward process
-        var forwardEngine = new FdBlackScholesVanillaEngine(forwardProcess, 100, 100);
+        FdBlackScholesVanillaEngine forwardEngine = new FdBlackScholesVanillaEngine(forwardProcess, 100, 100);
         forwardOption.setPricingEngine(forwardEngine);
-        var priceForward = forwardOption.NPV();
+        double priceForward = forwardOption.NPV();
 
         // Clean up forward objects (in reverse order)
         forwardEngine.Dispose();
         forwardOption.Dispose();
+        payoff.Dispose();
+        forwardExercise.Dispose();
         forwardProcess.Dispose();
         volatilityHandle.Dispose();
         flatVolTs.Dispose();
+        calendar.Dispose();
         dividendYieldHandle.Dispose();
         flatDividendTs.Dispose();
         riskFreeRateHandle.Dispose();
         flatRateTs.Dispose();
+        dayCounter.Dispose();
         underlyingHandle.Dispose();
         underlyingQuote.Dispose();
-        forwardExercise.Dispose();
+        period.Dispose();
 
         // Restore original date and engine
         Settings.instance().setEvaluationDate(originalDate);
         option.setPricingEngine(engine);
 
         // Theta is price change per day (negative for time decay)
-        return (priceForward - priceOriginal) / dayBump;
+        return ((priceForward - priceOriginal) / dayBump);
     }
 
     private double CalculateRhoQuantlib(VanillaOption option, FlatForward rateTs,
         BlackScholesMertonProcess process, OptionParameters parameters, FdBlackScholesVanillaEngine originalEngine)
     {
-        var originalRate = parameters.RiskFreeRate;
-        var dayCounter = new Actual365Fixed();
-        var rateBump = 0.01; // 1% rate bump
+        double originalRate = parameters.RiskFreeRate;
+        Actual365Fixed dayCounter = new Actual365Fixed();
+        double rateBump = 0.01; // 1% rate bump
 
         // Up bump
-        var rateUp = new FlatForward(
+        FlatForward rateUp = new FlatForward(
             parameters.ValuationDate,
             originalRate + rateBump,
             dayCounter);
-        var rateHandleUp = new YieldTermStructureHandle(rateUp);
-        var processUp = new BlackScholesMertonProcess(
+        YieldTermStructureHandle rateHandleUp = new YieldTermStructureHandle(rateUp);
+        BlackScholesMertonProcess processUp = new BlackScholesMertonProcess(
             process.stateVariable(),
             process.dividendYield(),
             rateHandleUp,
             process.blackVolatility());
-        var engineUp = new FdBlackScholesVanillaEngine(processUp, 100, 100);
+        FdBlackScholesVanillaEngine engineUp = new FdBlackScholesVanillaEngine(processUp, 100, 100);
         option.setPricingEngine(engineUp);
-        var priceUp = option.NPV();
+        double priceUp = option.NPV();
 
         // Down bump
-        var rateDown = new FlatForward(
+        FlatForward rateDown = new FlatForward(
             parameters.ValuationDate,
             originalRate - rateBump,
             dayCounter);
-        var rateHandleDown = new YieldTermStructureHandle(rateDown);
-        var processDown = new BlackScholesMertonProcess(
+        YieldTermStructureHandle rateHandleDown = new YieldTermStructureHandle(rateDown);
+        BlackScholesMertonProcess processDown = new BlackScholesMertonProcess(
             process.stateVariable(),
             process.dividendYield(),
             rateHandleDown,
             process.blackVolatility());
-        var engineDown = new FdBlackScholesVanillaEngine(processDown, 100, 100);
+        FdBlackScholesVanillaEngine engineDown = new FdBlackScholesVanillaEngine(processDown, 100, 100);
         option.setPricingEngine(engineDown);
-        var priceDown = option.NPV();
+        double priceDown = option.NPV();
 
         // Clean up
         engineDown.Dispose();
@@ -893,7 +917,7 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
         // Restore original engine
         option.setPricingEngine(originalEngine);
 
-        return (priceUp - priceDown) / (2 * rateBump);
+        return ((priceUp - priceDown) / (2 * rateBump));
     }
 
     /// <summary>
@@ -907,23 +931,23 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
         // Grid search across underlying price range at front expiration
         // We're looking for the price that maximizes: BackValue(S) - FrontValue(S) - SpreadCost
 
-        var strike = parameters.Strike;
-        var underlyingMin = strike * 0.5;  // Search from 50% to 150% of strike
-        var underlyingMax = strike * 1.5;
-        var gridPoints = 100;
-        var step = (underlyingMax - underlyingMin) / gridPoints;
+        double strike = parameters.Strike;
+        double underlyingMin = (strike * 0.5);  // Search from 50% to 150% of strike
+        double underlyingMax = (strike * 1.5);
+        int gridPoints = 100;
+        double step = ((underlyingMax - underlyingMin) / gridPoints);
 
-        var maxProfitValue = double.NegativeInfinity;
+        double maxProfitValue = double.NegativeInfinity;
 
         for (int i = 0; i <= gridPoints; i++)
         {
-            var underlyingPrice = underlyingMin + i * step;
+            double underlyingPrice = (underlyingMin + (i * step));
 
             // Calculate front option value at expiration (intrinsic value only)
-            var frontValue = CalculateIntrinsicValue(underlyingPrice, strike, parameters.OptionType);
+            double frontValue = CalculateIntrinsicValue(underlyingPrice, strike, parameters.OptionType);
 
             // Calculate back option value at front expiration (has time value remaining)
-            var backParams = new OptionParameters
+            OptionParameters backParams = new OptionParameters
             {
                 UnderlyingPrice = underlyingPrice,
                 Strike = strike,
@@ -935,10 +959,10 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
                 ValuationDate = parameters.FrontExpiry  // Value at front expiration
             };
 
-            var backPricing = await PriceOption(backParams);
+            OptionPricing backPricing = await PriceOption(backParams).ConfigureAwait(false);
 
             // P&L = Value of long back - Value of short front - Initial cost
-            var profitLoss = backPricing.Price - frontValue - spreadCost;
+            double profitLoss = (backPricing.Price - frontValue - spreadCost);
 
             if (profitLoss > maxProfitValue)
             {
@@ -960,23 +984,23 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
         // Use bisection to find underlying price where spread P&L = 0
         // At breakeven: BackValue(S) - FrontValue(S) = SpreadCost
 
-        var strike = parameters.Strike;
-        var tolerance = 0.01; // $0.01 tolerance
-        var maxIterations = 50;
+        double strike = parameters.Strike;
+        double tolerance = 0.01; // $0.01 tolerance
+        int maxIterations = 50;
 
         // Calendar spreads typically have breakeven near the strike
         // Search in a reasonable range around strike
-        var lowerBound = strike * 0.7;
-        var upperBound = strike * 1.3;
+        double lowerBound = (strike * 0.7);
+        double upperBound = (strike * 1.3);
 
         for (int iter = 0; iter < maxIterations; iter++)
         {
-            var midPoint = (lowerBound + upperBound) / 2.0;
+            double midPoint = ((lowerBound + upperBound) / 2.0);
 
             // Calculate spread value at this underlying price
-            var frontValue = CalculateIntrinsicValue(midPoint, strike, parameters.OptionType);
+            double frontValue = CalculateIntrinsicValue(midPoint, strike, parameters.OptionType);
 
-            var backParams = new OptionParameters
+            OptionParameters backParams = new OptionParameters
             {
                 UnderlyingPrice = midPoint,
                 Strike = strike,
@@ -988,9 +1012,9 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
                 ValuationDate = parameters.FrontExpiry
             };
 
-            var backPricing = await PriceOption(backParams);
-            var spreadValue = backPricing.Price - frontValue;
-            var profitLoss = spreadValue - spreadCost;
+            OptionPricing backPricing = await PriceOption(backParams).ConfigureAwait(false);
+            double spreadValue = (backPricing.Price - frontValue);
+            double profitLoss = (spreadValue - spreadCost);
 
             if (Math.Abs(profitLoss) < tolerance)
             {
@@ -1004,17 +1028,25 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
                 // For calendar spreads, max profit is typically near strike
                 // If we're profitable at midpoint, breakeven is further out
                 if (midPoint > strike)
+                {
                     lowerBound = midPoint;
+                }
                 else
+                {
                     upperBound = midPoint;
+                }
             }
             else
             {
                 // Spread is unprofitable, breakeven is closer to strike
                 if (midPoint > strike)
+                {
                     upperBound = midPoint;
+                }
                 else
+                {
                     lowerBound = midPoint;
+                }
             }
         }
 
@@ -1039,8 +1071,10 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
 
     private static double CalculateTimeToExpiry(Date valuationDate, Date expiryDate)
     {
-        var dayCounter = new Actual365Fixed();
-        return dayCounter.yearFraction(valuationDate, expiryDate);
+        Actual365Fixed dayCounter = new Actual365Fixed();
+        double result = dayCounter.yearFraction(valuationDate, expiryDate);
+        dayCounter.Dispose();
+        return result;
     }
 
     private static int CalculateDaysToExpiry(Date valuationDate, Date expiryDate)
@@ -1051,7 +1085,9 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
     public void Dispose()
     {
         if (_disposed)
+        {
             return;
+        }
 
         _disposed = true;
     }

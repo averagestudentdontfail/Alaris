@@ -12,9 +12,9 @@ public interface IMarketDataProvider
     /// Retrieves the complete option chain for a symbol on a specific date.
     /// </summary>
     /// <param name="symbol">The underlying security symbol.</param>
-    /// <param name="date">The date for which to retrieve the option chain.</param>
+    /// <param name="expirationDate">The date for which to retrieve the option chain.</param>
     /// <returns>The option chain with all available expiration dates and strikes.</returns>
-    OptionChain GetOptionChain(string symbol, DateTime date);
+    public OptionChain GetOptionChain(string symbol, DateTime expirationDate);
 
     /// <summary>
     /// Retrieves historical OHLC price data for volatility calculations.
@@ -22,26 +22,26 @@ public interface IMarketDataProvider
     /// <param name="symbol">The security symbol.</param>
     /// <param name="days">Number of historical days to retrieve.</param>
     /// <returns>List of price bars ordered chronologically.</returns>
-    List<PriceBar> GetHistoricalPrices(string symbol, int days);
+    public IReadOnlyList<PriceBar> GetHistoricalPrices(string symbol, int days);
 
     /// <summary>
     /// Gets the current market price of a security.
     /// </summary>
     /// <param name="symbol">The security symbol.</param>
     /// <returns>The current price.</returns>
-    double GetCurrentPrice(string symbol);
+    public double GetCurrentPrice(string symbol);
 
     /// <summary>
     /// Gets upcoming earnings announcement dates.
     /// </summary>
     /// <param name="symbol">The security symbol.</param>
     /// <returns>List of earnings dates.</returns>
-    Task<List<DateTime>> GetEarningsDates(string symbol);
+    public Task<IReadOnlyList<DateTime>> GetEarningsDates(string symbol);
 
     /// <summary>
     /// Checks if market data is available for a symbol.
     /// </summary>
-    Task<bool> IsDataAvailable(string symbol);
+    public Task<bool> IsDataAvailable(string symbol);
 }
 
 /// <summary>

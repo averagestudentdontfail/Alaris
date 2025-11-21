@@ -39,10 +39,10 @@ public sealed class SignalGenerator
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(symbol);
 
-        _logger?.LogInformation("Generating signal for {Symbol} with earnings on {EarningsDate}", 
+        _logger?.LogInformation("Generating signal for {Symbol} with earnings on {EarningsDate}",
             symbol, earningsDate);
 
-        var signal = new Signal
+        Signal signal = new Signal
         {
             Symbol = symbol,
             EarningsDate = earningsDate,
@@ -53,7 +53,7 @@ public sealed class SignalGenerator
         try
         {
             // Get historical price data for realized volatility calculation
-            var priceHistory = _marketData.GetHistoricalPrices(symbol, 90);
+            List<PriceBar> priceHistory = _marketData.GetHistoricalPrices(symbol, 90);
             if (priceHistory.Count < 30)
             {
                 _logger?.LogWarning("Insufficient price history for {Symbol}", symbol);
@@ -65,7 +65,7 @@ public sealed class SignalGenerator
             signal.RealizedVolatility30 = _yangZhang.Calculate(priceHistory, 30);
 
             // Get option chain for implied volatility analysis
-            var optionChain = _marketData.GetOptionChain(symbol, evaluationDate);
+            OptionChain optionChain = _marketData.GetOptionChain(symbol, evaluationDate);
             if (optionChain.Expiries.Count == 0)
             {
                 _logger?.LogWarning("No option data available for {Symbol}", symbol);
@@ -74,7 +74,7 @@ public sealed class SignalGenerator
             }
 
             // Extract term structure points
-            var termPoints = ExtractTermStructurePoints(optionChain, evaluationDate);
+            List<TermStructurePoint> termPoints = ExtractTermStructurePoints(optionChain, evaluationDate);
             if (termPoints.Count < 2)
             {
                 _logger?.LogWarning("Insufficient term structure points for {Symbol}", symbol);
@@ -83,13 +83,13 @@ public sealed class SignalGenerator
             }
 
             // Analyze term structure
-            var termAnalysis = _termAnalyzer.Analyze(termPoints);
+            TermStructureAnalysis termAnalysis = _termAnalyzer.Analyze(termPoints);
             signal.TermStructureSlope = termAnalysis.Slope;
             signal.ImpliedVolatility30 = termAnalysis.GetIVAt(30);
 
             // Calculate IV/RV ratio
-            signal.IVRVRatio = signal.RealizedVolatility30 > 0
-                ? signal.ImpliedVolatility30 / signal.RealizedVolatility30
+            signal.IVRVRatio = (signal.RealizedVolatility30 > 0)
+                ? (signal.ImpliedVolatility30 / signal.RealizedVolatility30)
                 : 0;
 
             // Calculate average volume
@@ -112,10 +112,10 @@ public sealed class SignalGenerator
                 "Signal generated for {Symbol}: {Strength} (IV/RV={IvRv:F2}, Slope={Slope:F5}, Volume={Volume})",
                 symbol, signal.Strength, signal.IVRVRatio, signal.TermStructureSlope, signal.AverageVolume);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            _logger?.LogError(ex, "Error generating signal for {Symbol}", symbol);
-            signal.Strength = SignalStrength.Avoid;
+            _logger?.LogError("Error generating signal for {Symbol}", symbol);
+            throw;
         }
 
         return signal;
@@ -126,30 +126,32 @@ public sealed class SignalGenerator
     /// </summary>
     private List<TermStructurePoint> ExtractTermStructurePoints(OptionChain chain, DateTime evaluationDate)
     {
-        var points = new List<TermStructurePoint>();
-        var underlyingPrice = chain.UnderlyingPrice;
+        List<TermStructurePoint> points = new List<TermStructurePoint>();
+        double underlyingPrice = chain.UnderlyingPrice;
 
-        foreach (var expiry in chain.Expiries.OrderBy(e => e.ExpiryDate))
+        foreach (OptionExpiry expiry in chain.Expiries.OrderBy(e => e.ExpiryDate))
         {
-            var dte = expiry.GetDaysToExpiry(evaluationDate);
-            if (dte < 1 || dte > 60)
+            int dte = expiry.GetDaysToExpiry(evaluationDate);
+            if ((dte < 1) || (dte > 60))
+            {
                 continue;
+            }
 
             // Find ATM options
-            var atmCall = expiry.Calls
-                .Where(c => c.OpenInterest > 0 && c.ImpliedVolatility > 0)
+            OptionContract? atmCall = expiry.Calls
+                .Where(c => (c.OpenInterest > 0) && (c.ImpliedVolatility > 0))
                 .OrderBy(c => Math.Abs(c.Strike - underlyingPrice))
                 .FirstOrDefault();
 
-            var atmPut = expiry.Puts
-                .Where(p => p.OpenInterest > 0 && p.ImpliedVolatility > 0)
+            OptionContract? atmPut = expiry.Puts
+                .Where(p => (p.OpenInterest > 0) && (p.ImpliedVolatility > 0))
                 .OrderBy(p => Math.Abs(p.Strike - underlyingPrice))
                 .FirstOrDefault();
 
-            if (atmCall is not null && atmPut is not null)
+            if ((atmCall is not null) && (atmPut is not null))
             {
                 // Average the call and put IV for ATM
-                var avgIV = (atmCall.ImpliedVolatility + atmPut.ImpliedVolatility) / 2.0;
+                double avgIV = (atmCall.ImpliedVolatility + atmPut.ImpliedVolatility) / 2.0;
                 
                 points.Add(new TermStructurePoint
                 {
@@ -169,30 +171,34 @@ public sealed class SignalGenerator
     private double CalculateExpectedMove(OptionChain chain, DateTime earningsDate, DateTime evaluationDate)
     {
         // Find the expiry closest to (but after) earnings date
-        var targetExpiry = chain.Expiries
+        OptionExpiry? targetExpiry = chain.Expiries
             .Where(e => e.ExpiryDate >= earningsDate)
             .OrderBy(e => e.ExpiryDate)
             .FirstOrDefault();
 
         if (targetExpiry is null)
+        {
             return 0;
+        }
 
-        var underlyingPrice = chain.UnderlyingPrice;
+        double underlyingPrice = chain.UnderlyingPrice;
 
         // Find ATM straddle
-        var atmCall = targetExpiry.Calls
-            .Where(c => c.Bid > 0 && c.Ask > 0)
+        OptionContract? atmCall = targetExpiry.Calls
+            .Where(c => (c.Bid > 0) && (c.Ask > 0))
             .OrderBy(c => Math.Abs(c.Strike - underlyingPrice))
             .FirstOrDefault();
 
-        var atmPut = targetExpiry.Puts
-            .Where(p => p.Bid > 0 && p.Ask > 0 && Math.Abs(p.Strike - (atmCall?.Strike ?? 0)) < 0.01)
+        OptionContract? atmPut = targetExpiry.Puts
+            .Where(p => (p.Bid > 0) && (p.Ask > 0) && (Math.Abs(p.Strike - (atmCall?.Strike ?? 0)) < 0.01))
             .FirstOrDefault();
 
-        if (atmCall is null || atmPut is null)
+        if ((atmCall is null) || (atmPut is null))
+        {
             return 0;
+        }
 
-        var straddlePrice = atmCall.MidPrice + atmPut.MidPrice;
+        double straddlePrice = atmCall.MidPrice + atmPut.MidPrice;
         return straddlePrice / underlyingPrice;
     }
 
@@ -201,20 +207,22 @@ public sealed class SignalGenerator
     /// </summary>
     private double CalculateVolatilitySpread(OptionChain chain, DateTime evaluationDate)
     {
-        var spreads = new List<(double spread, double weight)>();
-        var underlyingPrice = chain.UnderlyingPrice;
+        List<(double spread, double weight)> spreads = new List<(double spread, double weight)>();
+        double underlyingPrice = chain.UnderlyingPrice;
 
-        foreach (var expiry in chain.Expiries)
+        foreach (OptionExpiry expiry in chain.Expiries)
         {
-            var dte = expiry.GetDaysToExpiry(evaluationDate);
-            if (dte < 10 || dte > 60)
+            int dte = expiry.GetDaysToExpiry(evaluationDate);
+            if ((dte < 10) || (dte > 60))
+            {
                 continue;
+            }
 
             // Match put-call pairs
-            var pairs = from call in expiry.Calls
+            IEnumerable<dynamic> pairs = from call in expiry.Calls
                         join put in expiry.Puts on call.Strike equals put.Strike
-                        where call.OpenInterest > 0 && put.OpenInterest > 0
-                           && call.ImpliedVolatility > 0 && put.ImpliedVolatility > 0
+                        where (call.OpenInterest > 0) && (put.OpenInterest > 0)
+                           && (call.ImpliedVolatility > 0) && (put.ImpliedVolatility > 0)
                         select new
                         {
                             Strike = call.Strike,
@@ -229,9 +237,11 @@ public sealed class SignalGenerator
         }
 
         if (spreads.Count == 0)
+        {
             return 0;
+        }
 
-        var totalWeight = spreads.Sum(s => s.weight);
+        double totalWeight = spreads.Sum(s => s.weight);
         return spreads.Sum(s => s.spread * s.weight) / totalWeight;
     }
 }

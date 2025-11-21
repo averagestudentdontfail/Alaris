@@ -26,7 +26,7 @@ public sealed class KellyPositionSizer
     /// </summary>
     public PositionSize CalculateFromHistory(
         double portfolioValue,
-        List<Trade> historicalTrades,
+        IReadOnlyList<Trade> historicalTrades,
         double spreadCost,
         Signal signal)
     {
@@ -34,12 +34,16 @@ public sealed class KellyPositionSizer
         ArgumentNullException.ThrowIfNull(signal);
 
         if (portfolioValue <= 0)
+        {
             throw new ArgumentException("Portfolio value must be positive", nameof(portfolioValue));
+        }
 
         if (spreadCost <= 0)
+        {
             throw new ArgumentException("Spread cost must be positive", nameof(spreadCost));
+        }
 
-        var positionSize = new PositionSize
+        PositionSize positionSize = new PositionSize
         {
             MaxLossPerContract = spreadCost * ContractMultiplier
         };
@@ -55,11 +59,11 @@ public sealed class KellyPositionSizer
         try
         {
             // Calculate win rate
-            var winningTrades = historicalTrades.Where(t => t.ProfitLoss > 0).ToList();
-            var losingTrades = historicalTrades.Where(t => t.ProfitLoss <= 0).ToList();
+            List<Trade> winningTrades = historicalTrades.Where(t => t.ProfitLoss > 0).ToList();
+            List<Trade> losingTrades = historicalTrades.Where(t => t.ProfitLoss <= 0).ToList();
 
-            var winRate = (double)winningTrades.Count / historicalTrades.Count;
-            var lossRate = 1 - winRate;
+            double winRate = (double)winningTrades.Count / historicalTrades.Count;
+            double lossRate = 1 - winRate;
 
             if (winRate <= 0 || winRate >= 1)
             {
@@ -68,8 +72,8 @@ public sealed class KellyPositionSizer
             }
 
             // Calculate average win and loss amounts
-            var avgWin = winningTrades.Any() ? winningTrades.Average(t => t.ProfitLoss) : 0;
-            var avgLoss = losingTrades.Any() ? Math.Abs(losingTrades.Average(t => t.ProfitLoss)) : spreadCost * ContractMultiplier;
+            double avgWin = (winningTrades.Count > 0) ? winningTrades.Average(t => t.ProfitLoss) : 0;
+            double avgLoss = (losingTrades.Count > 0) ? Math.Abs(losingTrades.Average(t => t.ProfitLoss)) : (spreadCost * ContractMultiplier);
 
             if (avgWin <= 0 || avgLoss <= 0)
             {
@@ -77,23 +81,23 @@ public sealed class KellyPositionSizer
                 return GetMinimumPosition(portfolioValue, spreadCost);
             }
 
-            var winLossRatio = avgWin / avgLoss;
+            double winLossRatio = avgWin / avgLoss;
 
             // Kelly formula: f* = (p*b - q) / b
-            var fullKellyPercent = (winRate * winLossRatio - lossRate) / winLossRatio;
+            double fullKellyPercent = ((winRate * winLossRatio) - lossRate) / winLossRatio;
 
             // Apply fractional Kelly for safety
-            var kellyPercent = fullKellyPercent * FractionalKelly;
+            double kellyPercent = fullKellyPercent * FractionalKelly;
 
             // Cap at maximum allocation
-            var allocationPercent = Math.Max(0, Math.Min(kellyPercent, MaxAllocation));
+            double allocationPercent = Math.Max(0, Math.Min(kellyPercent, MaxAllocation));
 
             // Adjust based on signal strength
             allocationPercent = AdjustForSignalStrength(allocationPercent, signal);
 
             // Calculate position size
-            var dollarAllocation = portfolioValue * allocationPercent;
-            var contracts = (int)Math.Floor(dollarAllocation / (spreadCost * ContractMultiplier));
+            double dollarAllocation = portfolioValue * allocationPercent;
+            int contracts = (int)Math.Floor(dollarAllocation / (spreadCost * ContractMultiplier));
 
             positionSize.Contracts = Math.Max(contracts, 0);
             positionSize.AllocationPercent = allocationPercent;
@@ -108,10 +112,10 @@ public sealed class KellyPositionSizer
 
             return positionSize;
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            _logger?.LogError(ex, "Error calculating position size for {Symbol}", signal.Symbol);
-            return GetMinimumPosition(portfolioValue, spreadCost);
+            _logger?.LogError("Error calculating position size for {Symbol}", signal.Symbol);
+            throw;
         }
     }
 
@@ -135,8 +139,8 @@ public sealed class KellyPositionSizer
     private static PositionSize GetMinimumPosition(double portfolioValue, double spreadCost)
     {
         const double minAllocation = 0.01; // 1% minimum
-        var dollarAllocation = portfolioValue * minAllocation;
-        var contracts = (int)Math.Floor(dollarAllocation / (spreadCost * ContractMultiplier));
+        double dollarAllocation = portfolioValue * minAllocation;
+        int contracts = (int)Math.Floor(dollarAllocation / (spreadCost * ContractMultiplier));
 
         return new PositionSize
         {

@@ -50,9 +50,9 @@ public sealed class Signal
     public DateTime SignalDate { get; set; }
 
     /// <summary>
-    /// Gets or sets the individual criteria results.
+    /// Gets the individual criteria results.
     /// </summary>
-    public Dictionary<string, bool> Criteria { get; set; } = new();
+    public Dictionary<string, bool> Criteria { get; } = new();
 
     /// <summary>
     /// Gets or sets the volatility spread (put IV - call IV).

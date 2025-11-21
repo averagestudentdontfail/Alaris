@@ -37,14 +37,14 @@ public sealed class Control
         DateTime earningsDate,
         DateTime evaluationDate,
         double portfolioValue,
-        List<Trade> historicalTrades)
+        IReadOnlyList<Trade> historicalTrades)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(symbol);
 
         _logger?.LogInformation("Evaluating opportunity for {Symbol} with earnings on {EarningsDate}",
             symbol, earningsDate);
 
-        var opportunity = new TradingOpportunity
+        TradingOpportunity opportunity = new TradingOpportunity
         {
             Symbol = symbol,
             EarningsDate = earningsDate,
@@ -54,7 +54,7 @@ public sealed class Control
         try
         {
             // Generate signal
-            var signal = _signalGenerator.Generate(symbol, earningsDate, evaluationDate);
+            Signal signal = _signalGenerator.Generate(symbol, earningsDate, evaluationDate);
             opportunity.Signal = signal;
 
             if (signal.Strength == SignalStrength.Avoid)
@@ -64,12 +64,12 @@ public sealed class Control
             }
 
             // Price the calendar spread
-            var spreadParams = CreateSpreadParameters(signal, evaluationDate);
-            var spreadPricing = await _pricingEngine.PriceCalendarSpread(spreadParams);
+            CalendarSpreadParameters spreadParams = CreateSpreadParameters(signal, evaluationDate);
+            CalendarSpreadPricing spreadPricing = await _pricingEngine.PriceCalendarSpread(spreadParams).ConfigureAwait(false);
             opportunity.SpreadPricing = spreadPricing;
 
             // Calculate position size
-            var positionSize = _positionSizer.CalculateFromHistory(
+            PositionSize positionSize = _positionSizer.CalculateFromHistory(
                 portfolioValue,
                 historicalTrades,
                 spreadPricing.SpreadCost,
@@ -80,9 +80,10 @@ public sealed class Control
                 "Opportunity evaluated for {Symbol}: Signal={Strength}, Contracts={Contracts}, Cost={Cost:C}",
                 symbol, signal.Strength, positionSize.Contracts, spreadPricing.SpreadCost);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            _logger?.LogError(ex, "Error evaluating opportunity for {Symbol}", symbol);
+            _logger?.LogError("Error evaluating opportunity for {Symbol}", symbol);
+            throw;
         }
 
         return opportunity;
@@ -94,8 +95,8 @@ public sealed class Control
     private CalendarSpreadParameters CreateSpreadParameters(Signal signal, DateTime evaluationDate)
     {
         // Determine appropriate expiration dates
-        var frontExpiry = FindFrontMonthExpiry(signal.EarningsDate, evaluationDate);
-        var backExpiry = FindBackMonthExpiry(frontExpiry);
+        DateTime frontExpiry = FindFrontMonthExpiry(signal.EarningsDate, evaluationDate);
+        DateTime backExpiry = FindBackMonthExpiry(frontExpiry);
 
         return new CalendarSpreadParameters
         {
@@ -114,15 +115,20 @@ public sealed class Control
     private DateTime FindFrontMonthExpiry(DateTime earningsDate, DateTime evaluationDate)
     {
         // Find the Friday after earnings (standard monthly expiration)
-        var daysAfterEarnings = 0;
+        int daysAfterEarnings = 0;
         while (true)
         {
-            var candidate = earningsDate.AddDays(daysAfterEarnings);
+            DateTime candidate = earningsDate.AddDays(daysAfterEarnings);
             if (candidate.DayOfWeek == DayOfWeek.Friday && candidate > earningsDate)
+            {
                 return candidate;
+            }
+
             daysAfterEarnings++;
             if (daysAfterEarnings > 14) // Safety limit
+            {
                 return earningsDate.AddDays(7);
+            }
         }
     }
 
@@ -135,7 +141,7 @@ public sealed class Control
     private Date ConvertToQuantlibDate(DateTime date)
     {
         // SWIG-generated Date constructor: Date(int day, Month month, int year)
-        var month = (Month)date.Month;
+        Month month = (Month)date.Month;
         return new Date(date.Day, month, date.Year);
     }
 }
