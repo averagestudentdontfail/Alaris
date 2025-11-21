@@ -325,7 +325,12 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
                 VanillaOption option = new VanillaOption(payoff, exercise);
 
                 // Create pricing engine for main price (using FD for Americans by default)
-                FdBlackScholesVanillaEngine priceEngine = new FdBlackScholesVanillaEngine(bsmProcess, 100, 100);
+                // Adaptive grid sizing: short maturities need more time steps
+                double timeToExpiry = CalculateTimeToExpiry(parameters.ValuationDate, parameters.Expiry);
+                int timeSteps = Math.Max(100, (int)(timeToExpiry * 365 * 2)); // At least 2 steps per day
+                int priceSteps = 100; // Spatial grid
+
+                FdBlackScholesVanillaEngine priceEngine = new FdBlackScholesVanillaEngine(bsmProcess, timeSteps, priceSteps);
                 option.setPricingEngine(priceEngine);
 
                 // Ensure evaluation date is set correctly before pricing
@@ -333,8 +338,8 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
                 double price = option.NPV();
                 priceEngine.Dispose();
 
-                // Create fresh pricing engine for Greek calculations
-                FdBlackScholesVanillaEngine fdEngine = new FdBlackScholesVanillaEngine(bsmProcess, 100, 100);
+                // Create fresh pricing engine for Greek calculations (reuse adaptive grid)
+                FdBlackScholesVanillaEngine fdEngine = new FdBlackScholesVanillaEngine(bsmProcess, timeSteps, priceSteps);
                 option.setPricingEngine(fdEngine);
 
                 // Calculate Greeks using finite differences
@@ -653,8 +658,12 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
         PlainVanillaPayoff payoff = new PlainVanillaPayoff(parameters.OptionType, parameters.Strike);
         VanillaOption option = new VanillaOption(payoff, exercise);
 
-        // Create pricing engine and price
-        FdBlackScholesVanillaEngine engine = new FdBlackScholesVanillaEngine(bsmProcess, 100, 100);
+        // Create pricing engine and price (adaptive grid for short maturities)
+        double timeToExpiry = CalculateTimeToExpiry(parameters.ValuationDate, parameters.Expiry);
+        int timeSteps = Math.Max(100, (int)(timeToExpiry * 365 * 2)); // At least 2 steps per day
+        int priceSteps = 100;
+
+        FdBlackScholesVanillaEngine engine = new FdBlackScholesVanillaEngine(bsmProcess, timeSteps, priceSteps);
         option.setPricingEngine(engine);
         double price = option.NPV();
 
