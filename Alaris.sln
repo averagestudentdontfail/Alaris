@@ -9,7 +9,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Alaris.Double", "Alaris.Dou
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Alaris.Strategy", "Alaris.Strategy\Alaris.Strategy.csproj", "{57B7C6A2-D825-4490-A4F7-2E0559DE0A0B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Alaris.Event", "Alaris.Event\Alaris.Event.csproj", "{8E2B3C4A-5F1D-4E9A-B7A2-3C9D8E6F1A5B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Alaris.Events", "Alaris.Events\Alaris.Events.csproj", "{8E2B3C4A-5F1D-4E9A-B7A2-3C9D8E6F1A5B}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Alaris.Test", "Alaris.Test\Alaris.Test.csproj", "{C2D00E91-48DE-4779-B438-2BC4E2953934}"
 EndProject
