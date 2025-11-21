@@ -86,7 +86,7 @@ public sealed class Control
 
             if (signal.Strength == SignalStrength.Avoid)
             {
-                SafeLog(() => LogSignalAvoid(_logger, symbol, null));
+                SafeLog(() => LogSignalAvoid(_logger!, symbol, null));
                 return opportunity;
             }
 
@@ -103,16 +103,16 @@ public sealed class Control
                 signal);
             opportunity.PositionSize = positionSize;
 
-            SafeLog(() => LogOpportunityEvaluated(_logger, symbol, signal.Strength, positionSize.Contracts, spreadPricing.SpreadCost, null));
+            SafeLog(() => LogOpportunityEvaluated(_logger!, symbol, signal.Strength, positionSize.Contracts, spreadPricing.SpreadCost, null));
         }
         catch (ArgumentException ex)
         {
-            SafeLog(() => LogErrorEvaluatingOpportunity(_logger, symbol, ex));
+            SafeLog(() => LogErrorEvaluatingOpportunity(_logger!, symbol, ex));
             throw;
         }
         catch (InvalidOperationException ex)
         {
-            SafeLog(() => LogErrorEvaluatingOpportunity(_logger, symbol, ex));
+            SafeLog(() => LogErrorEvaluatingOpportunity(_logger!, symbol, ex));
             throw;
         }
 
@@ -186,6 +186,7 @@ public sealed class Control
             return;
         }
 
+#pragma warning disable CA1031 // Do not catch general exception types
         try
         {
             logAction();
@@ -195,6 +196,7 @@ public sealed class Control
             // Swallow logging exceptions to prevent them from crashing the application
             // This is acceptable per Rule 10 for non-critical subsystems (Rule 15: Fault Isolation)
         }
+#pragma warning restore CA1031
     }
 }
 

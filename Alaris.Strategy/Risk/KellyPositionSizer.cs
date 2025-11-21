@@ -83,7 +83,7 @@ public sealed class KellyPositionSizer
         // Need sufficient trade history for meaningful statistics
         if (historicalTrades.Count < 20)
         {
-            SafeLog(() => LogInsufficientTradeHistory(_logger, historicalTrades.Count, null));
+            SafeLog(() => LogInsufficientTradeHistory(_logger!, historicalTrades.Count, null));
             return GetMinimumPosition(portfolioValue, spreadCost);
         }
 
@@ -98,7 +98,7 @@ public sealed class KellyPositionSizer
 
             if (winRate <= 0 || winRate >= 1)
             {
-                SafeLog(() => LogInvalidWinRate(_logger, winRate, null));
+                SafeLog(() => LogInvalidWinRate(_logger!, winRate, null));
                 return GetMinimumPosition(portfolioValue, spreadCost);
             }
 
@@ -108,7 +108,7 @@ public sealed class KellyPositionSizer
 
             if (avgWin <= 0 || avgLoss <= 0)
             {
-                SafeLog(() => LogInvalidAverageWinLoss(_logger, null));
+                SafeLog(() => LogInvalidAverageWinLoss(_logger!, null));
                 return GetMinimumPosition(portfolioValue, spreadCost);
             }
 
@@ -137,23 +137,23 @@ public sealed class KellyPositionSizer
             positionSize.ExpectedProfitPerContract = avgWin;
             positionSize.KellyFraction = fullKellyPercent;
 
-            SafeLog(() => LogPositionCalculated(_logger, signal.Symbol, positionSize.Contracts, allocationPercent, fullKellyPercent, null));
+            SafeLog(() => LogPositionCalculated(_logger!, signal.Symbol, positionSize.Contracts, allocationPercent, fullKellyPercent, null));
 
             return positionSize;
         }
         catch (DivideByZeroException ex)
         {
-            SafeLog(() => LogErrorCalculatingPosition(_logger, signal.Symbol, ex));
+            SafeLog(() => LogErrorCalculatingPosition(_logger!, signal.Symbol, ex));
             throw;
         }
         catch (OverflowException ex)
         {
-            SafeLog(() => LogErrorCalculatingPosition(_logger, signal.Symbol, ex));
+            SafeLog(() => LogErrorCalculatingPosition(_logger!, signal.Symbol, ex));
             throw;
         }
         catch (InvalidOperationException ex)
         {
-            SafeLog(() => LogErrorCalculatingPosition(_logger, signal.Symbol, ex));
+            SafeLog(() => LogErrorCalculatingPosition(_logger!, signal.Symbol, ex));
             throw;
         }
     }
@@ -203,6 +203,7 @@ public sealed class KellyPositionSizer
             return;
         }
 
+#pragma warning disable CA1031 // Do not catch general exception types
         try
         {
             logAction();
@@ -212,6 +213,7 @@ public sealed class KellyPositionSizer
             // Swallow logging exceptions to prevent them from crashing the application
             // This is acceptable per Rule 10 for non-critical subsystems (Rule 15: Fault Isolation)
         }
+#pragma warning restore CA1031
     }
 }
 

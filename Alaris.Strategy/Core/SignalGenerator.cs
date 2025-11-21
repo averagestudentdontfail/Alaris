@@ -76,7 +76,7 @@ public sealed class SignalGenerator
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(symbol);
 
-        SafeLog(() => LogGeneratingSignal(_logger, symbol, earningsDate, null));
+        SafeLog(() => LogGeneratingSignal(_logger!, symbol, earningsDate, null));
 
         Signal signal = new Signal
         {
@@ -91,7 +91,7 @@ public sealed class SignalGenerator
             List<PriceBar> priceHistory = _marketData.GetHistoricalPrices(symbol, 90).ToList();
             if (priceHistory.Count < 30)
             {
-                SafeLog(() => LogInsufficientPriceHistory(_logger, symbol, null));
+                SafeLog(() => LogInsufficientPriceHistory(_logger!, symbol, null));
                 signal.Strength = SignalStrength.Avoid;
                 return signal;
             }
@@ -103,7 +103,7 @@ public sealed class SignalGenerator
             OptionChain optionChain = _marketData.GetOptionChain(symbol, evaluationDate);
             if (optionChain.Expiries.Count == 0)
             {
-                SafeLog(() => LogNoOptionData(_logger, symbol, null));
+                SafeLog(() => LogNoOptionData(_logger!, symbol, null));
                 signal.Strength = SignalStrength.Avoid;
                 return signal;
             }
@@ -112,7 +112,7 @@ public sealed class SignalGenerator
             List<TermStructurePoint> termPoints = ExtractTermStructurePoints(optionChain, evaluationDate);
             if (termPoints.Count < 2)
             {
-                SafeLog(() => LogInsufficientTermStructure(_logger, symbol, null));
+                SafeLog(() => LogInsufficientTermStructure(_logger!, symbol, null));
                 signal.Strength = SignalStrength.Avoid;
                 return signal;
             }
@@ -143,21 +143,21 @@ public sealed class SignalGenerator
 
             signal.EvaluateStrength();
 
-            SafeLog(() => LogSignalGenerated(_logger, symbol, signal.Strength, signal.IVRVRatio, signal.TermStructureSlope, signal.AverageVolume, null));
+            SafeLog(() => LogSignalGenerated(_logger!, symbol, signal.Strength, signal.IVRVRatio, signal.TermStructureSlope, signal.AverageVolume, null));
         }
         catch (ArgumentException ex)
         {
-            SafeLog(() => LogErrorGeneratingSignal(_logger, symbol, ex));
+            SafeLog(() => LogErrorGeneratingSignal(_logger!, symbol, ex));
             throw;
         }
         catch (InvalidOperationException ex)
         {
-            SafeLog(() => LogErrorGeneratingSignal(_logger, symbol, ex));
+            SafeLog(() => LogErrorGeneratingSignal(_logger!, symbol, ex));
             throw;
         }
         catch (DivideByZeroException ex)
         {
-            SafeLog(() => LogErrorGeneratingSignal(_logger, symbol, ex));
+            SafeLog(() => LogErrorGeneratingSignal(_logger!, symbol, ex));
             throw;
         }
 
@@ -294,6 +294,7 @@ public sealed class SignalGenerator
             return;
         }
 
+#pragma warning disable CA1031 // Do not catch general exception types
         try
         {
             logAction();
@@ -303,5 +304,6 @@ public sealed class SignalGenerator
             // Swallow logging exceptions to prevent them from crashing the application
             // This is acceptable per Rule 10 for non-critical subsystems (Rule 15: Fault Isolation)
         }
+#pragma warning restore CA1031
     }
 }
