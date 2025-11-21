@@ -31,13 +31,20 @@ public sealed class TermStructure
         // Perform linear regression: IV = intercept + slope * DTE
         (double intercept, double slope) = SimpleRegression.Fit(dte, iv);
 
-        return new TermStructureAnalysis
+        TermStructureAnalysis analysis = new TermStructureAnalysis
         {
             Intercept = intercept,
             Slope = slope,
-            Points = sortedPoints,
             RSquared = CalculateRSquared(dte, iv, intercept, slope)
         };
+
+        // Add sorted points to the collection
+        foreach (TermStructurePoint point in sortedPoints)
+        {
+            analysis.Points.Add(point);
+        }
+
+        return analysis;
     }
 
     /// <summary>
@@ -116,7 +123,7 @@ public sealed class TermStructureAnalysis
     /// </summary>
     public double GetIVAt(int daysToExpiry)
     {
-        return Intercept + Slope * daysToExpiry;
+        return Intercept + (Slope * daysToExpiry);
     }
 
     /// <summary>

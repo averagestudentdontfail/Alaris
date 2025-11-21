@@ -913,6 +913,7 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
         processUp.Dispose();
         rateHandleUp.Dispose();
         rateUp.Dispose();
+        dayCounter.Dispose();
 
         // Restore original engine
         option.setPricingEngine(originalEngine);

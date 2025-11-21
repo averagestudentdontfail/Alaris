@@ -46,14 +46,13 @@ public sealed class SignalGenerator
         {
             Symbol = symbol,
             EarningsDate = earningsDate,
-            SignalDate = evaluationDate,
-            Criteria = new Dictionary<string, bool>()
+            SignalDate = evaluationDate
         };
 
         try
         {
             // Get historical price data for realized volatility calculation
-            List<PriceBar> priceHistory = _marketData.GetHistoricalPrices(symbol, 90);
+            List<PriceBar> priceHistory = _marketData.GetHistoricalPrices(symbol, 90).ToList();
             if (priceHistory.Count < 30)
             {
                 _logger?.LogWarning("Insufficient price history for {Symbol}", symbol);
@@ -219,18 +218,13 @@ public sealed class SignalGenerator
             }
 
             // Match put-call pairs
-            IEnumerable<dynamic> pairs = from call in expiry.Calls
+            IEnumerable<(double Strike, double Spread, double Weight)> pairs = from call in expiry.Calls
                         join put in expiry.Puts on call.Strike equals put.Strike
                         where (call.OpenInterest > 0) && (put.OpenInterest > 0)
                            && (call.ImpliedVolatility > 0) && (put.ImpliedVolatility > 0)
-                        select new
-                        {
-                            Strike = call.Strike,
-                            Spread = put.ImpliedVolatility - call.ImpliedVolatility,
-                            Weight = (call.OpenInterest + put.OpenInterest) / 2.0
-                        };
+                        select (call.Strike, put.ImpliedVolatility - call.ImpliedVolatility, (call.OpenInterest + put.OpenInterest) / 2.0);
 
-            foreach (var pair in pairs)
+            foreach ((double Strike, double Spread, double Weight) pair in pairs)
             {
                 spreads.Add((pair.Spread, pair.Weight));
             }
