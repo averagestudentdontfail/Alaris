@@ -15,6 +15,43 @@ public sealed class SignalGenerator
     private readonly TermStructureAnalyzer _termAnalyzer;
     private readonly ILogger<SignalGenerator>? _logger;
 
+    // LoggerMessage delegates
+    private static readonly Action<ILogger, string, DateTime, Exception?> LogGeneratingSignal =
+        LoggerMessage.Define<string, DateTime>(
+            LogLevel.Information,
+            new EventId(1, nameof(LogGeneratingSignal)),
+            "Generating signal for {Symbol} with earnings on {EarningsDate}");
+
+    private static readonly Action<ILogger, string, Exception?> LogInsufficientPriceHistory =
+        LoggerMessage.Define<string>(
+            LogLevel.Warning,
+            new EventId(2, nameof(LogInsufficientPriceHistory)),
+            "Insufficient price history for {Symbol}");
+
+    private static readonly Action<ILogger, string, Exception?> LogNoOptionData =
+        LoggerMessage.Define<string>(
+            LogLevel.Warning,
+            new EventId(3, nameof(LogNoOptionData)),
+            "No option data available for {Symbol}");
+
+    private static readonly Action<ILogger, string, Exception?> LogInsufficientTermStructure =
+        LoggerMessage.Define<string>(
+            LogLevel.Warning,
+            new EventId(4, nameof(LogInsufficientTermStructure)),
+            "Insufficient term structure points for {Symbol}");
+
+    private static readonly Action<ILogger, string, SignalStrength, double, double, long, Exception?> LogSignalGenerated =
+        LoggerMessage.Define<string, SignalStrength, double, double, long>(
+            LogLevel.Information,
+            new EventId(5, nameof(LogSignalGenerated)),
+            "Signal generated for {Symbol}: {Strength} (IV/RV={IvRv:F2}, Slope={Slope:F5}, Volume={Volume})");
+
+    private static readonly Action<ILogger, string, Exception?> LogErrorGeneratingSignal =
+        LoggerMessage.Define<string>(
+            LogLevel.Error,
+            new EventId(6, nameof(LogErrorGeneratingSignal)),
+            "Error generating signal for {Symbol}");
+
     // Strategy thresholds from research
     private const double MinIvRvRatio = 1.25;
     private const double MaxTermSlope = -0.00406;
@@ -39,8 +76,10 @@ public sealed class SignalGenerator
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(symbol);
 
-        _logger?.LogInformation("Generating signal for {Symbol} with earnings on {EarningsDate}",
-            symbol, earningsDate);
+        if (_logger != null)
+        {
+            LogGeneratingSignal(_logger, symbol, earningsDate, null);
+        }
 
         Signal signal = new Signal
         {
@@ -55,7 +94,10 @@ public sealed class SignalGenerator
             List<PriceBar> priceHistory = _marketData.GetHistoricalPrices(symbol, 90).ToList();
             if (priceHistory.Count < 30)
             {
-                _logger?.LogWarning("Insufficient price history for {Symbol}", symbol);
+                if (_logger != null)
+                {
+                    LogInsufficientPriceHistory(_logger, symbol, null);
+                }
                 signal.Strength = SignalStrength.Avoid;
                 return signal;
             }
@@ -67,7 +109,10 @@ public sealed class SignalGenerator
             OptionChain optionChain = _marketData.GetOptionChain(symbol, evaluationDate);
             if (optionChain.Expiries.Count == 0)
             {
-                _logger?.LogWarning("No option data available for {Symbol}", symbol);
+                if (_logger != null)
+                {
+                    LogNoOptionData(_logger, symbol, null);
+                }
                 signal.Strength = SignalStrength.Avoid;
                 return signal;
             }
@@ -76,7 +121,10 @@ public sealed class SignalGenerator
             List<TermStructurePoint> termPoints = ExtractTermStructurePoints(optionChain, evaluationDate);
             if (termPoints.Count < 2)
             {
-                _logger?.LogWarning("Insufficient term structure points for {Symbol}", symbol);
+                if (_logger != null)
+                {
+                    LogInsufficientTermStructure(_logger, symbol, null);
+                }
                 signal.Strength = SignalStrength.Avoid;
                 return signal;
             }
@@ -107,13 +155,17 @@ public sealed class SignalGenerator
 
             signal.EvaluateStrength();
 
-            _logger?.LogInformation(
-                "Signal generated for {Symbol}: {Strength} (IV/RV={IvRv:F2}, Slope={Slope:F5}, Volume={Volume})",
-                symbol, signal.Strength, signal.IVRVRatio, signal.TermStructureSlope, signal.AverageVolume);
+            if (_logger != null)
+            {
+                LogSignalGenerated(_logger, symbol, signal.Strength, signal.IVRVRatio, signal.TermStructureSlope, signal.AverageVolume, null);
+            }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            _logger?.LogError("Error generating signal for {Symbol}", symbol);
+            if (_logger != null)
+            {
+                LogErrorGeneratingSignal(_logger, symbol, ex);
+            }
             throw;
         }
 

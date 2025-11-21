@@ -17,6 +17,31 @@ public sealed class Control
     private readonly KellyPositionSizer _positionSizer;
     private readonly ILogger<Control>? _logger;
 
+    // LoggerMessage delegates
+    private static readonly Action<ILogger, string, DateTime, Exception?> LogEvaluatingOpportunity =
+        LoggerMessage.Define<string, DateTime>(
+            LogLevel.Information,
+            new EventId(1, nameof(LogEvaluatingOpportunity)),
+            "Evaluating opportunity for {Symbol} with earnings on {EarningsDate}");
+
+    private static readonly Action<ILogger, string, Exception?> LogSignalAvoid =
+        LoggerMessage.Define<string>(
+            LogLevel.Information,
+            new EventId(2, nameof(LogSignalAvoid)),
+            "Signal strength is Avoid for {Symbol}, skipping");
+
+    private static readonly Action<ILogger, string, SignalStrength, int, double, Exception?> LogOpportunityEvaluated =
+        LoggerMessage.Define<string, SignalStrength, int, double>(
+            LogLevel.Information,
+            new EventId(3, nameof(LogOpportunityEvaluated)),
+            "Opportunity evaluated for {Symbol}: Signal={Strength}, Contracts={Contracts}, Cost={Cost:C}");
+
+    private static readonly Action<ILogger, string, Exception?> LogErrorEvaluatingOpportunity =
+        LoggerMessage.Define<string>(
+            LogLevel.Error,
+            new EventId(4, nameof(LogErrorEvaluatingOpportunity)),
+            "Error evaluating opportunity for {Symbol}");
+
     public Control(
         SignalGenerator signalGenerator,
         IOptionPricingEngine pricingEngine,
@@ -41,8 +66,10 @@ public sealed class Control
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(symbol);
 
-        _logger?.LogInformation("Evaluating opportunity for {Symbol} with earnings on {EarningsDate}",
-            symbol, earningsDate);
+        if (_logger != null)
+        {
+            LogEvaluatingOpportunity(_logger, symbol, earningsDate, null);
+        }
 
         TradingOpportunity opportunity = new TradingOpportunity
         {
@@ -59,7 +86,10 @@ public sealed class Control
 
             if (signal.Strength == SignalStrength.Avoid)
             {
-                _logger?.LogInformation("Signal strength is Avoid for {Symbol}, skipping", symbol);
+                if (_logger != null)
+                {
+                    LogSignalAvoid(_logger, symbol, null);
+                }
                 return opportunity;
             }
 
@@ -76,13 +106,17 @@ public sealed class Control
                 signal);
             opportunity.PositionSize = positionSize;
 
-            _logger?.LogInformation(
-                "Opportunity evaluated for {Symbol}: Signal={Strength}, Contracts={Contracts}, Cost={Cost:C}",
-                symbol, signal.Strength, positionSize.Contracts, spreadPricing.SpreadCost);
+            if (_logger != null)
+            {
+                LogOpportunityEvaluated(_logger, symbol, signal.Strength, positionSize.Contracts, spreadPricing.SpreadCost, null);
+            }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            _logger?.LogError("Error evaluating opportunity for {Symbol}", symbol);
+            if (_logger != null)
+            {
+                LogErrorEvaluatingOpportunity(_logger, symbol, ex);
+            }
             throw;
         }
 

@@ -10,6 +10,38 @@ namespace Alaris.Strategy.Risk;
 public sealed class KellyPositionSizer
 {
     private readonly ILogger<KellyPositionSizer>? _logger;
+
+    // LoggerMessage delegates
+    private static readonly Action<ILogger, int, Exception?> LogInsufficientTradeHistory =
+        LoggerMessage.Define<int>(
+            LogLevel.Warning,
+            new EventId(1, nameof(LogInsufficientTradeHistory)),
+            "Insufficient trade history ({Count} trades), using minimum position size");
+
+    private static readonly Action<ILogger, double, Exception?> LogInvalidWinRate =
+        LoggerMessage.Define<double>(
+            LogLevel.Warning,
+            new EventId(2, nameof(LogInvalidWinRate)),
+            "Invalid win rate {WinRate:P2}, using minimum position size");
+
+    private static readonly Action<ILogger, Exception?> LogInvalidAverageWinLoss =
+        LoggerMessage.Define(
+            LogLevel.Warning,
+            new EventId(3, nameof(LogInvalidAverageWinLoss)),
+            "Invalid average win/loss, using minimum position size");
+
+    private static readonly Action<ILogger, string, int, double, double, Exception?> LogPositionCalculated =
+        LoggerMessage.Define<string, int, double, double>(
+            LogLevel.Information,
+            new EventId(4, nameof(LogPositionCalculated)),
+            "Position calculated for {Symbol}: {Contracts} contracts, {Allocation:P2} allocation (Kelly={Kelly:P2})");
+
+    private static readonly Action<ILogger, string, Exception?> LogErrorCalculatingPosition =
+        LoggerMessage.Define<string>(
+            LogLevel.Error,
+            new EventId(5, nameof(LogErrorCalculatingPosition)),
+            "Error calculating position size for {Symbol}");
+
     private const double FractionalKelly = 0.25; // Use 25% of full Kelly for safety
     private const double MaxAllocation = 0.06;   // Cap at 6% of portfolio
     private const double ContractMultiplier = 100.0;
@@ -51,8 +83,10 @@ public sealed class KellyPositionSizer
         // Need sufficient trade history for meaningful statistics
         if (historicalTrades.Count < 20)
         {
-            _logger?.LogWarning("Insufficient trade history ({Count} trades), using minimum position size",
-                historicalTrades.Count);
+            if (_logger != null)
+            {
+                LogInsufficientTradeHistory(_logger, historicalTrades.Count, null);
+            }
             return GetMinimumPosition(portfolioValue, spreadCost);
         }
 
@@ -67,7 +101,10 @@ public sealed class KellyPositionSizer
 
             if (winRate <= 0 || winRate >= 1)
             {
-                _logger?.LogWarning("Invalid win rate {WinRate:P2}, using minimum position size", winRate);
+                if (_logger != null)
+                {
+                    LogInvalidWinRate(_logger, winRate, null);
+                }
                 return GetMinimumPosition(portfolioValue, spreadCost);
             }
 
@@ -77,7 +114,10 @@ public sealed class KellyPositionSizer
 
             if (avgWin <= 0 || avgLoss <= 0)
             {
-                _logger?.LogWarning("Invalid average win/loss, using minimum position size");
+                if (_logger != null)
+                {
+                    LogInvalidAverageWinLoss(_logger, null);
+                }
                 return GetMinimumPosition(portfolioValue, spreadCost);
             }
 
@@ -106,15 +146,19 @@ public sealed class KellyPositionSizer
             positionSize.ExpectedProfitPerContract = avgWin;
             positionSize.KellyFraction = fullKellyPercent;
 
-            _logger?.LogInformation(
-                "Position calculated for {Symbol}: {Contracts} contracts, {Allocation:P2} allocation (Kelly={Kelly:P2})",
-                signal.Symbol, positionSize.Contracts, allocationPercent, fullKellyPercent);
+            if (_logger != null)
+            {
+                LogPositionCalculated(_logger, signal.Symbol, positionSize.Contracts, allocationPercent, fullKellyPercent, null);
+            }
 
             return positionSize;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            _logger?.LogError("Error calculating position size for {Symbol}", signal.Symbol);
+            if (_logger != null)
+            {
+                LogErrorCalculatingPosition(_logger, signal.Symbol, ex);
+            }
             throw;
         }
     }
