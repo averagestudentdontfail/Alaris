@@ -169,10 +169,11 @@ public class DoubleBoundaryValidationTest
         (lowerImproved || lowerPreserved).Should().BeTrue(
             "refinement should improve or preserve lower boundary accuracy");
 
-        // Ensure refinement didn't degrade the solution
-        upperError.Should().BeLessOrEqualTo(initialUpperError,
+        // Ensure refinement didn't degrade the solution (allow 1e-10 tolerance for floating point)
+        const double floatingPointTolerance = 1e-10;
+        (upperError - initialUpperError).Should().BeLessThanOrEqualTo(floatingPointTolerance,
             "refinement should not degrade upper boundary");
-        lowerError.Should().BeLessOrEqualTo(initialLowerError,
+        (lowerError - initialLowerError).Should().BeLessThanOrEqualTo(floatingPointTolerance,
             "refinement should not degrade lower boundary");
     }
     
