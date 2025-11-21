@@ -1,0 +1,103 @@
+# Alaris CI Pipeline
+# Enforces High-Integrity Coding Standard (v1.2) via Roslyn analyzers
+#
+# This workflow:
+# 1. Builds with TreatWarningsAsErrors to catch all analyzer violations
+# 2. Runs full test suite
+# 3. Validates compliance with LOC rules
+
+name: CI
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+
+env:
+  DOTNET_VERSION: '9.0.x'
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build (with analyzers)
+        run: dotnet build --no-restore --configuration Release
+        env:
+          # Enable CI-specific build settings from Directory.Build.props
+          CI: true
+
+      - name: Run tests
+        run: dotnet test --no-build --configuration Release --verbosity normal
+
+  analyze:
+    name: Static Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Run analyzers (format check)
+        run: dotnet format --verify-no-changes --verbosity diagnostic
+        continue-on-error: true
+
+      - name: Build with all analyzers
+        run: |
+          dotnet build --configuration Release \
+            /p:EnforceCodeStyleInBuild=true \
+            /p:TreatWarningsAsErrors=true \
+            /p:AnalysisLevel=latest-all \
+            /p:AnalysisMode=All
+
+  compliance-report:
+    name: Compliance Check
+    runs-on: ubuntu-latest
+    needs: [build-and-test]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check LOC compliance documentation
+        run: |
+          echo "=== High-Integrity Coding Standard Compliance ==="
+          echo ""
+          echo "Checking .compliance directory..."
+          if [ -d ".compliance" ]; then
+            echo "Compliance documentation found:"
+            ls -la .compliance/
+          else
+            echo "Warning: .compliance directory not found"
+          fi
+          echo ""
+          echo "=== Build enforces these rules via Roslyn analyzers ==="
+          echo "- LOC-1 Rule 2: Zero Warnings (TreatWarningsAsErrors=true)"
+          echo "- LOC-3 Rule 7: Null Safety (Nullable=enable + CS86xx errors)"
+          echo "- LOC-3 Rule 9: Guard Clauses (CA1062)"
+          echo "- LOC-3 Rule 10: Specific Exceptions (CA1031=error)"
+          echo "- LOC-4 Rule 13: Small Functions (CA1502 complexity check)"
+          echo "- LOC-5 Rule 16: Deterministic Cleanup (CA2000, CA2213=error)"

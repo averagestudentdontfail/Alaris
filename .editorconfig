@@ -243,6 +243,128 @@ dotnet_diagnostic.CA1824.severity = suggestion
 # CA1825: Avoid zero-length array allocations (Rule 5: Zero-Allocation)
 dotnet_diagnostic.CA1825.severity = warning
 
+# CA1826: Do not use Enumerable methods on indexable collections (Rule 5: Zero-Allocation)
+dotnet_diagnostic.CA1826.severity = warning
+
+# CA1827: Do not use Count() or LongCount() when Any() can be used (Rule 5: Zero-Allocation)
+dotnet_diagnostic.CA1827.severity = warning
+
+# CA1828: Do not use CountAsync() or LongCountAsync() when AnyAsync() can be used
+dotnet_diagnostic.CA1828.severity = warning
+
+# CA1829: Use Length/Count property instead of Count() (Rule 5: Zero-Allocation)
+dotnet_diagnostic.CA1829.severity = warning
+
+# CA1830: Prefer strongly-typed Append/Insert on StringBuilder (Rule 5: Zero-Allocation)
+dotnet_diagnostic.CA1830.severity = warning
+
+# CA1832: Use AsSpan or AsMemory instead of Range-based indexers (Rule 5: Zero-Allocation)
+dotnet_diagnostic.CA1832.severity = warning
+
+# CA1833: Use AsSpan or AsMemory instead of Range-based indexers (Rule 5: Zero-Allocation)
+dotnet_diagnostic.CA1833.severity = warning
+
+# CA1834: Consider using StringBuilder.Append(char) (Rule 5: Zero-Allocation)
+dotnet_diagnostic.CA1834.severity = warning
+
+# CA1835: Prefer Memory-based overloads for ReadAsync/WriteAsync (Rule 5: Zero-Allocation)
+dotnet_diagnostic.CA1835.severity = warning
+
+# CA1836: Prefer IsEmpty over Count (Rule 5: Zero-Allocation)
+dotnet_diagnostic.CA1836.severity = warning
+
+# CA1837: Use Environment.ProcessId (Rule 5: Zero-Allocation)
+dotnet_diagnostic.CA1837.severity = suggestion
+
+# CA1838: Avoid StringBuilder parameters for P/Invokes
+dotnet_diagnostic.CA1838.severity = warning
+
+# CA1839: Use Environment.ProcessPath
+dotnet_diagnostic.CA1839.severity = suggestion
+
+# CA1840: Use Environment.CurrentManagedThreadId
+dotnet_diagnostic.CA1840.severity = suggestion
+
+# CA1841: Prefer Dictionary.Contains methods
+dotnet_diagnostic.CA1841.severity = warning
+
+# CA1842: Do not use WhenAll with a single task
+dotnet_diagnostic.CA1842.severity = warning
+
+# CA1843: Do not use WaitAll with a single task
+dotnet_diagnostic.CA1843.severity = warning
+
+# CA1844: Provide memory-based overrides of async methods
+dotnet_diagnostic.CA1844.severity = suggestion
+
+# CA1845: Use span-based string.Concat (Rule 5: Zero-Allocation)
+dotnet_diagnostic.CA1845.severity = warning
+
+# CA1846: Prefer AsSpan over Substring (Rule 5: Zero-Allocation)
+dotnet_diagnostic.CA1846.severity = warning
+
+# CA1847: Use char literal for single char search (Rule 5: Zero-Allocation)
+dotnet_diagnostic.CA1847.severity = warning
+
+# CA1848: Use LoggerMessage delegates (Rule 5: Zero-Allocation in logging)
+dotnet_diagnostic.CA1848.severity = suggestion
+
+# CA1849: Call async methods when in async method
+dotnet_diagnostic.CA1849.severity = warning
+
+# CA1850: Prefer static HashData method over ComputeHash
+dotnet_diagnostic.CA1850.severity = suggestion
+
+# CA1851: Possible multiple enumerations of IEnumerable (Rule 5: Zero-Allocation)
+dotnet_diagnostic.CA1851.severity = warning
+
+# CA1852: Seal internal types (Rule 8: Limited Scope)
+dotnet_diagnostic.CA1852.severity = suggestion
+
+# CA1853: Unnecessary call to Dictionary.ContainsKey
+dotnet_diagnostic.CA1853.severity = warning
+
+# CA1854: Prefer IDictionary.TryGetValue
+dotnet_diagnostic.CA1854.severity = warning
+
+# CA1855: Prefer Clear over Fill
+dotnet_diagnostic.CA1855.severity = suggestion
+
+# CA1858: Use StartsWith instead of IndexOf
+dotnet_diagnostic.CA1858.severity = warning
+
+# CA1859: Use concrete types for better perf
+dotnet_diagnostic.CA1859.severity = suggestion
+
+# CA1860: Avoid using Enumerable.Any() extension method
+dotnet_diagnostic.CA1860.severity = warning
+
+# CA1861: Avoid constant arrays as arguments
+dotnet_diagnostic.CA1861.severity = warning
+
+# CA1862: Use StringComparison method overloads
+dotnet_diagnostic.CA1862.severity = warning
+
+# CA1863: Use char overload
+dotnet_diagnostic.CA1863.severity = warning
+
+# CA1864: Prefer IDictionary.TryAdd(TKey, TValue)
+dotnet_diagnostic.CA1864.severity = warning
+
+# CA1865-CA1867: Use char overload
+dotnet_diagnostic.CA1865.severity = warning
+dotnet_diagnostic.CA1866.severity = warning
+dotnet_diagnostic.CA1867.severity = warning
+
+# CA1868: Unnecessary call to Contains for sets
+dotnet_diagnostic.CA1868.severity = warning
+
+# CA1869: Cache and reuse JsonSerializerOptions
+dotnet_diagnostic.CA1869.severity = warning
+
+# CA1870: Use a cached SearchValues instance
+dotnet_diagnostic.CA1870.severity = warning
+
 ###########################################
 # Design
 ###########################################
