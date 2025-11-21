@@ -1,5 +1,5 @@
 # Alaris CI Pipeline
-# Enforces High-Integrity Coding Standard (v1.2) via Roslyn analyzers
+# Enforces High-Integrity Coding Standard (v1.2) via Roslyn analysers
 #
 # This workflow:
 # 1. Builds with TreatWarningsAsErrors to catch all analyzer violations
