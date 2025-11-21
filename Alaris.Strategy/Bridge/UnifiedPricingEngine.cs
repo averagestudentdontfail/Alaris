@@ -19,6 +19,37 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
     private readonly ILogger<UnifiedPricingEngine>? _logger;
     private bool _disposed;
 
+    // LoggerMessage delegates
+    private static readonly Action<ILogger, double, double, double, double, double, double, string, PricingRegime, Exception?> LogPricingOption =
+        LoggerMessage.Define<double, double, double, double, double, double, string, PricingRegime>(
+            LogLevel.Debug,
+            new EventId(1, nameof(LogPricingOption)),
+            "Pricing option: S={S}, K={K}, r={R}, q={Q}, σ={Sigma}, T={T:F4}, Type={Type}, Regime={Regime}");
+
+    private static readonly Action<ILogger, PricingRegime, string, double, int, int, Exception?> LogPricingCalendarSpread =
+        LoggerMessage.Define<PricingRegime, string, double, int, int>(
+            LogLevel.Information,
+            new EventId(2, nameof(LogPricingCalendarSpread)),
+            "Pricing calendar spread: Regime={Regime}, Type={Type}, Strike={Strike}, Front={FrontDte}, Back={BackDte}");
+
+    private static readonly Action<ILogger, int, double, Exception?> LogImpliedVolatilityConverged =
+        LoggerMessage.Define<int, double>(
+            LogLevel.Debug,
+            new EventId(3, nameof(LogImpliedVolatilityConverged)),
+            "Implied volatility calculation converged in {Iterations} iterations: IV={Iv:F4}");
+
+    private static readonly Action<ILogger, Exception?> LogErrorPricingQuantlib =
+        LoggerMessage.Define(
+            LogLevel.Error,
+            new EventId(4, nameof(LogErrorPricingQuantlib)),
+            "Error pricing option with Quantlib");
+
+    private static readonly Action<ILogger, Exception?> LogErrorPricingDouble =
+        LoggerMessage.Define(
+            LogLevel.Error,
+            new EventId(5, nameof(LogErrorPricingDouble)),
+            "Error pricing option with Alaris.Double Healy (2021) framework");
+
     // Constants for numerical calculations
     private const double BumpSize = 0.0001; // 1 basis point for finite differences
     private const double VolBumpSize = 0.01; // 1% volatility bump for vega
@@ -80,13 +111,13 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
         bool isCall = parameters.OptionType == Option.Type.Call;
         PricingRegime regime = DetermineRegime(parameters.RiskFreeRate, parameters.DividendYield, isCall);
 
-        _logger?.LogDebug(
-            "Pricing option: S={S}, K={K}, r={R}, q={Q}, σ={Sigma}, T={T:F4}, Type={Type}, Regime={Regime}",
-            parameters.UnderlyingPrice, parameters.Strike, parameters.RiskFreeRate,
-            parameters.DividendYield, parameters.ImpliedVolatility,
-            CalculateTimeToExpiry(parameters.ValuationDate, parameters.Expiry),
-            isCall ? "Call" : "Put",
-            regime);
+        if (_logger != null)
+        {
+            LogPricingOption(_logger, parameters.UnderlyingPrice, parameters.Strike, parameters.RiskFreeRate,
+                parameters.DividendYield, parameters.ImpliedVolatility,
+                CalculateTimeToExpiry(parameters.ValuationDate, parameters.Expiry),
+                isCall ? "Call" : "Put", regime, null);
+        }
 
         return regime switch
         {
@@ -108,13 +139,12 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
         bool isCall = parameters.OptionType == Option.Type.Call;
         PricingRegime regime = DetermineRegime(parameters.RiskFreeRate, parameters.DividendYield, isCall);
 
-        _logger?.LogInformation(
-            "Pricing calendar spread: Regime={Regime}, Type={Type}, Strike={Strike}, Front={FrontDte}, Back={BackDte}",
-            regime,
-            isCall ? "Call" : "Put",
-            parameters.Strike,
-            CalculateDaysToExpiry(parameters.ValuationDate, parameters.FrontExpiry),
-            CalculateDaysToExpiry(parameters.ValuationDate, parameters.BackExpiry));
+        if (_logger != null)
+        {
+            LogPricingCalendarSpread(_logger, regime, isCall ? "Call" : "Put", parameters.Strike,
+                CalculateDaysToExpiry(parameters.ValuationDate, parameters.FrontExpiry),
+                CalculateDaysToExpiry(parameters.ValuationDate, parameters.BackExpiry), null);
+        }
 
         // Price front month (short position)
         OptionParameters frontParams = new OptionParameters
@@ -236,9 +266,10 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
             iterations++;
         }
 
-        _logger?.LogDebug(
-            "Implied volatility calculation converged in {Iterations} iterations: IV={Iv:F4}",
-            iterations, volMid);
+        if (_logger != null)
+        {
+            LogImpliedVolatilityConverged(_logger, iterations, volMid, null);
+        }
 
         return volMid;
     }
@@ -344,7 +375,10 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Error pricing option with Quantlib");
+                if (_logger != null)
+                {
+                    LogErrorPricingQuantlib(_logger, ex);
+                }
                 throw;
             }
         });
@@ -402,7 +436,10 @@ public sealed class UnifiedPricingEngine : IOptionPricingEngine, IDisposable
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Error pricing option with Alaris.Double Healy (2021) framework");
+                if (_logger != null)
+                {
+                    LogErrorPricingDouble(_logger, ex);
+                }
                 throw;
             }
         });
