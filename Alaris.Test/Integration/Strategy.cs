@@ -490,7 +490,7 @@ internal class MockMarketDataProvider : IMarketDataProvider
         return chain;
     }
 
-    public List<PriceBar> GetHistoricalPrices(string symbol, int days)
+    public IReadOnlyList<PriceBar> GetHistoricalPrices(string symbol, int days)
     {
         var bars = new List<PriceBar>();
         var random = new Random(42);
@@ -521,9 +521,9 @@ internal class MockMarketDataProvider : IMarketDataProvider
 
     public double GetCurrentPrice(string symbol) => 150.0;
 
-    public Task<List<DateTime>> GetEarningsDates(string symbol)
+    public Task<IReadOnlyList<DateTime>> GetEarningsDates(string symbol)
     {
-        return Task.FromResult(new List<DateTime> { DateTime.Today.AddDays(7) });
+        return Task.FromResult<IReadOnlyList<DateTime>>(new List<DateTime> { DateTime.Today.AddDays(7) });
     }
 
     public Task<bool> IsDataAvailable(string symbol)
