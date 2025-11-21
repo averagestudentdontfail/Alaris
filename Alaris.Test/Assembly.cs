@@ -62,6 +62,8 @@ internal static class Assembly
     /// <summary>
     /// Attempts to load a native library, trying multiple possible file names.
     /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031:Do not catch general exception types",
+        Justification = "Native library loading must handle all platform-specific exceptions")]
     private static void LoadLibrary(string directory, params string[] fileNames)
     {
         foreach (string fileName in fileNames)
