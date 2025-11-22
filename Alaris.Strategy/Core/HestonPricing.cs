@@ -197,9 +197,10 @@ public static class HestonPricing
         double b = j == 1 ? kappa - (rho * sigmaV) : kappa;
 
         // Complex components
+        // Note: i*phi*(i*phi + 1) = -phi^2 + i*phi, so the second term should have -phi^2
         Complex d_h = Complex.Sqrt(
             (((rho * sigmaV * i * phi) - b) * ((rho * sigmaV * i * phi) - b)) +
-            (sigmaV * sigmaV * ((i * phi) + (phi * phi))));
+            (sigmaV * sigmaV * ((i * phi) - (phi * phi))));
 
         Complex g = (b - (rho * sigmaV * i * phi) - d_h) /
                     (b - (rho * sigmaV * i * phi) + d_h);
