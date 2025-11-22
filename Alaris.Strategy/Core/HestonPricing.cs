@@ -11,10 +11,10 @@ namespace Alaris.Strategy.Core;
 /// then backs out implied volatility using Newton-Raphson iteration.
 ///
 /// References:
-/// - Heston (1993) "A Closed-Form Solution for Options with Stochastic Volatility"
-/// - Carr & Madan (1999) "Option Valuation Using the Fast Fourier Transform"
-/// - Lewis (2001) "A Simple Option Formula for General Jump-Diffusion and Other
-///   Exponential Levy Processes"
+/// Heston (1993) "A Closed-Form Solution for Options with Stochastic Volatility"
+/// Carr and Madan (1999) "Option Valuation Using the Fast Fourier Transform"
+/// Lewis (2001) "A Simple Option Formula for General Jump-Diffusion and Other
+/// Exponential Levy Processes"
 /// </summary>
 public static class HestonPricing
 {
@@ -156,7 +156,7 @@ public static class HestonPricing
         }
 
         // Numerical integration from 0 to infinity
-        var (integralValue, _) = AdaptiveIntegration.IntegrateToInfinity(
+        (double integralValue, double _) = AdaptiveIntegration.IntegrateToInfinity(
             phi => Integrand(phi).Real,
             0,
             absoluteTolerance: 1e-6,
@@ -194,7 +194,7 @@ public static class HestonPricing
 
         // Complex components
         Complex d_h = Complex.Sqrt(
-            (rho * sigmaV * i * phi - b) * (rho * sigmaV * i * phi - b) +
+            ((rho * sigmaV * i * phi) - b) * ((rho * sigmaV * i * phi) - b) +
             (sigmaV * sigmaV * ((i * phi) + (phi * phi))));
 
         Complex g = (b - (rho * sigmaV * i * phi) - d_h) /
@@ -202,10 +202,10 @@ public static class HestonPricing
 
         Complex exp_dt = Complex.Exp(-d_h * timeToExpiry);
 
-        Complex C = (r - d) * i * phi * timeToExpiry +
-                    (kappa * theta / (sigmaV * sigmaV)) *
-                    (((b - (rho * sigmaV * i * phi) - d_h) * timeToExpiry) -
-                     (2 * Complex.Log((1 - (g * exp_dt)) / (1 - g))));
+        Complex C = ((r - d) * i * phi * timeToExpiry) +
+                    ((kappa * theta) / (sigmaV * sigmaV)) *
+                    ((((b - (rho * sigmaV * i * phi)) - d_h) * timeToExpiry) -
+                     2 * Complex.Log((1 - (g * exp_dt)) / (1 - g)));
 
         Complex D = (b - (rho * sigmaV * i * phi) - d_h) / (sigmaV * sigmaV) *
                     ((1 - exp_dt) / (1 - (g * exp_dt)));
@@ -228,7 +228,7 @@ public static class HestonPricing
         bool isCall)
     {
         double d1 = (Math.Log(spot / strike) +
-                    (riskFreeRate - dividendYield + 0.5 * volatility * volatility) * timeToExpiry) /
+                    ((riskFreeRate - dividendYield + (0.5 * volatility * volatility)) * timeToExpiry)) /
                    (volatility * Math.Sqrt(timeToExpiry));
         double d2 = d1 - (volatility * Math.Sqrt(timeToExpiry));
 
@@ -257,7 +257,7 @@ public static class HestonPricing
         double volatility)
     {
         double d1 = (Math.Log(spot / strike) +
-                    (riskFreeRate - dividendYield + 0.5 * volatility * volatility) * timeToExpiry) /
+                    ((riskFreeRate - dividendYield + (0.5 * volatility * volatility)) * timeToExpiry)) /
                    (volatility * Math.Sqrt(timeToExpiry));
 
         double forward = spot * Math.Exp(-dividendYield * timeToExpiry);
@@ -336,7 +336,7 @@ public static class HestonPricing
         x = Math.Abs(x);
 
         double t = 1.0 / (1.0 + (p * x));
-        double y = 1.0 - ((((((a5 * t) + a4) * t) + a3) * t + a2) * t + a1) * t * Math.Exp(-x * x);
+        double y = 1.0 - (((((((a5 * t) + a4) * t) + a3) * t) + a2) * t) + a1) * t * Math.Exp(-x * x);
 
         return sign * y;
     }

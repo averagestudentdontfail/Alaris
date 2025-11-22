@@ -11,15 +11,15 @@ namespace Alaris.Strategy.Core.Numerical;
 /// - Robust for calibrating jump-diffusion models
 ///
 /// References:
-/// - Storn & Price (1997) "Differential Evolution - A Simple and Efficient Heuristic
-///   for Global Optimization over Continuous Spaces"
+/// Storn and Price (1997) "Differential Evolution - A Simple and Efficient Heuristic
+/// for Global Optimization over Continuous Spaces"
 /// </summary>
 public sealed class DifferentialEvolutionOptimizer
 {
     /// <summary>
-    /// Population size (typically 10 * dimension).
+    /// Population size (typically 10 * dimension). 0 means auto-select.
     /// </summary>
-    public int PopulationSize { get; set; } = 0; // 0 means auto-select
+    public int PopulationSize { get; set; }
 
     /// <summary>
     /// Maximum number of generations.
@@ -74,18 +74,22 @@ public sealed class DifferentialEvolutionOptimizer
         // Auto-select population size if not specified
         int popSize = PopulationSize > 0 ? PopulationSize : 10 * dimension;
 
+        // CA5394: Random is acceptable for optimization algorithms (no security context)
+#pragma warning disable CA5394
         Random rng = RandomSeed.HasValue ? new Random(RandomSeed.Value) : new Random();
+#pragma warning restore CA5394
 
         // Initialize population randomly
-        double[,] population = new double[popSize, dimension];
+        double[][] population = new double[popSize][];
         double[] fitness = new double[popSize];
 
         for (int i = 0; i < popSize; i++)
         {
+            population[i] = new double[dimension];
             for (int j = 0; j < dimension; j++)
             {
-                population[i, j] = lowerBounds[j] +
-                    rng.NextDouble() * (upperBounds[j] - lowerBounds[j]);
+                population[i][j] = lowerBounds[j] +
+                    (rng.NextDouble() * (upperBounds[j] - lowerBounds[j]));
             }
 
             fitness[i] = EvaluateIndividual(population, i, objective);
@@ -102,11 +106,13 @@ public sealed class DifferentialEvolutionOptimizer
 
         while (generation < MaxGenerations)
         {
-            double[,] newPopulation = new double[popSize, dimension];
+            double[][] newPopulation = new double[popSize][];
             double[] newFitness = new double[popSize];
 
             for (int i = 0; i < popSize; i++)
             {
+                newPopulation[i] = new double[dimension];
+
                 // Select three random distinct individuals (different from i)
                 int a = SelectRandomIndex(rng, popSize, i);
                 int b = SelectRandomIndex(rng, popSize, i, a);
@@ -116,8 +122,8 @@ public sealed class DifferentialEvolutionOptimizer
                 double[] mutant = new double[dimension];
                 for (int j = 0; j < dimension; j++)
                 {
-                    mutant[j] = population[a, j] +
-                        DifferentialWeight * (population[b, j] - population[c, j]);
+                    mutant[j] = population[a][j] +
+                        (DifferentialWeight * (population[b][j] - population[c][j]));
 
                     // Ensure bounds
                     mutant[j] = Math.Clamp(mutant[j], lowerBounds[j], upperBounds[j]);
@@ -135,7 +141,7 @@ public sealed class DifferentialEvolutionOptimizer
                     }
                     else
                     {
-                        trial[j] = population[i, j];
+                        trial[j] = population[i][j];
                     }
                 }
 
@@ -145,10 +151,7 @@ public sealed class DifferentialEvolutionOptimizer
                 if (trialFitness < fitness[i])
                 {
                     // Trial is better - accept it
-                    for (int j = 0; j < dimension; j++)
-                    {
-                        newPopulation[i, j] = trial[j];
-                    }
+                    newPopulation[i] = trial;
                     newFitness[i] = trialFitness;
 
                     // Update global best
@@ -162,10 +165,7 @@ public sealed class DifferentialEvolutionOptimizer
                 else
                 {
                     // Keep current individual
-                    for (int j = 0; j < dimension; j++)
-                    {
-                        newPopulation[i, j] = population[i, j];
-                    }
+                    newPopulation[i] = (double[])population[i].Clone();
                     newFitness[i] = fitness[i];
                 }
             }
@@ -195,26 +195,14 @@ public sealed class DifferentialEvolutionOptimizer
             OptimizationStatus.MaxIterationsReached);
     }
 
-    private static double EvaluateIndividual(double[,] population, int index, Func<double[], double> objective)
+    private static double EvaluateIndividual(double[][] population, int index, Func<double[], double> objective)
     {
-        int dimension = population.GetLength(1);
-        double[] individual = new double[dimension];
-        for (int j = 0; j < dimension; j++)
-        {
-            individual[j] = population[index, j];
-        }
-        return objective(individual);
+        return objective(population[index]);
     }
 
-    private static double[] GetIndividual(double[,] population, int index)
+    private static double[] GetIndividual(double[][] population, int index)
     {
-        int dimension = population.GetLength(1);
-        double[] individual = new double[dimension];
-        for (int j = 0; j < dimension; j++)
-        {
-            individual[j] = population[index, j];
-        }
-        return individual;
+        return (double[])population[index].Clone();
     }
 
     private static int FindMinIndex(double[] values)

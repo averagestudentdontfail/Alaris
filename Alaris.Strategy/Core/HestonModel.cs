@@ -417,9 +417,10 @@ public sealed class HestonModel
                     double modelIV = model.ComputeTheoreticalIV(spot, strike, timeToExpiry);
                     residuals[i] = modelIV - marketIV;
                 }
-                catch
+                catch (Exception)
                 {
-                    // Pricing failed - penalize heavily
+                    // Pricing can fail for many reasons during calibration (e.g., invalid parameters,
+                    // numerical instability, convergence issues). Penalize rather than failing the entire calibration.
                     residuals[i] = 10.0;
                 }
             }
@@ -428,7 +429,7 @@ public sealed class HestonModel
         }
 
         // Run optimization
-        var result = optimizer.Minimize(Residuals, initialGuess, lowerBounds, upperBounds);
+        OptimizationResult result = optimizer.Minimize(Residuals, initialGuess, lowerBounds, upperBounds);
 
         if (result.Converged)
         {
