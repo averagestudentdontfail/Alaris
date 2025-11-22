@@ -175,18 +175,35 @@ public sealed class HestonModel
 
     /// <summary>
     /// Computes theoretical implied volatility using characteristic function approach.
+    /// PRODUCTION VERSION: Uses full semi-analytical pricing with Fourier inversion
+    /// and Newton-Raphson IV solving.
+    /// </summary>
+    /// <param name="spot">Current spot price.</param>
+    /// <param name="strike">Strike price.</param>
+    /// <param name="timeToExpiry">Time to expiry in years.</param>
+    /// <returns>Implied volatility from Heston model.</returns>
+    public double ComputeTheoreticalIV(double spot, double strike, double timeToExpiry)
+    {
+        ValidateInputs(spot, strike, timeToExpiry);
+
+        // Production implementation: Full characteristic function integration
+        return HestonPricing.ComputeImpliedVolatility(spot, strike, timeToExpiry, _params);
+    }
+
+    /// <summary>
+    /// Computes theoretical implied volatility using moment-matching approximation.
+    /// LEGACY VERSION: Fast approximation for educational/comparison purposes.
+    /// For production use, prefer ComputeTheoreticalIV() which uses full pricing.
     /// </summary>
     /// <param name="spot">Current spot price.</param>
     /// <param name="strike">Strike price.</param>
     /// <param name="timeToExpiry">Time to expiry in years.</param>
     /// <returns>Approximate implied volatility.</returns>
-    public double ComputeTheoreticalIV(double spot, double strike, double timeToExpiry)
+    public double ComputeTheoreticalIVApproximate(double spot, double strike, double timeToExpiry)
     {
         ValidateInputs(spot, strike, timeToExpiry);
 
         // Use moment-matching approximation for efficiency
-        // Full characteristic function integration would be used in production
-
         double logMoneyness = Math.Log(strike / spot);
 
         // Expected total variance
@@ -321,7 +338,8 @@ public sealed class HestonModel
     }
 
     /// <summary>
-    /// Calibrates Heston parameters from market IV surface.
+    /// Calibrates Heston parameters from market IV surface using Levenberg-Marquardt optimization.
+    /// PRODUCTION VERSION: Uses nonlinear least squares optimization for accurate parameter estimation.
     /// </summary>
     public static HestonParameters Calibrate(
         double spot,
@@ -336,10 +354,115 @@ public sealed class HestonModel
             throw new ArgumentException("Need at least 5 market observations for calibration.", nameof(marketData));
         }
 
+        // Use Levenberg-Marquardt for production-grade calibration
+        var optimizer = new Numerical.LevenbergMarquardtOptimizer
+        {
+            MaxIterations = 200,
+            ParameterTolerance = 1e-8,
+            ObjectiveTolerance = 1e-8
+        };
+
+        // Parameter vector: [v0, theta, kappa, sigmaV, rho]
+        // Initial guess from ATM market data or defaults
+        double atmIV = marketData
+            .Where(x => Math.Abs(x.Strike - spot) / spot < 0.05)
+            .Select(x => x.MarketIV)
+            .DefaultIfEmpty(0.25)
+            .Average();
+
+        double[] initialGuess =
+        {
+            atmIV * atmIV,  // v0
+            atmIV * atmIV,  // theta
+            2.0,            // kappa
+            0.3,            // sigmaV
+            -0.7            // rho
+        };
+
+        // Parameter bounds
+        double[] lowerBounds = { 0.001, 0.001, 0.01, 0.01, -0.99 };
+        double[] upperBounds = { 2.0, 2.0, 10.0, 2.0, 0.99 };
+
+        // Residual function
+        double[] Residuals(double[] x)
+        {
+            HestonParameters candidateParams = new()
+            {
+                V0 = x[0],
+                Theta = x[1],
+                Kappa = x[2],
+                SigmaV = x[3],
+                Rho = x[4],
+                RiskFreeRate = riskFreeRate,
+                DividendYield = dividendYield
+            };
+
+            // Validate Feller condition and basic constraints
+            if (!candidateParams.Validate().IsValid)
+            {
+                // Return large residuals for invalid parameters
+                return Enumerable.Repeat(100.0, marketData.Count).ToArray();
+            }
+
+            HestonModel model = new(candidateParams);
+            double[] residuals = new double[marketData.Count];
+
+            for (int i = 0; i < marketData.Count; i++)
+            {
+                (double strike, int dte, double marketIV) = marketData[i];
+                double timeToExpiry = dte / 252.0;
+
+                try
+                {
+                    double modelIV = model.ComputeTheoreticalIV(spot, strike, timeToExpiry);
+                    residuals[i] = modelIV - marketIV;
+                }
+                catch
+                {
+                    // Pricing failed - penalize heavily
+                    residuals[i] = 10.0;
+                }
+            }
+
+            return residuals;
+        }
+
+        // Run optimization
+        var result = optimizer.Minimize(Residuals, initialGuess, lowerBounds, upperBounds);
+
+        if (result.Converged)
+        {
+            return new HestonParameters
+            {
+                V0 = result.OptimalParameters[0],
+                Theta = result.OptimalParameters[1],
+                Kappa = result.OptimalParameters[2],
+                SigmaV = result.OptimalParameters[3],
+                Rho = result.OptimalParameters[4],
+                RiskFreeRate = riskFreeRate,
+                DividendYield = dividendYield
+            };
+        }
+
+        // Fallback: Try grid search with coarse grid to find better initial guess
+        return CalibrateGridSearch(spot, marketData, riskFreeRate, dividendYield);
+    }
+
+    /// <summary>
+    /// Calibrates Heston parameters using grid search.
+    /// LEGACY VERSION: Used as fallback when LM optimization fails.
+    /// For production, prefer Calibrate() which uses Levenberg-Marquardt.
+    /// </summary>
+    private static HestonParameters CalibrateGridSearch(
+        double spot,
+        IReadOnlyList<(double Strike, int DTE, double MarketIV)> marketData,
+        double riskFreeRate,
+        double dividendYield)
+    {
         double bestError = double.MaxValue;
         HestonParameters? bestParams = null;
 
-        // Parameter grid (coarse grid for demo; use gradient descent in production)
+        // Parameter grid (coarse grid for demo)
         double[] v0s = { 0.02, 0.04, 0.06, 0.09 };
         double[] thetas = { 0.02, 0.04, 0.06 };
         double[] kappas = { 1.0, 2.0, 3.0, 5.0 };
