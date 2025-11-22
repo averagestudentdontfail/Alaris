@@ -300,7 +300,7 @@ public class IVModelTests
     public void HestonModel_ComputeTheoreticalIV_ATM_ReturnsReasonableValue()
     {
         // Arrange
-        var model = new HestonModel(HestonParameters.DefaultEquity);
+        var model = new Alaris.Strategy.Core.HestonModel(HestonParameters.DefaultEquity);
         double spot = 100;
         double strike = 100;
         double timeToExpiry = 30.0 / 252.0;
@@ -326,7 +326,7 @@ public class IVModelTests
             RiskFreeRate = 0.05,
             DividendYield = 0.02
         };
-        var model = new HestonModel(parameters);
+        var model = new Alaris.Strategy.Core.HestonModel(parameters);
         double spot = 100;
         double timeToExpiry = 30.0 / 252.0;
 
@@ -571,11 +571,13 @@ public class IVModelTests
     // ValidationResult Tests
     // ========================================================================
 
+    private static readonly string[] s_validationErrors = { "Error 1", "Error 2" };
+
     [Fact]
     public void ValidationResult_ThrowIfInvalid_InvalidResult_Throws()
     {
         // Arrange
-        var result = new ValidationResult(false, new[] { "Error 1", "Error 2" });
+        var result = new ValidationResult(false, s_validationErrors);
 
         // Act & Assert
         Action act = () => result.ThrowIfInvalid();
