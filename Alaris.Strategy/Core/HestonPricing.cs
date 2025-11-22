@@ -336,7 +336,7 @@ public static class HestonPricing
         x = Math.Abs(x);
 
         double t = 1.0 / (1.0 + (p * x));
-        double y = 1.0 - (((((((a5 * t) + a4) * t) + a3) * t) + a2) * t) + a1) * t * Math.Exp(-x * x);
+        double y = 1.0 - (((((a5 * t + a4) * t + a3) * t + a2) * t + a1) * t * Math.Exp(-x * x));
 
         return sign * y;
     }
