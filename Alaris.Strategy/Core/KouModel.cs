@@ -189,7 +189,10 @@ public sealed class KouModel
     /// </summary>
     private double ComputeJumpVariance(double timeToExpiry)
     {
-        if (_params.Lambda == 0) return 0;
+        if (_params.Lambda == 0)
+        {
+            return 0;
+        }
 
         // Second moment of log-jump: E[Y^2] where Y = log(V)
         // For double-exponential: E[Y^2] = 2*p/eta1^2 + 2*(1-p)/eta2^2
@@ -212,7 +215,10 @@ public sealed class KouModel
     /// </summary>
     private double ComputeSkewAdjustment(double logMoneyness, double timeToExpiry)
     {
-        if (_params.Lambda == 0) return 0;
+        if (_params.Lambda == 0)
+        {
+            return 0;
+        }
 
         // Skewness coefficient from jump distribution
         // Negative skew when downward jumps are larger/more frequent
@@ -221,7 +227,7 @@ public sealed class KouModel
         // Adjust IV based on moneyness and skewness
         // OTM puts (k < 0) have higher IV when skewness is negative
         double sqrtT = Math.Sqrt(timeToExpiry);
-        return ((-skewness * logMoneyness) / (6 * sqrtT)) * (_params.Lambda / 10);
+        return -skewness * logMoneyness / (6 * sqrtT) * (_params.Lambda / 10);
     }
 
     /// <summary>
@@ -237,7 +243,10 @@ public sealed class KouModel
         double variance = (2 * _params.P / (_params.Eta1 * _params.Eta1)) +
                           (2 * (1 - _params.P) / (_params.Eta2 * _params.Eta2));
 
-        if (variance <= 0) return 0;
+        if (variance <= 0)
+        {
+            return 0;
+        }
 
         return thirdMoment / Math.Pow(variance, 1.5);
     }
@@ -382,7 +391,7 @@ public sealed class KouModel
     {
         double totalError = 0;
 
-        foreach (var (strike, dte, marketIV) in marketData)
+        foreach ((double strike, int dte, double marketIV) in marketData)
         {
             double timeToExpiry = dte / 252.0;
             double modelIV = model.ComputeTheoreticalIV(spot, strike, timeToExpiry);
