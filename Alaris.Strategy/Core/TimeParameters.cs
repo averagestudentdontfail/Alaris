@@ -90,7 +90,7 @@ public sealed class TimeParameters
         DateTime expirationDate,
         DateTime? earningsDate = null)
     {
-        var constraints = TimeConstraints.Default;
+        TimeConstraints constraints = TimeConstraints.Default;
         return Create(valuationDate, expirationDate, earningsDate, constraints);
     }
 

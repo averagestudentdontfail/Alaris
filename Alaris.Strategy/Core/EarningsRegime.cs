@@ -189,7 +189,7 @@ public sealed class EarningsRegime
         double crushFactor = 1.0 - TransitionWeight;
         double crushAmount = (earningsIV - baseIV) * crushFactor;
 
-        return baseIV + crushAmount * (1 - TransitionWeight);
+        return baseIV + (crushAmount * (1 - TransitionWeight));
     }
 }
 

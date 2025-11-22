@@ -38,22 +38,22 @@ public sealed class IVModelSelector
         ArgumentNullException.ThrowIfNull(context);
 
         // Detect regime
-        var regime = context.Regime ?? EarningsRegime.Detect(context.TimeParams);
+        EarningsRegime regime = context.Regime ?? EarningsRegime.Detect(context.TimeParams);
 
         // Get candidate models based on regime
-        var candidates = GetCandidateModels(regime);
+        IReadOnlyList<RecommendedModel> candidates = GetCandidateModels(regime);
 
         // Evaluate each candidate
-        var evaluations = new List<ModelEvaluation>();
+        List<ModelEvaluation> evaluations = new();
 
-        foreach (var candidate in candidates)
+        foreach (RecommendedModel candidate in candidates)
         {
-            var evaluation = EvaluateModel(candidate, context, regime);
+            ModelEvaluation evaluation = EvaluateModel(candidate, context, regime);
             evaluations.Add(evaluation);
         }
 
         // Select best based on composite score
-        var best = evaluations
+        ModelEvaluation? best = evaluations
             .Where(e => e.MartingaleValid)
             .OrderBy(e => e.CompositeScore)
             .FirstOrDefault();
@@ -114,7 +114,7 @@ public sealed class IVModelSelector
         int complexity = GetModelComplexity(modelType);
 
         // Compute fit metrics
-        var fitMetrics = ComputeFitMetrics(modelType, context);
+        FitMetrics fitMetrics = ComputeFitMetrics(modelType, context);
 
         // Validate martingale condition
         bool martingaleValid = _martingaleValidator.Validate(modelType, context);
@@ -151,7 +151,7 @@ public sealed class IVModelSelector
             return FitMetrics.Default;
         }
 
-        var modelIVs = ComputeModelIVs(modelType, context);
+        IReadOnlyList<double> modelIVs = ComputeModelIVs(modelType, context);
 
         if (modelIVs.Count != context.MarketIVs.Count)
         {
@@ -179,7 +179,7 @@ public sealed class IVModelSelector
         // Compute R-squared
         double meanIV = context.MarketIVs.Average(x => x.IV);
         double totalSS = context.MarketIVs.Sum(x => (x.IV - meanIV) * (x.IV - meanIV));
-        double rSquared = totalSS > 0 ? 1 - sumSquaredError / totalSS : 0;
+        double rSquared = totalSS > 0 ? 1 - (sumSquaredError / totalSS) : 0;
 
         return new FitMetrics
         {
@@ -198,9 +198,12 @@ public sealed class IVModelSelector
         RecommendedModel modelType,
         ModelSelectionContext context)
     {
-        var result = new List<double>();
+        List<double> result = new();
 
-        if (context.MarketIVs == null) return result;
+        if (context.MarketIVs == null)
+        {
+            return result;
+        }
 
         foreach (var (strike, dte, _) in context.MarketIVs)
         {
@@ -253,8 +256,12 @@ public sealed class IVModelSelector
     /// </summary>
     private static double ComputeAIC(double mse, int k, int n)
     {
-        if (mse <= 0 || n <= 0) return double.MaxValue;
-        return n * Math.Log(mse) + 2 * k;
+        if (mse <= 0 || n <= 0)
+        {
+            return double.MaxValue;
+        }
+
+        return (n * Math.Log(mse)) + (2 * k);
     }
 
     /// <summary>
@@ -263,8 +270,12 @@ public sealed class IVModelSelector
     /// </summary>
     private static double ComputeBIC(double mse, int k, int n)
     {
-        if (mse <= 0 || n <= 0) return double.MaxValue;
-        return n * Math.Log(mse) + k * Math.Log(n);
+        if (mse <= 0 || n <= 0)
+        {
+            return double.MaxValue;
+        }
+
+        return (n * Math.Log(mse)) + (k * Math.Log(n));
     }
 
     /// <summary>
@@ -273,14 +284,16 @@ public sealed class IVModelSelector
     private static double ComputeCompositeScore(FitMetrics fit, double aic, bool martingaleValid)
     {
         // Weighted combination
-        double score = 0.4 * fit.RMSE * 100 +  // RMSE in percentage points
-                       0.3 * aic / 100 +        // Normalized AIC
-                       0.2 * (1 - fit.RSquared) + // R-squared penalty
-                       0.1 * fit.MaxError * 100;   // Maximum error
+        double score = (0.4 * fit.RMSE * 100) +  // RMSE in percentage points
+                       (0.3 * aic / 100) +        // Normalized AIC
+                       (0.2 * (1 - fit.RSquared)) + // R-squared penalty
+                       (0.1 * fit.MaxError * 100);   // Maximum error
 
         // Penalize martingale violation
         if (!martingaleValid)
+        {
             score += 10;
+        }
 
         return score;
     }
@@ -307,8 +320,13 @@ public sealed class MartingaleValidator
     /// <summary>
     /// Validates martingale condition for a model.
     /// </summary>
+    /// <param name="modelType">The model type to validate.</param>
+    /// <param name="context">The model selection context containing market data.</param>
+    /// <returns>True if the martingale condition is satisfied, false otherwise.</returns>
     public bool Validate(RecommendedModel modelType, ModelSelectionContext context)
     {
+        ArgumentNullException.ThrowIfNull(context);
+
         return modelType switch
         {
             RecommendedModel.BlackScholes => true, // Always satisfies by construction
@@ -320,7 +338,7 @@ public sealed class MartingaleValidator
     }
 
     /// <summary>
-    /// Validates L&S martingale condition.
+    /// Validates Leung and Santoli martingale condition.
     /// The model satisfies martingale by using the actual drift r-d.
     /// </summary>
     private static bool ValidateLeungSantoli(ModelSelectionContext context)
@@ -360,7 +378,7 @@ public sealed class MartingaleValidator
         double kappa = context.KouParams.ComputeKappa();
         double adjustedDrift = context.KouParams.ComputeMartingaleDrift();
         double expectedDrift = context.RiskFreeRate - context.DividendYield -
-                               context.KouParams.Lambda * kappa;
+                               (context.KouParams.Lambda * kappa);
 
         return Math.Abs(adjustedDrift - expectedDrift) < DriftTolerance;
     }
@@ -368,7 +386,7 @@ public sealed class MartingaleValidator
     /// <summary>
     /// Computes the jump compensation term for martingale adjustment.
     /// </summary>
-    public static double ComputeJumpCompensation(KouModel.Parameters kouParams)
+    public static double ComputeJumpCompensation(KouParameters kouParams)
     {
         ArgumentNullException.ThrowIfNull(kouParams);
         return kouParams.Lambda * kouParams.ComputeKappa();
@@ -418,12 +436,12 @@ public sealed class ModelSelectionContext
     /// <summary>
     /// Calibrated Heston parameters.
     /// </summary>
-    public HestonModel.Parameters? HestonParams { get; init; }
+    public HestonParameters? HestonParams { get; init; }
 
     /// <summary>
     /// Calibrated Kou parameters.
     /// </summary>
-    public KouModel.Parameters? KouParams { get; init; }
+    public KouParameters? KouParams { get; init; }
 
     /// <summary>
     /// Market IV observations for calibration.

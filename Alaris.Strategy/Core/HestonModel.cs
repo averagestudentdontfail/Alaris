@@ -3,6 +3,140 @@ using System.Numerics;
 namespace Alaris.Strategy.Core;
 
 /// <summary>
+/// Heston model parameters.
+/// </summary>
+public sealed class HestonParameters
+{
+    /// <summary>
+    /// Current instantaneous variance (V_0). Must be positive.
+    /// </summary>
+    public double V0 { get; init; }
+
+    /// <summary>
+    /// Long-run variance (theta). Must be positive.
+    /// </summary>
+    public double Theta { get; init; }
+
+    /// <summary>
+    /// Mean reversion speed (kappa). Must be positive.
+    /// </summary>
+    public double Kappa { get; init; }
+
+    /// <summary>
+    /// Volatility of volatility (sigma_v). Must be positive.
+    /// </summary>
+    public double SigmaV { get; init; }
+
+    /// <summary>
+    /// Correlation between stock and variance (rho). Must be in [-1, 1].
+    /// Typically negative for equities (leverage effect).
+    /// </summary>
+    public double Rho { get; init; }
+
+    /// <summary>
+    /// Risk-free rate.
+    /// </summary>
+    public double RiskFreeRate { get; init; }
+
+    /// <summary>
+    /// Dividend yield.
+    /// </summary>
+    public double DividendYield { get; init; }
+
+    /// <summary>
+    /// Validates parameters including Feller condition.
+    /// </summary>
+    public ValidationResult Validate()
+    {
+        List<string> errors = new();
+
+        if (V0 <= 0)
+        {
+            errors.Add("V0 (initial variance) must be positive.");
+        }
+
+        if (Theta <= 0)
+        {
+            errors.Add("Theta (long-run variance) must be positive.");
+        }
+
+        if (Kappa <= 0)
+        {
+            errors.Add("Kappa (mean reversion speed) must be positive.");
+        }
+
+        if (SigmaV <= 0)
+        {
+            errors.Add("SigmaV (vol-of-vol) must be positive.");
+        }
+
+        if (Rho < -1 || Rho > 1)
+        {
+            errors.Add("Rho (correlation) must be in [-1, 1].");
+        }
+
+        // Check Feller condition for variance positivity
+        if (!SatisfiesFellerCondition())
+        {
+            errors.Add($"Feller condition violated: 2*kappa*theta ({(2 * Kappa * Theta):F4}) must be > sigma_v^2 ({(SigmaV * SigmaV):F4}).");
+        }
+
+        return new ValidationResult(errors.Count == 0, errors);
+    }
+
+    /// <summary>
+    /// Checks if Feller condition is satisfied (ensures variance stays positive).
+    /// </summary>
+    public bool SatisfiesFellerCondition() =>
+        (2 * Kappa * Theta) > (SigmaV * SigmaV);
+
+    /// <summary>
+    /// Computes the expected variance at time t.
+    /// E[V_t] = theta + (V0 - theta) * exp(-kappa * t)
+    /// </summary>
+    public double ExpectedVariance(double t) =>
+        Theta + ((V0 - Theta) * Math.Exp(-Kappa * t));
+
+    /// <summary>
+    /// Computes the variance of variance at time t.
+    /// </summary>
+    public double VarianceOfVariance(double t)
+    {
+        double expKt = Math.Exp(-Kappa * t);
+        return (((V0 * SigmaV * SigmaV) / Kappa) * expKt * (1 - expKt)) +
+               (((Theta * SigmaV * SigmaV) / (2 * Kappa)) * (1 - expKt) * (1 - expKt));
+    }
+
+    /// <summary>
+    /// Default parameters calibrated to typical equity behavior.
+    /// </summary>
+    public static HestonParameters DefaultEquity => new()
+    {
+        V0 = 0.04,         // Initial variance (20% vol)
+        Theta = 0.04,      // Long-run variance (20% vol)
+        Kappa = 2.0,       // Mean reversion speed
+        SigmaV = 0.3,      // Vol-of-vol
+        Rho = -0.7,        // Negative correlation (leverage effect)
+        RiskFreeRate = 0.05,
+        DividendYield = 0.02
+    };
+
+    /// <summary>
+    /// Parameters for high volatility regime.
+    /// </summary>
+    public static HestonParameters HighVolRegime => new()
+    {
+        V0 = 0.09,         // Initial variance (30% vol)
+        Theta = 0.0625,    // Long-run variance (25% vol)
+        Kappa = 1.5,       // Slower reversion in crisis
+        SigmaV = 0.5,      // Higher vol-of-vol
+        Rho = -0.8,        // Stronger leverage
+        RiskFreeRate = 0.03,
+        DividendYield = 0.01
+    };
+}
+
+/// <summary>
 /// Implements the Heston (1993) stochastic volatility model for implied volatility.
 ///
 /// Stock price dynamics under risk-neutral measure Q:
@@ -30,131 +164,9 @@ namespace Alaris.Strategy.Core;
 /// </summary>
 public sealed class HestonModel
 {
-    /// <summary>
-    /// Heston model parameters.
-    /// </summary>
-    public sealed class Parameters
-    {
-        /// <summary>
-        /// Current instantaneous variance (V_0). Must be positive.
-        /// </summary>
-        public double V0 { get; init; }
+    private readonly HestonParameters _params;
 
-        /// <summary>
-        /// Long-run variance (theta). Must be positive.
-        /// </summary>
-        public double Theta { get; init; }
-
-        /// <summary>
-        /// Mean reversion speed (kappa). Must be positive.
-        /// </summary>
-        public double Kappa { get; init; }
-
-        /// <summary>
-        /// Volatility of volatility (sigma_v). Must be positive.
-        /// </summary>
-        public double SigmaV { get; init; }
-
-        /// <summary>
-        /// Correlation between stock and variance (rho). Must be in [-1, 1].
-        /// Typically negative for equities (leverage effect).
-        /// </summary>
-        public double Rho { get; init; }
-
-        /// <summary>
-        /// Risk-free rate.
-        /// </summary>
-        public double RiskFreeRate { get; init; }
-
-        /// <summary>
-        /// Dividend yield.
-        /// </summary>
-        public double DividendYield { get; init; }
-
-        /// <summary>
-        /// Validates parameters including Feller condition.
-        /// </summary>
-        public ValidationResult Validate()
-        {
-            var errors = new List<string>();
-
-            if (V0 <= 0)
-                errors.Add("V0 (initial variance) must be positive.");
-
-            if (Theta <= 0)
-                errors.Add("Theta (long-run variance) must be positive.");
-
-            if (Kappa <= 0)
-                errors.Add("Kappa (mean reversion speed) must be positive.");
-
-            if (SigmaV <= 0)
-                errors.Add("SigmaV (vol-of-vol) must be positive.");
-
-            if (Rho < -1 || Rho > 1)
-                errors.Add("Rho (correlation) must be in [-1, 1].");
-
-            // Check Feller condition for variance positivity
-            if (!SatisfiesFellerCondition())
-                errors.Add($"Feller condition violated: 2*kappa*theta ({2 * Kappa * Theta:F4}) must be > sigma_v^2 ({SigmaV * SigmaV:F4}).");
-
-            return new ValidationResult(errors.Count == 0, errors);
-        }
-
-        /// <summary>
-        /// Checks if Feller condition is satisfied (ensures variance stays positive).
-        /// </summary>
-        public bool SatisfiesFellerCondition() =>
-            2 * Kappa * Theta > SigmaV * SigmaV;
-
-        /// <summary>
-        /// Computes the expected variance at time t.
-        /// E[V_t] = theta + (V0 - theta) * exp(-kappa * t)
-        /// </summary>
-        public double ExpectedVariance(double t) =>
-            Theta + (V0 - Theta) * Math.Exp(-Kappa * t);
-
-        /// <summary>
-        /// Computes the variance of variance at time t.
-        /// </summary>
-        public double VarianceOfVariance(double t)
-        {
-            double expKt = Math.Exp(-Kappa * t);
-            return V0 * SigmaV * SigmaV / Kappa * expKt * (1 - expKt) +
-                   Theta * SigmaV * SigmaV / (2 * Kappa) * (1 - expKt) * (1 - expKt);
-        }
-
-        /// <summary>
-        /// Default parameters calibrated to typical equity behavior.
-        /// </summary>
-        public static Parameters DefaultEquity => new()
-        {
-            V0 = 0.04,         // Initial variance (20% vol)
-            Theta = 0.04,      // Long-run variance (20% vol)
-            Kappa = 2.0,       // Mean reversion speed
-            SigmaV = 0.3,      // Vol-of-vol
-            Rho = -0.7,        // Negative correlation (leverage effect)
-            RiskFreeRate = 0.05,
-            DividendYield = 0.02
-        };
-
-        /// <summary>
-        /// Parameters for high volatility regime.
-        /// </summary>
-        public static Parameters HighVolRegime => new()
-        {
-            V0 = 0.09,         // Initial variance (30% vol)
-            Theta = 0.0625,    // Long-run variance (25% vol)
-            Kappa = 1.5,       // Slower reversion in crisis
-            SigmaV = 0.5,      // Higher vol-of-vol
-            Rho = -0.8,        // Stronger leverage
-            RiskFreeRate = 0.03,
-            DividendYield = 0.01
-        };
-    }
-
-    private readonly Parameters _params;
-
-    public HestonModel(Parameters parameters)
+    public HestonModel(HestonParameters parameters)
     {
         ArgumentNullException.ThrowIfNull(parameters);
         parameters.Validate().ThrowIfInvalid();
@@ -198,8 +210,8 @@ public sealed class HestonModel
     {
         // E[int_0^T V_s ds] = theta*T + (V0 - theta)/kappa * (1 - exp(-kappa*T))
         double expKt = Math.Exp(-_params.Kappa * t);
-        return _params.Theta * t +
-               (_params.V0 - _params.Theta) / _params.Kappa * (1 - expKt);
+        return (_params.Theta * t) +
+               (((_params.V0 - _params.Theta) / _params.Kappa) * (1 - expKt));
     }
 
     /// <summary>
@@ -209,7 +221,7 @@ public sealed class HestonModel
     {
         // First-order approximation of skew from rho
         double sqrtV = Math.Sqrt(_params.V0);
-        return _params.Rho * _params.SigmaV * logMoneyness / (2 * sqrtV * timeToExpiry);
+        return (_params.Rho * _params.SigmaV * logMoneyness) / (2 * sqrtV * timeToExpiry);
     }
 
     /// <summary>
@@ -220,7 +232,7 @@ public sealed class HestonModel
         // Second-order approximation (smile curvature)
         double k2 = logMoneyness * logMoneyness;
         double sigmaV2 = _params.SigmaV * _params.SigmaV;
-        return sigmaV2 * k2 / (24 * _params.V0 * timeToExpiry);
+        return (sigmaV2 * k2) / (24 * _params.V0 * timeToExpiry);
     }
 
     /// <summary>
@@ -243,19 +255,19 @@ public sealed class HestonModel
         double d = _params.DividendYield;
 
         // Heston (1993) parameters
-        Complex xi = kappa - rho * sigmaV * i * u;
+        Complex xi = kappa - (rho * sigmaV * i * u);
         Complex d_h = Complex.Sqrt(
-            xi * xi + sigmaV * sigmaV * (i * u + u * u));
+            (xi * xi) + (sigmaV * sigmaV * ((i * u) + (u * u))));
 
         Complex g = (xi - d_h) / (xi + d_h);
         Complex exp_dt = Complex.Exp(-d_h * t);
 
-        Complex C = (r - d) * i * u * t +
-                    kappa * theta / (sigmaV * sigmaV) *
-                    ((xi - d_h) * t - 2 * Complex.Log((1 - g * exp_dt) / (1 - g)));
+        Complex C = ((r - d) * i * u * t) +
+                    ((kappa * theta) / (sigmaV * sigmaV)) *
+                    (((xi - d_h) * t) - (2 * Complex.Log((1 - (g * exp_dt)) / (1 - g))));
 
-        Complex D = (xi - d_h) / (sigmaV * sigmaV) *
-                    (1 - exp_dt) / (1 - g * exp_dt);
+        Complex D = ((xi - d_h) / (sigmaV * sigmaV)) *
+                    ((1 - exp_dt) / (1 - (g * exp_dt)));
 
         return Complex.Exp(C + D * v0);
     }
@@ -311,7 +323,7 @@ public sealed class HestonModel
     /// <summary>
     /// Calibrates Heston parameters from market IV surface.
     /// </summary>
-    public static Parameters Calibrate(
+    public static HestonParameters Calibrate(
         double spot,
         IReadOnlyList<(double Strike, int DTE, double MarketIV)> marketData,
         double riskFreeRate,
@@ -325,7 +337,7 @@ public sealed class HestonModel
         }
 
         double bestError = double.MaxValue;
-        Parameters? bestParams = null;
+        HestonParameters? bestParams = null;
 
         // Parameter grid (coarse grid for demo; use gradient descent in production)
         double[] v0s = { 0.02, 0.04, 0.06, 0.09 };
@@ -335,36 +347,46 @@ public sealed class HestonModel
         double[] rhos = { -0.9, -0.7, -0.5, -0.3 };
 
         foreach (double v0 in v0s)
-        foreach (double theta in thetas)
-        foreach (double kappa in kappas)
-        foreach (double sigmaV in sigmaVs)
-        foreach (double rho in rhos)
         {
-            var candidateParams = new Parameters
+            foreach (double theta in thetas)
             {
-                V0 = v0,
-                Theta = theta,
-                Kappa = kappa,
-                SigmaV = sigmaV,
-                Rho = rho,
-                RiskFreeRate = riskFreeRate,
-                DividendYield = dividendYield
-            };
+                foreach (double kappa in kappas)
+                {
+                    foreach (double sigmaV in sigmaVs)
+                    {
+                        foreach (double rho in rhos)
+                        {
+                            HestonParameters candidateParams = new()
+                            {
+                                V0 = v0,
+                                Theta = theta,
+                                Kappa = kappa,
+                                SigmaV = sigmaV,
+                                Rho = rho,
+                                RiskFreeRate = riskFreeRate,
+                                DividendYield = dividendYield
+                            };
 
-            if (!candidateParams.Validate().IsValid)
-                continue;
+                            if (!candidateParams.Validate().IsValid)
+                            {
+                                continue;
+                            }
 
-            var model = new HestonModel(candidateParams);
-            double error = ComputeCalibrationError(model, spot, marketData);
+                            HestonModel model = new(candidateParams);
+                            double error = ComputeCalibrationError(model, spot, marketData);
 
-            if (error < bestError)
-            {
-                bestError = error;
-                bestParams = candidateParams;
+                            if (error < bestError)
+                            {
+                                bestError = error;
+                                bestParams = candidateParams;
+                            }
+                        }
+                    }
+                }
             }
         }
 
-        return bestParams ?? Parameters.DefaultEquity;
+        return bestParams ?? HestonParameters.DefaultEquity;
     }
 
     private static double ComputeCalibrationError(
@@ -388,10 +410,18 @@ public sealed class HestonModel
     private static void ValidateInputs(double spot, double strike, double timeToExpiry)
     {
         if (spot <= 0)
+        {
             throw new ArgumentException("Spot price must be positive.", nameof(spot));
+        }
+
         if (strike <= 0)
+        {
             throw new ArgumentException("Strike price must be positive.", nameof(strike));
+        }
+
         if (timeToExpiry <= 0)
+        {
             throw new ArgumentException("Time to expiry must be positive.", nameof(timeToExpiry));
+        }
     }
 }
