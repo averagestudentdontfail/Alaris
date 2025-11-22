@@ -302,7 +302,7 @@ public class LeungSantoliModelTests
 
         // Assert - longer maturities should converge toward base volatility
         var longestMaturity = termStructure[^1];
-        longestMaturity.TheoreticalIV.Should().BeCloseTo(baseVol, 0.05,
+        longestMaturity.TheoreticalIV.Should().BeApproximately(baseVol, 0.05,
             "long-dated IV should converge to base volatility");
     }
 }
