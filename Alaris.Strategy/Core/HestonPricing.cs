@@ -197,10 +197,12 @@ public static class HestonPricing
         double b = j == 1 ? kappa - (rho * sigmaV) : kappa;
 
         // Complex components
-        // Note: i*phi*(i*phi + 1) = -phi^2 + i*phi, so the second term should have -phi^2
+        // Standard Heston: d = sqrt((ρσiφ - b)² - σ²iφ(iφ - 1))
+        // Since iφ(iφ - 1) = i²φ² - iφ = -φ² - iφ, we have:
+        // -σ²iφ(iφ - 1) = -σ²(-φ² - iφ) = σ²φ² + σ²iφ
         Complex d_h = Complex.Sqrt(
             (((rho * sigmaV * i * phi) - b) * ((rho * sigmaV * i * phi) - b)) +
-            (sigmaV * sigmaV * ((i * phi) - (phi * phi))));
+            (sigmaV * sigmaV * ((phi * phi) + (i * phi))));
 
         Complex g = (b - (rho * sigmaV * i * phi) - d_h) /
                     (b - (rho * sigmaV * i * phi) + d_h);
@@ -208,12 +210,12 @@ public static class HestonPricing
         Complex exp_dt = Complex.Exp(-d_h * timeToExpiry);
 
         Complex C = ((r - d) * i * phi * timeToExpiry) +
-                    (kappa * theta / (sigmaV * sigmaV) *
+                    (((kappa * theta) / (sigmaV * sigmaV)) *
                      (((b - (rho * sigmaV * i * phi) - d_h) * timeToExpiry) -
                       (2 * Complex.Log((1 - (g * exp_dt)) / (1 - g)))));
 
-        // 4. D term: Explicitly grouped the first division to resolve ambiguity.
-        Complex D = ((b - (rho * sigmaV * i * phi) - d_h) / (sigmaV * sigmaV) *
+        // D term
+        Complex D = (((b - (rho * sigmaV * i * phi) - d_h) / (sigmaV * sigmaV)) *
                      ((1 - exp_dt) / (1 - (g * exp_dt))));
 
         Complex charFunc = Complex.Exp(C + (D * v0) + (i * phi * Math.Log(spot)));
