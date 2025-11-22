@@ -166,25 +166,13 @@ public sealed class TimeParameters
     }
 
     /// <summary>
-    /// Calculates trading days between two dates (simple approximation).
-    /// For production, use a proper trading calendar.
+    /// Calculates trading days between two dates using production-grade trading calendar.
+    /// Excludes weekends and US market holidays.
     /// </summary>
     private static int CalculateTradingDays(DateTime start, DateTime end)
     {
-        // Simplified: count weekdays
-        int days = 0;
-        DateTime current = start;
-
-        while (current < end)
-        {
-            current = current.AddDays(1);
-            if (current.DayOfWeek != DayOfWeek.Saturday &&
-                current.DayOfWeek != DayOfWeek.Sunday)
-            {
-                days++;
-            }
-        }
-
+        // Production implementation: Use proper trading calendar with holiday awareness
+        int days = TradingCalendar.GetTradingDays(start, end, includeEndDate: false);
         return Math.Max(1, days); // Minimum 1 day
     }
 

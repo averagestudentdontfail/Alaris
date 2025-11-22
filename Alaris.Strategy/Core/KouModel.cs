@@ -153,13 +153,30 @@ public sealed class KouModel
 
     /// <summary>
     /// Computes the theoretical implied volatility at a given strike and time to expiry.
-    /// Uses moment-matching approximation for computational efficiency.
+    /// PRODUCTION VERSION: Uses full characteristic function integration and Fourier inversion.
+    /// </summary>
+    /// <param name="spot">Current spot price.</param>
+    /// <param name="strike">Strike price.</param>
+    /// <param name="timeToExpiry">Time to expiry in years.</param>
+    /// <returns>Implied volatility from Kou model.</returns>
+    public double ComputeTheoreticalIV(double spot, double strike, double timeToExpiry)
+    {
+        ValidateInputs(spot, strike, timeToExpiry);
+
+        // Production implementation: Full characteristic function integration
+        return KouPricing.ComputeImpliedVolatility(spot, strike, timeToExpiry, _params);
+    }
+
+    /// <summary>
+    /// Computes theoretical implied volatility using moment-matching approximation.
+    /// LEGACY VERSION: Fast approximation for educational/comparison purposes.
+    /// For production use, prefer ComputeTheoreticalIV() which uses full pricing.
     /// </summary>
     /// <param name="spot">Current spot price.</param>
     /// <param name="strike">Strike price.</param>
     /// <param name="timeToExpiry">Time to expiry in years.</param>
     /// <returns>Approximate implied volatility.</returns>
-    public double ComputeTheoreticalIV(double spot, double strike, double timeToExpiry)
+    public double ComputeTheoreticalIVApproximate(double spot, double strike, double timeToExpiry)
     {
         ValidateInputs(spot, strike, timeToExpiry);
 
@@ -308,8 +325,10 @@ public sealed class KouModel
     }
 
     /// <summary>
-    /// Calibrates Kou parameters from market IV surface.
-    /// Uses least-squares fitting with martingale constraint.
+    /// Calibrates Kou parameters from market IV surface using Differential Evolution.
+    /// PRODUCTION VERSION: Uses global optimization to handle non-convex parameter space.
+    /// Differential Evolution is particularly effective for jump-diffusion models due to
+    /// their multi-modal error surfaces.
     /// </summary>
     /// <param name="spot">Current spot price.</param>
     /// <param name="marketData">Market IV observations (strike, dte, iv).</param>
@@ -329,8 +348,100 @@ public sealed class KouModel
             throw new ArgumentException("Need at least 5 market observations for calibration.", nameof(marketData));
         }
 
-        // Grid search over parameter space
-        // In production, use more sophisticated optimization (Levenberg-Marquardt, differential evolution)
+        // Use Differential Evolution for production-grade global optimization
+        // Jump-diffusion models often have multi-modal error surfaces
+        var optimizer = new Numerical.DifferentialEvolutionOptimizer
+        {
+            MaxGenerations = 500,
+            PopulationSize = 50, // 10 * dimension (5 parameters)
+            DifferentialWeight = 0.8,
+            CrossoverProbability = 0.9,
+            Tolerance = 1e-6
+        };
+
+        // Parameter vector: [sigma, lambda, p, eta1, eta2]
+        // Parameter bounds
+        double[] lowerBounds = { 0.05, 0.0, 0.0, 1.01, 0.1 };
+        double[] upperBounds = { 1.0, 20.0, 1.0, 50.0, 50.0 };
+
+        // Objective function (mean squared error)
+        double Objective(double[] x)
+        {
+            KouParameters candidateParams = new()
+            {
+                Sigma = x[0],
+                Lambda = x[1],
+                P = x[2],
+                Eta1 = x[3],
+                Eta2 = x[4],
+                RiskFreeRate = riskFreeRate,
+                DividendYield = dividendYield
+            };
+
+            // Validate constraints
+            if (!candidateParams.Validate().IsValid)
+            {
+                return 1e10; // Large penalty for invalid parameters
+            }
+
+            KouModel model = new(candidateParams);
+
+            double sumSquaredError = 0;
+            int validCount = 0;
+
+            foreach ((double strike, int dte, double marketIV) in marketData)
+            {
+                double timeToExpiry = dte / 252.0;
+
+                try
+                {
+                    double modelIV = model.ComputeTheoreticalIV(spot, strike, timeToExpiry);
+                    double error = modelIV - marketIV;
+                    sumSquaredError += error * error;
+                    validCount++;
+                }
+                catch
+                {
+                    // Pricing failed - penalize
+                    sumSquaredError += 100.0;
+                }
+            }
+
+            return validCount > 0 ? sumSquaredError / validCount : 1e10;
+        }
+
+        // Run optimization
+        var result = optimizer.Minimize(Objective, lowerBounds, upperBounds);
+
+        if (result.Converged && result.OptimalValue < 1e9)
+        {
+            return new KouParameters
+            {
+                Sigma = result.OptimalParameters[0],
+                Lambda = result.OptimalParameters[1],
+                P = result.OptimalParameters[2],
+                Eta1 = result.OptimalParameters[3],
+                Eta2 = result.OptimalParameters[4],
+                RiskFreeRate = riskFreeRate,
+                DividendYield = dividendYield
+            };
+        }
+
+        // Fallback: Try grid search if DE fails
+        return CalibrateGridSearch(spot, marketData, riskFreeRate, dividendYield);
+    }
+
+    /// <summary>
+    /// Calibrates Kou parameters using grid search.
+    /// LEGACY VERSION: Used as fallback when Differential Evolution fails.
+    /// For production, prefer Calibrate() which uses Differential Evolution.
+    /// </summary>
+    private static KouParameters CalibrateGridSearch(
+        double spot,
+        IReadOnlyList<(double Strike, int DTE, double MarketIV)> marketData,
+        double riskFreeRate,
+        double dividendYield)
+    {
         double bestError = double.MaxValue;
         KouParameters? bestParams = null;
 
