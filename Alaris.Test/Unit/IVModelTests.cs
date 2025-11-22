@@ -102,7 +102,7 @@ public class IVModelTests
     public void KouModel_Parameters_Validate_ValidParameters_ReturnsValid()
     {
         // Arrange
-        var parameters = KouModel.Parameters.DefaultEquity;
+        var parameters = KouParameters.DefaultEquity;
 
         // Act
         var result = parameters.Validate();
@@ -115,7 +115,7 @@ public class IVModelTests
     public void KouModel_Parameters_Validate_InvalidEta1_ReturnsInvalid()
     {
         // Arrange - Eta1 must be > 1
-        var parameters = new KouModel.Parameters
+        var parameters = new KouParameters
         {
             Sigma = 0.20,
             Lambda = 3.0,
@@ -138,7 +138,7 @@ public class IVModelTests
     public void KouModel_ComputeKappa_ReturnsExpectedValue()
     {
         // Arrange
-        var parameters = new KouModel.Parameters
+        var parameters = new KouParameters
         {
             Sigma = 0.20,
             Lambda = 3.0,
@@ -161,7 +161,7 @@ public class IVModelTests
     public void KouModel_ComputeTheoreticalIV_ATM_ReturnsReasonableValue()
     {
         // Arrange
-        var parameters = KouModel.Parameters.DefaultEquity;
+        var parameters = KouParameters.DefaultEquity;
         var model = new KouModel(parameters);
         double spot = 100;
         double strike = 100; // ATM
@@ -174,11 +174,13 @@ public class IVModelTests
         iv.Should().BeGreaterThan(0.10).And.BeLessThan(0.50);
     }
 
+    private static readonly double[] s_smileStrikes = { 80, 90, 100, 110, 120 };
+
     [Fact]
     public void KouModel_ComputeSmile_ProducesSkew()
     {
         // Arrange
-        var parameters = new KouModel.Parameters
+        var parameters = new KouParameters
         {
             Sigma = 0.20,
             Lambda = 5.0,
@@ -190,11 +192,10 @@ public class IVModelTests
         };
         var model = new KouModel(parameters);
         double spot = 100;
-        double[] strikes = { 80, 90, 100, 110, 120 };
         double timeToExpiry = 30.0 / 252.0;
 
         // Act
-        var smile = model.ComputeSmile(spot, strikes, timeToExpiry);
+        var smile = model.ComputeSmile(spot, s_smileStrikes, timeToExpiry);
 
         // Assert - OTM puts (low strikes) should have higher IV due to negative skew
         smile.Should().HaveCount(5);
@@ -205,7 +206,7 @@ public class IVModelTests
     public void KouModel_ComputeTermStructure_ReturnsCorrectLength()
     {
         // Arrange
-        var model = new KouModel(KouModel.Parameters.DefaultEquity);
+        var model = new KouModel(KouParameters.DefaultEquity);
         int[] dtePoints = { 7, 14, 30, 60, 90 };
 
         // Act
@@ -223,7 +224,7 @@ public class IVModelTests
     public void HestonModel_Parameters_SatisfiesFellerCondition_ValidParams_ReturnsTrue()
     {
         // Arrange - 2 * kappa * theta > sigma_v^2
-        var parameters = new HestonModel.Parameters
+        var parameters = new HestonParameters
         {
             V0 = 0.04,
             Theta = 0.04,
@@ -242,7 +243,7 @@ public class IVModelTests
     public void HestonModel_Parameters_SatisfiesFellerCondition_InvalidParams_ReturnsFalse()
     {
         // Arrange - 2 * kappa * theta < sigma_v^2
-        var parameters = new HestonModel.Parameters
+        var parameters = new HestonParameters
         {
             V0 = 0.04,
             Theta = 0.02,
@@ -261,7 +262,7 @@ public class IVModelTests
     public void HestonModel_Parameters_Validate_FellerViolation_ReturnsInvalid()
     {
         // Arrange
-        var parameters = new HestonModel.Parameters
+        var parameters = new HestonParameters
         {
             V0 = 0.04,
             Theta = 0.02,
@@ -284,7 +285,7 @@ public class IVModelTests
     public void HestonModel_ExpectedVariance_ConvergesToTheta()
     {
         // Arrange
-        var parameters = HestonModel.Parameters.DefaultEquity;
+        var parameters = HestonParameters.DefaultEquity;
 
         // Act
         double v0 = parameters.ExpectedVariance(0);
@@ -299,7 +300,7 @@ public class IVModelTests
     public void HestonModel_ComputeTheoreticalIV_ATM_ReturnsReasonableValue()
     {
         // Arrange
-        var model = new HestonModel(HestonModel.Parameters.DefaultEquity);
+        var model = new HestonModel(HestonParameters.DefaultEquity);
         double spot = 100;
         double strike = 100;
         double timeToExpiry = 30.0 / 252.0;
@@ -315,7 +316,7 @@ public class IVModelTests
     public void HestonModel_ComputeSmile_WithNegativeRho_ProducesNegativeSkew()
     {
         // Arrange
-        var parameters = new HestonModel.Parameters
+        var parameters = new HestonParameters
         {
             V0 = 0.04,
             Theta = 0.04,
@@ -327,11 +328,10 @@ public class IVModelTests
         };
         var model = new HestonModel(parameters);
         double spot = 100;
-        double[] strikes = { 80, 90, 100, 110, 120 };
         double timeToExpiry = 30.0 / 252.0;
 
         // Act
-        var smile = model.ComputeSmile(spot, strikes, timeToExpiry);
+        var smile = model.ComputeSmile(spot, s_smileStrikes, timeToExpiry);
 
         // Assert
         smile.Should().HaveCount(5);
@@ -446,7 +446,7 @@ public class IVModelTests
     public void MartingaleValidator_ComputeJumpCompensation_ReturnsCorrectValue()
     {
         // Arrange
-        var kouParams = KouModel.Parameters.DefaultEquity;
+        var kouParams = KouParameters.DefaultEquity;
 
         // Act
         double compensation = MartingaleValidator.ComputeJumpCompensation(kouParams);
@@ -504,7 +504,7 @@ public class IVModelTests
             RiskFreeRate = 0.05,
             DividendYield = 0.02,
             TimeParams = timeParams,
-            HestonParams = HestonModel.Parameters.DefaultEquity
+            HestonParams = HestonParameters.DefaultEquity
         };
 
         // Act
@@ -539,7 +539,7 @@ public class IVModelTests
             RiskFreeRate = 0.05,
             DividendYield = 0.02,
             TimeParams = timeParams,
-            HestonParams = HestonModel.Parameters.DefaultEquity,
+            HestonParams = HestonParameters.DefaultEquity,
             MarketIVs = marketIVs
         };
 
