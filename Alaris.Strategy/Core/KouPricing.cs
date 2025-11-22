@@ -65,7 +65,8 @@ public static class KouPricing
             Complex iV = new Complex(0, v);
             Complex charFunc = CharacteristicFunction(v - ((alpha + 1) * Complex.ImaginaryOne), spot, timeToExpiry, @params);
 
-            Complex denominator = (alpha * alpha) + (alpha * iV) + (v * v);
+            // Carr-Madan denominator: α² + α - v² + i*v*(2α + 1)
+            Complex denominator = (alpha * alpha) + alpha - (v * v) + (iV * ((2 * alpha) + 1));
 
             return Complex.Exp(-iV * logStrike) * charFunc / denominator;
         }
