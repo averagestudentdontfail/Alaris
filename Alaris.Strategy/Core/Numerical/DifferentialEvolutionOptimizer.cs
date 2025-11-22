@@ -88,8 +88,10 @@ public sealed class DifferentialEvolutionOptimizer
             population[i] = new double[dimension];
             for (int j = 0; j < dimension; j++)
             {
+#pragma warning disable CA5394 // Random is acceptable for optimization algorithms (no security context)
                 population[i][j] = lowerBounds[j] +
                     (rng.NextDouble() * (upperBounds[j] - lowerBounds[j]));
+#pragma warning restore CA5394
             }
 
             fitness[i] = EvaluateIndividual(population, i, objective);
@@ -131,11 +133,15 @@ public sealed class DifferentialEvolutionOptimizer
 
                 // Crossover: create trial vector
                 double[] trial = new double[dimension];
+#pragma warning disable CA5394 // Random is acceptable for optimization algorithms (no security context)
                 int forcedIndex = rng.Next(dimension); // Ensure at least one parameter from mutant
+#pragma warning restore CA5394
 
                 for (int j = 0; j < dimension; j++)
                 {
+#pragma warning disable CA5394 // Random is acceptable for optimization algorithms (no security context)
                     if (rng.NextDouble() < CrossoverProbability || j == forcedIndex)
+#pragma warning restore CA5394
                     {
                         trial[j] = mutant[j];
                     }
@@ -224,7 +230,9 @@ public sealed class DifferentialEvolutionOptimizer
     {
         while (true)
         {
+#pragma warning disable CA5394 // Random is acceptable for optimization algorithms (no security context)
             int index = rng.Next(popSize);
+#pragma warning restore CA5394
             if (!exclude.Contains(index))
             {
                 return index;

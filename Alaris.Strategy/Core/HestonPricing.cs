@@ -194,7 +194,7 @@ public static class HestonPricing
 
         // Complex components
         Complex d_h = Complex.Sqrt(
-            ((rho * sigmaV * i * phi) - b) * ((rho * sigmaV * i * phi) - b) +
+            (((rho * sigmaV * i * phi) - b) * ((rho * sigmaV * i * phi) - b)) +
             (sigmaV * sigmaV * ((i * phi) + (phi * phi))));
 
         Complex g = (b - (rho * sigmaV * i * phi) - d_h) /
@@ -203,9 +203,9 @@ public static class HestonPricing
         Complex exp_dt = Complex.Exp(-d_h * timeToExpiry);
 
         Complex C = ((r - d) * i * phi * timeToExpiry) +
-                    ((kappa * theta) / (sigmaV * sigmaV)) *
-                    ((((b - (rho * sigmaV * i * phi)) - d_h) * timeToExpiry) -
-                     2 * Complex.Log((1 - (g * exp_dt)) / (1 - g)));
+                    (((kappa * theta) / (sigmaV * sigmaV)) *
+                    (((b - (rho * sigmaV * i * phi)) - d_h) * timeToExpiry -
+                     (2 * Complex.Log((1 - (g * exp_dt)) / (1 - g)))));
 
         Complex D = (b - (rho * sigmaV * i * phi) - d_h) / (sigmaV * sigmaV) *
                     ((1 - exp_dt) / (1 - (g * exp_dt)));
@@ -336,7 +336,7 @@ public static class HestonPricing
         x = Math.Abs(x);
 
         double t = 1.0 / (1.0 + (p * x));
-        double y = 1.0 - (((((a5 * t + a4) * t + a3) * t + a2) * t + a1) * t * Math.Exp(-x * x));
+        double y = 1.0 - ((((((a5 * t) + a4) * t) + a3) * t + a2) * t + a1) * t * Math.Exp(-x * x));
 
         return sign * y;
     }

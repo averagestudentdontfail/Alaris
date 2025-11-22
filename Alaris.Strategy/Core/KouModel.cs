@@ -1,3 +1,5 @@
+using Alaris.Strategy.Core.Numerical;
+
 namespace Alaris.Strategy.Core;
 
 /// <summary>
@@ -400,7 +402,9 @@ public sealed class KouModel
                     sumSquaredError += error * error;
                     validCount++;
                 }
+#pragma warning disable CA1031 // Do not catch general exception types
                 catch (Exception)
+#pragma warning restore CA1031
                 {
                     // Pricing can fail for many reasons during calibration (e.g., invalid parameters,
                     // numerical instability, convergence issues). Penalize rather than failing the entire calibration.

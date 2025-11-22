@@ -1,4 +1,5 @@
 using System.Numerics;
+using Alaris.Strategy.Core.Numerical;
 
 namespace Alaris.Strategy.Core;
 
@@ -417,7 +418,9 @@ public sealed class HestonModel
                     double modelIV = model.ComputeTheoreticalIV(spot, strike, timeToExpiry);
                     residuals[i] = modelIV - marketIV;
                 }
+#pragma warning disable CA1031 // Do not catch general exception types
                 catch (Exception)
+#pragma warning restore CA1031
                 {
                     // Pricing can fail for many reasons during calibration (e.g., invalid parameters,
                     // numerical instability, convergence issues). Penalize rather than failing the entire calibration.
