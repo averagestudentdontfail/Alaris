@@ -206,15 +206,14 @@ public static class HestonPricing
 
         Complex exp_dt = Complex.Exp(-d_h * timeToExpiry);
 
-        // Solved IDE0047/IDE0048: Removed redundant parentheses around the subtraction terms
-        // and log arguments while maintaining precedence clarity for the coefficients.
-        Complex C = ((r - d) * i * phi * timeToExpiry) +
-                    ((kappa * theta) / (sigmaV * sigmaV) *
-                     (((b - (rho * sigmaV * i * phi) - d_h) * timeToExpiry) -
-                      2 * Complex.Log((1 - g * exp_dt) / (1 - g))));
+        Complex C = (r - d) * i * phi * timeToExpiry +
+                    ((kappa * theta) / (sigmaV * sigmaV)) *
+                    ((b - rho * sigmaV * i * phi - d_h) * timeToExpiry -
+                     2 * Complex.Log((1 - g * exp_dt) / (1 - g)));
 
-        Complex D = (b - (rho * sigmaV * i * phi) - d_h) / (sigmaV * sigmaV) *
-                    ((1 - exp_dt) / (1 - (g * exp_dt)));
+        // 4. D term: Explicitly grouped the first division to resolve ambiguity.
+        Complex D = ((b - rho * sigmaV * i * phi - d_h) / (sigmaV * sigmaV)) *
+                    ((1 - exp_dt) / (1 - g * exp_dt));
 
         Complex charFunc = Complex.Exp(C + (D * v0) + (i * phi * Math.Log(spot)));
 
