@@ -103,8 +103,8 @@ public sealed class HestonParameters
     public double VarianceOfVariance(double t)
     {
         double expKt = Math.Exp(-Kappa * t);
-        return ((V0 * SigmaV * SigmaV / Kappa) * expKt * (1 - expKt)) +
-               ((Theta * SigmaV * SigmaV / (2 * Kappa)) * (1 - expKt) * (1 - expKt));
+        return (V0 * SigmaV * SigmaV / Kappa * expKt * (1 - expKt)) +
+               (Theta * SigmaV * SigmaV / (2 * Kappa) * (1 - expKt) * (1 - expKt));
     }
 
     /// <summary>
@@ -263,11 +263,11 @@ public sealed class HestonModel
         Complex exp_dt = Complex.Exp(-d_h * t);
 
         Complex C = ((r - d) * i * u * t) +
-                    ((kappa * theta / (sigmaV * sigmaV)) *
-                    (((xi - d_h) * t) - (2 * Complex.Log((1 - g * exp_dt) / (1 - g)))));
+                    (kappa * theta / (sigmaV * sigmaV) *
+                    (((xi - d_h) * t) - (2 * Complex.Log((1 - (g * exp_dt)) / (1 - g)))));
 
         Complex D = (xi - d_h) / (sigmaV * sigmaV) *
-                    ((1 - exp_dt) / (1 - g * exp_dt));
+                    ((1 - exp_dt) / (1 - (g * exp_dt)));
 
         return Complex.Exp(C + (D * v0));
     }
