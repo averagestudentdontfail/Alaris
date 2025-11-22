@@ -193,16 +193,16 @@ public static class HestonPricing
         double d = @params.DividendYield;
 
         // Parameters u_j and b_j depend on which probability we're computing
-        Complex u = j == 1 ? new Complex(0.5, phi) : new Complex(-0.5, phi);
+        double u = j == 1 ? 0.5 : -0.5;
         double b = j == 1 ? kappa - (rho * sigmaV) : kappa;
 
         // Complex components
-        // Standard Heston: d = sqrt((ρσiφ - b)² - σ²iφ(iφ - 1))
-        // Since iφ(iφ - 1) = i²φ² - iφ = -φ² - iφ, we have:
-        // -σ²iφ(iφ - 1) = -σ²(-φ² - iφ) = σ²φ² + σ²iφ
+        // Standard Heston: d = sqrt((ρσiφ - b)² - σ²(2*u*iφ - φ²))
+        // For j=1 (u=0.5): φ² - 2*0.5*iφ = φ² - iφ
+        // For j=2 (u=-0.5): φ² - 2*(-0.5)*iφ = φ² + iφ
         Complex d_h = Complex.Sqrt(
             (((rho * sigmaV * i * phi) - b) * ((rho * sigmaV * i * phi) - b)) +
-            (sigmaV * sigmaV * ((phi * phi) + (i * phi))));
+            (sigmaV * sigmaV * ((phi * phi) - (2 * u * i * phi))));
 
         Complex g = (b - (rho * sigmaV * i * phi) - d_h) /
                     (b - (rho * sigmaV * i * phi) + d_h);
