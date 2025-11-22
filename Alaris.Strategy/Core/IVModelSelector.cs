@@ -205,7 +205,7 @@ public sealed class IVModelSelector
             return result;
         }
 
-        foreach (var (strike, dte, _) in context.MarketIVs)
+        foreach ((double strike, int dte, double _) in context.MarketIVs)
         {
             double timeToExpiry = dte / 252.0;
             double modelIV = modelType switch
@@ -354,7 +354,10 @@ public sealed class MartingaleValidator
     /// </summary>
     private static bool ValidateHeston(ModelSelectionContext context)
     {
-        if (context.HestonParams == null) return true;
+        if (context.HestonParams == null)
+        {
+            return true;
+        }
 
         // Heston uses drift = r - d by construction
         // Martingale requires: E[S_T / B_T] = S_0 / B_0
@@ -372,7 +375,10 @@ public sealed class MartingaleValidator
     /// </summary>
     private static bool ValidateKou(ModelSelectionContext context)
     {
-        if (context.KouParams == null) return true;
+        if (context.KouParams == null)
+        {
+            return true;
+        }
 
         // Check that drift is properly compensated
         double kappa = context.KouParams.ComputeKappa();
@@ -429,7 +435,7 @@ public sealed class ModelSelectionContext
     public EarningsRegime? Regime { get; init; }
 
     /// <summary>
-    /// Calibrated earnings jump volatility (for L&S model).
+    /// Calibrated earnings jump volatility (for L&amp;S model).
     /// </summary>
     public double? EarningsJumpVolatility { get; init; }
 

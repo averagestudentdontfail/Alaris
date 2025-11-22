@@ -103,8 +103,8 @@ public sealed class HestonParameters
     public double VarianceOfVariance(double t)
     {
         double expKt = Math.Exp(-Kappa * t);
-        return (((V0 * SigmaV * SigmaV) / Kappa) * expKt * (1 - expKt)) +
-               (((Theta * SigmaV * SigmaV) / (2 * Kappa)) * (1 - expKt) * (1 - expKt));
+        return ((V0 * SigmaV * SigmaV / Kappa) * expKt * (1 - expKt)) +
+               ((Theta * SigmaV * SigmaV / (2 * Kappa)) * (1 - expKt) * (1 - expKt));
     }
 
     /// <summary>
@@ -211,7 +211,7 @@ public sealed class HestonModel
         // E[int_0^T V_s ds] = theta*T + (V0 - theta)/kappa * (1 - exp(-kappa*T))
         double expKt = Math.Exp(-_params.Kappa * t);
         return (_params.Theta * t) +
-               (((_params.V0 - _params.Theta) / _params.Kappa) * (1 - expKt));
+               ((_params.V0 - _params.Theta) / _params.Kappa * (1 - expKt));
     }
 
     /// <summary>
@@ -221,7 +221,7 @@ public sealed class HestonModel
     {
         // First-order approximation of skew from rho
         double sqrtV = Math.Sqrt(_params.V0);
-        return (_params.Rho * _params.SigmaV * logMoneyness) / (2 * sqrtV * timeToExpiry);
+        return _params.Rho * _params.SigmaV * logMoneyness / (2 * sqrtV * timeToExpiry);
     }
 
     /// <summary>
@@ -232,7 +232,7 @@ public sealed class HestonModel
         // Second-order approximation (smile curvature)
         double k2 = logMoneyness * logMoneyness;
         double sigmaV2 = _params.SigmaV * _params.SigmaV;
-        return (sigmaV2 * k2) / (24 * _params.V0 * timeToExpiry);
+        return sigmaV2 * k2 / (24 * _params.V0 * timeToExpiry);
     }
 
     /// <summary>
@@ -263,13 +263,13 @@ public sealed class HestonModel
         Complex exp_dt = Complex.Exp(-d_h * t);
 
         Complex C = ((r - d) * i * u * t) +
-                    ((kappa * theta) / (sigmaV * sigmaV)) *
-                    (((xi - d_h) * t) - (2 * Complex.Log((1 - (g * exp_dt)) / (1 - g))));
+                    ((kappa * theta / (sigmaV * sigmaV)) *
+                    (((xi - d_h) * t) - (2 * Complex.Log((1 - g * exp_dt) / (1 - g)))));
 
-        Complex D = ((xi - d_h) / (sigmaV * sigmaV)) *
-                    ((1 - exp_dt) / (1 - (g * exp_dt)));
+        Complex D = (xi - d_h) / (sigmaV * sigmaV) *
+                    ((1 - exp_dt) / (1 - g * exp_dt));
 
-        return Complex.Exp(C + D * v0);
+        return Complex.Exp(C + (D * v0));
     }
 
     /// <summary>
@@ -396,7 +396,7 @@ public sealed class HestonModel
     {
         double totalError = 0;
 
-        foreach (var (strike, dte, marketIV) in marketData)
+        foreach ((double strike, int dte, double marketIV) in marketData)
         {
             double timeToExpiry = dte / 252.0;
             double modelIV = model.ComputeTheoreticalIV(spot, strike, timeToExpiry);
