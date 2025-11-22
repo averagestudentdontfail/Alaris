@@ -143,7 +143,8 @@ public static class HestonPricing
         double logMoneyness = Math.Log(spot / strike);
 
         // Integrate characteristic function
-        // P_j = 0.5 + (1/pi) * integral from 0 to inf of Re[(exp(-i*phi*log(K)) * f_j(phi)) / (i*phi)]
+        // P_j = 0.5 + (1/pi) * integral from 0 to inf of Re[(exp(i*phi*log(S/K)) * f_j(phi)) / (i*phi)]
+        // where f_j is the characteristic function of the log-return
 
         Complex Integrand(double phi)
         {
@@ -154,7 +155,7 @@ public static class HestonPricing
 
             Complex iPhi = new Complex(0, phi);
             Complex charFunc = CharacteristicFunction(phi, spot, timeToExpiry, @params, j);
-            Complex exponent = Complex.Exp(-iPhi * logMoneyness);
+            Complex exponent = Complex.Exp(iPhi * logMoneyness);
 
             return (exponent * charFunc / iPhi).Real;
         }
@@ -218,7 +219,8 @@ public static class HestonPricing
         Complex D = ((b - (rho * sigmaV * i * phi) - d_h) / (sigmaV * sigmaV) *
                      ((1 - exp_dt) / (1 - (g * exp_dt))));
 
-        Complex charFunc = Complex.Exp(C + (D * v0) + (i * phi * Math.Log(spot)));
+        // Characteristic function of log-return ln(S_T/S_0), not ln(S_T)
+        Complex charFunc = Complex.Exp(C + (D * v0));
 
         return charFunc;
     }
