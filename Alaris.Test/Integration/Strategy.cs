@@ -526,6 +526,16 @@ internal class MockMarketDataProvider : IMarketDataProvider
         return Task.FromResult<IReadOnlyList<DateTime>>(new List<DateTime> { DateTime.Today.AddDays(7) });
     }
 
+    public Task<IReadOnlyList<DateTime>> GetHistoricalEarningsDates(string symbol, int lookbackQuarters = 12)
+    {
+        var historicalDates = new List<DateTime>();
+        for (int i = 0; i < lookbackQuarters; i++)
+        {
+            historicalDates.Add(DateTime.Today.AddDays(-90 * (i + 1)));
+        }
+        return Task.FromResult<IReadOnlyList<DateTime>>(historicalDates);
+    }
+
     public Task<bool> IsDataAvailable(string symbol)
     {
         return Task.FromResult(true);
