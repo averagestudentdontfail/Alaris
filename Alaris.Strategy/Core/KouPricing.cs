@@ -165,11 +165,12 @@ public static class KouPricing
         double r = @params.RiskFreeRate;
         double d = @params.DividendYield;
 
-        // Compute kappa for martingale correction
-        double kappa = @params.ComputeKappa();
+        // Martingale correction: kappa = E[e^Y - 1] = E[e^Y] - 1
+        // For double exponential: E[e^Y] = p*eta1/(eta1-1) + (1-p)*eta2/(eta2+1)
+        double kappa = (p * eta1 / (eta1 - 1)) + ((1 - p) * eta2 / (eta2 + 1)) - 1.0;
 
-        // Characteristic exponent
-        // psi(u) = (r - d - lambda*kappa - 0.5*sigma^2)*i*u - 0.5*sigma^2*u^2 + lambda*jump_transform
+        // Characteristic exponent with martingale drift correction
+        // psi(u) = (r - d - 0.5*sigma^2 - lambda*kappa)*i*u - 0.5*sigma^2*u^2 + lambda*jump_transform
         Complex diffusionTerm = ((r - d - (lambda * kappa)) * i * u) - (0.5 * sigma * sigma * u * (u + i));
 
         // Jump transform: E[exp(i*u*Y)] where Y = log(V)
