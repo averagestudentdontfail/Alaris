@@ -96,10 +96,10 @@ public sealed class LevenbergMarquardtOptimizer
         while (iterations < MaxIterations)
         {
             // Compute Jacobian numerically
-            double[,] jacobian = ComputeJacobian(residuals, x, r, lowerBounds, upperBounds);
+            double[][] jacobian = ComputeJacobian(residuals, x, r, lowerBounds, upperBounds);
 
             // Compute J^T * J (Hessian approximation) and J^T * r (gradient)
-            double[,] jTj = MatrixMultiplyTranspose(jacobian);
+            double[][] jTj = MatrixMultiplyTranspose(jacobian);
             double[] jTr = MatrixVectorMultiplyTranspose(jacobian, r);
 
             // Compute gradient norm for convergence check
@@ -110,10 +110,15 @@ public sealed class LevenbergMarquardtOptimizer
             }
 
             // LM step: solve (J^T*J + lambda*diag(J^T*J)) * delta = -J^T*r
-            double[,] lhs = (double[,])jTj.Clone();
+            double[][] lhs = new double[n][];
             for (int i = 0; i < n; i++)
             {
-                lhs[i, i] += lambda * Math.Max(jTj[i, i], 1e-10); // Regularization
+                lhs[i] = new double[n];
+                for (int j = 0; j < n; j++)
+                {
+                    lhs[i][j] = jTj[i][j];
+                }
+                lhs[i][i] += lambda * Math.Max(jTj[i][i], 1e-10); // Regularization
             }
 
             double[]? delta = SolveLinearSystem(lhs, jTr);
@@ -182,7 +187,7 @@ public sealed class LevenbergMarquardtOptimizer
     /// <summary>
     /// Computes the Jacobian matrix numerically using forward differences.
     /// </summary>
-    private double[,] ComputeJacobian(
+    private double[][] ComputeJacobian(
         Func<double[], double[]> residuals,
         double[] x,
         double[] r0,
@@ -191,7 +196,11 @@ public sealed class LevenbergMarquardtOptimizer
     {
         int m = r0.Length;
         int n = x.Length;
-        double[,] jacobian = new double[m, n];
+        double[][] jacobian = new double[m][];
+        for (int i = 0; i < m; i++)
+        {
+            jacobian[i] = new double[n];
+        }
 
         double[] xPerturbed = (double[])x.Clone();
 
@@ -222,7 +231,7 @@ public sealed class LevenbergMarquardtOptimizer
 
             for (int i = 0; i < m; i++)
             {
-                jacobian[i, j] = (rPerturbed[i] - r0[i]) / h;
+                jacobian[i][j] = (rPerturbed[i] - r0[i]) / h;
             }
 
             xPerturbed[j] = originalValue;
@@ -241,11 +250,15 @@ public sealed class LevenbergMarquardtOptimizer
         return 0.5 * sum;
     }
 
-    private static double[,] MatrixMultiplyTranspose(double[,] a)
+    private static double[][] MatrixMultiplyTranspose(double[][] a)
     {
-        int m = a.GetLength(0);
-        int n = a.GetLength(1);
-        double[,] result = new double[n, n];
+        int m = a.Length;
+        int n = a[0].Length;
+        double[][] result = new double[n][];
+        for (int i = 0; i < n; i++)
+        {
+            result[i] = new double[n];
+        }
 
         for (int i = 0; i < n; i++)
         {
@@ -254,19 +267,19 @@ public sealed class LevenbergMarquardtOptimizer
                 double sum = 0;
                 for (int k = 0; k < m; k++)
                 {
-                    sum += a[k, i] * a[k, j];
+                    sum += a[k][i] * a[k][j];
                 }
-                result[i, j] = sum;
+                result[i][j] = sum;
             }
         }
 
         return result;
     }
 
-    private static double[] MatrixVectorMultiplyTranspose(double[,] a, double[] v)
+    private static double[] MatrixVectorMultiplyTranspose(double[][] a, double[] v)
     {
-        int m = a.GetLength(0);
-        int n = a.GetLength(1);
+        int m = a.Length;
+        int n = a[0].Length;
         double[] result = new double[n];
 
         for (int i = 0; i < n; i++)
@@ -274,7 +287,7 @@ public sealed class LevenbergMarquardtOptimizer
             double sum = 0;
             for (int j = 0; j < m; j++)
             {
-                sum += a[j, i] * v[j];
+                sum += a[j][i] * v[j];
             }
             result[i] = sum;
         }
@@ -295,19 +308,23 @@ public sealed class LevenbergMarquardtOptimizer
     /// <summary>
     /// Solves linear system Ax = b using Gaussian elimination with partial pivoting.
     /// </summary>
-    private static double[]? SolveLinearSystem(double[,] a, double[] b)
+    private static double[]? SolveLinearSystem(double[][] a, double[] b)
     {
         int n = b.Length;
-        double[,] augmented = new double[n, n + 1];
+        double[][] augmented = new double[n][];
+        for (int i = 0; i < n; i++)
+        {
+            augmented[i] = new double[n + 1];
+        }
 
         // Create augmented matrix
         for (int i = 0; i < n; i++)
         {
             for (int j = 0; j < n; j++)
             {
-                augmented[i, j] = a[i, j];
+                augmented[i][j] = a[i][j];
             }
-            augmented[i, n] = b[i];
+            augmented[i][n] = b[i];
         }
 
         // Forward elimination with partial pivoting
@@ -315,12 +332,12 @@ public sealed class LevenbergMarquardtOptimizer
         {
             // Find pivot
             int pivotRow = k;
-            double maxPivot = Math.Abs(augmented[k, k]);
+            double maxPivot = Math.Abs(augmented[k][k]);
             for (int i = k + 1; i < n; i++)
             {
-                if (Math.Abs(augmented[i, k]) > maxPivot)
+                if (Math.Abs(augmented[i][k]) > maxPivot)
                 {
-                    maxPivot = Math.Abs(augmented[i, k]);
+                    maxPivot = Math.Abs(augmented[i][k]);
                     pivotRow = i;
                 }
             }
@@ -335,17 +352,17 @@ public sealed class LevenbergMarquardtOptimizer
             {
                 for (int j = 0; j <= n; j++)
                 {
-                    (augmented[k, j], augmented[pivotRow, j]) = (augmented[pivotRow, j], augmented[k, j]);
+                    (augmented[k][j], augmented[pivotRow][j]) = (augmented[pivotRow][j], augmented[k][j]);
                 }
             }
 
             // Eliminate
             for (int i = k + 1; i < n; i++)
             {
-                double factor = augmented[i, k] / augmented[k, k];
+                double factor = augmented[i][k] / augmented[k][k];
                 for (int j = k; j <= n; j++)
                 {
-                    augmented[i, j] -= factor * augmented[k, j];
+                    augmented[i][j] -= factor * augmented[k][j];
                 }
             }
         }
@@ -354,12 +371,12 @@ public sealed class LevenbergMarquardtOptimizer
         double[] x = new double[n];
         for (int i = n - 1; i >= 0; i--)
         {
-            double sum = augmented[i, n];
+            double sum = augmented[i][n];
             for (int j = i + 1; j < n; j++)
             {
-                sum -= augmented[i, j] * x[j];
+                sum -= augmented[i][j] * x[j];
             }
-            x[i] = sum / augmented[i, i];
+            x[i] = sum / augmented[i][i];
         }
 
         return x;
@@ -411,7 +428,7 @@ public sealed class OptimizationResult
     /// <summary>
     /// Optimal parameter values.
     /// </summary>
-    public required double[] OptimalParameters { get; init; }
+    public required IReadOnlyList<double> OptimalParameters { get; init; }
 
     /// <summary>
     /// Optimal objective value (sum of squared residuals).

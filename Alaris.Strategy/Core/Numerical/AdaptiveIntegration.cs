@@ -144,10 +144,10 @@ public static class AdaptiveIntegration
         ArgumentNullException.ThrowIfNull(f);
 
         // Integrate real and imaginary parts separately
-        var (realValue, realError) = Integrate(x => f(x).Real, a, b, absoluteTolerance, relativeTolerance);
-        var (imagValue, imagError) = Integrate(x => f(x).Imaginary, a, b, absoluteTolerance, relativeTolerance);
+        (double realValue, double realError) = Integrate(x => f(x).Real, a, b, absoluteTolerance, relativeTolerance);
+        (double imagValue, double imagError) = Integrate(x => f(x).Imaginary, a, b, absoluteTolerance, relativeTolerance);
 
-        return (new Complex(realValue, imagValue), Math.Sqrt(realError * realError + imagError * imagError));
+        return (new Complex(realValue, imagValue), Math.Sqrt((realError * realError) + (imagError * imagError)));
     }
 
     /// <summary>
@@ -163,7 +163,7 @@ public static class AdaptiveIntegration
 
         for (int i = 0; i < GK15Nodes.Length; i++)
         {
-            double x = center + halfLength * GK15Nodes[i];
+            double x = center + (halfLength * GK15Nodes[i]);
             double fx = f(x);
 
             gk15Sum += GK15Weights[i] * fx;

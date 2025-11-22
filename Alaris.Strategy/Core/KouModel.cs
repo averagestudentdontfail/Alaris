@@ -400,9 +400,10 @@ public sealed class KouModel
                     sumSquaredError += error * error;
                     validCount++;
                 }
-                catch
+                catch (Exception)
                 {
-                    // Pricing failed - penalize
+                    // Pricing can fail for many reasons during calibration (e.g., invalid parameters,
+                    // numerical instability, convergence issues). Penalize rather than failing the entire calibration.
                     sumSquaredError += 100.0;
                 }
             }
@@ -411,7 +412,7 @@ public sealed class KouModel
         }
 
         // Run optimization
-        var result = optimizer.Minimize(Objective, lowerBounds, upperBounds);
+        OptimizationResult result = optimizer.Minimize(Objective, lowerBounds, upperBounds);
 
         if (result.Converged && result.OptimalValue < 1e9)
         {

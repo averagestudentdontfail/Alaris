@@ -13,8 +13,8 @@ namespace Alaris.Strategy.Core;
 /// - Calibrates to market implied volatility smile
 ///
 /// References:
-/// - Kou (2002) "A Jump-Diffusion Model for Option Pricing", Management Science
-/// - Carr & Madan (1999) "Option Valuation Using the Fast Fourier Transform"
+/// Kou (2002) "A Jump-Diffusion Model for Option Pricing", Management Science
+/// Carr and Madan (1999) "Option Valuation Using the Fast Fourier Transform"
 /// </summary>
 public static class KouPricing
 {
@@ -63,7 +63,7 @@ public static class KouPricing
             }
 
             Complex iV = new Complex(0, v);
-            Complex charFunc = CharacteristicFunction(v - (alpha + 1) * Complex.ImaginaryOne, spot, timeToExpiry, @params);
+            Complex charFunc = CharacteristicFunction(v - ((alpha + 1) * Complex.ImaginaryOne), spot, timeToExpiry, @params);
 
             Complex denominator = (alpha * alpha) + (alpha * iV) + (v * v);
 
@@ -71,7 +71,7 @@ public static class KouPricing
         }
 
         // Numerical integration
-        var (integralValue, _) = AdaptiveIntegration.IntegrateToInfinity(
+        (double integralValue, double _) = AdaptiveIntegration.IntegrateToInfinity(
             v => Integrand(v).Real,
             0,
             absoluteTolerance: 1e-6,
@@ -167,7 +167,7 @@ public static class KouPricing
 
         // Characteristic exponent
         // psi(u) = (r - d - 0.5*sigma^2)*i*u - 0.5*sigma^2*u^2 + lambda*jump_transform
-        Complex diffusionTerm = (r - d) * i * u - (0.5 * sigma * sigma * u * (u + i));
+        Complex diffusionTerm = ((r - d) * i * u) - (0.5 * sigma * sigma * u * (u + i));
 
         // Jump transform: E[exp(i*u*Y)] where Y = log(V)
         // For double exponential: integral of exp(i*u*y) * f_Y(y) dy
@@ -175,10 +175,10 @@ public static class KouPricing
         if (lambda > 0)
         {
             // Upward jump contribution
-            Complex upwardTerm = (p * eta1) / (eta1 - (i * u));
+            Complex upwardTerm = p * eta1 / (eta1 - (i * u));
 
             // Downward jump contribution
-            Complex downwardTerm = ((1 - p) * eta2) / (eta2 + (i * u));
+            Complex downwardTerm = (1 - p) * eta2 / (eta2 + (i * u));
 
             jumpTransform = lambda * (upwardTerm + downwardTerm - 1);
         }
@@ -201,7 +201,7 @@ public static class KouPricing
         bool isCall)
     {
         double d1 = (Math.Log(spot / strike) +
-                    (riskFreeRate - dividendYield + 0.5 * volatility * volatility) * timeToExpiry) /
+                    ((riskFreeRate - dividendYield + (0.5 * volatility * volatility)) * timeToExpiry)) /
                    (volatility * Math.Sqrt(timeToExpiry));
         double d2 = d1 - (volatility * Math.Sqrt(timeToExpiry));
 
@@ -230,7 +230,7 @@ public static class KouPricing
         double volatility)
     {
         double d1 = (Math.Log(spot / strike) +
-                    (riskFreeRate - dividendYield + 0.5 * volatility * volatility) * timeToExpiry) /
+                    ((riskFreeRate - dividendYield + (0.5 * volatility * volatility)) * timeToExpiry)) /
                    (volatility * Math.Sqrt(timeToExpiry));
 
         double forward = spot * Math.Exp(-dividendYield * timeToExpiry);
@@ -300,7 +300,7 @@ public static class KouPricing
         x = Math.Abs(x);
 
         double t = 1.0 / (1.0 + (p * x));
-        double y = 1.0 - ((((((a5 * t) + a4) * t) + a3) * t + a2) * t + a1) * t * Math.Exp(-x * x);
+        double y = 1.0 - (((((((a5 * t) + a4) * t) + a3) * t) + a2) * t) + a1) * t * Math.Exp(-x * x);
 
         return sign * y;
     }
