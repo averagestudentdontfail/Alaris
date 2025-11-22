@@ -128,6 +128,10 @@ public static class HestonPricing
     /// <summary>
     /// Computes P_j probability using characteristic function integration.
     /// </summary>
+    /// <param name="spot">Current spot price.</param>
+    /// <param name="strike">Strike price.</param>
+    /// <param name="timeToExpiry">Time to expiration in years.</param>
+    /// <param name="params">Heston model parameters.</param>
     /// <param name="j">Probability index (1 or 2).</param>
     private static double ComputeProbability(
         double spot,
@@ -203,9 +207,9 @@ public static class HestonPricing
         Complex exp_dt = Complex.Exp(-d_h * timeToExpiry);
 
         Complex C = ((r - d) * i * phi * timeToExpiry) +
-                    (((kappa * theta) / (sigmaV * sigmaV)) *
-                    (((b - (rho * sigmaV * i * phi)) - d_h) * timeToExpiry -
-                     (2 * Complex.Log((1 - (g * exp_dt)) / (1 - g)))));
+                    (kappa * theta) / (sigmaV * sigmaV) *
+                    ((((b - (rho * sigmaV * i * phi)) - d_h) * timeToExpiry) -
+                     2 * Complex.Log((1 - (g * exp_dt)) / (1 - g)));
 
         Complex D = (b - (rho * sigmaV * i * phi) - d_h) / (sigmaV * sigmaV) *
                     ((1 - exp_dt) / (1 - (g * exp_dt)));
