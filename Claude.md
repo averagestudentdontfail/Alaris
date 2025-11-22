@@ -1,7 +1,7 @@
 # Alaris System - Technical Context Document
 
-**Last Updated**: 2025-11-21
-**Status**: **ALL COMPONENTS PRODUCTION READY** - 109/109 tests passing
+**Last Updated**: 2025-11-22
+**Status**: **ALL COMPONENTS PRODUCTION READY** - 135/135 tests passing
 **Build Status**: Clean compilation with zero errors/warnings
 **Compliance**: All phases complete - 100% (All 17 rules compliant with CI enforcement)
 
@@ -43,7 +43,14 @@ Alaris/
 │   ├── Core/
 │   │   ├── SignalGenerator.cs          (Trading signal generation)
 │   │   ├── YangZhang.cs                (Realized volatility estimator)
-│   │   └── TermStructure.cs            (IV term structure analysis)
+│   │   ├── TermStructure.cs            (IV term structure analysis)
+│   │   ├── LeungSantoliModel.cs        (Pre-EA IV model with jumps)
+│   │   ├── HestonModel.cs              (Stochastic volatility model)
+│   │   ├── KouModel.cs                 (Jump-diffusion model)
+│   │   ├── IVModelSelector.cs          (Automatic model selection)
+│   │   ├── EarningsRegime.cs           (Regime detection)
+│   │   ├── EarningsJumpCalibrator.cs   (Jump parameter calibration)
+│   │   └── TimeParameters.cs           (Time parameter management)
 │   ├── Pricing/
 │   │   └── CalendarSpread.cs           (Calendar spread valuation)
 │   ├── Risk/
@@ -59,7 +66,7 @@ Alaris/
 │   └── Infrastructure/                 (In-memory implementations)
 │
 ├── Alaris.Quantlib/        Standard American option pricing (positive rates)
-├── Alaris.Test/            Test suite (109 tests)
+├── Alaris.Test/            Test suite (135 tests)
 └── .compliance/            Compliance tracking documentation
 ```
 
@@ -142,6 +149,28 @@ else
     return PricingRegime.NegativeRatesSingleBoundary;  // Alaris.Quantlib
 ```
 
+### IV Model Framework
+
+**IVModelSelector** provides automatic model selection for earnings-driven volatility events:
+
+**Available Models**:
+- **Black-Scholes**: Baseline flat volatility model
+- **Leung-Santoli (2014)**: Pre-earnings announcement model with deterministic jump
+- **Heston (1993)**: Stochastic volatility for volatility smile/skew
+- **Kou (2002)**: Jump-diffusion for fat tails and asymmetry
+
+**Selection Criteria**:
+1. Earnings regime detection (pre/post earnings, normal)
+2. Fit quality (RMSE, MAE on calibration data)
+3. Model parsimony (AIC/BIC penalizing complexity)
+4. Martingale constraint satisfaction
+5. Out-of-sample validation
+
+**Components**:
+- `EarningsRegime`: Detects pre-EA, post-EA, and normal market regimes
+- `EarningsJumpCalibrator`: Calibrates jump parameters from historical data
+- `TimeParameters`: Manages time-to-expiry and time-to-earnings calculations
+
 ### Strategy Components
 
 **Signal Generation** (Atilgan 2014 criteria):
@@ -203,10 +232,11 @@ dotnet build && dotnet test
 
 ### Test Categories
 
-- **Unit**: Component-level functionality
+- **Unit**: Component-level functionality (includes IV model tests)
 - **Integration**: End-to-end workflows
 - **Diagnostic**: Mathematical constraint validation
 - **Benchmark**: Performance and accuracy vs Healy (2021)
+- **IV Models**: Heston, Kou, Leung-Santoli, model selection, and regime detection
 
 ---
 
@@ -249,10 +279,17 @@ All 17 rules are enforced via build-time Roslyn analyzers with `TreatWarningsAsE
 - **Kim (1990)**: "The Analytic Valuation of American Options"
 
 ### Alaris.Strategy
+
+**Core Strategy**:
 - **Atilgan (2014)**: "Implied Volatility Spreads and Expected Market Returns"
 - **Dubinsky et al. (2019)**: "Earnings Announcements and Systematic Risk"
-- **Leung & Santoli (2014)**: "Volatility Term Structure and Option Returns"
 - **Yang & Zhang (2000)**: "Drift-Independent Volatility Estimation"
+
+**IV Models**:
+- **Leung & Santoli (2014)**: "Volatility Term Structure and Option Returns"
+- **Leung & Santoli (2016)**: "Option Pricing and Hedging with Ex-dividend Dates, Earnings Announcements and Regulatory Approvals"
+- **Heston (1993)**: "A Closed-Form Solution for Options with Stochastic Volatility"
+- **Kou (2002)**: "A Jump-Diffusion Model for Option Pricing"
 
 ---
 
@@ -281,4 +318,4 @@ git push -u origin <branch>
 
 ---
 
-*Last validated: 2025-11-21 | 109/109 tests passing*
+*Last validated: 2025-11-22 | 135/135 tests passing*
