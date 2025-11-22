@@ -210,7 +210,7 @@ public static class HestonPricing
         Complex exp_dt = Complex.Exp(-d_h * timeToExpiry);
 
         Complex C = ((r - d) * i * phi * timeToExpiry) +
-                    ((kappa * theta / (sigmaV * sigmaV)) *
+                    (kappa * theta / (sigmaV * sigmaV) *
                      (((b - (rho * sigmaV * i * phi) - d_h) * timeToExpiry) -
                       (2 * Complex.Log((1 - (g * exp_dt)) / (1 - g)))));
 
