@@ -146,11 +146,11 @@ public static class HestonPricing
         // P_j = 0.5 + (1/pi) * integral from 0 to inf of Re[(exp(i*phi*log(S/K)) * f_j(phi)) / (i*phi)]
         // where f_j is the characteristic function of the log-return
 
-        Complex Integrand(double phi)
+        double Integrand(double phi)
         {
             if (phi < 1e-10)
             {
-                return Complex.Zero;
+                return 0;
             }
 
             Complex iPhi = new Complex(0, phi);
@@ -162,7 +162,7 @@ public static class HestonPricing
 
         // Numerical integration from 0 to infinity
         (double integralValue, double _) = AdaptiveIntegration.IntegrateToInfinity(
-            phi => Integrand(phi).Real,
+            Integrand,
             0,
             absoluteTolerance: 1e-6,
             relativeTolerance: 1e-4);

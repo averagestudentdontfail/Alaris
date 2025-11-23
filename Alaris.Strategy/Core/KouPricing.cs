@@ -55,11 +55,11 @@ public static class KouPricing
         double logStrike = Math.Log(strike);
         double alpha = 1.5; // Damping parameter for call options
 
-        Complex Integrand(double v)
+        double Integrand(double v)
         {
             if (v < 1e-10)
             {
-                return Complex.Zero;
+                return 0;
             }
 
             Complex iV = new Complex(0, v);
@@ -68,12 +68,12 @@ public static class KouPricing
             // Carr-Madan denominator: α² + α - v² + i*v*(2α + 1)
             Complex denominator = (alpha * alpha) + alpha - (v * v) + (iV * ((2 * alpha) + 1));
 
-            return Complex.Exp(-iV * logStrike) * charFunc / denominator;
+            return (Complex.Exp(-iV * logStrike) * charFunc / denominator).Real;
         }
 
         // Numerical integration
         (double integralValue, double _) = AdaptiveIntegration.IntegrateToInfinity(
-            v => Integrand(v).Real,
+            Integrand,
             0,
             absoluteTolerance: 1e-6,
             relativeTolerance: 1e-4);
