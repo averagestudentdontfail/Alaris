@@ -1,18 +1,19 @@
 using System;
-using Alaris.Strategy.Core;
+
+namespace TestProbabilities;
 
 /// <summary>
 /// Simple test program to verify probability calculations after fixes.
 /// </summary>
-class TestProbabilities
+public static class Program
 {
-    static void Main(string[] args)
+    public static void Main(string[] args)
     {
         Console.WriteLine("Testing Heston Probability Calculations");
         Console.WriteLine("=========================================\n");
 
         // Test parameters
-        var hestonParams = HestonParameters.DefaultEquity;
+        Alaris.Strategy.Core.HestonParameters hestonParams = Alaris.Strategy.Core.HestonParameters.DefaultEquity;
         double spot = 100.0;
         double strike = 100.0; // ATM
         double timeToExpiry = 30.0 / 252.0; // 30 days
@@ -30,7 +31,7 @@ class TestProbabilities
         Console.WriteLine($"  Dividend Yield: {hestonParams.DividendYield}\n");
 
         // Test Heston model
-        var hestonModel = new HestonModel(hestonParams);
+        Alaris.Strategy.Core.HestonModel hestonModel = new Alaris.Strategy.Core.HestonModel(hestonParams);
 
         Console.WriteLine("Testing Heston Model:");
         double hestonIV = hestonModel.ComputeTheoreticalIV(spot, strike, timeToExpiry);
@@ -42,7 +43,7 @@ class TestProbabilities
         Console.WriteLine("  -------|-----------|------");
 
         double[] strikes = { 80, 90, 95, 100, 105, 110, 120 };
-        foreach (var k in strikes)
+        foreach (double k in strikes)
         {
             double iv = hestonModel.ComputeTheoreticalIV(spot, k, timeToExpiry);
             double moneyness = k / spot;
@@ -51,8 +52,8 @@ class TestProbabilities
 
         // Test Kou model
         Console.WriteLine("\n\nTesting Kou Model:");
-        var kouParams = KouParameters.DefaultEquity;
-        var kouModel = new KouModel(kouParams);
+        Alaris.Strategy.Core.KouParameters kouParams = Alaris.Strategy.Core.KouParameters.DefaultEquity;
+        Alaris.Strategy.Core.KouModel kouModel = new Alaris.Strategy.Core.KouModel(kouParams);
 
         Console.WriteLine("Parameters:");
         Console.WriteLine($"  Sigma: {kouParams.Sigma}");
@@ -69,7 +70,7 @@ class TestProbabilities
         Console.WriteLine("  Strike | Moneyness | IV");
         Console.WriteLine("  -------|-----------|------");
 
-        foreach (var k in strikes)
+        foreach (double k in strikes)
         {
             double iv = kouModel.ComputeTheoreticalIV(spot, k, timeToExpiry);
             double moneyness = k / spot;
