@@ -223,12 +223,12 @@ public static class AdaptiveIntegration
 
         // Determine upper bound adaptively
         // Find where integrand becomes negligible
-        double upperBound = 5;
+        double upperBound = 20; // Default to large bound
         for (double t = 0; t <= 20; t += 0.5)
         {
             if (Math.Abs(Transformed(t)) < absoluteTolerance * 0.01)
             {
-                upperBound = t;
+                upperBound = Math.Max(t, 5); // Use at least 5 to ensure we don't stop too early
                 break;
             }
         }
@@ -255,12 +255,12 @@ public static class AdaptiveIntegration
         }
 
         // Determine upper bound adaptively
-        double upperBound = 5;
+        double upperBound = 20; // Default to large bound
         for (double t = 0; t <= 20; t += 0.5)
         {
             if (Transformed(t).Magnitude < absoluteTolerance * 0.01)
             {
-                upperBound = t;
+                upperBound = Math.Max(t, 5); // Use at least 5 to ensure we don't stop too early
                 break;
             }
         }
