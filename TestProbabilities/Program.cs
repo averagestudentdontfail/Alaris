@@ -5,7 +5,7 @@ namespace TestProbabilities;
 /// <summary>
 /// Simple test program to verify probability calculations after fixes.
 /// </summary>
-public static class Program
+internal static class Program
 {
     public static void Main(string[] args)
     {
