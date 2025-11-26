@@ -40,7 +40,7 @@ namespace QuantConnect.Algorithm.CSharp
 
         public override void OnData(Slice slice)
         {
-            if (slice.OptionChains.Any(kvp => kvp.Value.Any(
+            if (slice.STDT002As.Any(kvp => kvp.Value.Any(
                     contract => contract.Greeks.Delta == 0 &&
                         contract.Greeks.Gamma == 0 && 
                         contract.Greeks.Theta == 0 && 

@@ -25,7 +25,7 @@ namespace QuantConnect.Tests.Common.Securities
 {
 
     [TestFixture]
-    public class TradingCalendarTests
+    public class STTM003ATests
     {
         private static readonly SecurityExchangeHours SecurityExchangeHours = SecurityExchangeHours.AlwaysOpen(TimeZones.NewYork);
 
@@ -101,7 +101,7 @@ namespace QuantConnect.Tests.Common.Securities
                 )
             );
 
-            var cal = new TradingCalendar(securities, marketHoursDatabase);
+            var cal = new STTM003A(securities, marketHoursDatabase);
 
             var optionDays = cal.GetDaysByType(TradingDayType.OptionExpiration, new DateTime(2016, 02, 16), new DateTime(2016, 03, 19)).Count();
             Assert.AreEqual(2, optionDays);
@@ -133,7 +133,7 @@ namespace QuantConnect.Tests.Common.Securities
         {
             var securities = new SecurityManager(TimeKeeper);
             var marketHoursDatabase = MarketHoursDatabase.FromDataFolder();
-            var calendar = new TradingCalendar(securities, marketHoursDatabase);
+            var calendar = new STTM003A(securities, marketHoursDatabase);
 
             Assert.Throws<ArgumentException>(() =>
                 calendar.GetTradingDays(new DateTime(2010, 2, 28), new DateTime(2010, 2, 10)).ToList());

@@ -7,16 +7,16 @@ using Alaris.Double;
 namespace Alaris.Test.Unit;
 
 /// <summary>
-/// Unit tests for DoubleBoundaryKimSolver.
+/// Unit tests for DBSL002A.
 /// Tests the FP-B' stabilized iteration implementation.
 /// </summary>
-public class DoubleBoundaryKimSolverTests
+public class DBSL002ATests
 {
     [Fact]
     public void KimSolver_FpbPrime_PreventsBoundaryOscillations()
     {
         // Arrange: Long maturity case prone to oscillations with standard FP-B
-        var kimSolver = new DoubleBoundaryKimSolver(
+        var kimSolver = new DBSL002A(
             spot: 100.0,
             strike: 100.0,
             maturity: 15.0,  // Long maturity
@@ -52,7 +52,7 @@ public class DoubleBoundaryKimSolverTests
     public void KimSolver_IntegralCalculations_AreAccurate()
     {
         // Test integral term calculations
-        var kimSolver = new DoubleBoundaryKimSolver(
+        var kimSolver = new DBSL002A(
             spot: 100.0,
             strike: 100.0,
             maturity: 1.0,
@@ -84,7 +84,7 @@ public class DoubleBoundaryKimSolverTests
     public void KimSolver_CollocationPoints_ConvergeWithResolution(int collocationPoints)
     {
         // Arrange
-        var kimSolver = new DoubleBoundaryKimSolver(
+        var kimSolver = new DBSL002A(
             spot: 100.0,
             strike: 100.0,
             maturity: 5.0,
@@ -121,7 +121,7 @@ public class DoubleBoundaryKimSolverTests
     public void KimSolver_CrossingTimeRefinement_AchievesTargetAccuracy()
     {
         // Arrange: Parameters likely to cause crossing
-        var kimSolver = new DoubleBoundaryKimSolver(
+        var kimSolver = new DBSL002A(
             spot: 100.0,
             strike: 100.0,
             maturity: 10.0,
@@ -158,7 +158,7 @@ public class DoubleBoundaryKimSolverTests
     public void KimSolver_NumeratorDenominator_HandleEdgeCases()
     {
         // Test edge cases in N and D calculations
-        var kimSolver = new DoubleBoundaryKimSolver(
+        var kimSolver = new DBSL002A(
             spot: 100.0,
             strike: 100.0,
             maturity: 0.1,  // Very short maturity
@@ -182,7 +182,7 @@ public class DoubleBoundaryKimSolverTests
     public void KimSolver_StabilizedIteration_ConvergesFaster()
     {
         // FP-B' should converge in fewer iterations than standard FP-B
-        var kimSolver = new DoubleBoundaryKimSolver(
+        var kimSolver = new DBSL002A(
             spot: 100.0,
             strike: 100.0,
             maturity: 10.0,
@@ -211,7 +211,7 @@ public class DoubleBoundaryKimSolverTests
     public void KimSolver_HandlesVariousInitialGuesses(double upperInit, double lowerInit)
     {
         // Arrange
-        var kimSolver = new DoubleBoundaryKimSolver(
+        var kimSolver = new DBSL002A(
             spot: 100.0,
             strike: 100.0,
             maturity: 5.0,
@@ -237,7 +237,7 @@ public class DoubleBoundaryKimSolverTests
     public void KimSolver_BoundaryInterpolation_IsSmooth()
     {
         // Test that boundary interpolation maintains smoothness
-        var kimSolver = new DoubleBoundaryKimSolver(
+        var kimSolver = new DBSL002A(
             spot: 100.0,
             strike: 100.0,
             maturity: 1.0,

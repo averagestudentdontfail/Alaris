@@ -20,7 +20,7 @@ from AlgorithmImports import *
 ### <meta name="tag" content="options" />
 ### <meta name="tag" content="using data" />
 ### <meta name="tag" content="filter selection" />
-class OptionChainConsistencyRegressionAlgorithm(QCAlgorithm):
+class CA311AConsistencyRegressionAlgorithm(QCAlgorithm):
 
     underlying_ticker = "GOOG"
 

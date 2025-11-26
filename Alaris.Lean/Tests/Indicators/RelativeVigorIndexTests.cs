@@ -33,12 +33,12 @@ namespace QuantConnect.Tests.Indicators
         protected override string TestColumnName => "RVI";
 
         [Test]
-        public void ComparesWithExternalDataRviSignal()
+        public void ComparesWithExternalDataRviSTCR004A()
         {
             var rvi = CreateIndicator();
             TestHelper.TestIndicator(rvi, TestFileName, "RVI_S",
                 (ind, expected) => Assert.AreEqual(expected, 
-                    (double) ((RelativeVigorIndex) ind).Signal.Current.Value, 0.06));
+                    (double) ((RelativeVigorIndex) ind).STCR004A.Current.Value, 0.06));
         }
 
         [Test]
@@ -58,7 +58,7 @@ namespace QuantConnect.Tests.Indicators
                     rvi.Update(tradeBar);
             }
             Assert.AreEqual(rvi.Current.Value, 0m);
-            Assert.AreEqual(((RelativeVigorIndex) rvi).Signal.Current.Value, 0m);
+            Assert.AreEqual(((RelativeVigorIndex) rvi).STCR004A.Current.Value, 0m);
         }
     }
 }

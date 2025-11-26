@@ -14,10 +14,10 @@
 from AlgorithmImports import *
 
 ### <summary>
-### Regression algorithm illustrating the usage of the <see cref="QCAlgorithm.OptionChain(Symbol)"/> method
+### Regression algorithm illustrating the usage of the <see cref="QCAlgorithm.CA311A(Symbol)"/> method
 ### to get a future option chain.
 ### </summary>
-class FutureOptionChainFullDataRegressionAlgorithm(QCAlgorithm):
+class FutureCA311AFullDataRegressionAlgorithm(QCAlgorithm):
 
     def initialize(self):
         self.set_start_date(2020, 1, 6)

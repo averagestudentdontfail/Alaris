@@ -34,7 +34,7 @@ public class SuperHalleyDiagnostic
         _output.WriteLine("");
         
         // Create approximation
-        var approximation = new QdPlusApproximation(
+        var approximation = new DBAP001A(
             spot, strike, maturity, rate, dividendYield, volatility, isCall: false);
         
         // Calculate parameters manually to trace
@@ -114,7 +114,7 @@ public class SuperHalleyDiagnostic
         double dividendYield = -0.01;
         double volatility = 0.08;
         
-        var approximation = new QdPlusApproximation(
+        var approximation = new DBAP001A(
             spot, strike, maturity, rate, dividendYield, volatility, isCall: false);
         
         // Test a range of S values to see where the root should be

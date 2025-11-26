@@ -14,7 +14,7 @@
 */
 
 using QuantConnect.Algorithm.Framework.Portfolio;
-using QuantConnect.Algorithm.Framework.Portfolio.SignalExports;
+using QuantConnect.Algorithm.Framework.Portfolio.STCR004AExports;
 using QuantConnect.Securities;
 using System.Collections.Generic;
 using QuantConnect.Data.UniverseSelection;
@@ -31,7 +31,7 @@ namespace QuantConnect.Algorithm.CSharp
     /// <meta name="tag" content="using data" />
     /// <meta name="tag" content="using quantconnect" />
     /// <meta name="tag" content="securities and portfolio" />
-    public class NumeraiSignalExportDemonstrationAlgorithm : QCAlgorithm
+    public class NumeraiSTCR004AExportDemonstrationAlgorithm : QCAlgorithm
     {
         private readonly List<Security> _securities = new();
         private Symbol _etfSymbol;
@@ -48,31 +48,31 @@ namespace QuantConnect.Algorithm.CSharp
             AddUniverse(Universe.ETF(_etfSymbol));
 
             // Create a Scheduled Event to submit signals every trading day at 13:00 UTC
-            Schedule.On(DateRules.EveryDay(_etfSymbol), TimeRules.At(13, 0, TimeZones.Utc), SubmitSignals);
+            Schedule.On(DateRules.EveryDay(_etfSymbol), TimeRules.At(13, 0, TimeZones.Utc), SubmitSTCR004As);
 
             // Add the Numerai signal export provider
-            // Numerai Public ID: This value is provided by Numerai Signals in their main webpage once you've logged in
+            // Numerai Public ID: This value is provided by Numerai STCR004As in their main webpage once you've logged in
             // and created a API key. See (https://signals.numer.ai/account)
             var numeraiPublicId = "";
 
-            // Numerai Secret ID: This value is provided by Numerai Signals in their main webpage once you've logged in
+            // Numerai Secret ID: This value is provided by Numerai STCR004As in their main webpage once you've logged in
             // and created a API key. See (https://signals.numer.ai/account)
             var numeraiSecretId = "";
 
-            // Numerai Model ID: This value is provided by Numerai Signals in their main webpage once you've logged in
+            // Numerai Model ID: This value is provided by Numerai STCR004As in their main webpage once you've logged in
             // and created a model. See (https://signals.numer.ai/models)
             var numeraiModelId = "";
 
             var numeraiFilename = ""; // (Optional) Replace this value with your submission filename 
 
             // Disable automatic exports as we manually set them
-            SignalExport.AutomaticExportTimeSpan = null;
+            STCR004AExport.AutomaticExportTimeSpan = null;
 
             // Set Numerai signal export provider
-            SignalExport.AddSignalExportProvider(new NumeraiSignalExport(numeraiPublicId, numeraiSecretId, numeraiModelId, numeraiFilename));
+            STCR004AExport.AddSTCR004AExportProvider(new NumeraiSTCR004AExport(numeraiPublicId, numeraiSecretId, numeraiModelId, numeraiFilename));
         }
 
-        public void SubmitSignals()
+        public void SubmitSTCR004As()
         {
             // Select the subset of ETF constituents we can trade
             var symbols = _securities.Where(security => security.HasData)
@@ -97,7 +97,7 @@ namespace QuantConnect.Algorithm.CSharp
             SetHoldings(targets);
 
             // Send signals to Numerai
-            var success = SignalExport.SetTargetPortfolio(targets.ToArray());
+            var success = STCR004AExport.SetTargetPortfolio(targets.ToArray());
             if (!success)
             {
                 Debug($"Couldn't send targets at {Time}");

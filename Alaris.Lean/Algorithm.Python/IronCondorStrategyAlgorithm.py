@@ -26,7 +26,7 @@ class IronCondorStrategyAlgorithm(OptionStrategyFactoryMethodsBaseAlgorithm):
     def expected_orders_count(self) -> int:
         return 8
 
-    def trade_strategy(self, chain: OptionChain, option_symbol: Symbol) -> None:
+    def trade_strategy(self, chain: CA311A, option_symbol: Symbol) -> None:
         for expiry, group in itertools.groupby(chain, lambda x: x.expiry):
             contracts = sorted(group, key=lambda x: x.strike)
             if len(contracts) < 4:

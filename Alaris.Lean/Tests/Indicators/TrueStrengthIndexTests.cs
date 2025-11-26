@@ -31,18 +31,18 @@ namespace QuantConnect.Tests.Indicators
         protected override string TestColumnName => "TSI_25_13";
 
         [Test]
-        public void ComparesWithExternalDataSignal()
+        public void ComparesWithExternalDataSTCR004A()
         {
             var tsi = CreateIndicator();
             TestHelper.TestIndicator(
                 tsi,
                 TestFileName,
-                "Signal_7",
+                "STCR004A_7",
                 (ind, expected) =>
                 {
                     var tsi = (TrueStrengthIndex)ind;
-                    if (!tsi.Signal.IsReady) return;
-                    Assert.AreEqual(expected, (double)tsi.Signal.Current.Value, delta: 1e-4);
+                    if (!tsi.STCR004A.IsReady) return;
+                    Assert.AreEqual(expected, (double)tsi.STCR004A.Current.Value, delta: 1e-4);
                 }
             );
         }

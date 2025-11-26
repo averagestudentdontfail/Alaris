@@ -7,24 +7,24 @@ using Alaris.Strategy.Core;
 namespace Alaris.Test.Unit;
 
 /// <summary>
-/// Unit tests for IV models including TimeParameters, Kou, Heston, EarningsRegime,
-/// and IVModelSelector.
+/// Unit tests for IV models including STTM004A, Kou, Heston, STTM002A,
+/// and STIV003A.
 /// </summary>
 public class IVModelTests
 {
     // ========================================================================
-    // TimeParameters Tests
+    // STTM004A Tests
     // ========================================================================
 
     [Fact]
-    public void TimeParameters_Create_ValidDates_ReturnsCorrectParameters()
+    public void STTM004A_Create_ValidDates_ReturnsCorrectParameters()
     {
         // Arrange
         var valuationDate = new DateTime(2024, 1, 15);
         var expirationDate = new DateTime(2024, 2, 16); // ~22 trading days
 
         // Act
-        var timeParams = TimeParameters.Create(valuationDate, expirationDate);
+        var timeParams = STTM004A.Create(valuationDate, expirationDate);
 
         // Assert
         timeParams.ValuationDate.Should().Be(valuationDate);
@@ -34,7 +34,7 @@ public class IVModelTests
     }
 
     [Fact]
-    public void TimeParameters_Create_WithEarningsBeforeExpiry_DetectsPreEarnings()
+    public void STTM004A_Create_WithEarningsBeforeExpiry_DetectsPreEarnings()
     {
         // Arrange
         var valuationDate = new DateTime(2024, 1, 15);
@@ -42,7 +42,7 @@ public class IVModelTests
         var expirationDate = new DateTime(2024, 2, 16);
 
         // Act
-        var timeParams = TimeParameters.Create(valuationDate, expirationDate, earningsDate);
+        var timeParams = STTM004A.Create(valuationDate, expirationDate, earningsDate);
 
         // Assert
         timeParams.IsPreEarnings.Should().BeTrue();
@@ -51,7 +51,7 @@ public class IVModelTests
     }
 
     [Fact]
-    public void TimeParameters_Create_WithEarningsAfterExpiry_NoEarningsEffect()
+    public void STTM004A_Create_WithEarningsAfterExpiry_NoEarningsEffect()
     {
         // Arrange
         var valuationDate = new DateTime(2024, 1, 15);
@@ -59,21 +59,21 @@ public class IVModelTests
         var expirationDate = new DateTime(2024, 2, 16);
 
         // Act
-        var timeParams = TimeParameters.Create(valuationDate, expirationDate, earningsDate);
+        var timeParams = STTM004A.Create(valuationDate, expirationDate, earningsDate);
 
         // Assert
         timeParams.HasEarningsBeforeExpiry.Should().BeFalse();
     }
 
     [Fact]
-    public void TimeParameters_Create_ExpirationBeforeValuation_Throws()
+    public void STTM004A_Create_ExpirationBeforeValuation_Throws()
     {
         // Arrange
         var valuationDate = new DateTime(2024, 2, 1);
         var expirationDate = new DateTime(2024, 1, 15);
 
         // Act & Assert
-        Action act = () => TimeParameters.Create(valuationDate, expirationDate);
+        Action act = () => STTM004A.Create(valuationDate, expirationDate);
         act.Should().Throw<ArgumentException>();
     }
 
@@ -85,7 +85,7 @@ public class IVModelTests
         var valuationDate = new DateTime(2024, 1, 15);
         var earningsDate = new DateTime(2024, 1, 25);
         var expirationDate = new DateTime(2024, 2, 16);
-        var timeParams = TimeParameters.Create(valuationDate, expirationDate, earningsDate);
+        var timeParams = STTM004A.Create(valuationDate, expirationDate, earningsDate);
 
         // Act
         var result = constraints.ValidatePreEarnings(timeParams);
@@ -99,7 +99,7 @@ public class IVModelTests
     // ========================================================================
 
     [Fact]
-    public void KouModel_Parameters_Validate_ValidParameters_ReturnsValid()
+    public void STIV002A_Parameters_Validate_ValidParameters_ReturnsValid()
     {
         // Arrange
         var parameters = KouParameters.DefaultEquity;
@@ -112,7 +112,7 @@ public class IVModelTests
     }
 
     [Fact]
-    public void KouModel_Parameters_Validate_InvalidEta1_ReturnsInvalid()
+    public void STIV002A_Parameters_Validate_InvalidEta1_ReturnsInvalid()
     {
         // Arrange - Eta1 must be > 1
         var parameters = new KouParameters
@@ -135,7 +135,7 @@ public class IVModelTests
     }
 
     [Fact]
-    public void KouModel_ComputeKappa_ReturnsExpectedValue()
+    public void STIV002A_ComputeKappa_ReturnsExpectedValue()
     {
         // Arrange
         var parameters = new KouParameters
@@ -158,11 +158,11 @@ public class IVModelTests
     }
 
     [Fact]
-    public void KouModel_ComputeTheoreticalIV_ATM_ReturnsReasonableValue()
+    public void STIV002A_ComputeTheoreticalIV_ATM_ReturnsReasonableValue()
     {
         // Arrange
         var parameters = KouParameters.DefaultEquity;
-        var model = new KouModel(parameters);
+        var model = new STIV002A(parameters);
         double spot = 100;
         double strike = 100; // ATM
         double timeToExpiry = 30.0 / 252.0;
@@ -177,7 +177,7 @@ public class IVModelTests
     private static readonly double[] s_smileStrikes = { 80, 90, 100, 110, 120 };
 
     [Fact]
-    public void KouModel_ComputeSmile_ProducesSkew()
+    public void STIV002A_ComputeSmile_ProducesSkew()
     {
         // Arrange
         var parameters = new KouParameters
@@ -190,7 +190,7 @@ public class IVModelTests
             RiskFreeRate = 0.05,
             DividendYield = 0.02
         };
-        var model = new KouModel(parameters);
+        var model = new STIV002A(parameters);
         double spot = 100;
         double timeToExpiry = 30.0 / 252.0;
 
@@ -203,14 +203,14 @@ public class IVModelTests
     }
 
     [Fact]
-    public void KouModel_ComputeTermStructure_ReturnsCorrectLength()
+    public void STIV002A_ComputeSTTM001A_ReturnsCorrectLength()
     {
         // Arrange
-        var model = new KouModel(KouParameters.DefaultEquity);
+        var model = new STIV002A(KouParameters.DefaultEquity);
         int[] dtePoints = { 7, 14, 30, 60, 90 };
 
         // Act
-        var termStructure = model.ComputeTermStructure(100, 100, dtePoints);
+        var termStructure = model.ComputeSTTM001A(100, 100, dtePoints);
 
         // Assert
         termStructure.Should().HaveCount(5);
@@ -221,7 +221,7 @@ public class IVModelTests
     // ========================================================================
 
     [Fact]
-    public void HestonModel_Parameters_SatisfiesFellerCondition_ValidParams_ReturnsTrue()
+    public void STIV001A_Parameters_SatisfiesFellerCondition_ValidParams_ReturnsTrue()
     {
         // Arrange - 2 * kappa * theta > sigma_v^2
         var parameters = new HestonParameters
@@ -240,7 +240,7 @@ public class IVModelTests
     }
 
     [Fact]
-    public void HestonModel_Parameters_SatisfiesFellerCondition_InvalidParams_ReturnsFalse()
+    public void STIV001A_Parameters_SatisfiesFellerCondition_InvalidParams_ReturnsFalse()
     {
         // Arrange - 2 * kappa * theta < sigma_v^2
         var parameters = new HestonParameters
@@ -259,7 +259,7 @@ public class IVModelTests
     }
 
     [Fact]
-    public void HestonModel_Parameters_Validate_FellerViolation_ReturnsInvalid()
+    public void STIV001A_Parameters_Validate_FellerViolation_ReturnsInvalid()
     {
         // Arrange
         var parameters = new HestonParameters
@@ -282,7 +282,7 @@ public class IVModelTests
     }
 
     [Fact]
-    public void HestonModel_ExpectedVariance_ConvergesToTheta()
+    public void STIV001A_ExpectedVariance_ConvergesToTheta()
     {
         // Arrange
         var parameters = HestonParameters.DefaultEquity;
@@ -297,10 +297,10 @@ public class IVModelTests
     }
 
     [Fact]
-    public void HestonModel_ComputeTheoreticalIV_ATM_ReturnsReasonableValue()
+    public void STIV001A_ComputeTheoreticalIV_ATM_ReturnsReasonableValue()
     {
         // Arrange
-        var model = new Alaris.Strategy.Core.HestonModel(HestonParameters.DefaultEquity);
+        var model = new Alaris.Strategy.Core.STIV001A(HestonParameters.DefaultEquity);
         double spot = 100;
         double strike = 100;
         double timeToExpiry = 30.0 / 252.0;
@@ -313,7 +313,7 @@ public class IVModelTests
     }
 
     [Fact]
-    public void HestonModel_ComputeSmile_WithNegativeRho_ProducesNegativeSkew()
+    public void STIV001A_ComputeSmile_WithNegativeRho_ProducesNegativeSkew()
     {
         // Arrange
         var parameters = new HestonParameters
@@ -326,7 +326,7 @@ public class IVModelTests
             RiskFreeRate = 0.05,
             DividendYield = 0.02
         };
-        var model = new Alaris.Strategy.Core.HestonModel(parameters);
+        var model = new Alaris.Strategy.Core.STIV001A(parameters);
         double spot = 100;
         double timeToExpiry = 30.0 / 252.0;
 
@@ -339,51 +339,51 @@ public class IVModelTests
     }
 
     // ========================================================================
-    // EarningsRegime Tests
+    // STTM002A Tests
     // ========================================================================
 
     [Fact]
-    public void EarningsRegime_Detect_PreEarnings_ReturnsPreEarningsRegime()
+    public void STTM002A_Detect_PreEarnings_ReturnsPreSTTM002A()
     {
         // Arrange
         var valuationDate = new DateTime(2024, 1, 15);
         var earningsDate = new DateTime(2024, 1, 25);
         var expirationDate = new DateTime(2024, 2, 16);
-        var timeParams = TimeParameters.Create(valuationDate, expirationDate, earningsDate);
+        var timeParams = STTM004A.Create(valuationDate, expirationDate, earningsDate);
 
         // Act
-        var regime = EarningsRegime.Detect(timeParams);
+        var regime = STTM002A.Detect(timeParams);
 
         // Assert
-        regime.RegimeType.Should().Be(EarningsRegimeType.PreEarnings);
+        regime.RegimeType.Should().Be(STTM002AType.PreEarnings);
         regime.ModelRecommendation.Should().Be(RecommendedModel.LeungSantoli);
     }
 
     [Fact]
-    public void EarningsRegime_Detect_NoEarnings_ReturnsNoEarningsRegime()
+    public void STTM002A_Detect_NoEarnings_ReturnsNoSTTM002A()
     {
         // Arrange
         var valuationDate = new DateTime(2024, 1, 15);
         var expirationDate = new DateTime(2024, 2, 16);
-        var timeParams = TimeParameters.Create(valuationDate, expirationDate);
+        var timeParams = STTM004A.Create(valuationDate, expirationDate);
 
         // Act
-        var regime = EarningsRegime.Detect(timeParams);
+        var regime = STTM002A.Detect(timeParams);
 
         // Assert
-        regime.RegimeType.Should().Be(EarningsRegimeType.NoEarnings);
+        regime.RegimeType.Should().Be(STTM002AType.NoEarnings);
         regime.ModelRecommendation.Should().Be(RecommendedModel.Heston);
     }
 
     [Fact]
-    public void EarningsRegime_ComputeAdjustedIV_PreEarnings_ReturnsEarningsIV()
+    public void STTM002A_ComputeAdjustedIV_PreEarnings_ReturnsEarningsIV()
     {
         // Arrange
         var valuationDate = new DateTime(2024, 1, 15);
         var earningsDate = new DateTime(2024, 1, 25);
         var expirationDate = new DateTime(2024, 2, 16);
-        var timeParams = TimeParameters.Create(valuationDate, expirationDate, earningsDate);
-        var regime = EarningsRegime.Detect(timeParams);
+        var timeParams = STTM004A.Create(valuationDate, expirationDate, earningsDate);
+        var regime = STTM002A.Detect(timeParams);
 
         double baseIV = 0.20;
         double earningsIV = 0.35;
@@ -396,13 +396,13 @@ public class IVModelTests
     }
 
     [Fact]
-    public void EarningsRegime_ComputeAdjustedIV_NoEarnings_ReturnsBaseIV()
+    public void STTM002A_ComputeAdjustedIV_NoEarnings_ReturnsBaseIV()
     {
         // Arrange
         var valuationDate = new DateTime(2024, 1, 15);
         var expirationDate = new DateTime(2024, 2, 16);
-        var timeParams = TimeParameters.Create(valuationDate, expirationDate);
-        var regime = EarningsRegime.Detect(timeParams);
+        var timeParams = STTM004A.Create(valuationDate, expirationDate);
+        var regime = STTM002A.Detect(timeParams);
 
         double baseIV = 0.20;
         double earningsIV = 0.35;
@@ -423,7 +423,7 @@ public class IVModelTests
     {
         // Arrange
         var validator = new MartingaleValidator();
-        var timeParams = TimeParameters.Create(
+        var timeParams = STTM004A.Create(
             new DateTime(2024, 1, 15),
             new DateTime(2024, 2, 16));
         var context = new ModelSelectionContext
@@ -457,18 +457,18 @@ public class IVModelTests
     }
 
     // ========================================================================
-    // IVModelSelector Tests
+    // STIV003A Tests
     // ========================================================================
 
     [Fact]
-    public void IVModelSelector_SelectBestModel_PreEarnings_PrefersLeungSantoli()
+    public void STIV003A_SelectBestModel_PreEarnings_PrefersLeungSantoli()
     {
         // Arrange
-        var selector = new IVModelSelector();
+        var selector = new STIV003A();
         var valuationDate = new DateTime(2024, 1, 15);
         var earningsDate = new DateTime(2024, 1, 25);
         var expirationDate = new DateTime(2024, 2, 16);
-        var timeParams = TimeParameters.Create(valuationDate, expirationDate, earningsDate);
+        var timeParams = STTM004A.Create(valuationDate, expirationDate, earningsDate);
 
         var context = new ModelSelectionContext
         {
@@ -484,18 +484,18 @@ public class IVModelTests
         var result = selector.SelectBestModel(context);
 
         // Assert
-        result.Regime.RegimeType.Should().Be(EarningsRegimeType.PreEarnings);
+        result.Regime.RegimeType.Should().Be(STTM002AType.PreEarnings);
         result.Evaluations.Should().NotBeEmpty();
     }
 
     [Fact]
-    public void IVModelSelector_SelectBestModel_NoEarnings_PrefersHeston()
+    public void STIV003A_SelectBestModel_NoEarnings_PrefersHeston()
     {
         // Arrange
-        var selector = new IVModelSelector();
+        var selector = new STIV003A();
         var valuationDate = new DateTime(2024, 1, 15);
         var expirationDate = new DateTime(2024, 2, 16);
-        var timeParams = TimeParameters.Create(valuationDate, expirationDate);
+        var timeParams = STTM004A.Create(valuationDate, expirationDate);
 
         var context = new ModelSelectionContext
         {
@@ -511,17 +511,17 @@ public class IVModelTests
         var result = selector.SelectBestModel(context);
 
         // Assert
-        result.Regime.RegimeType.Should().Be(EarningsRegimeType.NoEarnings);
+        result.Regime.RegimeType.Should().Be(STTM002AType.NoEarnings);
     }
 
     [Fact]
-    public void IVModelSelector_SelectBestModel_WithMarketData_ComputesFitMetrics()
+    public void STIV003A_SelectBestModel_WithMarketData_ComputesFitMetrics()
     {
         // Arrange
-        var selector = new IVModelSelector();
+        var selector = new STIV003A();
         var valuationDate = new DateTime(2024, 1, 15);
         var expirationDate = new DateTime(2024, 2, 16);
-        var timeParams = TimeParameters.Create(valuationDate, expirationDate);
+        var timeParams = STTM004A.Create(valuationDate, expirationDate);
 
         var marketIVs = new List<(double Strike, int DTE, double IV)>
         {

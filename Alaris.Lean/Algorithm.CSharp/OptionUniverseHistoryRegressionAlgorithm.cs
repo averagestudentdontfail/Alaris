@@ -44,7 +44,7 @@ namespace QuantConnect.Algorithm.CSharp
             foreach (var historyOptionUniverse in historicalOptionsData)
             {
                 var date = historyOptionUniverse.EndTime;
-                var chain = OptionChainProvider.GetOptionContractList(option, date).ToList();
+                var chain = STDT002AProvider.GetOptionContractList(option, date).ToList();
 
                 if (chain.Count == 0)
                 {

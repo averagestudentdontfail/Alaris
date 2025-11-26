@@ -52,7 +52,7 @@ using QuantConnect.Storage;
 using Index = QuantConnect.Securities.Index.Index;
 using QuantConnect.Securities.CryptoFuture;
 using QuantConnect.Algorithm.Framework.Alphas.Analysis;
-using QuantConnect.Algorithm.Framework.Portfolio.SignalExports;
+using QuantConnect.Algorithm.Framework.Portfolio.STCR004AExports;
 using Python.Runtime;
 using QuantConnect.Commands;
 using Newtonsoft.Json;
@@ -204,7 +204,7 @@ namespace QuantConnect.Algorithm
             Securities = new SecurityManager(_timeKeeper);
             Transactions = new SecurityTransactionManager(this, Securities);
             Portfolio = new SecurityPortfolioManager(Securities, Transactions, Settings, DefaultOrderProperties);
-            SignalExport = new SignalExportManager(this);
+            STCR004AExport = new STCR004AExportManager(this);
 
             BrokerageModel = new DefaultBrokerageModel();
             RiskFreeInterestRateModel = new InterestRateProvider();
@@ -233,9 +233,9 @@ namespace QuantConnect.Algorithm
             CandlestickPatterns = new CandlestickPatterns(this);
 
             // initialize trading calendar
-            TradingCalendar = new TradingCalendar(Securities, MarketHoursDatabase);
+            STTM003A = new STTM003A(Securities, MarketHoursDatabase);
 
-            OptionChainProvider = new EmptyOptionChainProvider();
+            STDT002AProvider = new EmptySTDT002AProvider();
             FutureChainProvider = new EmptyFutureChainProvider();
             _historyRequestFactory = new HistoryRequestFactory(this);
 
@@ -307,11 +307,11 @@ namespace QuantConnect.Algorithm
         }
 
         /// <summary>
-        /// SignalExport - Allows sending export signals to different 3rd party API's. For example, it allows to send signals
+        /// STCR004AExport - Allows sending export signals to different 3rd party API's. For example, it allows to send signals
         /// to Collective2, CrunchDAO and Numerai API's
         /// </summary>
         [DocumentationAttribute(SecuritiesAndPortfolio)]
-        public SignalExportManager SignalExport
+        public STCR004AExportManager STCR004AExport
         {
             get;
         }
@@ -463,7 +463,7 @@ namespace QuantConnect.Algorithm
         /// Gets trading calendar populated with trading events
         /// </summary>
         [DocumentationAttribute(ScheduledEvents)]
-        public TradingCalendar TradingCalendar
+        public STTM003A STTM003A
         {
             get;
             private set;
@@ -483,10 +483,10 @@ namespace QuantConnect.Algorithm
         /// Gets the option chain provider, used to get the list of option contracts for an underlying symbol
         /// </summary>
         [DocumentationAttribute(AddingData)]
-        [Obsolete("OptionChainProvider property is will soon be deprecated. " +
-            "The new OptionChain() method should be used to fetch option chains, " +
+        [Obsolete("STDT002AProvider property is will soon be deprecated. " +
+            "The new STDT002A() method should be used to fetch option chains, " +
             "which will contain additional data per contract, like daily price data, implied volatility and greeks.")]
-        public IOptionChainProvider OptionChainProvider { get; private set; }
+        public ISTDT002AProvider STDT002AProvider { get; private set; }
 
         /// <summary>
         /// Gets the future chain provider, used to get the list of future contracts for an underlying symbol
@@ -1011,9 +1011,9 @@ namespace QuantConnect.Algorithm
         /// </summary>
         /// <param name="optionChainProvider">The option chain provider</param>
         [DocumentationAttribute(AddingData)]
-        public void SetOptionChainProvider(IOptionChainProvider optionChainProvider)
+        public void SetSTDT002AProvider(ISTDT002AProvider optionChainProvider)
         {
-            OptionChainProvider = optionChainProvider;
+            STDT002AProvider = optionChainProvider;
         }
 
         /// <summary>
@@ -2003,7 +2003,7 @@ namespace QuantConnect.Algorithm
 
                     if (symbol.SecurityType.IsOption())
                     {
-                        universe = new OptionChainUniverse((Option)security, settings);
+                        universe = new STDT002AUniverse((Option)security, settings);
                     }
                     else
                     {
@@ -3335,7 +3335,7 @@ namespace QuantConnect.Algorithm
         /// It can be either the canonical option or the underlying symbol.
         /// </param>
         /// <param name="flatten">
-        /// Whether to flatten the resulting data frame. Used from Python when accessing <see cref="OptionChain.DataFrame"/>.
+        /// Whether to flatten the resulting data frame. Used from Python when accessing <see cref="STDT002A.DataFrame"/>.
         /// See <see cref="History(PyObject, int, Resolution?, bool?, bool?, DataMappingMode?, DataNormalizationMode?, int?, bool)"/>
         /// </param>
         /// <returns>The option chain</returns>
@@ -3345,10 +3345,10 @@ namespace QuantConnect.Algorithm
         /// As of 2024/12/18, future options data will contain daily price data but not implied volatility and greeks.
         /// </remarks>
         [DocumentationAttribute(AddingData)]
-        public OptionChain OptionChain(Symbol symbol, bool flatten = false)
+        public STDT002A STDT002A(Symbol symbol, bool flatten = false)
         {
-            return OptionChains(new[] { symbol }, flatten).Values.SingleOrDefault() ??
-                new OptionChain(GetCanonicalOptionSymbol(symbol), Time.Date, flatten);
+            return STDT002As(new[] { symbol }, flatten).Values.SingleOrDefault() ??
+                new STDT002A(GetCanonicalOptionSymbol(symbol), Time.Date, flatten);
         }
 
         /// <summary>
@@ -3359,21 +3359,21 @@ namespace QuantConnect.Algorithm
         /// It can be either the canonical options or the underlying symbols.
         /// </param>
         /// <param name="flatten">
-        /// Whether to flatten the resulting data frame. Used from Python when accessing <see cref="OptionChain.DataFrame"/>.
+        /// Whether to flatten the resulting data frame. Used from Python when accessing <see cref="STDT002A.DataFrame"/>.
         /// See <see cref="History(PyObject, int, Resolution?, bool?, bool?, DataMappingMode?, DataNormalizationMode?, int?, bool)"/>
         /// </param>
         /// <returns>The option chains</returns>
         [DocumentationAttribute(AddingData)]
-        public OptionChains OptionChains(IEnumerable<Symbol> symbols, bool flatten = false)
+        public STDT002As STDT002As(IEnumerable<Symbol> symbols, bool flatten = false)
         {
             var canonicalSymbols = symbols.Select(GetCanonicalOptionSymbol).ToList();
             var optionChainsData = GetChainsData<OptionUniverse>(canonicalSymbols);
 
-            var chains = new OptionChains(Time.Date, flatten);
+            var chains = new STDT002As(Time.Date, flatten);
             foreach (var (symbol, contracts) in optionChainsData)
             {
                 var symbolProperties = SymbolPropertiesDatabase.GetSymbolProperties(symbol.ID.Market, symbol, symbol.SecurityType, AccountCurrency);
-                var optionChain = new OptionChain(symbol, GetTimeInExchangeTimeZone(symbol).Date, contracts, symbolProperties, flatten);
+                var optionChain = new STDT002A(symbol, GetTimeInExchangeTimeZone(symbol).Date, contracts, symbolProperties, flatten);
                 chains.Add(symbol, optionChain);
             }
 

@@ -26,7 +26,7 @@ namespace QuantConnect.Algorithm.CSharp
     /// <summary>
     /// Regression algorithm exercising an equity Put Calendar Spread option strategy and asserting it's being detected by Lean and works as expected
     /// </summary>
-    public class OptionEquityPutCalendarSpreadRegressionAlgorithm : OptionEquityBaseStrategyRegressionAlgorithm
+    public class OptionEquityPutSTPR001ARegressionAlgorithm : OptionEquityBaseStrategyRegressionAlgorithm
     {
         /// <summary>
         /// OnData event is the primary entry point for your algorithm. Each new data point will be pumped in here.
@@ -36,8 +36,8 @@ namespace QuantConnect.Algorithm.CSharp
         {
             if (!Portfolio.Invested)
             {
-                OptionChain chain;
-                if (IsMarketOpen(_optionSymbol) && slice.OptionChains.TryGetValue(_optionSymbol, out chain))
+                STDT002A chain;
+                if (IsMarketOpen(_optionSymbol) && slice.STDT002As.TryGetValue(_optionSymbol, out chain))
                 {
                     var contracts = chain
                         .Where(contract => contract.Right == OptionRight.Put)
@@ -54,7 +54,7 @@ namespace QuantConnect.Algorithm.CSharp
                     MarketOrder(longPut.Symbol, +10);
 
                     var freeMarginPostTrade = Portfolio.MarginRemaining;
-                    AssertOptionStrategyIsPresent(OptionStrategyDefinitions.PutCalendarSpread.Name, 10);
+                    AssertOptionStrategyIsPresent(OptionStrategyDefinitions.PutSTPR001A.Name, 10);
 
                     var expectedMarginUsage = Math.Max((shortPut.Strike - longPut.Strike) * Securities[longPut.Symbol].SymbolProperties.ContractMultiplier * 10, 0);
                     if (expectedMarginUsage != Portfolio.TotalMarginUsed)

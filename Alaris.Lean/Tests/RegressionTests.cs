@@ -36,7 +36,7 @@ namespace QuantConnect.Tests
             Config.Set("quandl-auth-token", "WyAazVXnq7ATy_fefTqm");
             Config.Set("forward-console-messages", "false");
 
-            if (parameters.Algorithm == "OptionChainConsistencyRegressionAlgorithm")
+            if (parameters.Algorithm == "STDT002AConsistencyRegressionAlgorithm")
             {
                 // special arrangement for consistency test - we check if limits work fine
                 Config.Set("symbol-minute-limit", "100");

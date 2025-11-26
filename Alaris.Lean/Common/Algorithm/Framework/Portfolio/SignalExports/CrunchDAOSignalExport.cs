@@ -20,13 +20,13 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
 
-namespace QuantConnect.Algorithm.Framework.Portfolio.SignalExports
+namespace QuantConnect.Algorithm.Framework.Portfolio.STCR004AExports
 {
     /// <summary>
     /// Exports signals of the desired positions to CrunchDAO API.
     /// Accepts signals in percentage i.e ticker:"SPY", date: "2020-10-04", signal:0.54
     /// </summary>
-    public class CrunchDAOSignalExport : BaseSignalExport
+    public class CrunchDAOSTCR004AExport : BaseSTCR004AExport
     {
         /// <summary>
         /// CrunchDAO API key
@@ -77,14 +77,14 @@ namespace QuantConnect.Algorithm.Framework.Portfolio.SignalExports
         protected override HashSet<SecurityType> AllowedSecurityTypes => _allowedSecurityTypes;
 
         /// <summary>
-        /// CrunchDAOSignalExport constructor. It obtains the required information for CrunchDAO API requests.
+        /// CrunchDAOSTCR004AExport constructor. It obtains the required information for CrunchDAO API requests.
         /// See (https://colab.research.google.com/drive/1YW1xtHrIZ8ZHW69JvNANWowmxPcnkNu0?authuser=1#scrollTo=aPyWNxtuDc-X)
         /// </summary>
         /// <param name="apiKey">API key provided by CrunchDAO</param>
         /// <param name="model">Model ID or Name</param>
         /// <param name="submissionName">Submission Name (Optional)</param>
         /// <param name="comment">Comment (Optional)</param>
-        public CrunchDAOSignalExport(string apiKey, string model, string submissionName = "", string comment = "")
+        public CrunchDAOSTCR004AExport(string apiKey, string model, string submissionName = "", string comment = "")
         {
             _apiKey = apiKey;
             _model = model;
@@ -101,7 +101,7 @@ namespace QuantConnect.Algorithm.Framework.Portfolio.SignalExports
         /// <param name="parameters">A list of holdings from the portfolio,
         /// expected to be sent to CrunchDAO API and the algorithm being ran</param>
         /// <returns>True if the positions were sent to CrunchDAO succesfully and errors were returned, false otherwise</returns>
-        public override bool Send(SignalExportTargetParameters parameters)
+        public override bool Send(STCR004AExportTargetParameters parameters)
         {
             if (!base.Send(parameters))
             {
@@ -138,7 +138,7 @@ namespace QuantConnect.Algorithm.Framework.Portfolio.SignalExports
         /// expected to be sent to CrunchDAO API and the algorithm being ran</param>
         /// <param name="positions">A CSV format string of the given holdings with the required features(ticker, date, signal)</param>
         /// <returns>True if a string message with the positions could be obtained, false otherwise</returns>
-        protected bool ConvertToCSVFormat(SignalExportTargetParameters parameters, out string positions)
+        protected bool ConvertToCSVFormat(STCR004AExportTargetParameters parameters, out string positions)
         {
             var holdings = parameters.Targets;
             _algorithm = parameters.Algorithm;

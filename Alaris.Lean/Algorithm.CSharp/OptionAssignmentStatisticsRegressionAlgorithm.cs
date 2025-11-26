@@ -48,7 +48,7 @@ namespace QuantConnect.Algorithm.CSharp
 
             _goog = AddEquity("GOOG", Resolution.Minute);
 
-            var contracts = OptionChain(_goog.Symbol).ToList();
+            var contracts = STDT002A(_goog.Symbol).ToList();
 
             _googCall600Symbol = contracts
                 .Where(c => c.ID.OptionRight == OptionRight.Call)

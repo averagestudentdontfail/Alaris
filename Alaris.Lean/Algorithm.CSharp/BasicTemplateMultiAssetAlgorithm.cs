@@ -107,8 +107,8 @@ namespace QuantConnect.Algorithm.CSharp
                         }
                     }
 
-                    OptionChain optionChain;
-                    if (slice.OptionChains.TryGetValue(_optionSymbol, out optionChain))
+                    STDT002A optionChain;
+                    if (slice.STDT002As.TryGetValue(_optionSymbol, out optionChain))
                     {
                         // find a farthest ATM contract
                         var contract = optionChain
@@ -162,7 +162,7 @@ namespace QuantConnect.Algorithm.CSharp
 
             if (_barCount % 20 == 2)
             {
-                foreach (var chain in slice.OptionChains)
+                foreach (var chain in slice.STDT002As)
                 {
                     var underlying = Securities[chain.Key.Underlying];
                     foreach (var contract in chain.Value)

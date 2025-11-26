@@ -17,7 +17,7 @@
 namespace QuantConnect.Algorithm.CSharp
 {
     /// <summary>
-    /// Regression algorithm to test SignalExportManager still works as expected even when index securities
+    /// Regression algorithm to test STCR004AExportManager still works as expected even when index securities
     /// are not marked as tradable
     /// </summary>
     public class IndexSecurityIsNotTradableRegressionAlgorithm: IndexSecurityCanBeTradableRegressionAlgorithm

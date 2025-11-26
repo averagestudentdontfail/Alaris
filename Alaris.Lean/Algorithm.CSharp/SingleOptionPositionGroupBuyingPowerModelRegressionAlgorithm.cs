@@ -49,7 +49,7 @@ namespace QuantConnect.Algorithm.CSharp
 
         public override void OnData(Slice slice)
         {
-            if (Portfolio.Invested || !slice.OptionChains.TryGetValue(_optionSymbol, out var chain))
+            if (Portfolio.Invested || !slice.STDT002As.TryGetValue(_optionSymbol, out var chain))
             {
                 return;
             }

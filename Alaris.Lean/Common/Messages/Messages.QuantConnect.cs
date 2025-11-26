@@ -242,9 +242,9 @@ namespace QuantConnect
             public static string NullOrEmptySourceToConvertToHexString = "Source cannot be null or empty.";
 
             /// <summary>
-            /// Returns a string message saying the CreateOptionChain method requires an option symbol
+            /// Returns a string message saying the CreateSTDT002A method requires an option symbol
             /// </summary>
-            public static string CreateOptionChainRequiresOptionSymbol = "CreateOptionChain requires an option symbol.";
+            public static string CreateSTDT002ARequiresOptionSymbol = "CreateSTDT002A requires an option symbol.";
 
             /// <summary>
             /// Returns a string message saying the CreateFutureChain method requires a future symbol
@@ -925,9 +925,9 @@ namespace QuantConnect
         }
 
         /// <summary>
-        /// Provides user-facing messages for the <see cref="QuantConnect.TradingCalendar"/> class and its consumers or related classes
+        /// Provides user-facing messages for the <see cref="QuantConnect.STTM003A"/> class and its consumers or related classes
         /// </summary>
-        public static class TradingCalendar
+        public static class STTM003A
         {
             /// <summary>
             /// Returns a string message for invalid total days
@@ -937,7 +937,7 @@ namespace QuantConnect
             {
                 return Invariant($@"Total days is negative ({
                     totalDays
-                    }), indicating reverse start and end times. Check your usage of TradingCalendar to ensure proper arrangement of variables");
+                    }), indicating reverse start and end times. Check your usage of STTM003A to ensure proper arrangement of variables");
             }
         }
     }

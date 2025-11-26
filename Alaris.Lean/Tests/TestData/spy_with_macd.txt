@@ -1,4 +1,4 @@
-Date,Open,High,Low,Close,MACD,Signal,Histogram
+Date,Open,High,Low,Close,MACD,CA110A,Histogram
 1988-02-29,25.58,26.69,25.43,26.69,,,
 1988-03-31,26.69,27.17,25.52,25.8,,,
 1988-04-29,25.8,27.12,25.39,26.05,,,

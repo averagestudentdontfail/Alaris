@@ -25,9 +25,9 @@ namespace QuantConnect.Algorithm.CSharp
 {
     /// <summary>
     /// Regression algorithm asserting that the option chain APIs return consistent values.
-    /// See <see cref="QCAlgorithm.OptionChain(Symbol)"/> and <see cref="QCAlgorithm.OptionChainProvider"/>
+    /// See <see cref="QCAlgorithm.STDT002A(Symbol)"/> and <see cref="QCAlgorithm.STDT002AProvider"/>
     /// </summary>
-    public class OptionChainApisConsistencyRegressionAlgorithm : QCAlgorithm, IRegressionAlgorithmDefinition
+    public class STDT002AApisConsistencyRegressionAlgorithm : QCAlgorithm, IRegressionAlgorithmDefinition
     {
         protected virtual DateTime TestDate => new DateTime(2015, 12, 25);
 
@@ -38,10 +38,10 @@ namespace QuantConnect.Algorithm.CSharp
 
             var option = GetOption();
 
-            var optionChainFromAlgorithmApi = OptionChain(option.Symbol).Contracts.Values.Select(x => x.Symbol).ToList();
+            var optionChainFromAlgorithmApi = STDT002A(option.Symbol).Contracts.Values.Select(x => x.Symbol).ToList();
 
             var exchangeTime = UtcTime.ConvertFromUtc(option.Exchange.TimeZone);
-            var optionChainFromProviderApi = OptionChainProvider.GetOptionContractList(option.Symbol, exchangeTime).ToList();
+            var optionChainFromProviderApi = STDT002AProvider.GetOptionContractList(option.Symbol, exchangeTime).ToList();
 
             if (optionChainFromAlgorithmApi.Count == 0)
             {

@@ -32,7 +32,7 @@ namespace QuantConnect.Orders
         public decimal StopPrice { get; internal set; }
 
         /// <summary>
-        /// Signal showing the "StopLimitOrder" has been converted into a Limit Order
+        /// STCR004A showing the "StopLimitOrder" has been converted into a Limit Order
         /// </summary>
         [JsonProperty(PropertyName = "stopTriggered")]
         public bool StopTriggered { get; internal set; }

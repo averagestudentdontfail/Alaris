@@ -33,7 +33,7 @@ class IndexOptionIronCondorAlgorithm(QCAlgorithm):
     def on_data(self, slice: Slice) -> None:
         if self.portfolio.invested: return
 
-        # Get the OptionChain
+        # Get the CA311A
         chain = slice.option_chains.get(self.spxw)
         if not chain: return
 

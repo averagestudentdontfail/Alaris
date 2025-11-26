@@ -127,38 +127,38 @@ namespace QuantConnect.Algorithm.CSharp
             lvRsi.AddLabel(rsiMedium);
             lvRsi.AddLabel(rsiHigh);
 
-            // Linguistic labels (fuzzy sets) that compose the Signal
+            // Linguistic labels (fuzzy sets) that compose the STCR004A
             var fsShort = new FuzzySet("Sell", new TrapezoidalFunction(-100, 0, 0, 00));
             var fsHold = new FuzzySet("Hold", new TrapezoidalFunction(-50, 0, 0, 50));
             var fsLong = new FuzzySet("Buy", new TrapezoidalFunction(0, 100, 100, 100));
 
             // Output
-            var lvSignal = new LinguisticVariable("Signal", -100, 100);
-            lvSignal.AddLabel(fsShort);
-            lvSignal.AddLabel(fsHold);
-            lvSignal.AddLabel(fsLong);
+            var lvSTCR004A = new LinguisticVariable("STCR004A", -100, 100);
+            lvSTCR004A.AddLabel(fsShort);
+            lvSTCR004A.AddLabel(fsHold);
+            lvSTCR004A.AddLabel(fsLong);
 
             // The database
             var fuzzyDB = new Database();
             fuzzyDB.AddVariable(lvMom);
             fuzzyDB.AddVariable(lvRsi);
-            fuzzyDB.AddVariable(lvSignal);
+            fuzzyDB.AddVariable(lvSTCR004A);
 
             // Creating the inference system
             IS = new InferenceSystem(fuzzyDB, new CentroidDefuzzifier(1000));
 
             // Rules
-            IS.NewRule("Rule 1", "IF RSI IS Low AND MOM IS Down THEN Signal IS Buy");
-            IS.NewRule("Rule 2", "IF RSI IS Medium AND MOM IS Down THEN Signal IS Buy");
-            IS.NewRule("Rule 3", "IF RSI IS High AND MOM IS Down THEN Signal IS Hold");
+            IS.NewRule("Rule 1", "IF RSI IS Low AND MOM IS Down THEN STCR004A IS Buy");
+            IS.NewRule("Rule 2", "IF RSI IS Medium AND MOM IS Down THEN STCR004A IS Buy");
+            IS.NewRule("Rule 3", "IF RSI IS High AND MOM IS Down THEN STCR004A IS Hold");
 
-            IS.NewRule("Rule 4", "IF RSI IS Low AND MOM IS Neutral THEN Signal IS Buy");
-            IS.NewRule("Rule 5", "IF RSI IS Medium AND MOM IS Neutral THEN Signal IS Hold");
-            IS.NewRule("Rule 6", "IF RSI IS High AND MOM IS Neutral THEN Signal IS Sell");
+            IS.NewRule("Rule 4", "IF RSI IS Low AND MOM IS Neutral THEN STCR004A IS Buy");
+            IS.NewRule("Rule 5", "IF RSI IS Medium AND MOM IS Neutral THEN STCR004A IS Hold");
+            IS.NewRule("Rule 6", "IF RSI IS High AND MOM IS Neutral THEN STCR004A IS Sell");
 
-            IS.NewRule("Rule 7", "IF RSI IS Low AND MOM IS Up THEN Signal IS Hold");
-            IS.NewRule("Rule 8", "IF RSI IS Medium AND MOM IS Up THEN Signal IS Sell");
-            IS.NewRule("Rule 9", "IF RSI IS High AND MOM IS Up THEN Signal IS Sell");
+            IS.NewRule("Rule 7", "IF RSI IS Low AND MOM IS Up THEN STCR004A IS Hold");
+            IS.NewRule("Rule 8", "IF RSI IS Medium AND MOM IS Up THEN STCR004A IS Sell");
+            IS.NewRule("Rule 9", "IF RSI IS High AND MOM IS Up THEN STCR004A IS Sell");
         }
 
         public double DoInference(float mom, float rsi)
@@ -168,7 +168,7 @@ namespace QuantConnect.Algorithm.CSharp
             IS.SetInput("RSI", rsi);
 
             // Setting outputs
-            double signal = IS.Evaluate("Signal");
+            double signal = IS.Evaluate("STCR004A");
 
             return signal;
         }

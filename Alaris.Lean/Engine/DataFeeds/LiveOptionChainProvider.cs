@@ -32,10 +32,10 @@ using System.Net.Http.Headers;
 namespace QuantConnect.Lean.Engine.DataFeeds
 {
     /// <summary>
-    /// An implementation of <see cref="IOptionChainProvider"/> that fetches the list of contracts
+    /// An implementation of <see cref="ISTDT002AProvider"/> that fetches the list of contracts
     /// from the Options Clearing Corporation (OCC) website
     /// </summary>
-    public class LiveOptionChainProvider : BacktestingOptionChainProvider
+    public class LiveSTDT002AProvider : BacktestingSTDT002AProvider
     {
         private static readonly HttpClient _client;
         private static readonly DateTime _epoch = new DateTime(1970, 1, 1);
@@ -48,14 +48,14 @@ namespace QuantConnect.Lean.Engine.DataFeeds
 
         private const string CMEProductSlateURL = "https://www.cmegroup.com/CmeWS/mvc/ProductSlate/V2/List?pageNumber=1&sortAsc=false&sortField=rank&searchString=" + CMESymbolReplace + "&pageSize=5";
         private const string CMEOptionsTradeDateAndExpirations = "https://www.cmegroup.com/CmeWS/mvc/Settlements/Options/TradeDateAndExpirations/" + CMEProductCodeReplace;
-        private const string CMEOptionChainQuotesURL = "https://www.cmegroup.com/CmeWS/mvc/Quotes/Option/" + CMEProductCodeReplace + "/G/" + CMEProductExpirationReplace + "/ALL?_=";
+        private const string CMESTDT002AQuotesURL = "https://www.cmegroup.com/CmeWS/mvc/Quotes/Option/" + CMEProductCodeReplace + "/G/" + CMEProductExpirationReplace + "/ALL?_=";
 
         private const int MaxDownloadAttempts = 5;
 
         /// <summary>
-        /// Static constructor for the <see cref="LiveOptionChainProvider"/> class
+        /// Static constructor for the <see cref="LiveSTDT002AProvider"/> class
         /// </summary>
-        static LiveOptionChainProvider()
+        static LiveSTDT002AProvider()
         {
             // The OCC website now requires at least TLS 1.1 for API requests.
             // NET 4.5.2 and below does not enable these more secure protocols by default, so we add them in here
@@ -185,7 +185,7 @@ namespace QuantConnect.Lean.Engine.DataFeeds
 
                     if (selectedOption == null)
                     {
-                        Log.Error($"LiveOptionChainProvider.GetFutureOptionContractList(): Found no matching future options for contract {futureContractSymbol}");
+                        Log.Error($"LiveSTDT002AProvider.GetFutureOptionContractList(): Found no matching future options for contract {futureContractSymbol}");
                         yield break;
                     }
 
@@ -200,7 +200,7 @@ namespace QuantConnect.Lean.Engine.DataFeeds
 
                     if (futureContractExpiration == null)
                     {
-                        Log.Error($"LiveOptionChainProvider.GetFutureOptionContractList(): Found no future options with matching expiry year and month for contract {futureContractSymbol}");
+                        Log.Error($"LiveSTDT002AProvider.GetFutureOptionContractList(): Found no future options with matching expiry year and month for contract {futureContractSymbol}");
                         yield break;
                     }
 
@@ -209,14 +209,14 @@ namespace QuantConnect.Lean.Engine.DataFeeds
                     _cmeRateGate.WaitToProceed();
 
                     // Subtract one day from now for settlement API since settlement may not be available for today yet
-                    var optionChainQuotesResponseResult = _client.GetAsync(CMEOptionChainQuotesURL
+                    var optionChainQuotesResponseResult = _client.GetAsync(CMESTDT002AQuotesURL
                         .Replace(CMEProductCodeReplace, selectedOption.ProductId.ToStringInvariant())
                         .Replace(CMEProductExpirationReplace, futureContractMonthCode)
                         + Math.Floor((DateTime.UtcNow - _epoch).TotalMilliseconds).ToStringInvariant());
 
                     optionChainQuotesResponseResult.Result.EnsureSuccessStatusCode();
 
-                    var futureOptionChain = JsonConvert.DeserializeObject<CMEOptionChainQuotes>(optionChainQuotesResponseResult.Result.Content
+                    var futureSTDT002A = JsonConvert.DeserializeObject<CMESTDT002AQuotes>(optionChainQuotesResponseResult.Result.Content
                         .ReadAsStringAsync()
                         .SynchronouslyAwaitTaskResult())
                         .Quotes
@@ -236,7 +236,7 @@ namespace QuantConnect.Lean.Engine.DataFeeds
                         default(decimal),
                         SecurityIdentifier.DefaultDate);
 
-                    foreach (var optionChainEntry in futureOptionChain)
+                    foreach (var optionChainEntry in futureSTDT002A)
                     {
                         var futureOptionExpiry = FuturesOptionsExpiryFunctions.GetFutureOptionExpiryFromFutureExpiry(futureContractSymbol, canonicalOption);
                         var scaledStrikePrice = optionChainEntry.StrikePrice / optionStrikePriceScaleFactor;
@@ -294,7 +294,7 @@ namespace QuantConnect.Lean.Engine.DataFeeds
             {
                 try
                 {
-                    Log.Trace($"LiveOptionChainProvider.GetOptionContractList(): Fetching option chain for option {expectedOptionTicker} underlying {symbol.Value} [Attempt {attempt}]");
+                    Log.Trace($"LiveSTDT002AProvider.GetOptionContractList(): Fetching option chain for option {expectedOptionTicker} underlying {symbol.Value} [Attempt {attempt}]");
 
                     contracts = FindOptionContracts(symbol, expectedOptionTicker);
                     break;

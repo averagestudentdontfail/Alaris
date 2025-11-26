@@ -26,9 +26,9 @@ using System.Linq;
 namespace QuantConnect.Algorithm.CSharp
 {
     /// <summary>
-    /// Regression algorithm to test the OptionChainedUniverseSelectionModel class
+    /// Regression algorithm to test the STDT002AedUniverseSelectionModel class
     /// </summary>
-    public class OptionChainedUniverseSelectionModelRegressionAlgorithm: QCAlgorithm, IRegressionAlgorithmDefinition
+    public class STDT002AedUniverseSelectionModelRegressionAlgorithm: QCAlgorithm, IRegressionAlgorithmDefinition
     {
         public override void Initialize()
         {
@@ -39,7 +39,7 @@ namespace QuantConnect.Algorithm.CSharp
 
             var universe = AddUniverse("my-minute-universe-name", time => new List<string> { "AAPL", "TWX" });
 
-            AddUniverseSelection(new OptionChainedUniverseSelectionModel(universe, u => u.Strikes(-2, +2)
+            AddUniverseSelection(new STDT002AedUniverseSelectionModel(universe, u => u.Strikes(-2, +2)
                                    // Expiration method accepts TimeSpan objects or integer for days.
                                    // The following statements yield the same filtering criteria
                                    .Expiration(0, 180)));
@@ -49,7 +49,7 @@ namespace QuantConnect.Algorithm.CSharp
         {
             if (!Portfolio.Invested && IsMarketOpen("AAPL") && IsMarketOpen("TWX"))
             {
-                var values = slice.OptionChains.Where(x => (x.Key == "?AAPL" || x.Key == "?TWX")).Select(x => x.Value);
+                var values = slice.STDT002As.Where(x => (x.Key == "?AAPL" || x.Key == "?TWX")).Select(x => x.Value);
 
                 foreach (var chain in values)
                 {

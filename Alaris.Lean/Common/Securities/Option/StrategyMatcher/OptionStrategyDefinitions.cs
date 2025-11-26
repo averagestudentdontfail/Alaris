@@ -308,7 +308,7 @@ namespace QuantConnect.Securities.Option.StrategyMatcher
         /// Call Calendar Spread strategy is a short one call option and long a second call option with a more distant
         /// expiration.
         /// </summary>
-        public static OptionStrategyDefinition CallCalendarSpread { get; }
+        public static OptionStrategyDefinition CallSTPR001A { get; }
             = OptionStrategyDefinition.Create("Call Calendar Spread",
                 OptionStrategyDefinition.CallLeg(-1),
                 OptionStrategyDefinition.CallLeg(+1, (legs, p) => p.Strike == legs[0].Strike,
@@ -319,8 +319,8 @@ namespace QuantConnect.Securities.Option.StrategyMatcher
         /// Short Call Calendar Spread strategy is long one call option and short a second call option with a more distant
         /// expiration.
         /// </summary>
-        /// <remarks>Inverse of the <see cref="CallCalendarSpread"/></remarks>
-        public static OptionStrategyDefinition ShortCallCalendarSpread { get; }
+        /// <remarks>Inverse of the <see cref="CallSTPR001A"/></remarks>
+        public static OptionStrategyDefinition ShortCallSTPR001A { get; }
             = OptionStrategyDefinition.Create("Short Call Calendar Spread",
                 OptionStrategyDefinition.CallLeg(+1),
                 OptionStrategyDefinition.CallLeg(-1, (legs, p) => p.Strike == legs[0].Strike,
@@ -331,7 +331,7 @@ namespace QuantConnect.Securities.Option.StrategyMatcher
         /// Put Calendar Spread strategy is a short one put option and long a second put option with a more distant
         /// expiration.
         /// </summary>
-        public static OptionStrategyDefinition PutCalendarSpread { get; }
+        public static OptionStrategyDefinition PutSTPR001A { get; }
             = OptionStrategyDefinition.Create("Put Calendar Spread",
                 OptionStrategyDefinition.PutLeg(-1),
                 OptionStrategyDefinition.PutLeg(+1, (legs, p) => p.Strike == legs[0].Strike,
@@ -342,8 +342,8 @@ namespace QuantConnect.Securities.Option.StrategyMatcher
         /// Short Put Calendar Spread strategy is long one put option and short a second put option with a more distant
         /// expiration.
         /// </summary>
-        /// <remarks>Inverse of the <see cref="PutCalendarSpread"/></remarks>
-        public static OptionStrategyDefinition ShortPutCalendarSpread { get; }
+        /// <remarks>Inverse of the <see cref="PutSTPR001A"/></remarks>
+        public static OptionStrategyDefinition ShortPutSTPR001A { get; }
             = OptionStrategyDefinition.Create("Short Put Calendar Spread",
                 OptionStrategyDefinition.PutLeg(+1),
                 OptionStrategyDefinition.PutLeg(-1, (legs, p) => p.Strike == legs[0].Strike,

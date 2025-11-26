@@ -19,7 +19,7 @@ from AlgorithmImports import *
 ### <meta name="tag" content="using data" />
 ### <meta name="tag" content="using quantconnect" />
 ### <meta name="tag" content="securities and portfolio" />
-class CrunchDAOSignalExportDemonstrationAlgorithm(QCAlgorithm):
+class CrunchDAOCA110AExportDemonstrationAlgorithm(QCAlgorithm):
 
     crunch_universe = []
 
@@ -36,7 +36,7 @@ class CrunchDAOSignalExportDemonstrationAlgorithm(QCAlgorithm):
         model = ""              # The Id of your CrunchDAO model
         submission_name = ""    # A name for the submission to distinguish it from your other submissions
         comment = ""            # A comment for the submission
-        self.signal_export.add_signal_export_provider(CrunchDAOSignalExport(api_key, model, submission_name, comment))
+        self.signal_export.add_signal_export_provider(CrunchDAOCA110AExport(api_key, model, submission_name, comment))
 
         self.set_security_initializer(BrokerageModelSecurityInitializer(self.brokerage_model, FuncSecuritySeeder(self.get_last_known_prices)))
 

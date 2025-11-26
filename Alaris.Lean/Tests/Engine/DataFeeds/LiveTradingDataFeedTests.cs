@@ -572,7 +572,7 @@ namespace QuantConnect.Tests.Engine.DataFeeds
 
         [TestCase(SecurityType.Option)]
         [TestCase(SecurityType.IndexOption)]
-        public void OptionChainImmediateSelection(SecurityType securityType)
+        public void STDT002AImmediateSelection(SecurityType securityType)
         {
             _startDate = securityType == SecurityType.Option
                 ? new DateTime(2015, 12, 24, 12, 0, 0)
@@ -3641,7 +3641,7 @@ namespace QuantConnect.Tests.Engine.DataFeeds
         [TestCase(SecurityType.Future, 4)]
         [TestCase(SecurityType.Option, 1232)]
         [TestCase(SecurityType.IndexOption, 6)]
-        public void HandlesFutureAndOptionChainUniverse(SecurityType securityType, int expectedContractsCount)
+        public void HandlesFutureAndSTDT002AUniverse(SecurityType securityType, int expectedContractsCount)
         {
             Log.DebuggingEnabled = LogsEnabled;
 
@@ -3929,7 +3929,7 @@ namespace QuantConnect.Tests.Engine.DataFeeds
                 }
                 else if (securityType.IsOption())
                 {
-                    foreach (var optionChain in timeSlice.Slice.OptionChains.Values)
+                    foreach (var optionChain in timeSlice.Slice.STDT002As.Values)
                     {
                         var symbols = optionChain.Contracts.Values.Select(x => x.Symbol).ToList();
                         optionContractCount += symbols.Count;
@@ -3958,7 +3958,7 @@ namespace QuantConnect.Tests.Engine.DataFeeds
                         }
                     }
 
-                    if (securityType.IsOption() && timeSlice.Slice.OptionChains.Values.Count > 0)
+                    if (securityType.IsOption() && timeSlice.Slice.STDT002As.Values.Count > 0)
                     {
                         Assert.AreEqual(optionSymbols.Count, optionContractCount);
 

@@ -63,8 +63,8 @@ namespace QuantConnect.Algorithm.CSharp
                 return;
             }
 
-            OptionChain chain;
-            if (slice.OptionChains.TryGetValue(_spxOption, out chain))
+            STDT002A chain;
+            if (slice.STDT002As.TryGetValue(_spxOption, out chain))
             {
                 // we find the first expiration group of call options and order them in ascending strike
                 var contracts = chain

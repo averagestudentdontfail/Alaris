@@ -40,7 +40,7 @@ namespace QuantConnect.Algorithm.CSharp
             SetCash(100000);
 
             // set framework models
-            SetUniverseSelection(new EarliestExpiringWeeklyAtTheMoneyPutOptionUniverseSelectionModel(SelectOptionChainSymbols));
+            SetUniverseSelection(new EarliestExpiringWeeklyAtTheMoneyPutOptionUniverseSelectionModel(SelectSTDT002ASymbols));
             SetAlpha(new ConstantOptionContractAlphaModel(InsightType.Price, InsightDirection.Up, TimeSpan.FromHours(0.5)));
             SetPortfolioConstruction(new SingleSharePortfolioConstructionModel());
             SetExecution(new ImmediateExecutionModel());
@@ -48,7 +48,7 @@ namespace QuantConnect.Algorithm.CSharp
         }
 
         // option symbol universe selection function
-        private static IEnumerable<Symbol> SelectOptionChainSymbols(DateTime utcTime)
+        private static IEnumerable<Symbol> SelectSTDT002ASymbols(DateTime utcTime)
         {
             var newYorkTime = utcTime.ConvertFromUtc(TimeZones.NewYork);
             if (newYorkTime.Date < new DateTime(2014, 06, 06))

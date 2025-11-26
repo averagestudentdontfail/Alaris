@@ -114,7 +114,7 @@ namespace QuantConnect.Algorithm.CSharp
                 }
             }
 
-            if (slice.OptionChains.TryGetValue(_option.Canonical, out var optionChain) && optionChain.TradeBars.TryGetValue(_option, out var optionChainTradeBar))
+            if (slice.STDT002As.TryGetValue(_option.Canonical, out var optionChain) && optionChain.TradeBars.TryGetValue(_option, out var optionChainTradeBar))
             {
                 _tradeBarsFound = true;
                 if (_optionIndicator.Current.Value != optionChainTradeBar.Volume)

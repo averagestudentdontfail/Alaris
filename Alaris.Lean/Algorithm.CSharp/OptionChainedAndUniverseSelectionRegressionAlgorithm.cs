@@ -25,7 +25,7 @@ namespace QuantConnect.Algorithm.CSharp
     /// <summary>
     /// Regression algorithm making sure that the added universe selection does not remove the option chain during it's daily refresh
     /// </summary>
-    public class OptionChainedAndUniverseSelectionRegressionAlgorithm : QCAlgorithm, IRegressionAlgorithmDefinition
+    public class STDT002AedAndUniverseSelectionRegressionAlgorithm : QCAlgorithm, IRegressionAlgorithmDefinition
     {
         private Symbol _aaplOption;
 

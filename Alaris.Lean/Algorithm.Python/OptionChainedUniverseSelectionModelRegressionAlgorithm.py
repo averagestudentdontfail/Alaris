@@ -14,9 +14,9 @@
 from AlgorithmImports import *
 
 ### <summary>
-### Regression algorithm to test the OptionChainedUniverseSelectionModel class
+### Regression algorithm to test the CA311AedUniverseSelectionModel class
 ### </summary>
-class OptionChainedUniverseSelectionModelRegressionAlgorithm(QCAlgorithm):
+class CA311AedUniverseSelectionModelRegressionAlgorithm(QCAlgorithm):
 
     def initialize(self):
         self.universe_settings.resolution = Resolution.MINUTE
@@ -26,7 +26,7 @@ class OptionChainedUniverseSelectionModelRegressionAlgorithm(QCAlgorithm):
 
         universe = self.add_universe("my-minute-universe-name", lambda time: [ "AAPL", "TWX" ])
         self.add_universe_selection(
-            OptionChainedUniverseSelectionModel(
+            CA311AedUniverseSelectionModel(
                 universe,
                 lambda u: (u.strikes(-2, +2)
                                      # Expiration method accepts TimeSpan objects or integer for days.

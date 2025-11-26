@@ -18,7 +18,7 @@ namespace QuantConnect.Indicators
     /// <summary>
     /// The signal for the Relative Vigor Index, itself an indicator. 
     /// </summary>
-    public class RelativeVigorIndexSignal : Indicator, IIndicatorWarmUpPeriodProvider
+    public class RelativeVigorIndexSTCR004A : Indicator, IIndicatorWarmUpPeriodProvider
     {
         private readonly RollingWindow<IndicatorDataPoint> _rollingRvi;
 
@@ -26,7 +26,7 @@ namespace QuantConnect.Indicators
         /// Initializes the signal term.
         /// </summary>
         /// <param name="name"></param>
-        protected internal RelativeVigorIndexSignal(string name)
+        protected internal RelativeVigorIndexSTCR004A(string name)
             : base(name) // Accessibility set to prevent out-of-scope use
         {
             WarmUpPeriod = 3;

@@ -34,7 +34,7 @@ namespace QuantConnect.Algorithm.CSharp
 
         private OptionStrategy _ironCondor;
 
-        protected override void TradeStrategy(OptionChain chain)
+        protected override void TradeStrategy(STDT002A chain)
         {
             foreach (var group in chain.GroupBy(x => x.Expiry))
             {

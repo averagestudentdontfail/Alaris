@@ -182,7 +182,7 @@ namespace QuantConnect.Algorithm.CSharp
             //Plot("MOMP", _indicators.MOMP);
 
             //Plot("MACD", "Price", _price);
-            //Plot("MACD", _indicators.MACD.Fast, _indicators.MACD.Slow, _indicators.MACD.Signal);
+            //Plot("MACD", _indicators.MACD.Fast, _indicators.MACD.Slow, _indicators.MACD.STCR004A);
 
             //Plot("Averages", _indicators.EMA, _indicators.SMA);
         }

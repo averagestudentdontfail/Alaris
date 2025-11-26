@@ -74,7 +74,7 @@ namespace QuantConnect
     }
 
     /// <summary>
-    /// Class contains trading events associated with particular day in <see cref="TradingCalendar"/>
+    /// Class contains trading events associated with particular day in <see cref="STTM003A"/>
     /// </summary>
     public class TradingDay
     {

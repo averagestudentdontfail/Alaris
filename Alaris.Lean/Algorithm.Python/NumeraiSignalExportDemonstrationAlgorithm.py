@@ -21,7 +21,7 @@ from AlgorithmImports import *
 ### <meta name="tag" content="using data" />
 ### <meta name="tag" content="using quantconnect" />
 ### <meta name="tag" content="securities and portfolio" />
-class NumeraiSignalExportDemonstrationAlgorithm(QCAlgorithm):
+class NumeraiCA110AExportDemonstrationAlgorithm(QCAlgorithm):
 
     _securities = []
 
@@ -42,15 +42,15 @@ class NumeraiSignalExportDemonstrationAlgorithm(QCAlgorithm):
         self.schedule.on(self.date_rules.every_day(self.etf_symbol), self.time_rules.at(13, 0, TimeZones.UTC), self.submit_signals)
 
         # Set Numerai signal export provider
-        # Numerai Public ID: This value is provided by Numerai Signals in their main webpage once you've logged in
+        # Numerai Public ID: This value is provided by Numerai CA110As in their main webpage once you've logged in
         # and created a API key. See (https://signals.numer.ai/account)
         numerai_public_id = ""
 
-        # Numerai Secret ID: This value is provided by Numerai Signals in their main webpage once you've logged in
+        # Numerai Secret ID: This value is provided by Numerai CA110As in their main webpage once you've logged in
         # and created a API key. See (https://signals.numer.ai/account)
         numerai_secret_id = ""
 
-        # Numerai Model ID: This value is provided by Numerai Signals in their main webpage once you've logged in
+        # Numerai Model ID: This value is provided by Numerai CA110As in their main webpage once you've logged in
         # and created a model. See (https://signals.numer.ai/models)
         numerai_model_id = ""
 
@@ -60,7 +60,7 @@ class NumeraiSignalExportDemonstrationAlgorithm(QCAlgorithm):
         self.signal_export.automatic_export_time_span = None
 
         # Set Numerai signal export provider
-        self.signal_export.add_signal_export_provider(NumeraiSignalExport(numerai_public_id, numerai_secret_id, numerai_model_id, numerai_filename))
+        self.signal_export.add_signal_export_provider(NumeraiCA110AExport(numerai_public_id, numerai_secret_id, numerai_model_id, numerai_filename))
 
 
     def submit_signals(self) -> None:

@@ -15,11 +15,11 @@ from AlgorithmImports import *
 from datetime import timedelta
 
 ### <summary>
-### Regression algorithm illustrating the usage of the <see cref="QCAlgorithm.OptionChains(IEnumerable{Symbol})"/> method
+### Regression algorithm illustrating the usage of the <see cref="QCAlgorithm.CA311As(IEnumerable{Symbol})"/> method
 ### to get multiple option chains, which contains additional data besides the symbols, including prices, implied volatility and greeks.
 ### It also shows how this data can be used to filter the contracts based on certain criteria.
 ### </summary>
-class OptionChainsMultipleFullDataRegressionAlgorithm(QCAlgorithm):
+class CA311AsMultipleFullDataRegressionAlgorithm(QCAlgorithm):
 
     def initialize(self):
         self.set_start_date(2015, 12, 24)
@@ -37,7 +37,7 @@ class OptionChainsMultipleFullDataRegressionAlgorithm(QCAlgorithm):
         self.add_option_contract(self._goog_option_contract)
         self.add_index_option_contract(self._spx_option_contract)
 
-    def get_contract(self, chains: OptionChains, underlying: Symbol, expiry_span: timedelta) -> Symbol:
+    def get_contract(self, chains: CA311As, underlying: Symbol, expiry_span: timedelta) -> Symbol:
         df = chains.data_frame
 
         # Index by the requested underlying, by getting all data with canonicals which underlying is the requested underlying symbol:

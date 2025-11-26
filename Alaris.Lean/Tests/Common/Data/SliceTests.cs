@@ -371,10 +371,10 @@ namespace QuantConnect.Tests.Common.Data
         public void MergeOptionsAndFuturesChain()
         {
             // Merge optionChains and FutureChains
-            var optionChain1 = new OptionChains();
-            var optionChain2 = new OptionChains();
-            optionChain1.Add(Symbols.SPY, new OptionChain(Symbols.SPY, _dataTime));
-            optionChain2.Add(Symbols.AAPL, new OptionChain(Symbols.SPY, _dataTime));
+            var optionChain1 = new STDT002As();
+            var optionChain2 = new STDT002As();
+            optionChain1.Add(Symbols.SPY, new STDT002A(Symbols.SPY, _dataTime));
+            optionChain2.Add(Symbols.AAPL, new STDT002A(Symbols.SPY, _dataTime));
             var futuresChain1 = new FuturesChains();
             var futuresChain2 = new FuturesChains();
             futuresChain1.Add(Symbols.SPY, new FuturesChain(Symbols.SPY, _dataTime));
@@ -392,7 +392,7 @@ namespace QuantConnect.Tests.Common.Data
                 new Dividends(_dataTime), new Delistings(),
                 new SymbolChangedEvents(), new MarginInterestRates(), _dataTime);
             slice4.MergeSlice(slice5);
-            Assert.AreEqual(2, slice4.OptionChains.Count);
+            Assert.AreEqual(2, slice4.STDT002As.Count);
             Assert.AreEqual(2, slice4.FutureChains.Count);
         }
 
@@ -1396,7 +1396,7 @@ def Test(slice, symbol):
                     new TradeBars(),
                     new QuoteBars() { new QuoteBar() { Symbol = Symbols.IBM, Value = 100m } },
                     new Ticks(),
-                    new OptionChains(),
+                    new STDT002As(),
                     new FuturesChains(),
                     new Splits(),
                     new Dividends(),
@@ -1410,7 +1410,7 @@ def Test(slice, symbol):
                     new TradeBars() { new TradeBar() { Symbol = Symbols.IBM, Value = 100m } },
                     new QuoteBars(),
                     new Ticks(),
-                    new OptionChains(),
+                    new STDT002As(),
                     new FuturesChains(),
                     new Splits(),
                     new Dividends(),
@@ -1424,7 +1424,7 @@ def Test(slice, symbol):
                     new TradeBars(),
                     new QuoteBars(),
                     new Ticks() { { Symbols.IBM, new Tick() { Value = 100m } } },
-                    new OptionChains(),
+                    new STDT002As(),
                     new FuturesChains(),
                     new Splits(),
                     new Dividends(),
@@ -1438,7 +1438,7 @@ def Test(slice, symbol):
                     new TradeBars(),
                     new QuoteBars(),
                     new Ticks(),
-                    new OptionChains(),
+                    new STDT002As(),
                     new FuturesChains(),
                     new Splits(),
                     new Dividends(),
@@ -1452,7 +1452,7 @@ def Test(slice, symbol):
                     new TradeBars(),
                     new QuoteBars(),
                     new Ticks(),
-                    new OptionChains(),
+                    new STDT002As(),
                     new FuturesChains(),
                     new Splits(),
                     new Dividends(),

@@ -38,7 +38,7 @@ using System.Diagnostics.CodeAnalysis;
 // Date objects created in tests are managed by QuantLib Settings
 [assembly: SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope",
     Scope = "member",
-    Target = "~M:Alaris.Test.Integration.StrategyIntegrationTests.Control_WithUnifiedPricingEngine_FullWorkflow~System.Threading.Tasks.Task",
+    Target = "~M:Alaris.Test.Integration.StrategyIntegrationTests.Control_WithSTBR001A_FullWorkflow~System.Threading.Tasks.Task",
     Justification = "Date object managed by QuantLib Settings")]
 
 // Native library loading requires catching general exceptions to handle platform-specific issues

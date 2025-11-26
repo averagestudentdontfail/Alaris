@@ -15,7 +15,7 @@
 
 using System;
 using System.Collections.Generic;
-using QuantConnect.Algorithm.Framework.Portfolio.SignalExports;
+using QuantConnect.Algorithm.Framework.Portfolio.STCR004AExports;
 using QuantConnect.Data;
 using QuantConnect.Indicators;
 using QuantConnect.Interfaces;
@@ -64,9 +64,9 @@ namespace QuantConnect.Algorithm.CSharp.RegressionTests
             _slow = EMA(underlying, 50, Resolution.Minute);
 
             // Disable automatic exports as we manually set them
-            SignalExport.AutomaticExportTimeSpan = null;
-            // Set up the Collective2 Signal Export with the provided API key and system ID
-            SignalExport.AddSignalExportProvider(new Collective2SignalExport(_collective2ApiKey, _collective2SystemId));
+            STCR004AExport.AutomaticExportTimeSpan = null;
+            // Set up the Collective2 STCR004A Export with the provided API key and system ID
+            STCR004AExport.AddSTCR004AExportProvider(new Collective2STCR004AExport(_collective2ApiKey, _collective2SystemId));
 
             // Set warm-up period for the indicators
             SetWarmUp(50);
@@ -78,7 +78,7 @@ namespace QuantConnect.Algorithm.CSharp.RegressionTests
             if (_firstCall)
             {
                 SetHoldings(_symbol, 0.1);
-                SignalExport.SetTargetPortfolioFromPortfolio();
+                STCR004AExport.SetTargetPortfolioFromPortfolio();
                 _firstCall = false;
             }
 
@@ -86,14 +86,14 @@ namespace QuantConnect.Algorithm.CSharp.RegressionTests
             if (_fast > _slow && !Portfolio.Invested)
             {
                 MarketOrder(_symbol, 1);
-                SignalExport.SetTargetPortfolioFromPortfolio();
+                STCR004AExport.SetTargetPortfolioFromPortfolio();
             }
 
             // If the fast EMA crosses below the slow EMA, open a short position
             else if (_fast < _slow && Portfolio.Invested)
             {
                 MarketOrder(_symbol, -1);
-                SignalExport.SetTargetPortfolioFromPortfolio();
+                STCR004AExport.SetTargetPortfolioFromPortfolio();
             }
         }
 

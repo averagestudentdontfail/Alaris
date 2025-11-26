@@ -21,9 +21,9 @@ using QuantConnect.Data.Auxiliary;
 namespace QuantConnect.Lean.Engine.DataFeeds
 {
     /// <summary>
-    /// An implementation of <see cref="IOptionChainProvider"/> that reads the list of contracts from open interest zip data files
+    /// An implementation of <see cref="ISTDT002AProvider"/> that reads the list of contracts from open interest zip data files
     /// </summary>
-    public class BacktestingOptionChainProvider : BacktestingChainProvider, IOptionChainProvider
+    public class BacktestingSTDT002AProvider : BacktestingChainProvider, ISTDT002AProvider
     {
         /// <summary>
         /// Gets the list of option contracts for a given underlying symbol
@@ -44,7 +44,7 @@ namespace QuantConnect.Lean.Engine.DataFeeds
                 }
                 else
                 {
-                    throw new NotSupportedException($"BacktestingOptionChainProvider.GetOptionContractList(): " +
+                    throw new NotSupportedException($"BacktestingSTDT002AProvider.GetOptionContractList(): " +
                         $"{nameof(SecurityType.Equity)}, {nameof(SecurityType.Future)}, or {nameof(SecurityType.Index)} is expected but was {symbol.SecurityType}");
                 }
             }

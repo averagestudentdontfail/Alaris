@@ -27,9 +27,9 @@ namespace QuantConnect.Algorithm.Selection
 {
     /// <summary>
     /// This universe selection model will chain to the security changes of a given <see cref="Universe"/> selection
-    /// output and create a new <see cref="OptionChainUniverse"/> for each of them
+    /// output and create a new <see cref="STDT002AUniverse"/> for each of them
     /// </summary>
-    public class OptionChainedUniverseSelectionModel : UniverseSelectionModel
+    public class STDT002AedUniverseSelectionModel : UniverseSelectionModel
     {
         private DateTime _nextRefreshTimeUtc;
         private IEnumerable<Symbol> _currentSymbols;
@@ -42,12 +42,12 @@ namespace QuantConnect.Algorithm.Selection
         public override DateTime GetNextRefreshTimeUtc() => _nextRefreshTimeUtc;
 
         /// <summary>
-        /// Creates a new instance of <see cref="OptionChainedUniverseSelectionModel"/>
+        /// Creates a new instance of <see cref="STDT002AedUniverseSelectionModel"/>
         /// </summary>
         /// <param name="universe">The universe we want to chain to</param>
         /// <param name="optionFilter">The option filter universe to use</param>
         /// <param name="universeSettings">Universe settings define attributes of created subscriptions, such as their resolution and the minimum time in universe before they can be removed</param>
-        public OptionChainedUniverseSelectionModel(Universe universe,
+        public STDT002AedUniverseSelectionModel(Universe universe,
             Func<OptionFilterUniverse, OptionFilterUniverse> optionFilter,
             UniverseSettings universeSettings = null)
         {
@@ -77,12 +77,12 @@ namespace QuantConnect.Algorithm.Selection
         }
 
         /// <summary>
-        /// Creates a new instance of <see cref="OptionChainedUniverseSelectionModel"/>
+        /// Creates a new instance of <see cref="STDT002AedUniverseSelectionModel"/>
         /// </summary>
         /// <param name="universe">The universe we want to chain to</param>
         /// <param name="optionFilter">The python option filter universe to use</param>
         /// <param name="universeSettings">Universe settings define attributes of created subscriptions, such as their resolution and the minimum time in universe before they can be removed</param>
-        public OptionChainedUniverseSelectionModel(Universe universe,
+        public STDT002AedUniverseSelectionModel(Universe universe,
             PyObject optionFilter,
             UniverseSettings universeSettings = null): this(universe, ConvertOptionFilter(optionFilter), universeSettings)
         {
@@ -99,7 +99,7 @@ namespace QuantConnect.Algorithm.Selection
 
             foreach (var optionSymbol in _currentSymbols)
             {
-                yield return algorithm.CreateOptionChain(optionSymbol, _optionFilter, _universeSettings);
+                yield return algorithm.CreateSTDT002A(optionSymbol, _optionFilter, _universeSettings);
             }
         }
 

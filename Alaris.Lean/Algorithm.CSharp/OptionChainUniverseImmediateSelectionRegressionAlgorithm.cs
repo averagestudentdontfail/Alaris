@@ -26,7 +26,7 @@ namespace QuantConnect.Algorithm.CSharp
     /// <summary>
     /// Asserts that Option Chain universe selection happens right away after algorithm starts and a bar of the underlying is received
     /// </summary>
-    public class OptionChainUniverseImmediateSelectionRegressionAlgorithm : QCAlgorithm, IRegressionAlgorithmDefinition
+    public class STDT002AUniverseImmediateSelectionRegressionAlgorithm : QCAlgorithm, IRegressionAlgorithmDefinition
     {
         private Symbol _optionSymbol;
 
@@ -92,7 +92,7 @@ namespace QuantConnect.Algorithm.CSharp
                     throw new RegressionTestException($"Expected to find {_optionSymbol.Underlying} in first slice");
                 }
 
-                if (!slice.OptionChains.ContainsKey(_optionSymbol))
+                if (!slice.STDT002As.ContainsKey(_optionSymbol))
                 {
                     throw new RegressionTestException($"Expected to find {_optionSymbol} in first slice's Option Chain");
                 }

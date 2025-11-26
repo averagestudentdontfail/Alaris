@@ -454,7 +454,7 @@ namespace QuantConnect
         /// QuoteBar market data type (4) [Bid(OHLC), Ask(OHLC) and Mid(OHLC) summary bar]
         QuoteBar,
         /// Option chain data (5)
-        OptionChain,
+        STDT002A,
         /// Futures chain data (6)
         FuturesChain
     }

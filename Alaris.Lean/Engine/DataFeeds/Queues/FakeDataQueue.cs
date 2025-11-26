@@ -38,7 +38,7 @@ namespace QuantConnect.Lean.Engine.DataFeeds.Queues
         private int _dataPointsPerSecondPerSymbol;
 
         private readonly Timer _timer;
-        private readonly IOptionChainProvider _optionChainProvider;
+        private readonly ISTDT002AProvider _optionChainProvider;
         private readonly EventBasedDataQueueHandlerSubscriptionManager _subscriptionManager;
         private readonly IDataAggregator _aggregator;
         private readonly MarketHoursDatabase _marketHoursDatabase;
@@ -73,7 +73,7 @@ namespace QuantConnect.Lean.Engine.DataFeeds.Queues
             {
                 historyManager = Composer.Instance.GetPart<IHistoryProvider>();
             }
-            var optionChainProvider = new LiveOptionChainProvider();
+            var optionChainProvider = new LiveSTDT002AProvider();
             optionChainProvider.Initialize(new(mapFileProvider, historyManager));
             _optionChainProvider = optionChainProvider;
 

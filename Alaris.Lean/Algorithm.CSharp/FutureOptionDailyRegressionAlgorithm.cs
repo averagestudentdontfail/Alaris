@@ -47,7 +47,7 @@ namespace QuantConnect.Algorithm.CSharp
                 Resolution).Symbol;
 
             // Attempt to fetch a specific future option contract
-            DcOption = OptionChain(dc)
+            DcOption = STDT002A(dc)
                 .Where(x => x.ID.StrikePrice == 17m && x.ID.OptionRight == OptionRight.Call)
                 .Select(x => AddFutureOptionContract(x, Resolution).Symbol)
                 .FirstOrDefault();

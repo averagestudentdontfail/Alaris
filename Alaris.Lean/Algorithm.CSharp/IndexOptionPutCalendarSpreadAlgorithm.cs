@@ -22,7 +22,7 @@ using QuantConnect.Securities.Option;
 
 namespace QuantConnect.Algorithm.CSharp
 {
-    public class IndexOptionPutCalendarSpreadAlgorithm : QCAlgorithm
+    public class IndexOptionPutSTPR001AAlgorithm : QCAlgorithm
     {
         private Symbol _vixw, _vxz;
         private IEnumerable<OrderTicket> _tickets = Enumerable.Empty<OrderTicket>();
@@ -64,8 +64,8 @@ namespace QuantConnect.Algorithm.CSharp
                 return;
             }
 
-            // Get the OptionChain
-            if (!slice.OptionChains.TryGetValue(_vixw, out var chain)) return;
+            // Get the STDT002A
+            if (!slice.STDT002As.TryGetValue(_vixw, out var chain)) return;
 
             // Get ATM strike price
             var strike = chain.MinBy(x => Math.Abs(x.Strike - chain.Underlying.Value)).Strike;
@@ -77,8 +77,8 @@ namespace QuantConnect.Algorithm.CSharp
             _firstExpiry = puts[0].Expiry;
 
             // Sell the put calendar spread
-            var putCalendarSpread = OptionStrategies.PutCalendarSpread(_vixw, strike, _firstExpiry, puts[^1].Expiry);
-            _tickets = Sell(putCalendarSpread, 1, asynchronous: true);
+            var putSTPR001A = OptionStrategies.PutSTPR001A(_vixw, strike, _firstExpiry, puts[^1].Expiry);
+            _tickets = Sell(putSTPR001A, 1, asynchronous: true);
         }
     }
 }

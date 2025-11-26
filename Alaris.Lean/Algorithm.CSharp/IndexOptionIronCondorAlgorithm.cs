@@ -45,8 +45,8 @@ namespace QuantConnect.Algorithm.CSharp
         {
             if (Portfolio.Invested) return;
 
-            // Get the OptionChain
-            if (!slice.OptionChains.TryGetValue(_spxw, out var chain)) return;
+            // Get the STDT002A
+            if (!slice.STDT002As.TryGetValue(_spxw, out var chain)) return;
 
             // Get the closest expiry date
             var expiry = chain.Min(x => x.Expiry);

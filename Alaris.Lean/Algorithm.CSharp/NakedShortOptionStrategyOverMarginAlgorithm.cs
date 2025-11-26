@@ -63,7 +63,7 @@ namespace QuantConnect.Algorithm.CSharp
 
             if (!Portfolio.Invested)
             {
-                if (slice.OptionChains.TryGetValue(_optionSymbol, out var chain))
+                if (slice.STDT002As.TryGetValue(_optionSymbol, out var chain))
                 {
                     var atmStraddle = chain
                         .OrderBy(x => Math.Abs(chain.Underlying.Price - x.Strike))

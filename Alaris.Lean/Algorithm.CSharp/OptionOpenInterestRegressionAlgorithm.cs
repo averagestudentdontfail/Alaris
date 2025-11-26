@@ -54,7 +54,7 @@ namespace QuantConnect.Algorithm.CSharp
         {
             if (!Portfolio.Invested)
             {
-                foreach (var chain in slice.OptionChains)
+                foreach (var chain in slice.STDT002As)
                 {
                     foreach (var contract in chain.Value)
                     {

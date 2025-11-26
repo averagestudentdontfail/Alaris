@@ -15,11 +15,11 @@ from AlgorithmImports import *
 from datetime import timedelta
 
 ### <summary>
-### Regression algorithm illustrating the usage of the <see cref="QCAlgorithm.OptionChain(Symbol)"/> method
+### Regression algorithm illustrating the usage of the <see cref="QCAlgorithm.CA311A(Symbol)"/> method
 ### to get an option chain, which contains additional data besides the symbols, including prices, implied volatility and greeks.
 ### It also shows how this data can be used to filter the contracts based on certain criteria.
 ### </summary>
-class OptionChainFullDataRegressionAlgorithm(QCAlgorithm):
+class CA311AFullDataRegressionAlgorithm(QCAlgorithm):
 
     def initialize(self):
         self.set_start_date(2015, 12, 24)

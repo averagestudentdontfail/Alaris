@@ -45,7 +45,7 @@ namespace QuantConnect.Indicators
         /// <summary>
         /// Gets the signal line for the TSI indicator
         /// </summary>
-        public IndicatorBase<IndicatorDataPoint> Signal { get; }
+        public IndicatorBase<IndicatorDataPoint> STCR004A { get; }
 
         /// <summary>
         /// Required period, in data points, for the indicator to be ready and fully initialized.
@@ -85,7 +85,7 @@ namespace QuantConnect.Indicators
             _priceChangeEmaEma = new ExponentialMovingAverage(name + "_PC_EMA_EMA", shortTermPeriod).Of(_priceChangeEma, true);
             _absPriceChangeEmaEma = new ExponentialMovingAverage(name + "_APC_EMA_EMA", shortTermPeriod).Of(_absPriceChangeEma, true);
             _tsi = _priceChangeEmaEma.Over(_absPriceChangeEmaEma).Times(100m);
-            Signal = signalType.AsIndicator(name + "_Signal", signalPeriod).Of(_tsi, true);
+            STCR004A = signalType.AsIndicator(name + "_STCR004A", signalPeriod).Of(_tsi, true);
             WarmUpPeriod = longTermPeriod + shortTermPeriod;
         }
 
@@ -121,7 +121,7 @@ namespace QuantConnect.Indicators
             _absPriceChangeEma.Reset();
             _absPriceChangeEmaEma.Reset();
             _tsi.Reset();
-            Signal.Reset();
+            STCR004A.Reset();
             base.Reset();
         }
     }

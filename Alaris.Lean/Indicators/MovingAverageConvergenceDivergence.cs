@@ -35,7 +35,7 @@ namespace QuantConnect.Indicators
         /// <summary>
         /// Gets the signal of the MACD
         /// </summary>
-        public IndicatorBase<IndicatorDataPoint> Signal { get; }
+        public IndicatorBase<IndicatorDataPoint> STCR004A { get; }
 
         /// <summary>
         /// Developed by Thomas Aspray in 1986, the MACD-Histogram measures the distance between MACD and its signal line, 
@@ -47,7 +47,7 @@ namespace QuantConnect.Indicators
         /// <summary>
         /// Gets a flag indicating when this indicator is ready and fully initialized
         /// </summary>
-        public override bool IsReady => Signal.IsReady;
+        public override bool IsReady => STCR004A.IsReady;
 
         /// <summary>
         /// Required period, in data points, for the indicator to be ready and fully initialized.
@@ -84,7 +84,7 @@ namespace QuantConnect.Indicators
 
             Fast = type.AsIndicator(name + "_Fast", fastPeriod);
             Slow = type.AsIndicator(name + "_Slow", slowPeriod);
-            Signal = type.AsIndicator(name + "_Signal", signalPeriod);
+            STCR004A = type.AsIndicator(name + "_STCR004A", signalPeriod);
             Histogram = new Identity(name + "_Histogram");
             WarmUpPeriod = slowPeriod + signalPeriod - 1;
         }
@@ -103,9 +103,9 @@ namespace QuantConnect.Indicators
 
             if (fastReady && slowReady)
             {
-                if (Signal.Update(input.EndTime, macd))
+                if (STCR004A.Update(input.EndTime, macd))
                 {
-                    Histogram.Update(input.EndTime, macd - Signal.Current.Value);
+                    Histogram.Update(input.EndTime, macd - STCR004A.Current.Value);
                 }
             }
 
@@ -119,7 +119,7 @@ namespace QuantConnect.Indicators
         {
             Fast.Reset();
             Slow.Reset();
-            Signal.Reset();
+            STCR004A.Reset();
             Histogram.Reset();
             base.Reset();
         }

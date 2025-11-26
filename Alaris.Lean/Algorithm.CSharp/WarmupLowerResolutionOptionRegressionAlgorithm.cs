@@ -62,7 +62,7 @@ namespace QuantConnect.Algorithm.CSharp
                 }
             }
 
-            if (slice.OptionChains.TryGetValue(_optionSymbol, out var chain))
+            if (slice.STDT002As.TryGetValue(_optionSymbol, out var chain))
             {
                 // we find at the money (ATM) put contract with farthest expiration
                 var atmContract = chain

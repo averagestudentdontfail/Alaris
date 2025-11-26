@@ -42,7 +42,7 @@ namespace QuantConnect.Lean.Engine.DataFeeds
         private readonly Splits _emptySplits = new Splits();
         private readonly Dividends _emptyDividends = new Dividends();
         private readonly Delistings _emptyDelistings = new Delistings();
-        private readonly OptionChains _emptyOptionChains = new OptionChains();
+        private readonly STDT002As _emptySTDT002As = new STDT002As();
         private readonly FuturesChains _emptyFuturesChains = new FuturesChains();
         private readonly SymbolChangedEvents _emptySymbolChangedEvents = new SymbolChangedEvents();
         private readonly MarginInterestRates _emptyMarginInterestRates = new MarginInterestRates();
@@ -117,7 +117,7 @@ namespace QuantConnect.Lean.Engine.DataFeeds
             Splits splits = null;
             Dividends dividends = null;
             Delistings delistings = null;
-            OptionChains optionChains = null;
+            STDT002As optionChains = null;
             FuturesChains futuresChains = null;
             SymbolChangedEvents symbolChanges = null;
             MarginInterestRates marginInterestRates = null;
@@ -240,12 +240,12 @@ namespace QuantConnect.Lean.Engine.DataFeeds
                                     }
                                     break;
 
-                                case MarketDataType.OptionChain:
+                                case MarketDataType.STDT002A:
                                     if (optionChains == null)
                                     {
-                                        optionChains = new OptionChains(algorithmTime);
+                                        optionChains = new STDT002As(algorithmTime);
                                     }
-                                    optionChains[baseData.Symbol] = (OptionChain)baseData;
+                                    optionChains[baseData.Symbol] = (STDT002A)baseData;
                                     break;
 
                                 case MarketDataType.FuturesChain:
@@ -273,14 +273,14 @@ namespace QuantConnect.Lean.Engine.DataFeeds
                             // want to generate a chain object in this case
                             if (optionChains == null && !packet.Configuration.IsInternalFeed)
                             {
-                                optionChains = new OptionChains(algorithmTime);
+                                optionChains = new STDT002As(algorithmTime);
                             }
 
                             if (optionChains != null)
                             {
-                                if (baseData.DataType == MarketDataType.OptionChain)
+                                if (baseData.DataType == MarketDataType.STDT002A)
                                 {
-                                    optionChains[baseData.Symbol] = (OptionChain)baseData;
+                                    optionChains[baseData.Symbol] = (STDT002A)baseData;
                                 }
                                 else if (!HandleOptionData(algorithmTime, baseData, optionChains, packet.Security, sliceFuture, optionUnderlyingUpdates))
                                 {
@@ -386,7 +386,7 @@ namespace QuantConnect.Lean.Engine.DataFeeds
                 }
             }
 
-            slice = new Slice(algorithmTime, allDataForAlgorithm, tradeBars ?? _emptyTradeBars, quoteBars ?? _emptyQuoteBars, ticks ?? _emptyTicks, optionChains ?? _emptyOptionChains, futuresChains ?? _emptyFuturesChains, splits ?? _emptySplits, dividends ?? _emptyDividends, delistings ?? _emptyDelistings, symbolChanges ?? _emptySymbolChangedEvents, marginInterestRates ?? _emptyMarginInterestRates, utcDateTime, allDataForAlgorithm.Count > 0);
+            slice = new Slice(algorithmTime, allDataForAlgorithm, tradeBars ?? _emptyTradeBars, quoteBars ?? _emptyQuoteBars, ticks ?? _emptyTicks, optionChains ?? _emptySTDT002As, futuresChains ?? _emptyFuturesChains, splits ?? _emptySplits, dividends ?? _emptyDividends, delistings ?? _emptyDelistings, symbolChanges ?? _emptySymbolChangedEvents, marginInterestRates ?? _emptyMarginInterestRates, utcDateTime, allDataForAlgorithm.Count > 0);
 
             return new TimeSlice(utcDateTime, count, slice, data, security, consolidator, custom ?? _emptyCustom, changes, universeData);
         }
@@ -400,7 +400,7 @@ namespace QuantConnect.Lean.Engine.DataFeeds
             _emptySplits.Clear();
             _emptyDividends.Clear();
             _emptyDelistings.Clear();
-            _emptyOptionChains.Clear();
+            _emptySTDT002As.Clear();
             _emptyFuturesChains.Clear();
             _emptySymbolChangedEvents.Clear();
             _emptyMarginInterestRates.Clear();
@@ -412,22 +412,22 @@ namespace QuantConnect.Lean.Engine.DataFeeds
                 = _emptySplits.Time
                 = _emptyDividends.Time
                 = _emptyDelistings.Time
-                = _emptyOptionChains.Time
+                = _emptySTDT002As.Time
                 = _emptyFuturesChains.Time
                 = _emptySymbolChangedEvents.Time
                 = _emptyMarginInterestRates.Time = algorithmTime;
 #pragma warning restore 0618
         }
 
-        private bool HandleOptionData(DateTime algorithmTime, BaseData baseData, OptionChains optionChains, ISecurityPrice security, Lazy<Slice> sliceFuture, IReadOnlyDictionary<Symbol, BaseData> optionUnderlyingUpdates)
+        private bool HandleOptionData(DateTime algorithmTime, BaseData baseData, STDT002As optionChains, ISecurityPrice security, Lazy<Slice> sliceFuture, IReadOnlyDictionary<Symbol, BaseData> optionUnderlyingUpdates)
         {
             var symbol = baseData.Symbol;
 
-            OptionChain chain;
+            STDT002A chain;
             var canonical = symbol.Canonical;
             if (!optionChains.TryGetValue(canonical, out chain))
             {
-                chain = new OptionChain(canonical, algorithmTime);
+                chain = new STDT002A(canonical, algorithmTime);
                 optionChains[canonical] = chain;
             }
 

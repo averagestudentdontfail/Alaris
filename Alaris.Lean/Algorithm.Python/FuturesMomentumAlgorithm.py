@@ -64,11 +64,11 @@ class FuturesMomentumAlgorithm(QCAlgorithm):
 
     def on_end_of_day(self, symbol):
         if self.is_up_trend:
-            self.plot("Indicator Signal", "EOD",1)
+            self.plot("Indicator CA110A", "EOD",1)
         elif self.is_down_trend:
-            self.plot("Indicator Signal", "EOD",-1)
+            self.plot("Indicator CA110A", "EOD",-1)
         elif self._slow.is_ready and self._fast.is_ready:
-            self.plot("Indicator Signal", "EOD",0)
+            self.plot("Indicator CA110A", "EOD",0)
 
     def on_order_event(self, order_event):
         self.log(str(order_event))

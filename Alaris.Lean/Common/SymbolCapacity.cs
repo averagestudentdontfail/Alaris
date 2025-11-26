@@ -307,7 +307,7 @@ namespace QuantConnect
         }
 
         /// <summary>
-        /// Signals a reset for the <see cref="MarketCapacityDollarVolume"/> and <see cref="SaleVolume"/>
+        /// STCR004As a reset for the <see cref="MarketCapacityDollarVolume"/> and <see cref="SaleVolume"/>
         /// </summary>
         public void Reset()
         {

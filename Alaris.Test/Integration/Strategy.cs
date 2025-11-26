@@ -16,10 +16,10 @@ namespace Alaris.Test.Integration;
 public class StrategyIntegrationTests
 {
     [Fact]
-    public void YangZhangEstimator_CalculatesVolatilityCorrectly()
+    public void STCR003AEstimator_CalculatesVolatilityCorrectly()
     {
         // Arrange
-        var estimator = new YangZhangEstimator();
+        var estimator = new STCR003AEstimator();
         var priceBars = GenerateSamplePriceBars(50);
 
         // Act
@@ -31,10 +31,10 @@ public class StrategyIntegrationTests
     }
 
     [Fact]
-    public void YangZhangEstimator_CalculatesRollingVolatility()
+    public void STCR003AEstimator_CalculatesRollingVolatility()
     {
         // Arrange
-        var estimator = new YangZhangEstimator();
+        var estimator = new STCR003AEstimator();
         var priceBars = GenerateSamplePriceBars(100);
 
         // Act
@@ -47,13 +47,13 @@ public class StrategyIntegrationTests
     }
 
     [Fact]
-    public void TermStructureAnalyzer_IdentifiesInvertedStructure()
+    public void STTM001AAnalyzer_IdentifiesInvertedStructure()
     {
         // Arrange
-        var analyzer = new TermStructureAnalyzer();
+        var analyzer = new STTM001AAnalyzer();
         
         // Use steeper inversion to meet -0.00406 threshold (from Atilgan 2014)
-        var points = new List<TermStructurePoint>
+        var points = new List<STTM001APoint>
         {
             new() { DaysToExpiry = 10, ImpliedVolatility = 0.45, Strike = 100 },
             new() { DaysToExpiry = 20, ImpliedVolatility = 0.37, Strike = 100 },
@@ -71,11 +71,11 @@ public class StrategyIntegrationTests
     }
 
     [Fact]
-    public void TermStructureAnalyzer_IdentifiesNormalStructure()
+    public void STTM001AAnalyzer_IdentifiesNormalStructure()
     {
         // Arrange
-        var analyzer = new TermStructureAnalyzer();
-        var points = new List<TermStructurePoint>
+        var analyzer = new STTM001AAnalyzer();
+        var points = new List<STTM001APoint>
         {
             new() { DaysToExpiry = 10, ImpliedVolatility = 0.25, Strike = 100 },
             new() { DaysToExpiry = 20, ImpliedVolatility = 0.28, Strike = 100 },
@@ -93,13 +93,13 @@ public class StrategyIntegrationTests
     }
 
     [Fact]
-    public void SignalGenerator_GeneratesSignal()
+    public void STCR001A_GeneratesSTCR004A()
     {
         // Arrange
         var mockMarketData = new MockMarketDataProvider();
-        var yangZhang = new YangZhangEstimator();
-        var termAnalyzer = new TermStructureAnalyzer();
-        var generator = new SignalGenerator(mockMarketData, yangZhang, termAnalyzer);
+        var yangZhang = new STCR003AEstimator();
+        var termAnalyzer = new STTM001AAnalyzer();
+        var generator = new STCR001A(mockMarketData, yangZhang, termAnalyzer);
 
         var earningsDate = new DateTime(2024, 1, 25);
         var evaluationDate = new DateTime(2024, 1, 24);
@@ -111,25 +111,25 @@ public class StrategyIntegrationTests
         signal.Should().NotBeNull();
         signal.Symbol.Should().Be("AAPL");
         signal.Strength.Should().BeOneOf(
-            SignalStrength.Avoid,
-            SignalStrength.Consider,
-            SignalStrength.Recommended);
+            STCR004AStrength.Avoid,
+            STCR004AStrength.Consider,
+            STCR004AStrength.Recommended);
     }
 
     [Fact]
-    public void KellyPositionSizer_CalculatesPosition()
+    public void STRK001A_CalculatesPosition()
     {
         // Arrange
-        var sizer = new KellyPositionSizer();
+        var sizer = new STRK001A();
         var historicalTrades = GenerateSampleTrades(30);
         var portfolioValue = 100000.0;
         var spreadCost = 2.50;
-        var signal = new Signal
+        var signal = new STCR004A
         {
             Symbol = "AAPL",
-            Strength = SignalStrength.Recommended,
+            Strength = STCR004AStrength.Recommended,
             IVRVRatio = 1.30,
-            TermStructureSlope = -0.005
+            STTM001ASlope = -0.005
         };
 
         // Act
@@ -146,10 +146,10 @@ public class StrategyIntegrationTests
     }
 
     [Fact]
-    public void CalendarSpreadPricing_ValidatesCorrectly()
+    public void STPR001APricing_ValidatesCorrectly()
     {
         // Arrange
-        var pricing = new CalendarSpreadPricing
+        var pricing = new STPR001APricing
         {
             FrontOption = new OptionPricing { Price = 3.00, Delta = 0.50 },
             BackOption = new OptionPricing { Price = 5.50, Delta = 0.45 },
@@ -164,16 +164,16 @@ public class StrategyIntegrationTests
     }
 
     [Fact]
-    public async Task Control_EvaluatesOpportunity()
+    public async Task STCT001A_EvaluatesOpportunity()
     {
         // Arrange
         var mockMarketData = new MockMarketDataProvider();
-        var yangZhang = new YangZhangEstimator();
-        var termAnalyzer = new TermStructureAnalyzer();
-        var signalGenerator = new SignalGenerator(mockMarketData, yangZhang, termAnalyzer);
+        var yangZhang = new STCR003AEstimator();
+        var termAnalyzer = new STTM001AAnalyzer();
+        var signalGenerator = new STCR001A(mockMarketData, yangZhang, termAnalyzer);
         var mockPricing = new MockPricingEngine();
-        var sizer = new KellyPositionSizer();
-        var control = new Control(signalGenerator, mockPricing, sizer);
+        var sizer = new STRK001A();
+        var control = new STCT001A(signalGenerator, mockPricing, sizer);
 
         var historicalTrades = GenerateSampleTrades(25);
         var earningsDate = new DateTime(2024, 1, 25);
@@ -190,19 +190,19 @@ public class StrategyIntegrationTests
         // Assert
         opportunity.Should().NotBeNull();
         opportunity.Symbol.Should().Be("AAPL");
-        opportunity.Signal.Should().NotBeNull();
+        opportunity.STCR004A.Should().NotBeNull();
     }
 
     [Fact]
-    public async Task UnifiedPricingEngine_IntegrationTest_PositiveRates()
+    public async Task STBR001A_IntegrationTest_PositiveRates()
     {
         // Arrange
         var valuationDate = new Date(15, Month.January, 2024);
         Settings.instance().setEvaluationDate(valuationDate);
 
-        using var engine = new UnifiedPricingEngine();
+        using var engine = new STBR001A();
 
-        var parameters = new OptionParameters
+        var parameters = new STDT003As
         {
             UnderlyingPrice = 150.0,
             Strike = 150.0,
@@ -226,15 +226,15 @@ public class StrategyIntegrationTests
     }
 
     [Fact]
-    public async Task UnifiedPricingEngine_IntegrationTest_NegativeRates()
+    public async Task STBR001A_IntegrationTest_NegativeRates()
     {
         // Arrange: Healy (2021) parameters
         var valuationDate = new Date(15, Month.January, 2024);
         Settings.instance().setEvaluationDate(valuationDate);
 
-        using var engine = new UnifiedPricingEngine();
+        using var engine = new STBR001A();
 
-        var parameters = new OptionParameters
+        var parameters = new STDT003As
         {
             UnderlyingPrice = 100.0,
             Strike = 100.0,
@@ -258,15 +258,15 @@ public class StrategyIntegrationTests
     }
 
     [Fact]
-    public async Task UnifiedPricingEngine_CalendarSpread_PositiveRates()
+    public async Task STBR001A_STPR001A_PositiveRates()
     {
         // Arrange
         var valuationDate = new Date(15, Month.January, 2024);
         Settings.instance().setEvaluationDate(valuationDate);
 
-        using var engine = new UnifiedPricingEngine();
+        using var engine = new STBR001A();
 
-        var parameters = new CalendarSpreadParameters
+        var parameters = new STPR001AParameters
         {
             UnderlyingPrice = 150.0,
             Strike = 150.0,
@@ -280,7 +280,7 @@ public class StrategyIntegrationTests
         };
 
         // Act
-        var result = await engine.PriceCalendarSpread(parameters);
+        var result = await engine.PriceSTPR001A(parameters);
 
         // Assert
         result.Should().NotBeNull();
@@ -291,15 +291,15 @@ public class StrategyIntegrationTests
     }
 
     [Fact]
-    public async Task UnifiedPricingEngine_CalendarSpread_NegativeRates()
+    public async Task STBR001A_STPR001A_NegativeRates()
     {
         // Arrange
         var valuationDate = new Date(15, Month.January, 2024);
         Settings.instance().setEvaluationDate(valuationDate);
 
-        using var engine = new UnifiedPricingEngine();
+        using var engine = new STBR001A();
 
-        var parameters = new CalendarSpreadParameters
+        var parameters = new STPR001AParameters
         {
             UnderlyingPrice = 100.0,
             Strike = 100.0,
@@ -313,7 +313,7 @@ public class StrategyIntegrationTests
         };
 
         // Act
-        var result = await engine.PriceCalendarSpread(parameters);
+        var result = await engine.PriceSTPR001A(parameters);
 
         // Assert
         result.Should().NotBeNull();
@@ -323,21 +323,21 @@ public class StrategyIntegrationTests
     }
 
     [Fact]
-    public async Task Control_WithUnifiedPricingEngine_FullWorkflow()
+    public async Task STCT001A_WithSTBR001A_FullWorkflow()
     {
         // Arrange
         var valuationDate = new Date(24, Month.January, 2024);
         Settings.instance().setEvaluationDate(valuationDate);
 
         var mockMarketData = new MockMarketDataProvider();
-        var yangZhang = new YangZhangEstimator();
-        var termAnalyzer = new TermStructureAnalyzer();
-        var signalGenerator = new SignalGenerator(mockMarketData, yangZhang, termAnalyzer);
+        var yangZhang = new STCR003AEstimator();
+        var termAnalyzer = new STTM001AAnalyzer();
+        var signalGenerator = new STCR001A(mockMarketData, yangZhang, termAnalyzer);
 
-        // Use real UnifiedPricingEngine instead of mock
-        using var pricingEngine = new UnifiedPricingEngine();
-        var sizer = new KellyPositionSizer();
-        var control = new Control(signalGenerator, pricingEngine, sizer);
+        // Use real STBR001A instead of mock
+        using var pricingEngine = new STBR001A();
+        var sizer = new STRK001A();
+        var control = new STCT001A(signalGenerator, pricingEngine, sizer);
 
         var historicalTrades = GenerateSampleTrades(25);
         var earningsDate = new DateTime(2024, 1, 25);
@@ -354,7 +354,7 @@ public class StrategyIntegrationTests
         // Assert
         opportunity.Should().NotBeNull();
         opportunity.Symbol.Should().Be("AAPL");
-        opportunity.Signal.Should().NotBeNull();
+        opportunity.STCR004A.Should().NotBeNull();
 
         if (opportunity.SpreadPricing != null)
         {
@@ -419,11 +419,11 @@ public class StrategyIntegrationTests
 }
 
 // Mock implementations for testing
-internal class MockMarketDataProvider : IMarketDataProvider
+internal class MockMarketDataProvider : STDT001A
 {
-    public OptionChain GetOptionChain(string symbol, DateTime date)
+    public STDT002A GetSTDT002A(string symbol, DateTime date)
     {
-        var chain = new OptionChain
+        var chain = new STDT002A
         {
             Symbol = symbol,
             UnderlyingPrice = 150.0,
@@ -542,9 +542,9 @@ internal class MockMarketDataProvider : IMarketDataProvider
     }
 }
 
-internal class MockPricingEngine : IOptionPricingEngine
+internal class MockPricingEngine : STBR002A
 {
-    public Task<OptionPricing> PriceOption(OptionParameters parameters)
+    public Task<OptionPricing> PriceOption(STDT003As parameters)
     {
         return Task.FromResult(new OptionPricing
         {
@@ -559,7 +559,7 @@ internal class MockPricingEngine : IOptionPricingEngine
         });
     }
 
-    public Task<CalendarSpreadPricing> PriceCalendarSpread(CalendarSpreadParameters parameters)
+    public Task<STPR001APricing> PriceSTPR001A(STPR001AParameters parameters)
     {
         var frontOption = new OptionPricing
         {
@@ -577,7 +577,7 @@ internal class MockPricingEngine : IOptionPricingEngine
             Theta = -0.02
         };
 
-        return Task.FromResult(new CalendarSpreadPricing
+        return Task.FromResult(new STPR001APricing
         {
             FrontOption = frontOption,
             BackOption = backOption,
@@ -591,7 +591,7 @@ internal class MockPricingEngine : IOptionPricingEngine
         });
     }
 
-    public Task<double> CalculateImpliedVolatility(double marketPrice, OptionParameters parameters)
+    public Task<double> CalculateImpliedVolatility(double marketPrice, STDT003As parameters)
     {
         return Task.FromResult(0.30);
     }

@@ -89,7 +89,7 @@ namespace QuantConnect.Lean.Engine.DataFeeds.Enumerators
         }
 
         /// <summary>
-        /// Signals the enumerator to stop enumerating when the items currently
+        /// STCR004As the enumerator to stop enumerating when the items currently
         /// held inside are gone. No more items will be added to this enumerator.
         /// </summary>
         public void Stop()

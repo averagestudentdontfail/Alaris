@@ -29,7 +29,7 @@ namespace QuantConnect.Algorithm.CSharp
     /// <meta name="tag" content="using data" />
     /// <meta name="tag" content="selecting options" />
     /// <meta name="tag" content="manual selection" />
-    public class OptionChainProviderAlgorithm : QCAlgorithm, IRegressionAlgorithmDefinition
+    public class STDT002AProviderAlgorithm : QCAlgorithm, IRegressionAlgorithmDefinition
     {
         private Symbol _equitySymbol;
         private Symbol _optionContract = string.Empty;
@@ -54,7 +54,7 @@ namespace QuantConnect.Algorithm.CSharp
 
             if (!(Securities.ContainsKey(_optionContract) && Portfolio[_optionContract].Invested))
             {
-                var contracts = OptionChainProvider.GetOptionContractList(_equitySymbol, slice.Time);
+                var contracts = STDT002AProvider.GetOptionContractList(_equitySymbol, slice.Time);
                 var underlyingPrice = Securities[_equitySymbol].Price;
                 // filter the out-of-money call options from the contract list which expire in 10 to 30 days from now on
                 var otmCalls = (from symbol in contracts

@@ -49,7 +49,7 @@ namespace QuantConnect.Indicators
             _rsi = new RelativeStrengthIndex($"{name}_RSI", rsiPeriod);
             _smoothedRsi = new ExponentialMovingAverage($"{name}_SmoothedRSI", smoothingRsiPeriod).Of(_rsi);
             _doubleSmoothedRsi = new ExponentialMovingAverage($"{name}_DoubleSmoothedRSI", doubleSmoothingRsiPeriod).Of(_smoothedRsi);
-            _signalLine = new SimpleMovingAverage($"{name}_SignalLine", signalLinePeriod).Of(_doubleSmoothedRsi);
+            _signalLine = new SimpleMovingAverage($"{name}_STCR004ALine", signalLinePeriod).Of(_doubleSmoothedRsi);
             WarmUpPeriod = (rsiPeriod + smoothingRsiPeriod + doubleSmoothingRsiPeriod + signalLinePeriod - 3) + 1;
         }
 

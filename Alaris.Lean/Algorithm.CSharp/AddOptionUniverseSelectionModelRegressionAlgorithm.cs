@@ -37,11 +37,11 @@ namespace QuantConnect.Algorithm.CSharp
             UniverseSettings.Resolution = Resolution.Minute;
             SetUniverseSelection(new OptionUniverseSelectionModel(
                 TimeSpan.FromDays(1),
-                SelectOptionChainSymbols
+                SelectSTDT002ASymbols
             ));
         }
 
-        private static IEnumerable<Symbol> SelectOptionChainSymbols(DateTime utcTime)
+        private static IEnumerable<Symbol> SelectSTDT002ASymbols(DateTime utcTime)
         {
             var newYorkTime = utcTime.ConvertFromUtc(TimeZones.NewYork);
             if (newYorkTime.Date < new DateTime(2014, 06, 06))

@@ -22,18 +22,18 @@ using QuantConnect.Interfaces;
 namespace QuantConnect.Lean.Engine.DataFeeds
 {
     /// <summary>
-    /// An implementation of <see cref="IOptionChainProvider"/> that will cache by date option contracts returned by another option chain provider.
+    /// An implementation of <see cref="ISTDT002AProvider"/> that will cache by date option contracts returned by another option chain provider.
     /// </summary>
-    public class CachingOptionChainProvider : IOptionChainProvider
+    public class CachingSTDT002AProvider : ISTDT002AProvider
     {
-        private readonly ConcurrentDictionary<Symbol, OptionChainCacheEntry> _cache = new ConcurrentDictionary<Symbol, OptionChainCacheEntry>();
-        private readonly IOptionChainProvider _optionChainProvider;
+        private readonly ConcurrentDictionary<Symbol, STDT002ACacheEntry> _cache = new ConcurrentDictionary<Symbol, STDT002ACacheEntry>();
+        private readonly ISTDT002AProvider _optionChainProvider;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="CachingOptionChainProvider"/> class
+        /// Initializes a new instance of the <see cref="CachingSTDT002AProvider"/> class
         /// </summary>
         /// <param name="optionChainProvider"></param>
-        public CachingOptionChainProvider(IOptionChainProvider optionChainProvider)
+        public CachingSTDT002AProvider(ISTDT002AProvider optionChainProvider)
         {
             _optionChainProvider = optionChainProvider;
         }
@@ -49,11 +49,11 @@ namespace QuantConnect.Lean.Engine.DataFeeds
         {
             List<Symbol> symbols;
 
-            OptionChainCacheEntry entry;
+            STDT002ACacheEntry entry;
             if (!_cache.TryGetValue(symbol, out entry) || date.Date != entry.Date)
             {
                 symbols = _optionChainProvider.GetOptionContractList(symbol, date.Date).ToList();
-                _cache[symbol] = new OptionChainCacheEntry(date.Date, symbols);
+                _cache[symbol] = new STDT002ACacheEntry(date.Date, symbols);
             }
             else
             {
@@ -63,12 +63,12 @@ namespace QuantConnect.Lean.Engine.DataFeeds
             return symbols;
         }
 
-        private class OptionChainCacheEntry
+        private class STDT002ACacheEntry
         {
             public DateTime Date { get; }
             public List<Symbol> Symbols { get; }
 
-            public OptionChainCacheEntry(DateTime date, List<Symbol> symbols)
+            public STDT002ACacheEntry(DateTime date, List<Symbol> symbols)
             {
                 Date = date;
                 Symbols = symbols;

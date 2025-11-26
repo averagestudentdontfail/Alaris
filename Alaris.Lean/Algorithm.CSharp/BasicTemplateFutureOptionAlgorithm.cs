@@ -60,7 +60,7 @@ namespace QuantConnect.Algorithm.CSharp
         public override void OnData(Slice slice)
         {
             // Access Data
-            foreach(var kvp in slice.OptionChains)
+            foreach(var kvp in slice.STDT002As)
             {
                 var underlyingFutureContract = kvp.Key.Underlying;
                 var chain = kvp.Value;

@@ -66,8 +66,8 @@ namespace QuantConnect.Algorithm.CSharp
         {
             if (!Portfolio.Invested && IsMarketOpen(_optionSymbol))
             {
-                OptionChain chain;
-                if (slice.OptionChains.TryGetValue(_optionSymbol, out chain))
+                STDT002A chain;
+                if (slice.STDT002As.TryGetValue(_optionSymbol, out chain))
                 {
                     // we find at the money (ATM) put contract with farthest expiration
                     var atmContract = chain

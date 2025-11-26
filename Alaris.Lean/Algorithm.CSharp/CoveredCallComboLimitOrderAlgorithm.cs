@@ -53,8 +53,8 @@ namespace QuantConnect.Algorithm.CSharp
         {
             if (!Portfolio.Invested && Transactions.OrdersCount == 0)
             {
-                OptionChain chain;
-                if (IsMarketOpen(_optionSymbol) && slice.OptionChains.TryGetValue(_optionSymbol, out chain))
+                STDT002A chain;
+                if (IsMarketOpen(_optionSymbol) && slice.STDT002As.TryGetValue(_optionSymbol, out chain))
                 {
                     // we find at the money (ATM) call contract with closest expiration
                     var atmContract = chain

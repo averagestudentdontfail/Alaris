@@ -55,7 +55,7 @@ namespace QuantConnect.Algorithm.CSharp
                 return;
             }
 
-            foreach (var kvp in slice.OptionChains)
+            foreach (var kvp in slice.STDT002As)
             {
                 if (kvp.Key != _optionSymbol)
                 {

@@ -62,8 +62,8 @@ namespace QuantConnect.Algorithm.CSharp
             {
                 if (Time.Hour > 9 && Time.Minute > 0)
                 {
-                    OptionChain chain;
-                    if (slice.OptionChains.TryGetValue(_optionSymbol, out chain))
+                    STDT002A chain;
+                    if (slice.STDT002As.TryGetValue(_optionSymbol, out chain))
                     {
                         var contract =
                             chain.OrderBy(x => x.Expiry)

@@ -21,7 +21,7 @@ using QuantConnect.Orders;
 
 namespace QuantConnect.Algorithm.CSharp
 {
-    public class IndexOptionCallCalendarSpreadAlgorithm : QCAlgorithm
+    public class IndexOptionCallSTPR001AAlgorithm : QCAlgorithm
     {
         private Symbol _vixw, _vxz, _spy;
         private decimal _multiplier;
@@ -58,8 +58,8 @@ namespace QuantConnect.Algorithm.CSharp
                 return;
             }
 
-            // Get the OptionChain
-            if (!slice.OptionChains.TryGetValue(_vixw, out var chain)) return;
+            // Get the STDT002A
+            if (!slice.STDT002As.TryGetValue(_vixw, out var chain)) return;
 
             // Get ATM strike price
             var strike = chain.MinBy(x => Math.Abs(x.Strike - chain.Underlying.Value)).Strike;

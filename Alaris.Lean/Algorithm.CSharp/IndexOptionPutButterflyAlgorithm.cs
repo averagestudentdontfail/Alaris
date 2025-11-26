@@ -55,8 +55,8 @@ namespace QuantConnect.Algorithm.CSharp
             // Return if any opening index option position
             if (_tickets.Any(x => Portfolio[x.Symbol].Invested)) return;
 
-            // Get the OptionChain
-            if (!slice.OptionChains.TryGetValue(_spxw, out var chain)) return;
+            // Get the STDT002A
+            if (!slice.STDT002As.TryGetValue(_spxw, out var chain)) return;
 
             // Get nearest expiry date
             var expiry = chain.Min(x => x.Expiry);

@@ -199,7 +199,7 @@ namespace QuantConnect.Securities.Option
         /// <summary>
         /// Returns true if this is the option chain security, false if it is a specific option contract
         /// </summary>
-        public bool IsOptionChain => Symbol.IsCanonical();
+        public bool IsSTDT002A => Symbol.IsCanonical();
 
         /// <summary>
         /// Returns true if this is a specific option contract security, false if it is the option chain security

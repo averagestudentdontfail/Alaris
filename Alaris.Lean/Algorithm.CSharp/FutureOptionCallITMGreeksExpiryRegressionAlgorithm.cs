@@ -55,7 +55,7 @@ namespace QuantConnect.Algorithm.CSharp
                 TimeSpan.FromMinutes(1));
 
             // Select a future option expiring ITM, and adds it to the algorithm.
-            _esOption = AddFutureOptionContract(OptionChain(_es19m20.Symbol)
+            _esOption = AddFutureOptionContract(STDT002A(_es19m20.Symbol)
                 .Where(x => x.ID.StrikePrice <= 3200m && x.ID.OptionRight == OptionRight.Call)
                 .OrderByDescending(x => x.ID.StrikePrice)
                 .Take(1)
@@ -79,25 +79,25 @@ namespace QuantConnect.Algorithm.CSharp
                 return;
             }
 
-            if (slice.OptionChains.Count == 0)
+            if (slice.STDT002As.Count == 0)
             {
                 return;
             }
-            if (slice.OptionChains.Values.All(o => o.Contracts.Values.Any(c => !slice.ContainsKey(c.Symbol))))
+            if (slice.STDT002As.Values.All(o => o.Contracts.Values.Any(c => !slice.ContainsKey(c.Symbol))))
             {
                 return;
             }
-            if (slice.OptionChains.Values.First().Contracts.Count == 0)
+            if (slice.STDT002As.Values.First().Contracts.Count == 0)
             {
-                throw new RegressionTestException($"No contracts found in the option {slice.OptionChains.Keys.First()}");
+                throw new RegressionTestException($"No contracts found in the option {slice.STDT002As.Keys.First()}");
             }
 
-            var deltas = slice.OptionChains.Values.OrderByDescending(y => y.Contracts.Values.Sum(x => x.Volume)).First().Contracts.Values.Select(x => x.Greeks.Delta).ToList();
-            var gammas = slice.OptionChains.Values.OrderByDescending(y => y.Contracts.Values.Sum(x => x.Volume)).First().Contracts.Values.Select(x => x.Greeks.Gamma).ToList();
-            var lambda = slice.OptionChains.Values.OrderByDescending(y => y.Contracts.Values.Sum(x => x.Volume)).First().Contracts.Values.Select(x => x.Greeks.Lambda).ToList();
-            var rho = slice.OptionChains.Values.OrderByDescending(y => y.Contracts.Values.Sum(x => x.Volume)).First().Contracts.Values.Select(x => x.Greeks.Rho).ToList();
-            var theta = slice.OptionChains.Values.OrderByDescending(y => y.Contracts.Values.Sum(x => x.Volume)).First().Contracts.Values.Select(x => x.Greeks.Theta).ToList();
-            var vega = slice.OptionChains.Values.OrderByDescending(y => y.Contracts.Values.Sum(x => x.Volume)).First().Contracts.Values.Select(x => x.Greeks.Vega).ToList();
+            var deltas = slice.STDT002As.Values.OrderByDescending(y => y.Contracts.Values.Sum(x => x.Volume)).First().Contracts.Values.Select(x => x.Greeks.Delta).ToList();
+            var gammas = slice.STDT002As.Values.OrderByDescending(y => y.Contracts.Values.Sum(x => x.Volume)).First().Contracts.Values.Select(x => x.Greeks.Gamma).ToList();
+            var lambda = slice.STDT002As.Values.OrderByDescending(y => y.Contracts.Values.Sum(x => x.Volume)).First().Contracts.Values.Select(x => x.Greeks.Lambda).ToList();
+            var rho = slice.STDT002As.Values.OrderByDescending(y => y.Contracts.Values.Sum(x => x.Volume)).First().Contracts.Values.Select(x => x.Greeks.Rho).ToList();
+            var theta = slice.STDT002As.Values.OrderByDescending(y => y.Contracts.Values.Sum(x => x.Volume)).First().Contracts.Values.Select(x => x.Greeks.Theta).ToList();
+            var vega = slice.STDT002As.Values.OrderByDescending(y => y.Contracts.Values.Sum(x => x.Volume)).First().Contracts.Values.Select(x => x.Greeks.Vega).ToList();
 
             // The commented out test cases all return zero.
             // This is because of failure to evaluate the greeks in the option pricing model.
@@ -131,7 +131,7 @@ namespace QuantConnect.Algorithm.CSharp
             {
                 // the margin requirement for the FOPs is less than the one of the underlying so we can't allocate all our buying power
                 // into FOPs else we won't be able to exercise
-                SetHoldings(slice.OptionChains.Values.First().Contracts.Values.First().Symbol, 0.25);
+                SetHoldings(slice.STDT002As.Values.First().Contracts.Values.First().Symbol, 0.25);
                 _invested = true;
             }
         }

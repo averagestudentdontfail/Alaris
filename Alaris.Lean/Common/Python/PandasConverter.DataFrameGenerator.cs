@@ -302,7 +302,7 @@ namespace QuantConnect.Python
             /// Any object that is a <see cref="BaseData"/> and implements <see cref="IEnumerable{ISymbolProvider}"/>
             /// is considered a base data collection.
             /// This allows detecting collections of cases like <see cref="OptionUniverse"/> (which is a direct subclass of
-            /// <see cref="BaseDataCollection"/>) and <see cref="OptionChain"/>, which is a collection of <see cref="OptionContract"/>
+            /// <see cref="BaseDataCollection"/>) and <see cref="STDT002A"/>, which is a collection of <see cref="OptionContract"/>
             /// </summary>
             private static bool IsCollection(Type type)
             {

@@ -67,7 +67,7 @@ namespace QuantConnect.Lean.Engine.TransactionHandlers
         void Initialize(IAlgorithm algorithm, IBrokerage brokerage, IResultHandler resultHandler);
 
         /// <summary>
-        /// Signal a end of thread request to stop montioring the transactions.
+        /// STCR004A a end of thread request to stop montioring the transactions.
         /// </summary>
         void Exit();
 

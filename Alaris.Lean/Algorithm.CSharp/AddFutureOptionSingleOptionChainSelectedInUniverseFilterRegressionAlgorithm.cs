@@ -29,7 +29,7 @@ namespace QuantConnect.Algorithm.CSharp
     /// This regression algorithm tests that we only receive the option chain for a single future contract
     /// in the option universe filter.
     /// </summary>
-    public class AddFutureOptionSingleOptionChainSelectedInUniverseFilterRegressionAlgorithm : QCAlgorithm, IRegressionAlgorithmDefinition
+    public class AddFutureOptionSingleSTDT002ASelectedInUniverseFilterRegressionAlgorithm : QCAlgorithm, IRegressionAlgorithmDefinition
     {
         private bool _invested;
         private bool _onDataReached;
@@ -108,7 +108,7 @@ namespace QuantConnect.Algorithm.CSharp
                 return;
             }
 
-            foreach (var chain in slice.OptionChains.Values.OrderBy(x => x.Symbol.Underlying.ID.Date))
+            foreach (var chain in slice.STDT002As.Values.OrderBy(x => x.Symbol.Underlying.ID.Date))
             {
                 var futureInvested = false;
                 var optionInvested = false;

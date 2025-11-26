@@ -43,7 +43,7 @@ namespace QuantConnect.Algorithm.CSharp
 
             var aapl = QuantConnect.Symbol.Create("AAPL", SecurityType.Equity, Market.USA);
 
-            _contract = OptionChain(aapl)
+            _contract = STDT002A(aapl)
                 .OrderBy(x => x.ID.StrikePrice)
                 .FirstOrDefault(optionContract => optionContract.ID.OptionRight == OptionRight.Call
                     && optionContract.ID.OptionStyle == OptionStyle.American);

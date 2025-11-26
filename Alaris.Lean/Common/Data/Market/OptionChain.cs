@@ -24,16 +24,16 @@ namespace QuantConnect.Data.Market
     /// Represents an entire chain of option contracts for a single underlying security.
     /// This type is <see cref="IEnumerable{OptionContract}"/>
     /// </summary>
-    public class OptionChain : BaseChain<OptionContract, OptionContracts>
+    public class STDT002A : BaseChain<OptionContract, OptionContracts>
     {
         /// <summary>
-        /// Initializes a new instance of the <see cref="OptionChain"/> class
+        /// Initializes a new instance of the <see cref="STDT002A"/> class
         /// </summary>
         /// <param name="canonicalOptionSymbol">The symbol for this chain.</param>
         /// <param name="time">The time of this chain</param>
         /// <param name="flatten">Whether to flatten the data frame</param>
-        public OptionChain(Symbol canonicalOptionSymbol, DateTime time, bool flatten = true)
-            : base(canonicalOptionSymbol, time, MarketDataType.OptionChain, flatten)
+        public STDT002A(Symbol canonicalOptionSymbol, DateTime time, bool flatten = true)
+            : base(canonicalOptionSymbol, time, MarketDataType.STDT002A, flatten)
         {
         }
 
@@ -45,7 +45,7 @@ namespace QuantConnect.Data.Market
         /// <param name="contracts">The list of contracts data</param>
         /// <param name="symbolProperties">The option symbol properties</param>
         /// <param name="flatten">Whether to flatten the data frame</param>
-        public OptionChain(Symbol canonicalOptionSymbol, DateTime time, IEnumerable<OptionUniverse> contracts, SymbolProperties symbolProperties,
+        public STDT002A(Symbol canonicalOptionSymbol, DateTime time, IEnumerable<OptionUniverse> contracts, SymbolProperties symbolProperties,
             bool flatten = true)
             : this(canonicalOptionSymbol, time, flatten)
         {
@@ -58,9 +58,9 @@ namespace QuantConnect.Data.Market
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="OptionChain"/> class as a clone of the specified instance
+        /// Initializes a new instance of the <see cref="STDT002A"/> class as a clone of the specified instance
         /// </summary>
-        private OptionChain(OptionChain other)
+        private STDT002A(STDT002A other)
             : base(other)
         {
         }
@@ -71,7 +71,7 @@ namespace QuantConnect.Data.Market
         /// <returns>A clone of the current object</returns>
         public override BaseData Clone()
         {
-            return new OptionChain(this);
+            return new STDT002A(this);
         }
     }
 }

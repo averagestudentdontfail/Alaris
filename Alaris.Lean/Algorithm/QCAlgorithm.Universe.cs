@@ -558,14 +558,14 @@ namespace QuantConnect.Algorithm
 
         /// <summary>
         /// Creates a new universe selection model and adds it to the algorithm. This universe selection model will chain to the security
-        /// changes of a given <see cref="Universe"/> selection output and create a new <see cref="OptionChainUniverse"/> for each of them
+        /// changes of a given <see cref="Universe"/> selection output and create a new <see cref="STDT002AUniverse"/> for each of them
         /// </summary>
         /// <param name="universe">The universe we want to chain an option universe selection model too</param>
         /// <param name="optionFilter">The option filter universe to use</param>
         [DocumentationAttribute(Universes)]
         public void AddUniverseOptions(Universe universe, Func<OptionFilterUniverse, OptionFilterUniverse> optionFilter)
         {
-            AddUniverseSelection(new OptionChainedUniverseSelectionModel(universe, optionFilter));
+            AddUniverseSelection(new STDT002AedUniverseSelectionModel(universe, optionFilter));
         }
 
         /// <summary>

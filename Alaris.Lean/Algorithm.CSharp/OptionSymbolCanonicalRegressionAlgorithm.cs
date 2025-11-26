@@ -36,7 +36,7 @@ namespace QuantConnect.Algorithm.CSharp
             SetEndDate(2014, 06, 09);
 
             var equitySymbol = AddEquity("TWX").Symbol;
-            var contracts = OptionChain(equitySymbol).ToList();
+            var contracts = STDT002A(equitySymbol).ToList();
 
             var callOptionSymbol = contracts
                 .Where(c => c.ID.OptionRight == OptionRight.Call)
@@ -54,9 +54,9 @@ namespace QuantConnect.Algorithm.CSharp
             }
 
             _canonicalOptionContract = _optionContract.Canonical;
-            if (slice.OptionChains.ContainsKey(_optionContract.Canonical))
+            if (slice.STDT002As.ContainsKey(_optionContract.Canonical))
             {
-                var chain = slice.OptionChains[_optionContract.Canonical];
+                var chain = slice.STDT002As[_optionContract.Canonical];
                 if (!Portfolio.Invested)
                 {
                     MarketOrder(_optionContract, 1);

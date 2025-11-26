@@ -115,7 +115,7 @@ namespace QuantConnect.Algorithm.CSharp
 
         public override void OnData(Slice slice)
         {
-            if (slice.OptionChains.TryGetValue(_optionSymbol, out var chain) && chain.Contracts.Count > 0)
+            if (slice.STDT002As.TryGetValue(_optionSymbol, out var chain) && chain.Contracts.Count > 0)
             {
                 Log($"[{Time}] :: Received option chain with {chain.Contracts.Count} contracts");
                 _optionChainReceived = true;

@@ -62,8 +62,8 @@ namespace QuantConnect.Algorithm.CSharp
         {
             if (!Portfolio.Invested)
             {
-                OptionChain chain;
-                if (slice.OptionChains.TryGetValue(_optionSymbol, out chain))
+                STDT002A chain;
+                if (slice.STDT002As.TryGetValue(_optionSymbol, out chain))
                 {
                     // Get the first ITM call expiring today
                     var contract = (

@@ -57,7 +57,7 @@ namespace QuantConnect.Algorithm.CSharp
         {
             if (!Portfolio.Invested)
             {
-                if (IsMarketOpen(_optionSymbol) && slice.OptionChains.TryGetValue(_optionSymbol, out var chain))
+                if (IsMarketOpen(_optionSymbol) && slice.STDT002As.TryGetValue(_optionSymbol, out var chain))
                 {
                     var callContracts = chain.Where(contract => contract.Right == OptionRight.Call)
                         .GroupBy(x => x.Expiry)

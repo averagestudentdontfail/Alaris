@@ -14,26 +14,26 @@
 */
 
 using Python.Runtime;
-using QuantConnect.Algorithm.Framework.Portfolio.SignalExports;
+using QuantConnect.Algorithm.Framework.Portfolio.STCR004AExports;
 using QuantConnect.Interfaces;
 
 namespace QuantConnect.Python
 {
     /// <summary>
-    /// Provides an implementation of <see cref="ISignalExportTarget"/> that wraps a <see cref="PyObject"/> object
+    /// Provides an implementation of <see cref="ISTCR004AExportTarget"/> that wraps a <see cref="PyObject"/> object
     /// </summary>
-    public class SignalExportTargetPythonWrapper : BasePythonWrapper<ISignalExportTarget>, ISignalExportTarget
+    public class STCR004AExportTargetPythonWrapper : BasePythonWrapper<ISTCR004AExportTarget>, ISTCR004AExportTarget
     {
         /// <summary>
-        /// Constructor for initialising the <see cref="SignalExportTargetPythonWrapper"/> class with wrapped <see cref="PyObject"/> object
+        /// Constructor for initialising the <see cref="STCR004AExportTargetPythonWrapper"/> class with wrapped <see cref="PyObject"/> object
         /// </summary>
         /// <param name="instance">The underlying python instance</param>
-        public SignalExportTargetPythonWrapper(PyObject instance) : base(instance) { }
+        public STCR004AExportTargetPythonWrapper(PyObject instance) : base(instance) { }
 
         /// <summary>
         /// Interface to send positions holdings to different 3rd party API's
         /// </summary>
-        public bool Send(SignalExportTargetParameters parameters)
+        public bool Send(STCR004AExportTargetParameters parameters)
         {
             return InvokeMethod<bool>(nameof(Send), parameters);
         }

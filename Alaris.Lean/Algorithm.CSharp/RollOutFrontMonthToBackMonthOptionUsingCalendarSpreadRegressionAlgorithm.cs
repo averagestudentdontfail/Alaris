@@ -32,7 +32,7 @@ namespace QuantConnect.Algorithm.CSharp
     ///     1. Short front month put
     ///     2. Roll out front month put to back month put using a calendar spread.
     /// </summary>
-    public class RollOutFrontMonthToBackMonthOptionUsingCalendarSpreadRegressionAlgorithm : QCAlgorithm, IRegressionAlgorithmDefinition
+    public class RollOutFrontMonthToBackMonthOptionUsingSTPR001ARegressionAlgorithm : QCAlgorithm, IRegressionAlgorithmDefinition
     {
         private Symbol _symbol;
         private Symbol _frontMonthPutSymbol;
@@ -54,7 +54,7 @@ namespace QuantConnect.Algorithm.CSharp
 
         public override void OnData(Slice slice)
         {
-            if (_done || !slice.OptionChains.TryGetValue(_symbol, out var chain) || !chain.Any())
+            if (_done || !slice.STDT002As.TryGetValue(_symbol, out var chain) || !chain.Any())
             {
                 return;
             }
@@ -85,7 +85,7 @@ namespace QuantConnect.Algorithm.CSharp
                 // which we want to roll out to the farther expiry
                 var frontMonthExpiry = puts[0].Expiry;
                 var backMonthExpiry = puts[puts.Count - 1].Expiry;
-                var optionStrategy = OptionStrategies.PutCalendarSpread(_symbol, _atmStrike, frontMonthExpiry, backMonthExpiry);
+                var optionStrategy = OptionStrategies.PutSTPR001A(_symbol, _atmStrike, frontMonthExpiry, backMonthExpiry);
                 var tickets = Sell(optionStrategy, 1);
 
                 if (!tickets.Any(ticket => ticket.Symbol == _frontMonthPutSymbol && ticket.Quantity == 1))

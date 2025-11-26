@@ -57,7 +57,7 @@ namespace QuantConnect.Algorithm.CSharp
 
         public override void OnData(Slice slice)
         {
-            if (_done || !slice.OptionChains.TryGetValue(_symbol, out var chain))
+            if (_done || !slice.STDT002As.TryGetValue(_symbol, out var chain))
             {
                 return;
             }

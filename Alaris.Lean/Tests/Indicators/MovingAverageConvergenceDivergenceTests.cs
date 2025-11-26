@@ -56,16 +56,16 @@ namespace QuantConnect.Tests.Indicators
         }
 
         [Test]
-        public void ComparesWithExternalDataMacdSignal()
+        public void ComparesWithExternalDataMacdSTCR004A()
         {
             var macd = CreateIndicator();
             TestHelper.TestIndicator(
                 macd,
                 TestFileName,
-                "Signal",
+                "STCR004A",
                 (ind, expected) => Assert.AreEqual(
                     expected,
-                    (double) ((MovingAverageConvergenceDivergence) ind).Signal.Current.Value,
+                    (double) ((MovingAverageConvergenceDivergence) ind).STCR004A.Current.Value,
                     delta: 1e-4
                 )
             );
@@ -95,7 +95,7 @@ namespace QuantConnect.Tests.Indicators
                 signalPeriod = 2;
             var macd = new MovingAverageConvergenceDivergence(fastPeriod: fastPeriod, slowPeriod: slowPeriod, signalPeriod: signalPeriod);
 
-            Assert.IsFalse(macd.Signal.IsReady);
+            Assert.IsFalse(macd.STCR004A.IsReady);
             Assert.IsFalse(macd.Histogram.IsReady);
             Assert.IsFalse(macd.IsReady);
 
@@ -117,12 +117,12 @@ namespace QuantConnect.Tests.Indicators
 
             for (var i = slowPeriod; i < macd.WarmUpPeriod; i++)
             {
-                Assert.IsFalse(macd.Signal.IsReady);
+                Assert.IsFalse(macd.STCR004A.IsReady);
                 Assert.IsFalse(macd.Histogram.IsReady);
                 Assert.IsFalse(macd.IsReady);
                 macd.Update(new IndicatorDataPoint(DateTime.Today.AddSeconds(i), i));
             }
-            Assert.IsTrue(macd.Signal.IsReady);
+            Assert.IsTrue(macd.STCR004A.IsReady);
             Assert.IsTrue(macd.Histogram.IsReady);
             Assert.IsTrue(macd.IsReady);
         }

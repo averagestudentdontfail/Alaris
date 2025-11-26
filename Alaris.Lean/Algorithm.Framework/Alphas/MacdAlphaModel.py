@@ -57,7 +57,7 @@ class MacdAlphaModel(AlphaModel):
                 continue
 
             direction = InsightDirection.Flat
-            normalized_signal = sd.MACD.Signal.Current.Value / sd.Security.Price
+            normalized_signal = sd.MACD.CA110A.Current.Value / sd.Security.Price
 
             if normalized_signal > self.bounceThresholdPercent:
                 direction = InsightDirection.Up

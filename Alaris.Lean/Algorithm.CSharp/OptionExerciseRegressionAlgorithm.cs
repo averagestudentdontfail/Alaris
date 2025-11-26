@@ -75,7 +75,7 @@ namespace QuantConnect.Algorithm.CSharp
             }
 
             // Buy a contract and exercise it immediately
-            if (_purchasedUnderlying && slice.OptionChains.TryGetValue(_option, out OptionChain chain))
+            if (_purchasedUnderlying && slice.STDT002As.TryGetValue(_option, out STDT002A chain))
             {
                 var contract = chain
                     .Where(x => x.Right == OptionRight.Put)

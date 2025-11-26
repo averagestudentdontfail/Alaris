@@ -19,7 +19,7 @@ namespace QuantConnect.Algorithm.CSharp
     /// Regression algorithm asserting that the option chain data has valid open interest values for daily resolution.
     /// Reproduces GH issue #8421.
     /// </summary>
-    public class DailyOptionChainOpenInterestDataWithoutStrictDailyEndTimesRegressionAlgorithm : DailyOptionChainOpenInterestDataWithStrictDailyEndTimesRegressionAlgorithm
+    public class DailySTDT002AOpenInterestDataWithoutStrictDailyEndTimesRegressionAlgorithm : DailySTDT002AOpenInterestDataWithStrictDailyEndTimesRegressionAlgorithm
     {
         public override bool DailyPreciseEndTime => false;
 

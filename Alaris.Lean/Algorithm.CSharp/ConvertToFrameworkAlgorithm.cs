@@ -66,7 +66,7 @@ namespace QuantConnect.Algorithm.CSharp
 
             var holding = Portfolio[_symbol];
 
-            var signalDeltaPercent = (_macd - _macd.Signal) / _macd.Fast;
+            var signalDeltaPercent = (_macd - _macd.STCR004A) / _macd.Fast;
             var tolerance = 0.0025m;
 
             // if our macd is greater than our signal, then let's go long
@@ -107,7 +107,7 @@ namespace QuantConnect.Algorithm.CSharp
             // Liquidate();
 
             // plot both lines
-            Plot("MACD", _macd, _macd.Signal);
+            Plot("MACD", _macd, _macd.STCR004A);
             if (slice.Bars.ContainsKey(_symbol))
             {
                 Plot(_symbol, "Open", slice[_symbol].Open);

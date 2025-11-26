@@ -15,7 +15,7 @@
 */
 
 using QuantConnect.Algorithm.Framework.Portfolio;
-using QuantConnect.Algorithm.Framework.Portfolio.SignalExports;
+using QuantConnect.Algorithm.Framework.Portfolio.STCR004AExports;
 using QuantConnect.Data;
 using QuantConnect.Interfaces;
 using QuantConnect.Securities;
@@ -26,11 +26,11 @@ namespace QuantConnect.Algorithm.CSharp
 {
     /// <summary>
     /// Regression algorithm to test we can manually set index securities to be tradable without breaking
-    /// SignalExportManager
+    /// STCR004AExportManager
     /// </summary>
     public class IndexSecurityCanBeTradableRegressionAlgorithm: QCAlgorithm, IRegressionAlgorithmDefinition
     {
-        private SignalExportManagerTest _signalExportManagerTest;
+        private STCR004AExportManagerTest _signalExportManagerTest;
         private Symbol _equity;
         private Symbol _index;
 
@@ -43,8 +43,8 @@ namespace QuantConnect.Algorithm.CSharp
 
             _index = AddIndex("SPX").Symbol;
             _equity = AddEquity("SPY").Symbol;
-            SignalExport.AutomaticExportTimeSpan = null;
-            _signalExportManagerTest = new SignalExportManagerTest(this);
+            STCR004AExport.AutomaticExportTimeSpan = null;
+            _signalExportManagerTest = new STCR004AExportManagerTest(this);
             Securities[_index].IsTradable = IsTradable;
         }
 
@@ -153,9 +153,9 @@ namespace QuantConnect.Algorithm.CSharp
             {"OrderListHash", "3da9fa60bf95b9ed148b95e02e0cfc9e"}
         };
 
-        private class SignalExportManagerTest: SignalExportManager
+        private class STCR004AExportManagerTest: STCR004AExportManager
         {
-            public SignalExportManagerTest(IAlgorithm algorithm) : base(algorithm)
+            public STCR004AExportManagerTest(IAlgorithm algorithm) : base(algorithm)
             {
             }
 

@@ -352,7 +352,7 @@ namespace QuantConnect.Tests.Engine
                 var bars = new TradeBars();
                 var quotes = new QuoteBars();
                 var ticks = new Ticks();
-                var options = new OptionChains();
+                var options = new STDT002As();
                 var futures = new FuturesChains();
                 var splits = new Splits();
                 var dividends = new Dividends();

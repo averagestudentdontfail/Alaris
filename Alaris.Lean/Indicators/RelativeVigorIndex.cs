@@ -52,7 +52,7 @@ namespace QuantConnect.Indicators
         /// <summary>
         /// A signal line which behaves like a slowed version of the RVI.
         /// </summary>
-        public RelativeVigorIndexSignal Signal { get; }
+        public RelativeVigorIndexSTCR004A STCR004A { get; }
 
         /// <summary>
         /// Gets a flag indicating when this indicator is ready and fully initialized
@@ -86,7 +86,7 @@ namespace QuantConnect.Indicators
             WarmUpPeriod = period + 3;
             CloseBand = type.AsIndicator("_closingBand", period);
             RangeBand = type.AsIndicator("_rangeBand", period);
-            Signal = new RelativeVigorIndexSignal($"{name}_S");
+            STCR004A = new RelativeVigorIndexSTCR004A($"{name}_S");
             _previousInputs = new RollingWindow<IBaseDataBar>(3);
         }
 
@@ -114,7 +114,7 @@ namespace QuantConnect.Indicators
                 {
                     _previousInputs.Add(input);
                     var rvi = CloseBand / RangeBand;
-                    Signal?.Update(input.EndTime, rvi); // Checks for null before updating.
+                    STCR004A?.Update(input.EndTime, rvi); // Checks for null before updating.
                     return rvi;
                 }
             }
@@ -132,7 +132,7 @@ namespace QuantConnect.Indicators
             CloseBand.Reset();
             RangeBand.Reset();
             _previousInputs.Reset();
-            Signal?.Reset();
+            STCR004A?.Reset();
         }
     }
 }

@@ -48,7 +48,7 @@ namespace QuantConnect.Research
         /// <returns></returns>
         public PyObject GetStrikes()
         {
-            var strikes = Data.SelectMany(x => x.OptionChains.SelectMany(y => y.Value.Contracts.Keys.Select(z => (double)z.ID.StrikePrice).Distinct()));
+            var strikes = Data.SelectMany(x => x.STDT002As.SelectMany(y => y.Value.Contracts.Keys.Select(z => (double)z.ID.StrikePrice).Distinct()));
             using (Py.GIL())
             {
                 return strikes.Distinct().ToList().ToPython();
@@ -61,7 +61,7 @@ namespace QuantConnect.Research
         /// <returns></returns>
         public PyObject GetExpiryDates()
         {
-            var expiry = Data.SelectMany(x => x.OptionChains.SelectMany(y => y.Value.Contracts.Keys.Select(z => z.ID.Date).Distinct()));
+            var expiry = Data.SelectMany(x => x.STDT002As.SelectMany(y => y.Value.Contracts.Keys.Select(z => z.ID.Date).Distinct()));
             using (Py.GIL())
             {
                 return expiry.Distinct().ToList().ToPython();

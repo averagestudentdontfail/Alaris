@@ -739,7 +739,7 @@ def get_security_cache_custom_data_type():
                         };
                         break;
                     case MarketDataType.Auxiliary:
-                    case MarketDataType.OptionChain:
+                    case MarketDataType.STDT002A:
                     case MarketDataType.FuturesChain:
                     case MarketDataType.Base:
                         throw new NotImplementedException("Cases not tested yet");

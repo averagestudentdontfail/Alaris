@@ -38,7 +38,7 @@ using QuantConnect.Statistics;
 using QuantConnect.Data.Market;
 using QuantConnect.Algorithm.Framework.Alphas.Analysis;
 using QuantConnect.Commands;
-using QuantConnect.Algorithm.Framework.Portfolio.SignalExports;
+using QuantConnect.Algorithm.Framework.Portfolio.STCR004AExports;
 
 namespace QuantConnect.AlgorithmFactory.Python.Wrappers
 {
@@ -407,7 +407,7 @@ namespace QuantConnect.AlgorithmFactory.Python.Wrappers
         /// <summary>
         /// Gets the option chain provider, used to get the list of option contracts for an underlying symbol
         /// </summary>
-        public IOptionChainProvider OptionChainProvider => _baseAlgorithm.OptionChainProvider;
+        public ISTDT002AProvider STDT002AProvider => _baseAlgorithm.STDT002AProvider;
 
         /// <summary>
         /// Gets the future chain provider, used to get the list of future contracts for an underlying symbol
@@ -461,7 +461,7 @@ namespace QuantConnect.AlgorithmFactory.Python.Wrappers
         /// Sets the option chain provider, used to get the list of option contracts for an underlying symbol
         /// </summary>
         /// <param name="optionChainProvider">The option chain provider</param>
-        public void SetOptionChainProvider(IOptionChainProvider optionChainProvider) => _baseAlgorithm.SetOptionChainProvider(optionChainProvider);
+        public void SetSTDT002AProvider(ISTDT002AProvider optionChainProvider) => _baseAlgorithm.SetSTDT002AProvider(optionChainProvider);
 
         /// <summary>
         /// Sets the future chain provider, used to get the list of future contracts for an underlying symbol
@@ -564,10 +564,10 @@ namespace QuantConnect.AlgorithmFactory.Python.Wrappers
         public StatisticsResults Statistics => _baseAlgorithm.Statistics;
 
         /// <summary>
-        /// SignalExport - Allows sending export signals to different 3rd party API's. For example, it allows to send signals
+        /// STCR004AExport - Allows sending export signals to different 3rd party API's. For example, it allows to send signals
         /// to Collective2, CrunchDAO and Numerai API's
         /// </summary>
-        public SignalExportManager SignalExport => ((QCAlgorithm)_baseAlgorithm).SignalExport;
+        public STCR004AExportManager STCR004AExport => ((QCAlgorithm)_baseAlgorithm).STCR004AExport;
 
         /// <summary>
         /// Set a required SecurityType-symbol and resolution for algorithm

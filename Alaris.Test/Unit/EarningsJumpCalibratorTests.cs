@@ -7,19 +7,19 @@ using Alaris.Strategy.Bridge;
 namespace Alaris.Test.Unit;
 
 /// <summary>
-/// Unit tests for EarningsJumpCalibrator.
+/// Unit tests for STIV005A.
 /// Tests calibration of sigma_e from historical earnings data.
 ///
 /// Reference: "Accounting for Earnings Announcements in the Pricing of Equity Options"
 /// Tim Leung & Marco Santoli (2014), Section 5.2
 /// </summary>
-public class EarningsJumpCalibratorTests
+public class STIV005ATests
 {
-    private readonly EarningsJumpCalibrator _calibrator;
+    private readonly STIV005A _calibrator;
 
-    public EarningsJumpCalibratorTests()
+    public STIV005ATests()
     {
-        _calibrator = new EarningsJumpCalibrator();
+        _calibrator = new STIV005A();
     }
 
     // ========================================================================
@@ -156,11 +156,11 @@ public class EarningsJumpCalibratorTests
     }
 
     // ========================================================================
-    // TermStructureEstimator Tests
+    // STTM001AEstimator Tests
     // ========================================================================
 
     [Fact]
-    public void TermStructureEstimator_WithValidInvertedTermStructure_ReturnsSigmaE()
+    public void STTM001AEstimator_WithValidInvertedSTTM001A_ReturnsSigmaE()
     {
         // Arrange - inverted term structure (short-dated IV > long-dated IV)
         double iv1 = 0.35; // 7-day IV
@@ -169,7 +169,7 @@ public class EarningsJumpCalibratorTests
         int dte2 = 30;
 
         // Act
-        double? sigmaE = EarningsJumpCalibrator.TermStructureEstimator(iv1, dte1, iv2, dte2);
+        double? sigmaE = STIV005A.STTM001AEstimator(iv1, dte1, iv2, dte2);
 
         // Assert
         sigmaE.Should().NotBeNull();
@@ -177,7 +177,7 @@ public class EarningsJumpCalibratorTests
     }
 
     [Fact]
-    public void TermStructureEstimator_WithFlatTermStructure_ReturnsNull()
+    public void STTM001AEstimator_WithFlatSTTM001A_ReturnsNull()
     {
         // Arrange - flat term structure (iv1 <= iv2)
         double iv1 = 0.25;
@@ -186,14 +186,14 @@ public class EarningsJumpCalibratorTests
         int dte2 = 30;
 
         // Act
-        double? sigmaE = EarningsJumpCalibrator.TermStructureEstimator(iv1, dte1, iv2, dte2);
+        double? sigmaE = STIV005A.STTM001AEstimator(iv1, dte1, iv2, dte2);
 
         // Assert
         sigmaE.Should().BeNull();
     }
 
     [Fact]
-    public void TermStructureEstimator_WithInvalidDTE_ReturnsNull()
+    public void STTM001AEstimator_WithInvalidDTE_ReturnsNull()
     {
         // Arrange - dte1 >= dte2 is invalid
         double iv1 = 0.35;
@@ -202,14 +202,14 @@ public class EarningsJumpCalibratorTests
         int dte2 = 7;
 
         // Act
-        double? sigmaE = EarningsJumpCalibrator.TermStructureEstimator(iv1, dte1, iv2, dte2);
+        double? sigmaE = STIV005A.STTM001AEstimator(iv1, dte1, iv2, dte2);
 
         // Assert
         sigmaE.Should().BeNull();
     }
 
     [Fact]
-    public void TermStructureEstimator_WithZeroDTE_ReturnsNull()
+    public void STTM001AEstimator_WithZeroDTE_ReturnsNull()
     {
         // Arrange
         double iv1 = 0.35;
@@ -218,7 +218,7 @@ public class EarningsJumpCalibratorTests
         int dte2 = 30;
 
         // Act
-        double? sigmaE = EarningsJumpCalibrator.TermStructureEstimator(iv1, dte1, iv2, dte2);
+        double? sigmaE = STIV005A.STTM001AEstimator(iv1, dte1, iv2, dte2);
 
         // Assert
         sigmaE.Should().BeNull();
@@ -238,7 +238,7 @@ public class EarningsJumpCalibratorTests
         int dte2 = 30;
 
         // Act
-        double? sigma = EarningsJumpCalibrator.BaseVolatilityEstimator(iv1, dte1, iv2, dte2);
+        double? sigma = STIV005A.BaseVolatilityEstimator(iv1, dte1, iv2, dte2);
 
         // Assert
         sigma.Should().NotBeNull();
@@ -256,7 +256,7 @@ public class EarningsJumpCalibratorTests
         int dte2 = 30;
 
         // Act
-        double? sigma = EarningsJumpCalibrator.BaseVolatilityEstimator(iv1, dte1, iv2, dte2);
+        double? sigma = STIV005A.BaseVolatilityEstimator(iv1, dte1, iv2, dte2);
 
         // Assert
         sigma.Should().BeNull();
@@ -272,7 +272,7 @@ public class EarningsJumpCalibratorTests
         int dte2 = 30;
 
         // Act
-        double? sigma = EarningsJumpCalibrator.BaseVolatilityEstimator(iv1, dte1, iv2, dte2);
+        double? sigma = STIV005A.BaseVolatilityEstimator(iv1, dte1, iv2, dte2);
 
         // Assert
         sigma.Should().BeNull();

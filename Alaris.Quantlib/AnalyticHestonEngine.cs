@@ -232,8 +232,8 @@ public class AnalyticHestonEngine : PricingEngine {
       return ret;
     }
   
-    public bool isAdaptiveIntegration() {
-      bool ret = NQuantLibcPINVOKE.AnalyticHestonEngine_AnalyticHestonEngine_Integration_isAdaptiveIntegration(swigCPtr);
+    public bool isSTPR002A() {
+      bool ret = NQuantLibcPINVOKE.AnalyticHestonEngine_AnalyticHestonEngine_Integration_isSTPR002A(swigCPtr);
       if (NQuantLibcPINVOKE.SWIGPendingException.Pending) throw NQuantLibcPINVOKE.SWIGPendingException.Retrieve();
       return ret;
     }

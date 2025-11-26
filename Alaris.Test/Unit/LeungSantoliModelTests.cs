@@ -6,13 +6,13 @@ using Alaris.Strategy.Core;
 namespace Alaris.Test.Unit;
 
 /// <summary>
-/// Unit tests for LeungSantoliModel.
+/// Unit tests for STIV004A.
 /// Tests mathematical correctness of the L&amp;S (2014) pre-EA implied volatility model.
 ///
 /// Reference: "Accounting for Earnings Announcements in the Pricing of Equity Options"
 /// Tim Leung &amp; Marco Santoli (2014)
 /// </summary>
-public class LeungSantoliModelTests
+public class STIV004ATests
 {
     // ========================================================================
     // ComputeTheoreticalIV Tests
@@ -27,7 +27,7 @@ public class LeungSantoliModelTests
         double timeToExpiry = 30.0 / 252.0; // 30 days
 
         // Act
-        double theoreticalIV = LeungSantoliModel.ComputeTheoreticalIV(baseVol, sigmaE, timeToExpiry);
+        double theoreticalIV = STIV004A.ComputeTheoreticalIV(baseVol, sigmaE, timeToExpiry);
 
         // Assert - should be approximately base volatility
         theoreticalIV.Should().BeApproximately(baseVol, 0.001,
@@ -43,7 +43,7 @@ public class LeungSantoliModelTests
         double timeToExpiry = 7.0 / 252.0; // 7 days
 
         // Act
-        double theoreticalIV = LeungSantoliModel.ComputeTheoreticalIV(baseVol, sigmaE, timeToExpiry);
+        double theoreticalIV = STIV004A.ComputeTheoreticalIV(baseVol, sigmaE, timeToExpiry);
 
         // Assert - IV should be elevated due to earnings jump
         theoreticalIV.Should().BeGreaterThan(baseVol,
@@ -64,8 +64,8 @@ public class LeungSantoliModelTests
         double timeToExpiry2 = timeToExpiry * 2; // Double the time
 
         // Act
-        double iv1 = LeungSantoliModel.ComputeTheoreticalIV(baseVol, sigmaE, timeToExpiry);
-        double iv2 = LeungSantoliModel.ComputeTheoreticalIV(baseVol, sigmaE, timeToExpiry2);
+        double iv1 = STIV004A.ComputeTheoreticalIV(baseVol, sigmaE, timeToExpiry);
+        double iv2 = STIV004A.ComputeTheoreticalIV(baseVol, sigmaE, timeToExpiry2);
 
         // Assert - IV should decrease as time to expiry increases (term structure inverts)
         iv1.Should().BeGreaterThan(iv2,
@@ -85,7 +85,7 @@ public class LeungSantoliModelTests
             (sigma * sigma) + (sigmaE * sigmaE / timeToExpiry));
 
         // Act
-        double theoreticalIV = LeungSantoliModel.ComputeTheoreticalIV(sigma, sigmaE, timeToExpiry);
+        double theoreticalIV = STIV004A.ComputeTheoreticalIV(sigma, sigmaE, timeToExpiry);
 
         // Assert
         theoreticalIV.Should().BeApproximately(expectedIV, 0.0001,
@@ -96,7 +96,7 @@ public class LeungSantoliModelTests
     public void ComputeTheoreticalIV_ThrowsOnNegativeBaseVolatility()
     {
         // Arrange & Act & Assert
-        Action act = () => LeungSantoliModel.ComputeTheoreticalIV(-0.1, 0.05, 0.1);
+        Action act = () => STIV004A.ComputeTheoreticalIV(-0.1, 0.05, 0.1);
         act.Should().Throw<ArgumentException>()
             .WithParameterName("baseVolatility");
     }
@@ -105,7 +105,7 @@ public class LeungSantoliModelTests
     public void ComputeTheoreticalIV_ThrowsOnNegativeEarningsJump()
     {
         // Arrange & Act & Assert
-        Action act = () => LeungSantoliModel.ComputeTheoreticalIV(0.2, -0.05, 0.1);
+        Action act = () => STIV004A.ComputeTheoreticalIV(0.2, -0.05, 0.1);
         act.Should().Throw<ArgumentException>()
             .WithParameterName("earningsJumpVolatility");
     }
@@ -114,21 +114,21 @@ public class LeungSantoliModelTests
     public void ComputeTheoreticalIV_ThrowsOnZeroOrNegativeTimeToExpiry()
     {
         // Arrange & Act & Assert
-        Action act1 = () => LeungSantoliModel.ComputeTheoreticalIV(0.2, 0.05, 0.0);
+        Action act1 = () => STIV004A.ComputeTheoreticalIV(0.2, 0.05, 0.0);
         act1.Should().Throw<ArgumentException>()
             .WithParameterName("timeToExpiry");
 
-        Action act2 = () => LeungSantoliModel.ComputeTheoreticalIV(0.2, 0.05, -0.1);
+        Action act2 = () => STIV004A.ComputeTheoreticalIV(0.2, 0.05, -0.1);
         act2.Should().Throw<ArgumentException>()
             .WithParameterName("timeToExpiry");
     }
 
     // ========================================================================
-    // ComputeMispricingSignal Tests
+    // ComputeMispricingSTCR004A Tests
     // ========================================================================
 
     [Fact]
-    public void ComputeMispricingSignal_PositiveWhenMarketIVHigher()
+    public void ComputeMispricingSTCR004A_PositiveWhenMarketIVHigher()
     {
         // Arrange
         double marketIV = 0.50;
@@ -137,7 +137,7 @@ public class LeungSantoliModelTests
         double timeToExpiry = 7.0 / 252.0;
 
         // Act
-        double mispricing = LeungSantoliModel.ComputeMispricingSignal(
+        double mispricing = STIV004A.ComputeMispricingSTCR004A(
             marketIV, baseVol, sigmaE, timeToExpiry);
 
         // Assert
@@ -146,7 +146,7 @@ public class LeungSantoliModelTests
     }
 
     [Fact]
-    public void ComputeMispricingSignal_NegativeWhenMarketIVLower()
+    public void ComputeMispricingSTCR004A_NegativeWhenMarketIVLower()
     {
         // Arrange
         double marketIV = 0.25;
@@ -155,10 +155,10 @@ public class LeungSantoliModelTests
         double timeToExpiry = 5.0 / 252.0;
 
         // Act
-        double mispricing = LeungSantoliModel.ComputeMispricingSignal(
+        double mispricing = STIV004A.ComputeMispricingSTCR004A(
             marketIV, baseVol, sigmaE, timeToExpiry);
 
-        double theoreticalIV = LeungSantoliModel.ComputeTheoreticalIV(baseVol, sigmaE, timeToExpiry);
+        double theoreticalIV = STIV004A.ComputeTheoreticalIV(baseVol, sigmaE, timeToExpiry);
 
         // Assert
         if (marketIV < theoreticalIV)
@@ -181,7 +181,7 @@ public class LeungSantoliModelTests
         double timeToExpiry = 7.0 / 252.0;
 
         // Act
-        double crush = LeungSantoliModel.ComputeExpectedIVCrush(baseVol, sigmaE, timeToExpiry);
+        double crush = STIV004A.ComputeExpectedIVCrush(baseVol, sigmaE, timeToExpiry);
 
         // Assert
         crush.Should().BePositive("IV crush should be positive when earnings jump exists");
@@ -195,9 +195,9 @@ public class LeungSantoliModelTests
         double sigmaE = 0.05;
 
         // Act
-        double crush30d = LeungSantoliModel.ComputeExpectedIVCrush(baseVol, sigmaE, 30.0 / 252.0);
-        double crush7d = LeungSantoliModel.ComputeExpectedIVCrush(baseVol, sigmaE, 7.0 / 252.0);
-        double crush1d = LeungSantoliModel.ComputeExpectedIVCrush(baseVol, sigmaE, 1.0 / 252.0);
+        double crush30d = STIV004A.ComputeExpectedIVCrush(baseVol, sigmaE, 30.0 / 252.0);
+        double crush7d = STIV004A.ComputeExpectedIVCrush(baseVol, sigmaE, 7.0 / 252.0);
+        double crush1d = STIV004A.ComputeExpectedIVCrush(baseVol, sigmaE, 1.0 / 252.0);
 
         // Assert - crush should increase as expiry approaches
         crush1d.Should().BeGreaterThan(crush7d);
@@ -217,7 +217,7 @@ public class LeungSantoliModelTests
         double timeToExpiry = 7.0 / 252.0;
 
         // Act
-        double crushRatio = LeungSantoliModel.ComputeIVCrushRatio(baseVol, sigmaE, timeToExpiry);
+        double crushRatio = STIV004A.ComputeIVCrushRatio(baseVol, sigmaE, timeToExpiry);
 
         // Assert
         crushRatio.Should().BeInRange(0, 1, "IV crush ratio should be between 0 and 1");
@@ -236,10 +236,10 @@ public class LeungSantoliModelTests
         double timeToExpiry = 7.0 / 252.0;
 
         // Compute the theoretical IV using original sigma_e
-        double marketIV = LeungSantoliModel.ComputeTheoreticalIV(baseVol, originalSigmaE, timeToExpiry);
+        double marketIV = STIV004A.ComputeTheoreticalIV(baseVol, originalSigmaE, timeToExpiry);
 
         // Act - extract sigma_e from the computed IV
-        double extractedSigmaE = LeungSantoliModel.ExtractEarningsJumpVolatility(
+        double extractedSigmaE = STIV004A.ExtractEarningsJumpVolatility(
             marketIV, baseVol, timeToExpiry);
 
         // Assert
@@ -256,7 +256,7 @@ public class LeungSantoliModelTests
         double timeToExpiry = 30.0 / 252.0;
 
         // Act
-        double sigmaE = LeungSantoliModel.ExtractEarningsJumpVolatility(
+        double sigmaE = STIV004A.ExtractEarningsJumpVolatility(
             marketIV, baseVol, timeToExpiry);
 
         // Assert
@@ -264,11 +264,11 @@ public class LeungSantoliModelTests
     }
 
     // ========================================================================
-    // ComputeTermStructure Tests
+    // ComputeSTTM001A Tests
     // ========================================================================
 
     [Fact]
-    public void ComputeTermStructure_ProducesInvertedStructure()
+    public void ComputeSTTM001A_ProducesInvertedStructure()
     {
         // Arrange
         double baseVol = 0.20;
@@ -276,7 +276,7 @@ public class LeungSantoliModelTests
         int[] dtePoints = { 7, 14, 21, 30, 45, 60 };
 
         // Act
-        var termStructure = LeungSantoliModel.ComputeTermStructure(baseVol, sigmaE, dtePoints);
+        var termStructure = STIV004A.ComputeSTTM001A(baseVol, sigmaE, dtePoints);
 
         // Assert - should be inverted (shorter DTE = higher IV)
         termStructure.Should().HaveCount(dtePoints.Length);
@@ -290,7 +290,7 @@ public class LeungSantoliModelTests
     }
 
     [Fact]
-    public void ComputeTermStructure_ConvergesToBaseVolatility()
+    public void ComputeSTTM001A_ConvergesToBaseVolatility()
     {
         // Arrange
         double baseVol = 0.20;
@@ -298,7 +298,7 @@ public class LeungSantoliModelTests
         int[] dtePoints = { 7, 30, 90, 180, 365 }; // Up to 1 year
 
         // Act
-        var termStructure = LeungSantoliModel.ComputeTermStructure(baseVol, sigmaE, dtePoints);
+        var termStructure = STIV004A.ComputeSTTM001A(baseVol, sigmaE, dtePoints);
 
         // Assert - longer maturities should converge toward base volatility
         var longestMaturity = termStructure[^1];

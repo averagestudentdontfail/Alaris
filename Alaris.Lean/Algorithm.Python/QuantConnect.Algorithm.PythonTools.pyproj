@@ -120,8 +120,8 @@
     <Compile Include="NLTKSentimentTradingAlgorithm.py" />
     <Compile Include="ObjectStoreExampleAlgorithm.py" />
     <Compile Include="OnEndOfDayRegressionAlgorithm.py" />
-    <Compile Include="OptionChainConsistencyRegressionAlgorithm.py" />
-    <Compile Include="OptionChainProviderAlgorithm.py" />
+    <Compile Include="CA311AConsistencyRegressionAlgorithm.py" />
+    <Compile Include="CA311AProviderAlgorithm.py" />
     <Compile Include="OptionDataNullReferenceRegressionAlgorithm.py" />
     <Compile Include="OptionExerciseAssignRegressionAlgorithm.py" />
     <Compile Include="OptionOpenInterestRegressionAlgorithm.py" />

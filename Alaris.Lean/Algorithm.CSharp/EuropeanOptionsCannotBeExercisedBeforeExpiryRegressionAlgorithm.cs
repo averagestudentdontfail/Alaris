@@ -62,8 +62,8 @@ namespace QuantConnect.Algorithm.CSharp
 
             if (_contract == null)
             {
-                OptionChain contracts;
-                if (!slice.OptionChains.TryGetValue(_option.Symbol, out contracts) || !contracts.Any())
+                STDT002A contracts;
+                if (!slice.STDT002As.TryGetValue(_option.Symbol, out contracts) || !contracts.Any())
                 {
                     return;
                 }

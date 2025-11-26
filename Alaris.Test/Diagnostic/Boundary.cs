@@ -17,7 +17,7 @@ public class DoubleBoundaryValidationTest
     public void QdPlus_SatisfiesHealyConstraints()
     {
         // Arrange: Healy Table 2 parameters
-        var approximation = new QdPlusApproximation(
+        var approximation = new DBAP001A(
             spot: 100.0,
             strike: 100.0,
             maturity: 10.0,
@@ -81,7 +81,7 @@ public class DoubleBoundaryValidationTest
     public void KimSolver_RefinesBoundariesToHealyBenchmark()
     {
         // Arrange: QD+ approximation
-        var qdplus = new QdPlusApproximation(
+        var qdplus = new DBAP001A(
             spot: 100.0,
             strike: 100.0,
             maturity: 10.0,
@@ -94,7 +94,7 @@ public class DoubleBoundaryValidationTest
         var (upperInitial, lowerInitial) = qdplus.CalculateBoundaries();
         
         // Kim solver for refinement
-        var kimSolver = new DoubleBoundaryKimSolver(
+        var kimSolver = new DBSL002A(
             spot: 100.0,
             strike: 100.0,
             maturity: 10.0,
@@ -186,7 +186,7 @@ public class DoubleBoundaryValidationTest
         double maturity, double expectedUpper, double expectedLower, double tolerance)
     {
         // Complete workflow: QD+ → Kim refinement
-        var solver = new DoubleBoundarySolver(
+        var solver = new DBSL001A(
             spot: 100.0,
             strike: 100.0,
             maturity: maturity,
@@ -217,7 +217,7 @@ public class DoubleBoundaryValidationTest
     public void ValidateFpbPrimeStabilization()
     {
         // Test that FP-B' prevents oscillations in longer maturities
-        var kimSolver = new DoubleBoundaryKimSolver(
+        var kimSolver = new DBSL002A(
             spot: 100.0,
             strike: 100.0,
             maturity: 15.0, // Longer maturity prone to oscillations
@@ -228,7 +228,7 @@ public class DoubleBoundaryValidationTest
             collocationPoints: 50
         );
         
-        var qdplus = new QdPlusApproximation(
+        var qdplus = new DBAP001A(
             spot: 100.0,
             strike: 100.0,
             maturity: 15.0,
@@ -265,7 +265,7 @@ public class DoubleBoundaryValidationTest
     public void ValidateCrossingTimeRefinement()
     {
         // Test crossing time refinement achieving Δt < 10^-2
-        var kimSolver = new DoubleBoundaryKimSolver(
+        var kimSolver = new DBSL002A(
             spot: 100.0,
             strike: 100.0,
             maturity: 10.0,
@@ -276,7 +276,7 @@ public class DoubleBoundaryValidationTest
             collocationPoints: 100
         );
         
-        var qdplus = new QdPlusApproximation(
+        var qdplus = new DBAP001A(
             spot: 100.0,
             strike: 100.0,
             maturity: 10.0,

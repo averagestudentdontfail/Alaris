@@ -12888,8 +12888,8 @@ class NQuantLibcPINVOKE {
   [global::System.Runtime.InteropServices.DllImport("NQuantLibc", EntryPoint="CSharp_AnalyticHestonEngine_AnalyticHestonEngine_Integration_numberOfEvaluations")]
   public static extern uint AnalyticHestonEngine_AnalyticHestonEngine_Integration_numberOfEvaluations(global::System.Runtime.InteropServices.HandleRef jarg1);
 
-  [global::System.Runtime.InteropServices.DllImport("NQuantLibc", EntryPoint="CSharp_AnalyticHestonEngine_AnalyticHestonEngine_Integration_isAdaptiveIntegration")]
-  public static extern bool AnalyticHestonEngine_AnalyticHestonEngine_Integration_isAdaptiveIntegration(global::System.Runtime.InteropServices.HandleRef jarg1);
+  [global::System.Runtime.InteropServices.DllImport("NQuantLibc", EntryPoint="CSharp_AnalyticHestonEngine_AnalyticHestonEngine_Integration_isSTPR002A")]
+  public static extern bool AnalyticHestonEngine_AnalyticHestonEngine_Integration_isSTPR002A(global::System.Runtime.InteropServices.HandleRef jarg1);
 
   [global::System.Runtime.InteropServices.DllImport("NQuantLibc", EntryPoint="CSharp_delete_AnalyticHestonEngine_AnalyticHestonEngine_Integration")]
   public static extern void delete_AnalyticHestonEngine_AnalyticHestonEngine_Integration(global::System.Runtime.InteropServices.HandleRef jarg1);

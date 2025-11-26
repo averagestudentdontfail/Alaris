@@ -58,7 +58,7 @@ namespace QuantConnect.Algorithm.CSharp
 
         public override void OnData(Slice slice)
         {
-            foreach (var value in slice.OptionChains.Values)
+            foreach (var value in slice.STDT002As.Values)
             {
                 foreach (var contact in value.Contracts)
                 {

@@ -51,7 +51,7 @@ namespace QuantConnect.Algorithm.CSharp
 
             if (_addOption)
             {
-                var contracts = OptionChain(_spx).Where(x => x.ID.OptionRight == OptionRight.Put && x.ID.Date.Date == new DateTime(2021, 1, 15));
+                var contracts = STDT002A(_spx).Where(x => x.ID.OptionRight == OptionRight.Put && x.ID.Date.Date == new DateTime(2021, 1, 15));
 
                 var option = AddIndexOptionContract(contracts.First(), Resolution.Minute);
                 _optionExpiry = option.Expiry;

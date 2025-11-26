@@ -37,7 +37,7 @@ namespace QuantConnect.Interfaces
         AlgorithmNodePacket NextJob(out string algorithmPath);
 
         /// <summary>
-        /// Signal task complete
+        /// STCR004A task complete
         /// </summary>
         /// <param name="job">Work to do.</param>
         void AcknowledgeJob(AlgorithmNodePacket job);

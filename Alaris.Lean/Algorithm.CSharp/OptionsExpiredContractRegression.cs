@@ -45,7 +45,7 @@ namespace QuantConnect.Algorithm.CSharp
 
         public override void OnData(Slice slice)
         {
-            foreach (var chain in slice.OptionChains)
+            foreach (var chain in slice.STDT002As)
             {
                 _receivedData = true;
 

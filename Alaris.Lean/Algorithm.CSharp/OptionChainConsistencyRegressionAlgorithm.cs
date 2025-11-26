@@ -31,7 +31,7 @@ namespace QuantConnect.Algorithm.CSharp
     /// <meta name="tag" content="options" />
     /// <meta name="tag" content="using data" />
     /// <meta name="tag" content="filter selection" />
-    public class OptionChainConsistencyRegressionAlgorithm : QCAlgorithm, IRegressionAlgorithmDefinition
+    public class STDT002AConsistencyRegressionAlgorithm : QCAlgorithm, IRegressionAlgorithmDefinition
     {
         private const string UnderlyingTicker = "GOOG";
         private readonly Symbol _optionSymbol = QuantConnect.Symbol.Create(UnderlyingTicker, SecurityType.Option, Market.USA);
@@ -62,8 +62,8 @@ namespace QuantConnect.Algorithm.CSharp
         {
             if (!Portfolio.Invested)
             {
-                OptionChain chain;
-                if (slice.OptionChains.TryGetValue(_optionSymbol, out chain))
+                STDT002A chain;
+                if (slice.STDT002As.TryGetValue(_optionSymbol, out chain))
                 {
                     // check if data is consistent
                     foreach (var o in chain)

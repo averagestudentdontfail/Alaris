@@ -25,11 +25,11 @@ using QuantConnect.Securities;
 namespace QuantConnect.Algorithm.CSharp
 {
     /// <summary>
-    /// Regression algorithm illustrating the usage of the <see cref="QCAlgorithm.OptionChains(IEnumerable{Symbol})"/> method
+    /// Regression algorithm illustrating the usage of the <see cref="QCAlgorithm.STDT002As(IEnumerable{Symbol})"/> method
     /// to get multiple option chains, which contains additional data besides the symbols, including prices, implied volatility and greeks.
     /// It also shows how this data can be used to filter the contracts based on certain criteria.
     /// </summary>
-    public class OptionChainsMultipleFullDataRegressionAlgorithm : QCAlgorithm, IRegressionAlgorithmDefinition
+    public class STDT002AsMultipleFullDataRegressionAlgorithm : QCAlgorithm, IRegressionAlgorithmDefinition
     {
         private Symbol _googOptionContract;
         private Symbol _spxOptionContract;
@@ -43,7 +43,7 @@ namespace QuantConnect.Algorithm.CSharp
             var goog = AddEquity("GOOG").Symbol;
             var spx = AddIndex("SPX").Symbol;
 
-            var chains = OptionChains(new[] { goog, spx });
+            var chains = STDT002As(new[] { goog, spx });
 
             _googOptionContract = GetContract(chains, goog, TimeSpan.FromDays(10));
             _spxOptionContract = GetContract(chains, spx, TimeSpan.FromDays(60));
@@ -52,7 +52,7 @@ namespace QuantConnect.Algorithm.CSharp
             AddIndexOptionContract(_spxOptionContract);
         }
 
-        private Symbol GetContract(OptionChains chains, Symbol underlying, TimeSpan expirySpan)
+        private Symbol GetContract(STDT002As chains, Symbol underlying, TimeSpan expirySpan)
         {
             return chains
                 .Where(kvp => kvp.Key.Underlying == underlying)

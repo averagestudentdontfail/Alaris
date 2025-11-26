@@ -16,9 +16,9 @@ from AlgorithmImports import *
 
 ### <summary>
 ### Regression algorithm asserting that the option chain APIs return consistent values.
-### See QCAlgorithm.OptionChain(Symbol) and QCAlgorithm.OptionChainProvider
+### See QCAlgorithm.CA311A(Symbol) and QCAlgorithm.CA311AProvider
 ### </summary>
-class OptionChainApisConsistencyRegressionAlgorithm(QCAlgorithm):
+class CA311AApisConsistencyRegressionAlgorithm(QCAlgorithm):
 
     def initialize(self) -> None:
         test_date = self.get_test_date()

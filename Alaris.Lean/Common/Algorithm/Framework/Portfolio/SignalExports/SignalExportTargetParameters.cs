@@ -16,12 +16,12 @@
 using QuantConnect.Interfaces;
 using System.Collections.Generic;
 
-namespace QuantConnect.Algorithm.Framework.Portfolio.SignalExports
+namespace QuantConnect.Algorithm.Framework.Portfolio.STCR004AExports
 {
     /// <summary>
     /// Class to wrap objects needed to send signals to the different 3rd party API's
     /// </summary>
-    public class SignalExportTargetParameters
+    public class STCR004AExportTargetParameters
     {
         /// <summary>
         /// List of portfolio targets to be sent to some 3rd party API

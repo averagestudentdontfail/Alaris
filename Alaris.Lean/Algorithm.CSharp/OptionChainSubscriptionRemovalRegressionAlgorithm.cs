@@ -26,7 +26,7 @@ namespace QuantConnect.Algorithm.CSharp
     /// <summary>
     /// Regression algorithm reproducing GH issue #3914 where the option chain subscriptions wouldn't get removed
     /// </summary>
-    public class OptionChainSubscriptionRemovalRegressionAlgorithm : QCAlgorithm, IRegressionAlgorithmDefinition
+    public class STDT002ASubscriptionRemovalRegressionAlgorithm : QCAlgorithm, IRegressionAlgorithmDefinition
     {
         private int _optionCount;
         public override void Initialize()
@@ -38,7 +38,7 @@ namespace QuantConnect.Algorithm.CSharp
             // this line is the key of this test it changed the behavior if the resolution used
             // is < that Minute which is the Option resolution
             AddEquity("SPY", Resolution.Second);
-            SetUniverseSelection(new TestOptionUniverseSelectionModel(SelectOptionChainSymbols));
+            SetUniverseSelection(new TestOptionUniverseSelectionModel(SelectSTDT002ASymbols));
         }
 
         public override void OnSecuritiesChanged(SecurityChanges changes)
@@ -56,7 +56,7 @@ namespace QuantConnect.Algorithm.CSharp
             }
         }
 
-        private static IEnumerable<Symbol> SelectOptionChainSymbols(DateTime utcTime)
+        private static IEnumerable<Symbol> SelectSTDT002ASymbols(DateTime utcTime)
         {
             var newYorkTime = utcTime.ConvertFromUtc(TimeZones.NewYork);
             if (newYorkTime.Date < new DateTime(2014, 06, 06))

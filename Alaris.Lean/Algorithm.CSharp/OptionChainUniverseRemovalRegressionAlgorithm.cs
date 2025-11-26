@@ -26,7 +26,7 @@ namespace QuantConnect.Algorithm.CSharp
     /// Regression algorithm which reproduces GH issue #5079, where option chain universes would sometimes not get removed from the
     /// UniverseManager causing new universes not to get added
     /// </summary>
-    public class OptionChainUniverseRemovalRegressionAlgorithm : QCAlgorithm, IRegressionAlgorithmDefinition
+    public class STDT002AUniverseRemovalRegressionAlgorithm : QCAlgorithm, IRegressionAlgorithmDefinition
     {
         // initialize our changes to nothing
         private SecurityChanges _changes = SecurityChanges.None;
@@ -59,7 +59,7 @@ namespace QuantConnect.Algorithm.CSharp
             {
                 if (universe.Underlying == null)
                 {
-                    throw new RegressionTestException("Underlying data point is null! This shouldn't happen, each OptionChainUniverse handles and should provide this");
+                    throw new RegressionTestException("Underlying data point is null! This shouldn't happen, each STDT002AUniverse handles and should provide this");
                 }
                 return universe.IncludeWeeklys()
                     .BackMonth() // back month so that they don't get removed because of being delisted

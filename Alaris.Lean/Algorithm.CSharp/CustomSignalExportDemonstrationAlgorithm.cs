@@ -15,7 +15,7 @@
 
 using Newtonsoft.Json;
 using QuantConnect.Algorithm.Framework.Portfolio;
-using QuantConnect.Algorithm.Framework.Portfolio.SignalExports;
+using QuantConnect.Algorithm.Framework.Portfolio.STCR004AExports;
 using QuantConnect.Api;
 using QuantConnect.Data;
 using QuantConnect.Interfaces;
@@ -33,7 +33,7 @@ namespace QuantConnect.Algorithm.CSharp
     /// <meta name="tag" content="using data" />
     /// <meta name="tag" content="using quantconnect" />
     /// <meta name="tag" content="securities and portfolio" />
-    public class CustomSignalExportDemonstrationAlgorithm : QCAlgorithm
+    public class CustomSTCR004AExportDemonstrationAlgorithm : QCAlgorithm
     {
         /// <summary>
         /// Initialize the date and add all equity symbols present
@@ -50,8 +50,8 @@ namespace QuantConnect.Algorithm.CSharp
             AddFutureContract(QuantConnect.Symbol.CreateFuture("ES", Market.CME, new DateTime(2023, 12, 15), null));
             AddOptionContract(QuantConnect.Symbol.CreateOption("SPY", Market.USA, OptionStyle.American, OptionRight.Call, 130, new DateTime(2023, 9, 1)));
             
-            // Set CustomSignalExport signal export provider.
-            SignalExport.AddSignalExportProvider(new CustomSignalExport());
+            // Set CustomSTCR004AExport signal export provider.
+            STCR004AExport.AddSTCR004AExportProvider(new CustomSTCR004AExport());
         }
 
         /// <summary>
@@ -70,12 +70,12 @@ namespace QuantConnect.Algorithm.CSharp
         }
     }
 
-    internal class CustomSignalExport : ISignalExportTarget
+    internal class CustomSTCR004AExport : ISTCR004AExportTarget
     {
         private readonly Uri _requestUri = new ("http://localhost:5000/");
         private readonly HttpClient _httpClient = new();
 
-        public bool Send(SignalExportTargetParameters parameters)
+        public bool Send(STCR004AExportTargetParameters parameters)
         {
             object SimplePayload(PortfolioTarget target)
             {

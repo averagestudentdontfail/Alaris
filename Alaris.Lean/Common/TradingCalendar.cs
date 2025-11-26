@@ -24,17 +24,17 @@ namespace QuantConnect
     /// <summary>
     /// Class represents trading calendar, populated with variety of events relevant to currently trading instruments
     /// </summary>
-    public class TradingCalendar
+    public class STTM003A
     {
         private readonly MarketHoursDatabase _marketHoursDatabase;
         private readonly SecurityManager _securityManager;
 
         /// <summary>
-        /// Initialize a new <see cref="TradingCalendar"/> instance.
+        /// Initialize a new <see cref="STTM003A"/> instance.
         /// </summary>
         /// <param name="securityManager">SecurityManager for this calendar</param>
         /// <param name="marketHoursDatabase">MarketHoursDatabase for this calendar</param>
-        public TradingCalendar(SecurityManager securityManager, MarketHoursDatabase marketHoursDatabase)
+        public STTM003A(SecurityManager securityManager, MarketHoursDatabase marketHoursDatabase)
         {
             _securityManager = securityManager;
             _marketHoursDatabase = marketHoursDatabase;
@@ -128,7 +128,7 @@ namespace QuantConnect
             var totalDays = (int)(end.Date.AddDays(1.0) - start.Date).TotalDays;
             if (totalDays < 0)
             {
-                throw new ArgumentException($"TradingCalendar.PopulateTradingDays(): {Messages.TradingCalendar.InvalidTotalDays(totalDays)}");
+                throw new ArgumentException($"STTM003A.PopulateTradingDays(): {Messages.STTM003A.InvalidTotalDays(totalDays)}");
             }
 
             foreach (var dayIdx in Enumerable.Range(0, totalDays))

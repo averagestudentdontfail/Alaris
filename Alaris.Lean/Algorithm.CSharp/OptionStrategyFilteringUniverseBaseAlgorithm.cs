@@ -73,15 +73,15 @@ namespace QuantConnect.Algorithm.CSharp
         {
             if (!Portfolio.Invested)
             {
-                OptionChain chain;
-                if (slice.OptionChains.TryGetValue(OptionSymbol, out chain) && chain.Any())
+                STDT002A chain;
+                if (slice.STDT002As.TryGetValue(OptionSymbol, out chain) && chain.Any())
                 {
                     TestFiltering(chain);
                 }
             }
         }
 
-        protected abstract void TestFiltering(OptionChain chain);
+        protected abstract void TestFiltering(STDT002A chain);
 
         /// <summary>
         /// This is used by the regression test system to indicate if the open source Lean repository has the required data to run this algorithm.

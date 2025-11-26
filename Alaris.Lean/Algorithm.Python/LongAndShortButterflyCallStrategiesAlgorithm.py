@@ -26,7 +26,7 @@ class LongAndShortButterflyCallStrategiesAlgorithm(OptionStrategyFactoryMethodsB
     def expected_orders_count(self) -> int:
         return 6
 
-    def trade_strategy(self, chain: OptionChain, option_symbol: Symbol):
+    def trade_strategy(self, chain: CA311A, option_symbol: Symbol):
         call_contracts = (contract for contract in chain if contract.right == OptionRight.CALL)
 
         for expiry, group in itertools.groupby(call_contracts, lambda x: x.expiry):

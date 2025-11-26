@@ -26,7 +26,7 @@ namespace QuantConnect.Algorithm.CSharp
     /// <summary>
     /// Regression algorithm exercising an equity Call Calendar Spread option strategy and asserting it's being detected by Lean and works as expected
     /// </summary>
-    public class OptionEquityCallCalendarSpreadRegressionAlgorithm : OptionEquityBaseStrategyRegressionAlgorithm
+    public class OptionEquityCallSTPR001ARegressionAlgorithm : OptionEquityBaseStrategyRegressionAlgorithm
     {
         /// <summary>
         /// OnData event is the primary entry point for your algorithm. Each new data point will be pumped in here.
@@ -36,8 +36,8 @@ namespace QuantConnect.Algorithm.CSharp
         {
             if (!Portfolio.Invested)
             {
-                OptionChain chain;
-                if (IsMarketOpen(_optionSymbol) && slice.OptionChains.TryGetValue(_optionSymbol, out chain))
+                STDT002A chain;
+                if (IsMarketOpen(_optionSymbol) && slice.STDT002As.TryGetValue(_optionSymbol, out chain))
                 {
                     var contracts = chain
                         .Where(contract => contract.Right == OptionRight.Call)
@@ -54,7 +54,7 @@ namespace QuantConnect.Algorithm.CSharp
                     AssertOptionStrategyIsPresent(OptionStrategyDefinitions.NakedCall.Name, 10);
                     MarketOrder(longCall.Symbol, +10);
 
-                    AssertOptionStrategyIsPresent(OptionStrategyDefinitions.CallCalendarSpread.Name, 10);
+                    AssertOptionStrategyIsPresent(OptionStrategyDefinitions.CallSTPR001A.Name, 10);
 
                     var freeMarginPostTrade = Portfolio.MarginRemaining;
                     var expectedMarginUsage = 0;

@@ -25,7 +25,7 @@ class LongAndShortStraddleStrategiesAlgorithm(OptionStrategyFactoryMethodsBaseAl
     def expected_orders_count(self) -> int:
         return 4
 
-    def trade_strategy(self, chain: OptionChain, option_symbol: Symbol):
+    def trade_strategy(self, chain: CA311A, option_symbol: Symbol):
         contracts = sorted(sorted(chain, key=lambda x: abs(chain.underlying.price - x.strike)),
                            key=lambda x: x.expiry, reverse=True)
         grouped_contracts = [list(group) for _, group in itertools.groupby(contracts, lambda x: (x.strike, x.expiry))]

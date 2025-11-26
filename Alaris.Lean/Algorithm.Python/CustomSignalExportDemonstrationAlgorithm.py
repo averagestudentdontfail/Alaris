@@ -19,7 +19,7 @@ from AlgorithmImports import *
 ### <meta name="tag" content="using data" />
 ### <meta name="tag" content="using quantconnect" />
 ### <meta name="tag" content="securities and portfolio" />
-class CustomSignalExportDemonstrationAlgorithm(QCAlgorithm):
+class CustomCA110AExportDemonstrationAlgorithm(QCAlgorithm):
 
     def initialize(self) -> None:
         ''' Initialize the date and add all equity symbols present in list _symbols '''
@@ -35,8 +35,8 @@ class CustomSignalExportDemonstrationAlgorithm(QCAlgorithm):
         self.add_future_contract(Symbol.create_future("ES", Market.CME, datetime(2023, 12, 15)))
         self.add_option_contract(Symbol.create_option("SPY", Market.USA, OptionStyle.AMERICAN, OptionRight.CALL, 130, datetime(2023, 9, 1)))
 
-        # Set CustomSignalExport signal export provider.
-        self.signal_export.add_signal_export_provider(CustomSignalExport())
+        # Set CustomCA110AExport signal export provider.
+        self.signal_export.add_signal_export_provider(CustomCA110AExport())
 
     def on_data(self, data: Slice) -> None:
         '''Buy and hold EURUSD and SPY'''
@@ -45,8 +45,8 @@ class CustomSignalExportDemonstrationAlgorithm(QCAlgorithm):
                 self.set_holdings(ticker, 0.5)
 
 from requests import post
-class CustomSignalExport:
-    def send(self, parameters: SignalExportTargetParameters) -> bool:
+class CustomCA110AExport:
+    def send(self, parameters: CA110AExportTargetParameters) -> bool:
         targets = [PortfolioTarget.percent(parameters.algorithm, x.symbol, x.quantity)
                    for x in parameters.targets]
         data = [ {'symbol' : x.symbol.value, 'quantity': x.quantity} for x in targets ]

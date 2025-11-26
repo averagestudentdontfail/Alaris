@@ -371,9 +371,9 @@ namespace QuantConnect.Securities
         /// <param name="minFarDaysTillExpiry">The mininum days till expiry of the further conrtact from the current time, closest expiry will be selected</param>
         /// <remarks>Applicable to Long and Short Call Calendar Spread Option Strategy</remarks>
         /// <returns>Universe with filter applied</returns>
-        public OptionFilterUniverse CallCalendarSpread(decimal strikeFromAtm = 0, int minNearDaysTillExpiry = 30, int minFarDaysTillExpiry = 60)
+        public OptionFilterUniverse CallSTPR001A(decimal strikeFromAtm = 0, int minNearDaysTillExpiry = 30, int minFarDaysTillExpiry = 60)
         {
-            return CalendarSpread(OptionRight.Call, strikeFromAtm, minNearDaysTillExpiry, minFarDaysTillExpiry);
+            return STPR001A(OptionRight.Call, strikeFromAtm, minNearDaysTillExpiry, minFarDaysTillExpiry);
         }
 
         /// <summary>
@@ -384,22 +384,22 @@ namespace QuantConnect.Securities
         /// <param name="minFarDaysTillExpiry">The mininum days till expiry of the further conrtact from the current time, closest expiry will be selected</param>
         /// <remarks>Applicable to Long and Short Put Calendar Spread Option Strategy</remarks>
         /// <returns>Universe with filter applied</returns>
-        public OptionFilterUniverse PutCalendarSpread(decimal strikeFromAtm = 0, int minNearDaysTillExpiry = 30, int minFarDaysTillExpiry = 60)
+        public OptionFilterUniverse PutSTPR001A(decimal strikeFromAtm = 0, int minNearDaysTillExpiry = 30, int minFarDaysTillExpiry = 60)
         {
-            return CalendarSpread(OptionRight.Put, strikeFromAtm, minNearDaysTillExpiry, minFarDaysTillExpiry);
+            return STPR001A(OptionRight.Put, strikeFromAtm, minNearDaysTillExpiry, minFarDaysTillExpiry);
         }
 
-        private OptionFilterUniverse CalendarSpread(OptionRight right, decimal strikeFromAtm, int minNearDaysTillExpiry, int minFarDaysTillExpiry)
+        private OptionFilterUniverse STPR001A(OptionRight right, decimal strikeFromAtm, int minNearDaysTillExpiry, int minFarDaysTillExpiry)
         {
             if (minFarDaysTillExpiry <= minNearDaysTillExpiry)
             {
-                throw new ArgumentException("CalendarSpread(): expiry arguments must be in ascending order, "
+                throw new ArgumentException("STPR001A(): expiry arguments must be in ascending order, "
                     + $"{nameof(minNearDaysTillExpiry)}, {nameof(minFarDaysTillExpiry)}");
             }
 
             if (minNearDaysTillExpiry < 0)
             {
-                throw new ArgumentException("CalendarSpread(): near expiry argument must be positive.");
+                throw new ArgumentException("STPR001A(): near expiry argument must be positive.");
             }
 
             // Select the set strike

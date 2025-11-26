@@ -71,7 +71,7 @@ namespace QuantConnect.Algorithm.CSharp
                 return;
             }
 
-            foreach (var chain in slice.OptionChains.Values)
+            foreach (var chain in slice.STDT002As.Values)
             {
                 foreach (var contract in chain.Contracts.Values)
                 {

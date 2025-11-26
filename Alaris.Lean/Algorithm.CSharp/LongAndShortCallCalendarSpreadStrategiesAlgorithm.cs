@@ -28,14 +28,14 @@ namespace QuantConnect.Algorithm.CSharp
     /// This algorithm demonstrate how to use OptionStrategies helper class to batch send orders for common strategies.
     /// In this case, the algorithm tests the Call Calendar Spread and Short Call Calendar Spread strategies.
     /// </summary>
-    public class LongAndShortCallCalendarSpreadStrategiesAlgorithm : OptionStrategyFactoryMethodsBaseAlgorithm
+    public class LongAndShortCallSTPR001AStrategiesAlgorithm : OptionStrategyFactoryMethodsBaseAlgorithm
     {
         protected override int ExpectedOrdersCount { get; } = 4;
 
-        private OptionStrategy _callCalendarSpread;
-        private OptionStrategy _shortCallCalendarSpread;
+        private OptionStrategy _callSTPR001A;
+        private OptionStrategy _shortCallSTPR001A;
 
-        protected override void TradeStrategy(OptionChain chain)
+        protected override void TradeStrategy(STDT002A chain)
         {
             var contractsByStrike = chain
                 .Where(x => x.Right == OptionRight.Call)
@@ -50,9 +50,9 @@ namespace QuantConnect.Algorithm.CSharp
                 var nearExpiration = contracts[0].Expiry;
                 var farExpiration = contracts[1].Expiry;
 
-                _callCalendarSpread = OptionStrategies.CallCalendarSpread(_optionSymbol, strike, nearExpiration, farExpiration);
-                _shortCallCalendarSpread = OptionStrategies.ShortCallCalendarSpread(_optionSymbol, strike, nearExpiration, farExpiration);
-                Buy(_callCalendarSpread, 2);
+                _callSTPR001A = OptionStrategies.CallSTPR001A(_optionSymbol, strike, nearExpiration, farExpiration);
+                _shortCallSTPR001A = OptionStrategies.ShortCallSTPR001A(_optionSymbol, strike, nearExpiration, farExpiration);
+                Buy(_callSTPR001A, 2);
                 break;
             }
         }
@@ -64,7 +64,7 @@ namespace QuantConnect.Algorithm.CSharp
                 throw new RegressionTestException($"Expected position group to have 2 positions. Actual: {positionGroup.Positions.Count()}");
             }
 
-            var nearExpiration = _callCalendarSpread.OptionLegs.Min(leg => leg.Expiration);
+            var nearExpiration = _callSTPR001A.OptionLegs.Min(leg => leg.Expiration);
             var nearExpirationPosition = positionGroup.Positions
                 .Single(x => x.Symbol.ID.OptionRight == OptionRight.Call && x.Symbol.ID.Date == nearExpiration);
 
@@ -73,7 +73,7 @@ namespace QuantConnect.Algorithm.CSharp
                 throw new RegressionTestException($"Expected near expiration position quantity to be -2. Actual: {nearExpirationPosition.Quantity}");
             }
 
-            var farExpiration = _callCalendarSpread.OptionLegs.Max(leg => leg.Expiration);
+            var farExpiration = _callSTPR001A.OptionLegs.Max(leg => leg.Expiration);
             var farExpirationPosition = positionGroup.Positions
                 .Single(x => x.Symbol.ID.OptionRight == OptionRight.Call && x.Symbol.ID.Date == farExpiration);
 
@@ -86,7 +86,7 @@ namespace QuantConnect.Algorithm.CSharp
         protected override void LiquidateStrategy()
         {
             // We should be able to close the position using the inverse strategy (a short call calendar spread)
-            Buy(_shortCallCalendarSpread, 2);
+            Buy(_shortCallSTPR001A, 2);
         }
 
         /// <summary>

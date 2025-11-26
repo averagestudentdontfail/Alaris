@@ -35,7 +35,7 @@ namespace QuantConnect.Algorithm.CSharp
         private OptionStrategy _butterflyCall;
         private OptionStrategy _shortButterflyCall;
 
-        protected override void TradeStrategy(OptionChain chain)
+        protected override void TradeStrategy(STDT002A chain)
         {
             var contractsByExpiry = chain.Where(x => x.Right == OptionRight.Call).GroupBy(x => x.Expiry);
             foreach (var group in contractsByExpiry)

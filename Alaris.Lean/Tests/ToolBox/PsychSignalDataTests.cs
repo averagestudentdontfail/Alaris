@@ -23,9 +23,9 @@ using System.Linq;
 namespace QuantConnect.Tests.ToolBox
 {
     [TestFixture]
-    public class PsychSignalDataTests
+    public class PsychSTCR004ADataTests
     {
-        [Test, Ignore("This test requires raw PsychSignal data")]
+        [Test, Ignore("This test requires raw PsychSTCR004A data")]
         public void FileHourMatchesDataTimeRealRawData()
         {
             var rawPath = Path.Combine("raw", "alternative", "psychsignal");

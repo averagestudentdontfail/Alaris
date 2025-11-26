@@ -17,7 +17,7 @@ from AlgorithmImports import *
 ### This regression algorithm tests that we only receive the option chain for a single future contract
 ### in the option universe filter.
 ### </summary>
-class AddFutureOptionSingleOptionChainSelectedInUniverseFilterRegressionAlgorithm(QCAlgorithm):
+class AddFutureOptionSingleCA311ASelectedInUniverseFilterRegressionAlgorithm(QCAlgorithm):
     def initialize(self):
         self.invested = False
         self.on_data_reached = False

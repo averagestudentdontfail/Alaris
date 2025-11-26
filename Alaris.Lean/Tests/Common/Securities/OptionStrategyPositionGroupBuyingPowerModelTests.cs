@@ -384,66 +384,66 @@ namespace QuantConnect.Tests.Common.Securities
             new TestCaseData(OptionStrategyDefinitions.ShortButterflyPut, -20, 20, true), // -20 to 0
             new TestCaseData(OptionStrategyDefinitions.ShortButterflyPut, -20, -(1000000 - 20 * 0) / (0 + 1), true),    // -20 to max short
             new TestCaseData(OptionStrategyDefinitions.ShortButterflyPut, -20, -(1000000 - 20 * 0) / (0 + 1) - 1, false),  // -20 to max short + 1
-            // Initial margin requirement|premium for CallCalendarSpread with quantities 1 and -1 are 0|200 and 19400|0 respectively
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, 0, (1000000 - 0 * 0) / (0 + 200), true), // 0 to max long
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, 0, (1000000 - 0 * 0) / (0 + 200) + 1, false), // 0 to max long + 1
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, 0, -(1000000 + 0 * 19400) / (19400 + 0), true), // 0 to max short
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, 0, -(1000000 + 0 * 19400) / (19400 + 0) - 1, false),    // 0 to max short + 1
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, 20, (1000000 - 20 * 0) / (0 + 200), true),    // 20 to max long
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, 20, (1000000 - 20 * 0) / (0 + 200) + 1, false),    // 20 to max long + 1
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, 20, -20, true), // 20 to 0
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, 20, -(1000000 + 20 * 19400) / (19400 + 0), true), // 20 to max short
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, 20, -(1000000 + 20 * 19400) / (19400 + 0) - 1, false),  // 20 to max short + 1
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, -20, (1000000 + 20 * 0) / (0 + 200), true),   // -20 to max long
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, -20, (1000000 + 20 * 0) / (0 + 200) + 1, false),   // -20 to max long + 1
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, -20, 20, true), // -20 to 0
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, -20, -(1000000 - 20 * 19400) / (19400 + 0), true),    // -20 to max short
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, -20, -(1000000 - 20 * 19400) / (19400 + 0) - 1, false),  // -20 to max short + 1
-            // Initial margin requirement|premium for ShortCallCalendarSpread with quantities 1 and -1 are 19400|0 and 0|200 respectively
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, 0, (1000000 - 0 * 19400) / (19400 + 0), true), // 0 to max long
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, 0, (1000000 - 0 * 19400) / (19400 + 0) + 1, false), // 0 to max long + 1
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, 0, -(1000000 + 0 * 0) / (0 + 200), true), // 0 to max short
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, 0, -(1000000 + 0 * 0) / (0 + 200) - 1, false),    // 0 to max short + 1
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, 20, (1000000 - 20 * 19400) / (19400 + 0), true),    // 20 to max long
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, 20, (1000000 - 20 * 19400) / (19400 + 0) + 1, false),    // 20 to max long + 1
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, 20, -20, true), // 20 to 0
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, 20, -(1000000 + 20 * 0) / (0 + 200), true), // 20 to max short
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, 20, -(1000000 + 20 * 0) / (0 + 200) - 1, false),  // 20 to max short + 1
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, -20, (1000000 + 20 * 19400) / (19400 + 0), true),   // -20 to max long
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, -20, (1000000 + 20 * 19400) / (19400 + 0) + 1, false),   // -20 to max long + 1
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, -20, 20, true), // -20 to 0
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, -20, -(1000000 - 20 * 0) / (0 + 200), true),    // -20 to max short
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, -20, -(1000000 - 20 * 0) / (0 + 200) - 1, false),  // -20 to max short + 1
-            // Initial margin requirement|premium for PutCalendarSpread with quantities 1 and -1 are 0|1 and 3002|0 respectively
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, 0, (1000000 - 0 * 0) / (0 + 1), true), // 0 to max long
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, 0, (1000000 - 0 * 0) / (0 + 1) + 1, false), // 0 to max long + 1
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, 0, -(1000000 + 0 * 3002) / (3002 + 0), true), // 0 to max short
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, 0, -(1000000 + 0 * 3002) / (3002 + 0) - 1, false),    // 0 to max short + 1
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, 20, (1000000 - 20 * 0) / (0 + 1), true),    // 20 to max long
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, 20, (1000000 - 20 * 0) / (0 + 1) + 1, false),    // 20 to max long + 1
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, 20, -20, true), // 20 to 0
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, 20, -(1000000 + 20 * 3002) / (3002 + 0), true), // 20 to max short
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, 20, -(1000000 + 20 * 3002) / (3002 + 0) - 1, false),  // 20 to max short + 1
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, -20, (1000000 + 20 * 0) / (0 + 1), true),   // -20 to max long
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, -20, (1000000 + 20 * 0) / (0 + 1) + 1, false),   // -20 to max long + 1
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, -20, 20, true), // -20 to 0
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, -20, -(1000000 - 20 * 3002) / (3002 + 0), true),    // -20 to max short
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, -20, -(1000000 - 20 * 3002) / (3002 + 0) - 1, false),  // -20 to max short + 1
-            // Initial margin requirement|premium for ShortPutCalendarSpread with quantities 1 and -1 are 3002|0 and 0|1 respectively
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, 0, (1000000 - 0 * 3002) / (3002 + 0), true), // 0 to max long
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, 0, (1000000 - 0 * 3002) / (3002 + 0) + 1, false), // 0 to max long + 1
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, 0, -(1000000 + 0 * 0) / (0 + 1), true), // 0 to max short
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, 0, -(1000000 + 0 * 0) / (0 + 1) - 1, false),    // 0 to max short + 1
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, 20, (1000000 - 20 * 3002) / (3002 + 0), true),    // 20 to max long
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, 20, (1000000 - 20 * 3002) / (3002 + 0) + 1, false),    // 20 to max long + 1
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, 20, -20, true), // 20 to 0
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, 20, -(1000000 + 20 * 0) / (0 + 1), true), // 20 to max short
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, 20, -(1000000 + 20 * 0) / (0 + 1) - 1, false),  // 20 to max short + 1
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, -20, (1000000 + 20 * 3002) / (3002 + 0), true),   // -20 to max long
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, -20, (1000000 + 20 * 3002) / (3002 + 0) + 1, false),   // -20 to max long + 1
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, -20, 20, true), // -20 to 0
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, -20, -(1000000 - 20 * 0) / (0 + 1), true),    // -20 to max short
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, -20, -(1000000 - 20 * 0) / (0 + 1) - 1, false),  // -20 to max short + 1
+            // Initial margin requirement|premium for CallSTPR001A with quantities 1 and -1 are 0|200 and 19400|0 respectively
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, 0, (1000000 - 0 * 0) / (0 + 200), true), // 0 to max long
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, 0, (1000000 - 0 * 0) / (0 + 200) + 1, false), // 0 to max long + 1
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, 0, -(1000000 + 0 * 19400) / (19400 + 0), true), // 0 to max short
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, 0, -(1000000 + 0 * 19400) / (19400 + 0) - 1, false),    // 0 to max short + 1
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, 20, (1000000 - 20 * 0) / (0 + 200), true),    // 20 to max long
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, 20, (1000000 - 20 * 0) / (0 + 200) + 1, false),    // 20 to max long + 1
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, 20, -20, true), // 20 to 0
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, 20, -(1000000 + 20 * 19400) / (19400 + 0), true), // 20 to max short
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, 20, -(1000000 + 20 * 19400) / (19400 + 0) - 1, false),  // 20 to max short + 1
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, -20, (1000000 + 20 * 0) / (0 + 200), true),   // -20 to max long
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, -20, (1000000 + 20 * 0) / (0 + 200) + 1, false),   // -20 to max long + 1
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, -20, 20, true), // -20 to 0
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, -20, -(1000000 - 20 * 19400) / (19400 + 0), true),    // -20 to max short
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, -20, -(1000000 - 20 * 19400) / (19400 + 0) - 1, false),  // -20 to max short + 1
+            // Initial margin requirement|premium for ShortCallSTPR001A with quantities 1 and -1 are 19400|0 and 0|200 respectively
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, 0, (1000000 - 0 * 19400) / (19400 + 0), true), // 0 to max long
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, 0, (1000000 - 0 * 19400) / (19400 + 0) + 1, false), // 0 to max long + 1
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, 0, -(1000000 + 0 * 0) / (0 + 200), true), // 0 to max short
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, 0, -(1000000 + 0 * 0) / (0 + 200) - 1, false),    // 0 to max short + 1
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, 20, (1000000 - 20 * 19400) / (19400 + 0), true),    // 20 to max long
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, 20, (1000000 - 20 * 19400) / (19400 + 0) + 1, false),    // 20 to max long + 1
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, 20, -20, true), // 20 to 0
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, 20, -(1000000 + 20 * 0) / (0 + 200), true), // 20 to max short
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, 20, -(1000000 + 20 * 0) / (0 + 200) - 1, false),  // 20 to max short + 1
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, -20, (1000000 + 20 * 19400) / (19400 + 0), true),   // -20 to max long
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, -20, (1000000 + 20 * 19400) / (19400 + 0) + 1, false),   // -20 to max long + 1
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, -20, 20, true), // -20 to 0
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, -20, -(1000000 - 20 * 0) / (0 + 200), true),    // -20 to max short
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, -20, -(1000000 - 20 * 0) / (0 + 200) - 1, false),  // -20 to max short + 1
+            // Initial margin requirement|premium for PutSTPR001A with quantities 1 and -1 are 0|1 and 3002|0 respectively
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, 0, (1000000 - 0 * 0) / (0 + 1), true), // 0 to max long
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, 0, (1000000 - 0 * 0) / (0 + 1) + 1, false), // 0 to max long + 1
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, 0, -(1000000 + 0 * 3002) / (3002 + 0), true), // 0 to max short
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, 0, -(1000000 + 0 * 3002) / (3002 + 0) - 1, false),    // 0 to max short + 1
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, 20, (1000000 - 20 * 0) / (0 + 1), true),    // 20 to max long
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, 20, (1000000 - 20 * 0) / (0 + 1) + 1, false),    // 20 to max long + 1
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, 20, -20, true), // 20 to 0
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, 20, -(1000000 + 20 * 3002) / (3002 + 0), true), // 20 to max short
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, 20, -(1000000 + 20 * 3002) / (3002 + 0) - 1, false),  // 20 to max short + 1
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, -20, (1000000 + 20 * 0) / (0 + 1), true),   // -20 to max long
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, -20, (1000000 + 20 * 0) / (0 + 1) + 1, false),   // -20 to max long + 1
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, -20, 20, true), // -20 to 0
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, -20, -(1000000 - 20 * 3002) / (3002 + 0), true),    // -20 to max short
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, -20, -(1000000 - 20 * 3002) / (3002 + 0) - 1, false),  // -20 to max short + 1
+            // Initial margin requirement|premium for ShortPutSTPR001A with quantities 1 and -1 are 3002|0 and 0|1 respectively
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, 0, (1000000 - 0 * 3002) / (3002 + 0), true), // 0 to max long
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, 0, (1000000 - 0 * 3002) / (3002 + 0) + 1, false), // 0 to max long + 1
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, 0, -(1000000 + 0 * 0) / (0 + 1), true), // 0 to max short
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, 0, -(1000000 + 0 * 0) / (0 + 1) - 1, false),    // 0 to max short + 1
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, 20, (1000000 - 20 * 3002) / (3002 + 0), true),    // 20 to max long
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, 20, (1000000 - 20 * 3002) / (3002 + 0) + 1, false),    // 20 to max long + 1
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, 20, -20, true), // 20 to 0
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, 20, -(1000000 + 20 * 0) / (0 + 1), true), // 20 to max short
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, 20, -(1000000 + 20 * 0) / (0 + 1) - 1, false),  // 20 to max short + 1
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, -20, (1000000 + 20 * 3002) / (3002 + 0), true),   // -20 to max long
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, -20, (1000000 + 20 * 3002) / (3002 + 0) + 1, false),   // -20 to max long + 1
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, -20, 20, true), // -20 to 0
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, -20, -(1000000 - 20 * 0) / (0 + 1), true),    // -20 to max short
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, -20, -(1000000 - 20 * 0) / (0 + 1) - 1, false),  // -20 to max short + 1
             // Initial margin requirement|premium for IronButterfly with quantities 1 and -1 are 1000|0 and 0|801 respectively
             new TestCaseData(OptionStrategyDefinitions.IronButterfly, 0, (1000000 - 0 * 1000) / (1000 + 0), true), // 0 to max long
             new TestCaseData(OptionStrategyDefinitions.IronButterfly, 0, (1000000 - 0 * 1000) / (1000 + 0) + 1, false), // 0 to max long + 1
@@ -858,14 +858,14 @@ namespace QuantConnect.Tests.Common.Securities
             new TestCaseData(OptionStrategyDefinitions.ButterflyPut, -1, 1000m),                    // IB:  1000
             new TestCaseData(OptionStrategyDefinitions.ShortButterflyPut, 1, 1000m),                // IB:  1000
             new TestCaseData(OptionStrategyDefinitions.ShortButterflyPut, -1, 0m),                  // IB:  0
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, 1, 0m),                  // IB:  0
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, -1, 20000m),             // IB:  20537
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, 1, 20000m),         // IB:  20537
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, -1, 0m),            // IB:  0
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, 1, 0m),                   // IB:  0
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, -1, 3000m),               // IB:  3121
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, 1, 3000m),           // IB:  3121
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, -1, 0m),             // IB:  0
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, 1, 0m),                  // IB:  0
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, -1, 20000m),             // IB:  20537
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, 1, 20000m),         // IB:  20537
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, -1, 0m),            // IB:  0
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, 1, 0m),                   // IB:  0
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, -1, 3000m),               // IB:  3121
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, 1, 3000m),           // IB:  3121
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, -1, 0m),             // IB:  0
             new TestCaseData(OptionStrategyDefinitions.IronButterfly, 1, 1000m),                    // IB:  1010    note: 1% commission
             new TestCaseData(OptionStrategyDefinitions.IronButterfly, -1, 0m),                      // IB:  short iron butterfly
             new TestCaseData(OptionStrategyDefinitions.ShortIronButterfly, 1, 0m),                  // IB:  0
@@ -980,14 +980,14 @@ namespace QuantConnect.Tests.Common.Securities
             new TestCaseData(OptionStrategyDefinitions.ButterflyPut, -1, 1000m),                    // IB:  1000
             new TestCaseData(OptionStrategyDefinitions.ShortButterflyPut, 1, 1000m),                // IB:  1000
             new TestCaseData(OptionStrategyDefinitions.ShortButterflyPut, -1, 0m),                  // IB:  0
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, 1, 0m),                  // IB:  0
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, -1, 20000m),             // IB:  20537
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, 1, 20000m),         // IB:  20537
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, -1, 0m),            // IB:  0
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, 1, 0m),                   // IB:  0
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, -1, 3000m),               // IB:  3121
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, 1, 3000m),           // IB:  3121
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, -1, 0m),             // IB:  0
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, 1, 0m),                  // IB:  0
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, -1, 20000m),             // IB:  20537
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, 1, 20000m),         // IB:  20537
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, -1, 0m),            // IB:  0
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, 1, 0m),                   // IB:  0
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, -1, 3000m),               // IB:  3121
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, 1, 3000m),           // IB:  3121
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, -1, 0m),             // IB:  0
             new TestCaseData(OptionStrategyDefinitions.IronButterfly, 1, 1000m),                    // IB:  1010    note: 1% commission
             new TestCaseData(OptionStrategyDefinitions.IronButterfly, -1, 0m),                      // IB:  short iron butterfly
             new TestCaseData(OptionStrategyDefinitions.ShortIronButterfly, 1, 0m),                  // IB:  0
@@ -1219,42 +1219,42 @@ namespace QuantConnect.Tests.Common.Securities
             new TestCaseData(OptionStrategyDefinitions.ShortButterflyPut, -10, -10m / 10, -1),
             new TestCaseData(OptionStrategyDefinitions.ShortButterflyPut, -10, -10m, -10),
             new TestCaseData(OptionStrategyDefinitions.ShortButterflyPut, -10, -10m - 10000m, -20),
-            // Initial margin requirement (including premium) for CallCalendarSpread with quantity 10 and -10 is 2000 and 194000 respectively
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, 10, 2000m / 10, +1),
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, 10, -2000m / 10, -1),
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, 10, -2000m, -10),
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, 10, -2000m - 194000m, -20),
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, -10, 194000m / 10, +1),
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, -10, -194000m / 10, -1),
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, -10, -194000m, -10),
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, -10, -194000m - 2000m, -20),
-            // Initial margin requirement (including premium) for ShortCallCalendarSpread with quantity 10 and -10 is 194000 and 2000 respectively
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, 10, 194000m / 10, +1),
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, 10, -194000m / 10, -1),
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, 10, -194000m, -10),
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, 10, -194000m - 2000m, -20),
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, -10, 2000m / 10, +1),
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, -10, -2000m / 10, -1),
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, -10, -2000m, -10),
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, -10, -2000m - 194000m, -20),
-            // Initial margin requirement (including premium) for PutCalendarSpread with quantity 10 and -10 is 10 and 30020 respectively
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, 10, 10m / 10, +1),
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, 10, -10m / 10, -1),
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, 10, -10m, -10),
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, 10, -10m - 30020m, -20),
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, -10, 30020m / 10, +1),
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, -10, -30020m / 10, -1),
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, -10, -30020m, -10),
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, -10, -30020m - 10m, -20),
-            // Initial margin requirement (including premium) for ShortPutCalendarSpread with quantity 10 and -10 is 30020 and 10 respectively
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, 10, 30020m / 10, +1),
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, 10, -30020m / 10, -1),
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, 10, -30020m, -10),
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, 10, -30020m - 10m, -20),
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, -10, 10m / 10, +1),
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, -10, -10m / 10, -1),
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, -10, -10m, -10),
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, -10, -10m - 30020m, -20),
+            // Initial margin requirement (including premium) for CallSTPR001A with quantity 10 and -10 is 2000 and 194000 respectively
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, 10, 2000m / 10, +1),
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, 10, -2000m / 10, -1),
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, 10, -2000m, -10),
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, 10, -2000m - 194000m, -20),
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, -10, 194000m / 10, +1),
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, -10, -194000m / 10, -1),
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, -10, -194000m, -10),
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, -10, -194000m - 2000m, -20),
+            // Initial margin requirement (including premium) for ShortCallSTPR001A with quantity 10 and -10 is 194000 and 2000 respectively
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, 10, 194000m / 10, +1),
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, 10, -194000m / 10, -1),
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, 10, -194000m, -10),
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, 10, -194000m - 2000m, -20),
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, -10, 2000m / 10, +1),
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, -10, -2000m / 10, -1),
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, -10, -2000m, -10),
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, -10, -2000m - 194000m, -20),
+            // Initial margin requirement (including premium) for PutSTPR001A with quantity 10 and -10 is 10 and 30020 respectively
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, 10, 10m / 10, +1),
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, 10, -10m / 10, -1),
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, 10, -10m, -10),
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, 10, -10m - 30020m, -20),
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, -10, 30020m / 10, +1),
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, -10, -30020m / 10, -1),
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, -10, -30020m, -10),
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, -10, -30020m - 10m, -20),
+            // Initial margin requirement (including premium) for ShortPutSTPR001A with quantity 10 and -10 is 30020 and 10 respectively
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, 10, 30020m / 10, +1),
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, 10, -30020m / 10, -1),
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, 10, -30020m, -10),
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, 10, -30020m - 10m, -20),
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, -10, 10m / 10, +1),
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, -10, -10m / 10, -1),
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, -10, -10m, -10),
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, -10, -10m - 30020m, -20),
             // Initial margin requirement (including premium) for IronButterfly with quantity 10 and -10 is 10000 and 8010 respectively
             new TestCaseData(OptionStrategyDefinitions.IronButterfly, 10, 10000m / 10, +1),
             new TestCaseData(OptionStrategyDefinitions.IronButterfly, 10, -10000m / 10, -1),
@@ -1669,42 +1669,42 @@ namespace QuantConnect.Tests.Common.Securities
             new TestCaseData(OptionStrategyDefinitions.ShortButterflyPut, -10, 10m * 9 / 10, -1),
             new TestCaseData(OptionStrategyDefinitions.ShortButterflyPut, -10, 0m, -10),
             new TestCaseData(OptionStrategyDefinitions.ShortButterflyPut, -10, -10000m, -20),
-            // Initial margin requirement (including premium) for CallCalendarSpread with quantity 10 and -10 is 2000 and 194000 respectively
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, 10, 2000m * 11 / 10, +1),
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, 10, 2000m * 9 / 10, -1),
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, 10, 0m, -10),
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, 10, -194000m, -20),
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, -10, 194000m * 11 / 10, +1),
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, -10, 194000m * 9 / 10, -1),
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, -10, 0m, -10),
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, -10, -2000m, -20),
-            // Initial margin requirement (including premium) for ShortCallCalendarSpread with quantity 10 and -10 is 194000 and 2000 respectively
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, 10, 194000m * 11 / 10, +1),
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, 10, 194000m * 9 / 10, -1),
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, 10, 0m, -10),
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, 10, -2000m, -20),
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, -10, 2000m * 11 / 10, +1),
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, -10, 2000m * 9 / 10, -1),
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, -10, 0m, -10),
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, -10, -194000m, -20),
-            // Initial margin requirement (including premium) for PutCalendarSpread with quantity 10 and -10 is 10 and 30020 respectively
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, 10, 10m * 11 / 10, +1),
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, 10, 10m * 9 / 10, -1),
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, 10, 0m, -10),
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, 10, -30020m, -20),
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, -10, 30020m * 11 / 10, +1),
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, -10, 30020m * 9 / 10, -1),
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, -10, 0m, -10),
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, -10, -10m, -20),
-            // Initial margin requirement (including premium) for ShortPutCalendarSpread with quantity 10 and -10 is 30020 and 10 respectively
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, 10, 30020m * 11 / 10, +1),
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, 10, 30020m * 9 / 10, -1),
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, 10, 0m, -10),
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, 10, -10m, -20),
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, -10, 10m * 11 / 10, +1),
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, -10, 10m * 9 / 10, -1),
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, -10, 0m, -10),
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, -10, -30020m, -20),
+            // Initial margin requirement (including premium) for CallSTPR001A with quantity 10 and -10 is 2000 and 194000 respectively
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, 10, 2000m * 11 / 10, +1),
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, 10, 2000m * 9 / 10, -1),
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, 10, 0m, -10),
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, 10, -194000m, -20),
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, -10, 194000m * 11 / 10, +1),
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, -10, 194000m * 9 / 10, -1),
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, -10, 0m, -10),
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, -10, -2000m, -20),
+            // Initial margin requirement (including premium) for ShortCallSTPR001A with quantity 10 and -10 is 194000 and 2000 respectively
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, 10, 194000m * 11 / 10, +1),
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, 10, 194000m * 9 / 10, -1),
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, 10, 0m, -10),
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, 10, -2000m, -20),
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, -10, 2000m * 11 / 10, +1),
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, -10, 2000m * 9 / 10, -1),
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, -10, 0m, -10),
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, -10, -194000m, -20),
+            // Initial margin requirement (including premium) for PutSTPR001A with quantity 10 and -10 is 10 and 30020 respectively
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, 10, 10m * 11 / 10, +1),
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, 10, 10m * 9 / 10, -1),
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, 10, 0m, -10),
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, 10, -30020m, -20),
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, -10, 30020m * 11 / 10, +1),
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, -10, 30020m * 9 / 10, -1),
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, -10, 0m, -10),
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, -10, -10m, -20),
+            // Initial margin requirement (including premium) for ShortPutSTPR001A with quantity 10 and -10 is 30020 and 10 respectively
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, 10, 30020m * 11 / 10, +1),
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, 10, 30020m * 9 / 10, -1),
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, 10, 0m, -10),
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, 10, -10m, -20),
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, -10, 10m * 11 / 10, +1),
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, -10, 10m * 9 / 10, -1),
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, -10, 0m, -10),
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, -10, -30020m, -20),
             // Initial margin requirement (including premium) for IronButterfly with quantity 10 and -10 is 10000 and 8010 respectively
             new TestCaseData(OptionStrategyDefinitions.IronButterfly, 10, 10000m * 11 / 10, +1),
             new TestCaseData(OptionStrategyDefinitions.IronButterfly, 10, 10000m * 9 / 10, -1),
@@ -2070,38 +2070,38 @@ namespace QuantConnect.Tests.Common.Securities
             new TestCaseData(OptionStrategyDefinitions.ShortButterflyPut, -10, 1, (1000000m - 0) + 0 + 10m),
             new TestCaseData(OptionStrategyDefinitions.ShortButterflyPut, -10, 10, (1000000m - 0) + 0 + 10m),
             new TestCaseData(OptionStrategyDefinitions.ShortButterflyPut, -10, 20, (1000000m - 0) + 0 + 10m),
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, 10, 1, 1000000m - 0),
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, 10, -1, (1000000m - 0) + 0 + 2000m),
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, 10, -10, (1000000m - 0) + 0 + 2000m),
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, 10, -20, (1000000m - 0) + 0 + 2000m),
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, -10, -1, 1000000m - 194000m),
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, -10, 1, (1000000m - 194000m) + 194000m + 194000m),
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, -10, 10, (1000000m - 194000m) + 194000m + 194000m),
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, -10, 20, (1000000m - 194000m) + 194000m + 194000m),
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, 10, 1, 1000000m - 194000m),
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, 10, -1, (1000000m - 194000m) + 194000m + 194000m),
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, 10, -10, (1000000m - 194000m) + 194000m + 194000m),
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, 10, -20, (1000000m - 194000m) + 194000m + 194000m),
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, -10, -1, 1000000m - 0),
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, -10, 1, (1000000m - 0) + 0 + 2000m),
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, -10, 10, (1000000m - 0) + 0 + 2000m),
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, -10, 20, (1000000m - 0) + 0 + 2000m),
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, 10, 1, 1000000m - 0),
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, 10, -1, (1000000m - 0) + 0 + 10m),
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, 10, -10, (1000000m - 0) + 0 + 10m),
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, 10, -20, (1000000m - 0) + 0 + 10m),
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, -10, -1, 1000000m - 30020m),
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, -10, 1, (1000000m - 30020m) + 30020m + 30020m),
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, -10, 10, (1000000m - 30020m) + 30020m + 30020m),
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, -10, 20, (1000000m - 30020m) + 30020m + 30020m),
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, 10, 1, 1000000m - 30020m),
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, 10, -1, (1000000m - 30020m) + 30020m + 30020m),
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, 10, -10, (1000000m - 30020m) + 30020m + 30020m),
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, 10, -20, (1000000m - 30020m) + 30020m + 30020m),
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, -10, -1, 1000000m - 0),
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, -10, 1, (1000000m - 0) + 0 + 10m),
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, -10, 10, (1000000m - 0) + 0 + 10m),
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, -10, 20, (1000000m - 0) + 0 + 10m),
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, 10, 1, 1000000m - 0),
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, 10, -1, (1000000m - 0) + 0 + 2000m),
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, 10, -10, (1000000m - 0) + 0 + 2000m),
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, 10, -20, (1000000m - 0) + 0 + 2000m),
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, -10, -1, 1000000m - 194000m),
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, -10, 1, (1000000m - 194000m) + 194000m + 194000m),
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, -10, 10, (1000000m - 194000m) + 194000m + 194000m),
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, -10, 20, (1000000m - 194000m) + 194000m + 194000m),
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, 10, 1, 1000000m - 194000m),
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, 10, -1, (1000000m - 194000m) + 194000m + 194000m),
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, 10, -10, (1000000m - 194000m) + 194000m + 194000m),
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, 10, -20, (1000000m - 194000m) + 194000m + 194000m),
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, -10, -1, 1000000m - 0),
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, -10, 1, (1000000m - 0) + 0 + 2000m),
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, -10, 10, (1000000m - 0) + 0 + 2000m),
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, -10, 20, (1000000m - 0) + 0 + 2000m),
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, 10, 1, 1000000m - 0),
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, 10, -1, (1000000m - 0) + 0 + 10m),
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, 10, -10, (1000000m - 0) + 0 + 10m),
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, 10, -20, (1000000m - 0) + 0 + 10m),
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, -10, -1, 1000000m - 30020m),
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, -10, 1, (1000000m - 30020m) + 30020m + 30020m),
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, -10, 10, (1000000m - 30020m) + 30020m + 30020m),
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, -10, 20, (1000000m - 30020m) + 30020m + 30020m),
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, 10, 1, 1000000m - 30020m),
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, 10, -1, (1000000m - 30020m) + 30020m + 30020m),
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, 10, -10, (1000000m - 30020m) + 30020m + 30020m),
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, 10, -20, (1000000m - 30020m) + 30020m + 30020m),
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, -10, -1, 1000000m - 0),
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, -10, 1, (1000000m - 0) + 0 + 10m),
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, -10, 10, (1000000m - 0) + 0 + 10m),
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, -10, 20, (1000000m - 0) + 0 + 10m),
             new TestCaseData(OptionStrategyDefinitions.IronButterfly, 10, 1, 1000000m - 10000m),
             new TestCaseData(OptionStrategyDefinitions.IronButterfly, 10, -1, (1000000m - 10000m) + 10000m + 10000m),
             new TestCaseData(OptionStrategyDefinitions.IronButterfly, 10, -10, (1000000m - 10000m) + 10000m + 10000m),
@@ -2599,38 +2599,38 @@ namespace QuantConnect.Tests.Common.Securities
             new TestCaseData(OptionStrategyDefinitions.ShortButterflyPut, -10, 1),
             new TestCaseData(OptionStrategyDefinitions.ShortButterflyPut, -10, 10),
             new TestCaseData(OptionStrategyDefinitions.ShortButterflyPut, -10, 20),
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, 10, 1),
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, 10, -1),
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, 10, -10),
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, 10, -20),
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, -10, -1),
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, -10, 1),
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, -10, 10),
-            new TestCaseData(OptionStrategyDefinitions.CallCalendarSpread, -10, 20),
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, 10, 1),
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, 10, -1),
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, 10, -10),
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, 10, -20),
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, -10, -1),
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, -10, 1),
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, -10, 10),
-            new TestCaseData(OptionStrategyDefinitions.ShortCallCalendarSpread, -10, 20),
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, 10, 1),
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, 10, -1),
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, 10, -10),
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, 10, -20),
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, -10, -1),
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, -10, 1),
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, -10, 10),
-            new TestCaseData(OptionStrategyDefinitions.PutCalendarSpread, -10, 20),
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, 10, 1),
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, 10, -1),
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, 10, -10),
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, 10, -20),
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, -10, -1),
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, -10, 1),
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, -10, 10),
-            new TestCaseData(OptionStrategyDefinitions.ShortPutCalendarSpread, -10, 20),
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, 10, 1),
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, 10, -1),
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, 10, -10),
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, 10, -20),
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, -10, -1),
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, -10, 1),
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, -10, 10),
+            new TestCaseData(OptionStrategyDefinitions.CallSTPR001A, -10, 20),
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, 10, 1),
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, 10, -1),
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, 10, -10),
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, 10, -20),
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, -10, -1),
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, -10, 1),
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, -10, 10),
+            new TestCaseData(OptionStrategyDefinitions.ShortCallSTPR001A, -10, 20),
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, 10, 1),
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, 10, -1),
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, 10, -10),
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, 10, -20),
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, -10, -1),
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, -10, 1),
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, -10, 10),
+            new TestCaseData(OptionStrategyDefinitions.PutSTPR001A, -10, 20),
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, 10, 1),
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, 10, -1),
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, 10, -10),
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, 10, -20),
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, -10, -1),
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, -10, 1),
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, -10, 10),
+            new TestCaseData(OptionStrategyDefinitions.ShortPutSTPR001A, -10, 20),
             new TestCaseData(OptionStrategyDefinitions.IronButterfly, 10, 1),
             new TestCaseData(OptionStrategyDefinitions.IronButterfly, 10, -1),
             new TestCaseData(OptionStrategyDefinitions.IronButterfly, 10, -10),
@@ -3197,7 +3197,7 @@ namespace QuantConnect.Tests.Common.Securities
                     expectedPositionGroupBPMStrategy = OptionStrategyDefinitions.ButterflyPut.Name;
                 }
             }
-            else if (optionStrategyDefinition.Name == OptionStrategyDefinitions.CallCalendarSpread.Name)
+            else if (optionStrategyDefinition.Name == OptionStrategyDefinitions.CallSTPR001A.Name)
             {
                 var longCallOption = spyMay19_300Call;
                 var shortCallOption = spyMay17_300Call;
@@ -3207,10 +3207,10 @@ namespace QuantConnect.Tests.Common.Securities
 
                 if (initialHoldingsQuantity < 0)
                 {
-                    expectedPositionGroupBPMStrategy = OptionStrategyDefinitions.ShortCallCalendarSpread.Name;
+                    expectedPositionGroupBPMStrategy = OptionStrategyDefinitions.ShortCallSTPR001A.Name;
                 }
             }
-            else if (optionStrategyDefinition.Name == OptionStrategyDefinitions.ShortCallCalendarSpread.Name)
+            else if (optionStrategyDefinition.Name == OptionStrategyDefinitions.ShortCallSTPR001A.Name)
             {
                 var longCallOption = spyMay19_300Call;
                 var shortCallOption = spyMay17_300Call;
@@ -3220,10 +3220,10 @@ namespace QuantConnect.Tests.Common.Securities
 
                 if (initialHoldingsQuantity < 0)
                 {
-                    expectedPositionGroupBPMStrategy = OptionStrategyDefinitions.CallCalendarSpread.Name;
+                    expectedPositionGroupBPMStrategy = OptionStrategyDefinitions.CallSTPR001A.Name;
                 }
             }
-            else if (optionStrategyDefinition.Name == OptionStrategyDefinitions.PutCalendarSpread.Name)
+            else if (optionStrategyDefinition.Name == OptionStrategyDefinitions.PutSTPR001A.Name)
             {
                 var longPutOption = spyMay19_300Put;
                 var shortPutOption = spyMay17_300Put;
@@ -3233,10 +3233,10 @@ namespace QuantConnect.Tests.Common.Securities
 
                 if (initialHoldingsQuantity < 0)
                 {
-                    expectedPositionGroupBPMStrategy = OptionStrategyDefinitions.ShortPutCalendarSpread.Name;
+                    expectedPositionGroupBPMStrategy = OptionStrategyDefinitions.ShortPutSTPR001A.Name;
                 }
             }
-            else if (optionStrategyDefinition.Name == OptionStrategyDefinitions.ShortPutCalendarSpread.Name)
+            else if (optionStrategyDefinition.Name == OptionStrategyDefinitions.ShortPutSTPR001A.Name)
             {
                 var longPutOption = spyMay19_300Put;
                 var shortPutOption = spyMay17_300Put;
@@ -3246,7 +3246,7 @@ namespace QuantConnect.Tests.Common.Securities
 
                 if (initialHoldingsQuantity < 0)
                 {
-                    expectedPositionGroupBPMStrategy = OptionStrategyDefinitions.PutCalendarSpread.Name;
+                    expectedPositionGroupBPMStrategy = OptionStrategyDefinitions.PutSTPR001A.Name;
                 }
             }
             else if (optionStrategyDefinition.Name == OptionStrategyDefinitions.IronButterfly.Name)

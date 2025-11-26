@@ -209,10 +209,10 @@ namespace QuantConnect.Tests.Common.Securities.Options.StrategyMatcher
                     TestCase.ExactPosition(ButterflyPut,   Position( Put[110], +1), Position( Put[105], -2), Position( Put[100], +1)),
                     TestCase.ExactPosition(ShortButterflyPut,   Position( Put[110], -1), Position( Put[105], +2), Position( Put[100], -1)),
 
-                    TestCase.ExactPosition(CallCalendarSpread, Position(Call[100, 1], +1), Position(Call[100, 0], -1)),
-                    TestCase.ExactPosition(CallCalendarSpread, Position(Call[100, 0], -1), Position(Call[100, 1], +1)),
-                    TestCase.ExactPosition(PutCalendarSpread,  Position( Put[100, 1], +1), Position( Put[100, 0], -1)),
-                    TestCase.ExactPosition(PutCalendarSpread,  Position( Put[100, 0], -1), Position( Put[100, 1], +1)),
+                    TestCase.ExactPosition(CallSTPR001A, Position(Call[100, 1], +1), Position(Call[100, 0], -1)),
+                    TestCase.ExactPosition(CallSTPR001A, Position(Call[100, 0], -1), Position(Call[100, 1], +1)),
+                    TestCase.ExactPosition(PutSTPR001A,  Position( Put[100, 1], +1), Position( Put[100, 0], -1)),
+                    TestCase.ExactPosition(PutSTPR001A,  Position( Put[100, 0], -1), Position( Put[100, 1], +1)),
 
                     TestCase.ExactPosition(IronCondor,  Position( Put[100, 0], +1), Position(Put[105, 0], -1), Position(Call[110, 0], -1), Position(Call[120, 0], +1))
 

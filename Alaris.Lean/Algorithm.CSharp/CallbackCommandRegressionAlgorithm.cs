@@ -43,13 +43,13 @@ namespace QuantConnect.Algorithm.CSharp
             {
                 Target = new[] { "BAC" },
                 Quantity = 10,
-                Parameters = new() { { "tag", "Signal X" } }
+                Parameters = new() { { "tag", "STCR004A X" } }
             };
             var commandLink = Link(potentialCommand);
-            Notify.Email("email@address", "Trade Command Event", $"Signal X trade\nFollow link to trigger: {commandLink}");
+            Notify.Email("email@address", "Trade Command Event", $"STCR004A X trade\nFollow link to trigger: {commandLink}");
 
             var commandLink2 = Link(new { Symbol = "SPY", Parameters = new Dictionary<string, int>() { { "Quantity", 10 } } });
-            Notify.Email("email@address", "Untyped Command Event", $"Signal Y trade\nFollow link to trigger: {commandLink2}");
+            Notify.Email("email@address", "Untyped Command Event", $"STCR004A Y trade\nFollow link to trigger: {commandLink2}");
 
             // We need to create a project on QuantConnect to test the BroadcastCommand method
             // and use the ProjectId in the BroadcastCommand call

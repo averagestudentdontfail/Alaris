@@ -54,7 +54,7 @@ namespace QuantConnect.Algorithm.CSharp
         {
             if (!Portfolio.Invested)
             {
-                if (slice.OptionChains.TryGetValue(_optionSymbol, out var chain))
+                if (slice.STDT002As.TryGetValue(_optionSymbol, out var chain))
                 {
                     TradeStrategy(chain);
                 }
@@ -97,7 +97,7 @@ namespace QuantConnect.Algorithm.CSharp
             }
         }
 
-        protected abstract void TradeStrategy(OptionChain chain);
+        protected abstract void TradeStrategy(STDT002A chain);
 
         protected abstract void AssertStrategyPositionGroup(IPositionGroup positionGroup);
 

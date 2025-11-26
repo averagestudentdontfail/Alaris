@@ -42,7 +42,7 @@ namespace QuantConnect.Indicators
         /// <summary>
         /// Gets the public signal line (EMA of KVO)
         /// </summary>
-        public ExponentialMovingAverage Signal { get; }
+        public ExponentialMovingAverage STCR004A { get; }
 
         /// <summary>
         /// Gets the warm-up period required for the indicator to be ready.
@@ -52,7 +52,7 @@ namespace QuantConnect.Indicators
         /// <summary>
         /// Gets a value indicating whether the indicator is ready and has enough data.
         /// </summary>
-        public override bool IsReady => _fastEma.IsReady && _slowEma.IsReady && Signal.IsReady;
+        public override bool IsReady => _fastEma.IsReady && _slowEma.IsReady && STCR004A.IsReady;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="KlingerVolumeOscillator"/> class with specified fast, slow periods.
@@ -66,7 +66,7 @@ namespace QuantConnect.Indicators
         {
             _fastEma = new ExponentialMovingAverage(name + "_FastEma", fastPeriod);
             _slowEma = new ExponentialMovingAverage(name + "_SlowEma", slowPeriod);
-            Signal = new ExponentialMovingAverage(name + "_Signal", signalPeriod);
+            STCR004A = new ExponentialMovingAverage(name + "_STCR004A", signalPeriod);
 
             _priceIndex = new RollingWindow<decimal>(2);
             _rangeWindow = new RollingWindow<decimal>(2);
@@ -146,13 +146,13 @@ namespace QuantConnect.Indicators
 
             if (!_fastEma.IsReady || !_slowEma.IsReady)
             {
-                Signal.Update(new IndicatorDataPoint(bar.EndTime, 0m));
+                STCR004A.Update(new IndicatorDataPoint(bar.EndTime, 0m));
                 return 0m;
             }
 
             // Calculate KVO value as the difference between fast and slow EMAs
             var kvo = _fastEma.Current.Value - _slowEma.Current.Value;
-            Signal.Update(new IndicatorDataPoint(bar.EndTime, kvo));
+            STCR004A.Update(new IndicatorDataPoint(bar.EndTime, kvo));
 
             return kvo;
         }
@@ -163,7 +163,7 @@ namespace QuantConnect.Indicators
         public override void Reset()
         {
             base.Reset();
-            Signal.Reset();
+            STCR004A.Reset();
             _fastEma.Reset();
             _slowEma.Reset();
             _priceIndex.Reset();

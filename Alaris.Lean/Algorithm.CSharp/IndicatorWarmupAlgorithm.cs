@@ -136,7 +136,7 @@ namespace QuantConnect.Algorithm.CSharp
                 {
                     const decimal tolerance = 1 + PercentTolerance;
 
-                    return MACD.Signal > MACD*tolerance
+                    return MACD.STCR004A > MACD*tolerance
                         && EMA > Close*tolerance;
                 }
             }
@@ -147,7 +147,7 @@ namespace QuantConnect.Algorithm.CSharp
                 {
                     const decimal tolerance = 1 - PercentTolerance;
 
-                    return MACD.Signal < MACD*tolerance
+                    return MACD.STCR004A < MACD*tolerance
                         && EMA < Close*tolerance;
                 }
             }

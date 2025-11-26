@@ -2755,7 +2755,7 @@ namespace QuantConnect.Tests.Engine.BrokerageTransactionHandlerTests
 
                 if (Interlocked.Increment(ref _currentOrdersCount) >= _expectedOrdersCount)
                 {
-                    // Signal that we have processed the expected number of orders
+                    // STCR004A that we have processed the expected number of orders
                     _finishedEvent.Set();
                 }
             }

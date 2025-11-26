@@ -547,19 +547,19 @@ namespace QuantConnect.Algorithm
 
         /// <summary>
         /// Creates a new universe selection model and adds it to the algorithm. This universe selection model will chain to the security
-        /// changes of a given <see cref="Universe"/> selection output and create a new <see cref="OptionChainUniverse"/> for each of them
+        /// changes of a given <see cref="Universe"/> selection output and create a new <see cref="STDT002AUniverse"/> for each of them
         /// </summary>
         /// <param name="universe">The universe we want to chain an option universe selection model too</param>
         /// <param name="optionFilter">The option filter universe to use</param>
         [DocumentationAttribute(Universes)]
         public void AddUniverseOptions(PyObject universe, PyObject optionFilter)
         {
-            Func<OptionFilterUniverse, OptionFilterUniverse> convertedOptionChain;
+            Func<OptionFilterUniverse, OptionFilterUniverse> convertedSTDT002A;
             Universe universeToChain;
 
-            if (universe.TryConvert(out universeToChain) && optionFilter.TrySafeAs(out convertedOptionChain))
+            if (universe.TryConvert(out universeToChain) && optionFilter.TrySafeAs(out convertedSTDT002A))
             {
-                AddUniverseOptions(universeToChain, convertedOptionChain);
+                AddUniverseOptions(universeToChain, convertedSTDT002A);
             }
             else
             {
@@ -1895,9 +1895,9 @@ namespace QuantConnect.Algorithm
         /// </param>
         /// <returns>The option chains</returns>
         [DocumentationAttribute(AddingData)]
-        public OptionChains OptionChains(PyObject symbols, bool flatten = false)
+        public STDT002As STDT002As(PyObject symbols, bool flatten = false)
         {
-            return OptionChains(symbols.ConvertToSymbolEnumerable(), flatten);
+            return STDT002As(symbols.ConvertToSymbolEnumerable(), flatten);
         }
 
         /// <summary>

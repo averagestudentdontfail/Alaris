@@ -23,13 +23,13 @@ using System;
 using System.Linq;
 using QuantConnect.Util;
 
-namespace QuantConnect.Algorithm.Framework.Portfolio.SignalExports
+namespace QuantConnect.Algorithm.Framework.Portfolio.STCR004AExports
 {
     /// <summary>
     /// Class manager to send portfolio targets to different 3rd party API's
     /// For example, it allows Collective2, CrunchDAO and Numerai signal export providers
     /// </summary>
-    public class SignalExportManager
+    public class STCR004AExportManager
     {
         /// <summary>
         /// Records the time of the first order event of a group of events
@@ -39,7 +39,7 @@ namespace QuantConnect.Algorithm.Framework.Portfolio.SignalExports
         /// <summary>
         /// List of signal export providers
         /// </summary>
-        private List<ISignalExportTarget> _signalExports;
+        private List<ISTCR004AExportTarget> _signalExports;
 
         /// <summary>
         /// Algorithm being ran
@@ -58,11 +58,11 @@ namespace QuantConnect.Algorithm.Framework.Portfolio.SignalExports
         public TimeSpan? AutomaticExportTimeSpan { get; set; } = TimeSpan.FromSeconds(5);
 
         /// <summary>
-        /// SignalExportManager Constructor, obtains the entry information needed to send signals
+        /// STCR004AExportManager Constructor, obtains the entry information needed to send signals
         /// and initializes the fields to be used
         /// </summary>
         /// <param name="algorithm">Algorithm being run</param>
-        public SignalExportManager(IAlgorithm algorithm)
+        public STCR004AExportManager(IAlgorithm algorithm)
         {
             _algorithm = algorithm;
             _isLiveWarningModeLog = false;
@@ -71,8 +71,8 @@ namespace QuantConnect.Algorithm.Framework.Portfolio.SignalExports
         /// <summary>
         /// Adds a new signal exports provider
         /// </summary>
-        /// <param name="signalExport">Signal export provider</param>
-        public void AddSignalExportProvider(ISignalExportTarget signalExport)
+        /// <param name="signalExport">STCR004A export provider</param>
+        public void AddSTCR004AExportProvider(ISTCR004AExportTarget signalExport)
         {
             _signalExports ??= [];
             _signalExports.Add(signalExport);
@@ -81,38 +81,38 @@ namespace QuantConnect.Algorithm.Framework.Portfolio.SignalExports
         /// <summary>
         /// Adds a new signal exports provider
         /// </summary>
-        /// <param name="signalExport">Signal export provider</param>
-        public void AddSignalExportProvider(PyObject signalExport)
+        /// <param name="signalExport">STCR004A export provider</param>
+        public void AddSTCR004AExportProvider(PyObject signalExport)
         {
-            if (!signalExport.TryConvert<ISignalExportTarget>(out var managedSignalExport))
+            if (!signalExport.TryConvert<ISTCR004AExportTarget>(out var managedSTCR004AExport))
             {
-                managedSignalExport = new SignalExportTargetPythonWrapper(signalExport);
+                managedSTCR004AExport = new STCR004AExportTargetPythonWrapper(signalExport);
             }
-            AddSignalExportProvider(managedSignalExport);
+            AddSTCR004AExportProvider(managedSTCR004AExport);
         }
 
         /// <summary>
         /// Adds one or more new signal exports providers
         /// </summary>
         /// <param name="signalExports">One or more signal export provider</param>
-        public void AddSignalExportProviders(params ISignalExportTarget[] signalExports)
+        public void AddSTCR004AExportProviders(params ISTCR004AExportTarget[] signalExports)
         {
-            signalExports.DoForEach(AddSignalExportProvider);
+            signalExports.DoForEach(AddSTCR004AExportProvider);
         }
 
         /// <summary>
         /// Adds one or more new signal exports providers
         /// </summary>
         /// <param name="signalExports">One or more signal export provider</param>
-        public void AddSignalExportProviders(PyObject signalExports)
+        public void AddSTCR004AExportProviders(PyObject signalExports)
         {
             using var _ = Py.GIL();
             if (!signalExports.IsIterable())
             {
-                AddSignalExportProvider(signalExports);
+                AddSTCR004AExportProvider(signalExports);
                 return;
             }
-            PyList.AsList(signalExports).DoForEach(AddSignalExportProvider);
+            PyList.AsList(signalExports).DoForEach(AddSTCR004AExportProvider);
         }
 
         /// <summary>
@@ -183,7 +183,7 @@ namespace QuantConnect.Algorithm.Framework.Portfolio.SignalExports
             }
 
             var targets = new List<PortfolioTarget>(portfolioTargets);
-            var signalExportTargetParameters = new SignalExportTargetParameters
+            var signalExportTargetParameters = new STCR004AExportTargetParameters
             {
                 Targets = targets,
                 Algorithm = _algorithm
@@ -267,7 +267,7 @@ namespace QuantConnect.Algorithm.Framework.Portfolio.SignalExports
             catch (Exception exception)
             {
                 // SetTargetPortfolioFromPortfolio logs all known error on LEAN side.
-                // Exceptions occurs in the ISignalExportTarget.Send method (user-defined).
+                // Exceptions occurs in the ISTCR004AExportTarget.Send method (user-defined).
                 _algorithm.Error($"Failed to send portfolio target(s). Reason: {exception.Message}.{Environment.NewLine}{exception.StackTrace}");
             }
             _initialOrderEventTimeUtc = new(Time.EndOfTime);

@@ -36,7 +36,7 @@ namespace QuantConnect.Algorithm.CSharp
             base.Initialize();
         }
 
-        protected override void TestFiltering(OptionChain chain)
+        protected override void TestFiltering(STDT002A chain)
         {
             var count = chain.Count();
             if (count != ExpectedCount)

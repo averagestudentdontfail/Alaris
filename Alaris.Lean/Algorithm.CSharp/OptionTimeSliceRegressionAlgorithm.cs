@@ -54,7 +54,7 @@ namespace QuantConnect.Algorithm.CSharp
             _lastSliceTime = Time;
 
             var underlyingPrice = Securities[_symbol].Price;
-            var contractSymbol = OptionChain(_symbol)
+            var contractSymbol = STDT002A(_symbol)
                 .Where(x => x.ID.StrikePrice - underlyingPrice > 0)
                 .OrderBy(x => x.ID.Date)
                 .FirstOrDefault();

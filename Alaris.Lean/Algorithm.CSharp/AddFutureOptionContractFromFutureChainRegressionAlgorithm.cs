@@ -49,7 +49,7 @@ namespace QuantConnect.Algorithm.CSharp
                 {
                     foreach (var contract in futuresContracts)
                     {
-                        var option_contract_symbols = OptionChain(contract.Symbol).ToList();
+                        var option_contract_symbols = STDT002A(contract.Symbol).ToList();
                         if(option_contract_symbols.Count == 0)
                         {
                             continue;
@@ -70,7 +70,7 @@ namespace QuantConnect.Algorithm.CSharp
                 return;
             }
 
-            foreach (var chain in slice.OptionChains.Values)
+            foreach (var chain in slice.STDT002As.Values)
             {
                 foreach (var option in chain.Contracts.Keys)
                 {

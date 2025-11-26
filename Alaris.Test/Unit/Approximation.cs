@@ -6,16 +6,16 @@ using Alaris.Double;
 namespace Alaris.Test.Unit;
 
 /// <summary>
-/// Unit tests for QdPlusApproximation.
+/// Unit tests for DBAP001A.
 /// Tests mathematical correctness of the QD+ algorithm implementation.
 /// </summary>
-public class QdPlusApproximationTests
+public class DBAP001ATests
 {
     [Fact]
     public void QdPlus_CalculatesLambdaRoots_Correctly()
     {
         // Arrange
-        var approximation = new QdPlusApproximation(
+        var approximation = new DBAP001A(
             spot: 100.0,
             strike: 100.0,
             maturity: 10.0,
@@ -42,7 +42,7 @@ public class QdPlusApproximationTests
     public void QdPlus_HandlesVolatilityVariation(double volatility, double expectedLower, double expectedUpper)
     {
         // Arrange
-        var approximation = new QdPlusApproximation(
+        var approximation = new DBAP001A(
             spot: 100.0,
             strike: 100.0,
             maturity: 10.0,
@@ -64,7 +64,7 @@ public class QdPlusApproximationTests
     public void QdPlus_HandlesNegativeH_ForNegativeRates()
     {
         // Arrange: r < 0 gives negative h
-        var approximation = new QdPlusApproximation(
+        var approximation = new DBAP001A(
             spot: 100.0,
             strike: 100.0,
             maturity: 10.0,
@@ -90,7 +90,7 @@ public class QdPlusApproximationTests
     public void QdPlus_SuperHalleyConvergence_IsRobust()
     {
         // Test Super Halley's method robustness across different initial guesses
-        var approximation = new QdPlusApproximation(
+        var approximation = new DBAP001A(
             spot: 100.0,
             strike: 100.0,
             maturity: 10.0,
@@ -120,7 +120,7 @@ public class QdPlusApproximationTests
     public void QdPlus_MaturityDependence_IsMonotonic(double maturity)
     {
         // Arrange
-        var approximation = new QdPlusApproximation(
+        var approximation = new DBAP001A(
             spot: 100.0,
             strike: 100.0,
             maturity: maturity,
@@ -150,7 +150,7 @@ public class QdPlusApproximationTests
     public void QdPlus_ThetaSignConvention_IsCorrect()
     {
         // Test that theta sign convention is properly handled
-        var approximation = new QdPlusApproximation(
+        var approximation = new DBAP001A(
             spot: 100.0,
             strike: 100.0,
             maturity: 1.0,
@@ -172,7 +172,7 @@ public class QdPlusApproximationTests
     public void QdPlus_CallPutSymmetry_WithAppropriateParameters()
     {
         // Test call-put relationship under specific conditions
-        var putApprox = new QdPlusApproximation(
+        var putApprox = new DBAP001A(
             spot: 100.0,
             strike: 100.0,
             maturity: 1.0,
@@ -182,7 +182,7 @@ public class QdPlusApproximationTests
             isCall: false
         );
         
-        var callApprox = new QdPlusApproximation(
+        var callApprox = new DBAP001A(
             spot: 100.0,
             strike: 100.0,
             maturity: 1.0,
@@ -208,7 +208,7 @@ public class QdPlusApproximationTests
     public void QdPlus_NegativeRateRegimes_ProduceDoubleBoundaries(double rate, double dividend)
     {
         // Arrange
-        var approximation = new QdPlusApproximation(
+        var approximation = new DBAP001A(
             spot: 100.0,
             strike: 100.0,
             maturity: 5.0,
@@ -235,7 +235,7 @@ public class QdPlusApproximationTests
     public void QdPlus_ComplexLambdaRoots_HandledGracefully()
     {
         // Test case that might produce complex lambda roots
-        var approximation = new QdPlusApproximation(
+        var approximation = new DBAP001A(
             spot: 100.0,
             strike: 100.0,
             maturity: 0.1,  // Very short maturity

@@ -26,7 +26,7 @@ namespace QuantConnect.Data.UniverseSelection
     /// <summary>
     /// Defines a universe for a single option chain
     /// </summary>
-    public class OptionChainUniverse : Universe
+    public class STDT002AUniverse : Universe
     {
         private readonly OptionFilterUniverse _optionFilterUniverse;
         // as an array to make it easy to prepend to selected symbols
@@ -48,11 +48,11 @@ namespace QuantConnect.Data.UniverseSelection
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="OptionChainUniverse"/> class
+        /// Initializes a new instance of the <see cref="STDT002AUniverse"/> class
         /// </summary>
         /// <param name="option">The canonical option chain security</param>
         /// <param name="universeSettings">The universe settings to be used for new subscriptions</param>
-        public OptionChainUniverse(Option option,
+        public STDT002AUniverse(Option option,
             UniverseSettings universeSettings)
             : base(option.SubscriptionDataConfig)
         {

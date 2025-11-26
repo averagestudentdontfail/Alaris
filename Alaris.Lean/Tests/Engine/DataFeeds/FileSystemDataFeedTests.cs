@@ -167,7 +167,7 @@ namespace QuantConnect.Tests.Engine.DataFeeds
 
         [TestCase(true)]
         [TestCase(false)]
-        public void OptionChainEnumerator(bool fillForward)
+        public void STDT002AEnumerator(bool fillForward)
         {
             var job = new BacktestNodePacket();
             var resultHandler = new BacktestingResultHandler();
@@ -177,9 +177,9 @@ namespace QuantConnect.Tests.Engine.DataFeeds
             algorithm.SetStartDate(new DateTime(2014, 06, 06));
             algorithm.SetEndDate(new DateTime(2014, 06, 09));
 
-            var optionChainProvider = new BacktestingOptionChainProvider();
+            var optionChainProvider = new BacktestingSTDT002AProvider();
             optionChainProvider.Initialize(new(TestGlobals.MapFileProvider, TestGlobals.HistoryProvider));
-            algorithm.SetOptionChainProvider(optionChainProvider);
+            algorithm.SetSTDT002AProvider(optionChainProvider);
 
             var dataPermissionManager = new DataPermissionManager();
             using var synchronizer = new Synchronizer();
@@ -197,7 +197,7 @@ namespace QuantConnect.Tests.Engine.DataFeeds
             {
                 if (!timeSlice.IsTimePulse && timeSlice.UniverseData?.Count > 0 && timeSlice.Time.Date <= algorithm.EndDate)
                 {
-                    var baseDataCollection = timeSlice.UniverseData.Where(x => x.Key is OptionChainUniverse).SingleOrDefault().Value;
+                    var baseDataCollection = timeSlice.UniverseData.Where(x => x.Key is STDT002AUniverse).SingleOrDefault().Value;
                     if (baseDataCollection != null)
                     {
                         var nyTime = timeSlice.Time.ConvertFromUtc(algorithm.TimeZone);
@@ -229,9 +229,9 @@ namespace QuantConnect.Tests.Engine.DataFeeds
             algorithm.SetStartDate(new DateTime(2013, 10, 07));
             algorithm.SetEndDate(new DateTime(2013, 10, 08));
 
-            var optionChainProvider = new BacktestingOptionChainProvider();
+            var optionChainProvider = new BacktestingSTDT002AProvider();
             optionChainProvider.Initialize(new(TestGlobals.MapFileProvider, TestGlobals.HistoryProvider));
-            algorithm.SetOptionChainProvider(optionChainProvider);
+            algorithm.SetSTDT002AProvider(optionChainProvider);
 
             var dataPermissionManager = new DataPermissionManager();
             using var synchronizer = new Synchronizer();

@@ -52,7 +52,7 @@ namespace QuantConnect.Algorithm.CSharp
         {
             if (!_boughtOption && !Portfolio.Invested)
             {
-                if (slice.OptionChains.TryGetValue(_optionSymbol, out var chain))
+                if (slice.STDT002As.TryGetValue(_optionSymbol, out var chain))
                 {
                     var contract = (
                         from optionContract in chain.OrderByDescending(x => x.Strike)

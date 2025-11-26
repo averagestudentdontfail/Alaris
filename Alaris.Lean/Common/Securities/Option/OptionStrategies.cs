@@ -715,21 +715,21 @@ namespace QuantConnect.Securities.Option
         /// <param name="nearExpiration">Near expiration date for the short option</param>
         /// <param name="farExpiration">Far expiration date for the long option</param>
         /// <returns>Option strategy specification</returns>
-        public static OptionStrategy CallCalendarSpread(Symbol canonicalOption, decimal strike, DateTime nearExpiration, DateTime farExpiration)
+        public static OptionStrategy CallSTPR001A(Symbol canonicalOption, decimal strike, DateTime nearExpiration, DateTime farExpiration)
         {
-            CheckCanonicalOptionSymbol(canonicalOption, "CallCalendarSpread");
-            CheckExpirationDate(nearExpiration, "CallCalendarSpread", nameof(nearExpiration));
-            CheckExpirationDate(farExpiration, "CallCalendarSpread", nameof(farExpiration));
+            CheckCanonicalOptionSymbol(canonicalOption, "CallSTPR001A");
+            CheckExpirationDate(nearExpiration, "CallSTPR001A", nameof(nearExpiration));
+            CheckExpirationDate(farExpiration, "CallSTPR001A", nameof(farExpiration));
 
             if (nearExpiration >= farExpiration)
             {
-                throw new ArgumentException("CallCalendarSpread: near expiration must be less than far expiration",
+                throw new ArgumentException("CallSTPR001A: near expiration must be less than far expiration",
                     $"{nameof(nearExpiration)}, {nameof(farExpiration)}");
             }
 
             return new OptionStrategy
             {
-                Name = OptionStrategyDefinitions.CallCalendarSpread.Name,
+                Name = OptionStrategyDefinitions.CallSTPR001A.Name,
                 Underlying = canonicalOption.Underlying,
                 CanonicalOption = canonicalOption,
                 OptionLegs = new List<OptionStrategy.OptionLegData>
@@ -755,11 +755,11 @@ namespace QuantConnect.Securities.Option
         /// <param name="nearExpiration">Near expiration date for the long option</param>
         /// <param name="farExpiration">Far expiration date for the short option</param>
         /// <returns>Option strategy specification</returns>
-        public static OptionStrategy ShortCallCalendarSpread(Symbol canonicalOption, decimal strike, DateTime nearExpiration, DateTime farExpiration)
+        public static OptionStrategy ShortCallSTPR001A(Symbol canonicalOption, decimal strike, DateTime nearExpiration, DateTime farExpiration)
         {
-            // Since a short call calendar spread is an inverted call calendar, we can just use the CallCalendarSpread method and invert the legs
-            return InvertStrategy(CallCalendarSpread(canonicalOption, strike, nearExpiration, farExpiration),
-                OptionStrategyDefinitions.ShortCallCalendarSpread.Name);
+            // Since a short call calendar spread is an inverted call calendar, we can just use the CallSTPR001A method and invert the legs
+            return InvertStrategy(CallSTPR001A(canonicalOption, strike, nearExpiration, farExpiration),
+                OptionStrategyDefinitions.ShortCallSTPR001A.Name);
         }
 
         /// <summary>
@@ -771,21 +771,21 @@ namespace QuantConnect.Securities.Option
         /// <param name="nearExpiration">Near expiration date for the short option</param>
         /// <param name="farExpiration">Far expiration date for the long option</param>
         /// <returns>Option strategy specification</returns>
-        public static OptionStrategy PutCalendarSpread(Symbol canonicalOption, decimal strike, DateTime nearExpiration, DateTime farExpiration)
+        public static OptionStrategy PutSTPR001A(Symbol canonicalOption, decimal strike, DateTime nearExpiration, DateTime farExpiration)
         {
-            CheckCanonicalOptionSymbol(canonicalOption, "PutCalendarSpread");
-            CheckExpirationDate(nearExpiration, "PutCalendarSpread", nameof(nearExpiration));
-            CheckExpirationDate(farExpiration, "PutCalendarSpread", nameof(farExpiration));
+            CheckCanonicalOptionSymbol(canonicalOption, "PutSTPR001A");
+            CheckExpirationDate(nearExpiration, "PutSTPR001A", nameof(nearExpiration));
+            CheckExpirationDate(farExpiration, "PutSTPR001A", nameof(farExpiration));
 
             if (nearExpiration >= farExpiration)
             {
-                throw new ArgumentException("PutCalendarSpread: near expiration must be less than far expiration",
+                throw new ArgumentException("PutSTPR001A: near expiration must be less than far expiration",
                     $"{nameof(nearExpiration)}, {nameof(farExpiration)}");
             }
 
             return new OptionStrategy
             {
-                Name = OptionStrategyDefinitions.PutCalendarSpread.Name,
+                Name = OptionStrategyDefinitions.PutSTPR001A.Name,
                 Underlying = canonicalOption.Underlying,
                 CanonicalOption = canonicalOption,
                 OptionLegs = new List<OptionStrategy.OptionLegData>
@@ -811,11 +811,11 @@ namespace QuantConnect.Securities.Option
         /// <param name="nearExpiration">Near expiration date for the long option</param>
         /// <param name="farExpiration">Far expiration date for the short option</param>
         /// <returns>Option strategy specification</returns>
-        public static OptionStrategy ShortPutCalendarSpread(Symbol canonicalOption, decimal strike, DateTime nearExpiration, DateTime farExpiration)
+        public static OptionStrategy ShortPutSTPR001A(Symbol canonicalOption, decimal strike, DateTime nearExpiration, DateTime farExpiration)
         {
-            // Since a short put calendar spread is an inverted put calendar, we can just use the PutCalendarSpread method and invert the legs
-            return InvertStrategy(PutCalendarSpread(canonicalOption, strike, nearExpiration, farExpiration),
-                OptionStrategyDefinitions.ShortPutCalendarSpread.Name);
+            // Since a short put calendar spread is an inverted put calendar, we can just use the PutSTPR001A method and invert the legs
+            return InvertStrategy(PutSTPR001A(canonicalOption, strike, nearExpiration, farExpiration),
+                OptionStrategyDefinitions.ShortPutSTPR001A.Name);
         }
 
         /// <summary>
@@ -982,15 +982,15 @@ namespace QuantConnect.Securities.Option
         /// <returns>Option strategy specification</returns>
         public static OptionStrategy JellyRoll(Symbol canonicalOption, decimal strike, DateTime nearExpiration, DateTime farExpiration)
         {
-            var callCalendarSpread = CallCalendarSpread(canonicalOption, strike, nearExpiration, farExpiration);
-            var shortPutCalendarSpread = ShortPutCalendarSpread(canonicalOption, strike, nearExpiration, farExpiration);
+            var callSTPR001A = CallSTPR001A(canonicalOption, strike, nearExpiration, farExpiration);
+            var shortPutSTPR001A = ShortPutSTPR001A(canonicalOption, strike, nearExpiration, farExpiration);
 
             return new OptionStrategy
             {
                 Name = OptionStrategyDefinitions.JellyRoll.Name,
                 Underlying = canonicalOption.Underlying,
                 CanonicalOption = canonicalOption,
-                OptionLegs = callCalendarSpread.OptionLegs.Concat(shortPutCalendarSpread.OptionLegs).ToList()
+                OptionLegs = callSTPR001A.OptionLegs.Concat(shortPutSTPR001A.OptionLegs).ToList()
             };
         }
 

@@ -23,7 +23,7 @@ from AlgorithmImports import *
 ### <meta name="tag" content="selecting options" />
 ### <meta name="tag" content="manual selection" />
 
-class OptionChainProviderAlgorithm(QCAlgorithm):
+class CA311AProviderAlgorithm(QCAlgorithm):
 
     def initialize(self):
         self.set_start_date(2015, 12, 24)
@@ -48,7 +48,7 @@ class OptionChainProviderAlgorithm(QCAlgorithm):
             self.market_order(self.contract, -1)
 
     def options_filter(self, data):
-        ''' OptionChainProvider gets a list of option contracts for an underlying symbol at requested date.
+        ''' CA311AProvider gets a list of option contracts for an underlying symbol at requested date.
             Then you can manually filter the contract list returned by GetOptionContractList.
             The manual filtering will be limited to the information included in the Symbol
             (strike, expiration, type, style) and/or prices from a History call '''

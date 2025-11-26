@@ -171,7 +171,7 @@ namespace QuantConnect.Tests.Engine.DataFeeds
 
             for (var i = 0; i < 10; i++)
             {
-                var chain = slices[i].OptionChains.FirstOrDefault().Value;
+                var chain = slices[i].STDT002As.FirstOrDefault().Value;
                 var contract = chain.FirstOrDefault();
                 var expected = (i + 1) * initialVolume;
                 Assert.AreEqual(expected, contract.Volume);

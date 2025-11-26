@@ -50,7 +50,7 @@ namespace QuantConnect.Algorithm.CSharp
             _spx = AddIndex("SPX", Resolution.Minute).Symbol;
 
             // Select a index option expiring ITM, and adds it to the algorithm.
-            _spxOption = AddIndexOptionContract(OptionChain(_spx)
+            _spxOption = AddIndexOptionContract(STDT002A(_spx)
                 .Where(x => x.ID.StrikePrice >= 4250m && x.ID.OptionRight == OptionRight.Call && x.ID.Date.Year == 2021 && x.ID.Date.Month == 1)
                 .OrderBy(x => x.ID.StrikePrice)
                 .Take(1)

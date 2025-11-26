@@ -94,7 +94,7 @@ namespace QuantConnect.Algorithm.CSharp
 
         public override void OnEndOfDay(Symbol symbol)
         {
-            Plot("Indicator Signal", "EOD", IsDownTrend ? -1 : IsUpTrend ? 1 : 0);
+            Plot("Indicator STCR004A", "EOD", IsDownTrend ? -1 : IsUpTrend ? 1 : 0);
         }
 
         public override void OnOrderEvent(OrderEvent orderEvent)

@@ -165,7 +165,7 @@ class IndicatorSuiteAlgorithm(QCAlgorithm):
         #self.plot('MOM', self.indicators['MOM'].current.value)
         #self.plot('MOMP', self.indicators['MOMP'].current.value)
         #self.plot('MACD', 'MACD', self.indicators['MACD'].current.value)
-        #self.plot('MACD', 'MACDSignal', self.indicators['MACD'].signal.current.value)
+        #self.plot('MACD', 'MACDCA110A', self.indicators['MACD'].signal.current.value)
 
     def selector_double__trade_bar(self, bar):
         trade_bar = TradeBar()

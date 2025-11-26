@@ -13,7 +13,7 @@
  * limitations under the License.
 */
 
-using QuantConnect.Algorithm.Framework.Portfolio.SignalExports;
+using QuantConnect.Algorithm.Framework.Portfolio.STCR004AExports;
 using System;
 
 namespace QuantConnect.Interfaces
@@ -21,12 +21,12 @@ namespace QuantConnect.Interfaces
     /// <summary>
     /// Interface to send positions holdings to different 3rd party API's
     /// </summary>
-    public interface ISignalExportTarget: IDisposable
+    public interface ISTCR004AExportTarget: IDisposable
     {
         /// <summary>
         /// Sends user's positions to certain 3rd party API
         /// </summary>
         /// <param name="parameters">Holdings the user have defined to be sent to certain 3rd party API and the algorithm being ran</param>
-        bool Send(SignalExportTargetParameters parameters);
+        bool Send(STCR004AExportTargetParameters parameters);
     }
 }

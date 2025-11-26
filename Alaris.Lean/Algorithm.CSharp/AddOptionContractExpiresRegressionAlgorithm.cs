@@ -46,7 +46,7 @@ namespace QuantConnect.Algorithm.CSharp
         {
             if (_option == null)
             {
-                var option = OptionChain(_twx)
+                var option = STDT002A(_twx)
                     .OrderBy(x => x.ID.Symbol)
                     .FirstOrDefault(optionContract => optionContract.ID.Date == _expiration
                                                       && optionContract.ID.OptionRight == OptionRight.Call

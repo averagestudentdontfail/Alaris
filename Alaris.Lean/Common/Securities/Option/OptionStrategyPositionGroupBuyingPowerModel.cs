@@ -166,13 +166,13 @@ namespace QuantConnect.Securities.Option
                 var result = GetLongCallShortCallStrikeDifferenceMargin(parameters.PositionGroup.Positions, parameters.Portfolio, parameters.PositionGroup.Quantity);
                 return new MaintenanceMargin(result);
             }
-            else if (_optionStrategy.Name == OptionStrategyDefinitions.CallCalendarSpread.Name
-                || _optionStrategy.Name == OptionStrategyDefinitions.PutCalendarSpread.Name)
+            else if (_optionStrategy.Name == OptionStrategyDefinitions.CallSTPR001A.Name
+                || _optionStrategy.Name == OptionStrategyDefinitions.PutSTPR001A.Name)
             {
                 return new MaintenanceMargin(0);
             }
-            else if (_optionStrategy.Name == OptionStrategyDefinitions.ShortCallCalendarSpread.Name
-                || _optionStrategy.Name == OptionStrategyDefinitions.ShortPutCalendarSpread.Name)
+            else if (_optionStrategy.Name == OptionStrategyDefinitions.ShortCallSTPR001A.Name
+                || _optionStrategy.Name == OptionStrategyDefinitions.ShortPutSTPR001A.Name)
             {
                 var shortCall = parameters.PositionGroup.Positions.Single(position => position.Quantity < 0);
                 var shortCallSecurity = (Option)parameters.Portfolio.Securities[shortCall.Symbol];
@@ -253,11 +253,11 @@ namespace QuantConnect.Securities.Option
                 // long calendar spread part has no margin requirement due to same strike
                 // only the short calendar spread's short option has margin requirement
                 var furtherExpiry = parameters.PositionGroup.Positions.Max(position => position.Symbol.ID.Date);
-                var shortCalendarSpreadShortLeg = parameters.PositionGroup.Positions.Single(position =>
+                var shortSTPR001AShortLeg = parameters.PositionGroup.Positions.Single(position =>
                     position.Quantity < 0 && position.Symbol.ID.Date == furtherExpiry);
-                var shortCalendarSpreadShortLegSecurity = (Option)parameters.Portfolio.Securities[shortCalendarSpreadShortLeg.Symbol];
-                var result = Math.Abs(shortCalendarSpreadShortLegSecurity.BuyingPowerModel.GetMaintenanceMargin(
-                    MaintenanceMarginParameters.ForQuantityAtCurrentPrice(shortCalendarSpreadShortLegSecurity, shortCalendarSpreadShortLeg.Quantity)));
+                var shortSTPR001AShortLegSecurity = (Option)parameters.Portfolio.Securities[shortSTPR001AShortLeg.Symbol];
+                var result = Math.Abs(shortSTPR001AShortLegSecurity.BuyingPowerModel.GetMaintenanceMargin(
+                    MaintenanceMarginParameters.ForQuantityAtCurrentPrice(shortSTPR001AShortLegSecurity, shortSTPR001AShortLeg.Quantity)));
 
                 return new MaintenanceMargin(result);
             }
@@ -351,13 +351,13 @@ namespace QuantConnect.Securities.Option
             {
                 result = GetLongCallShortCallStrikeDifferenceMargin(parameters.PositionGroup.Positions, parameters.Portfolio, parameters.PositionGroup.Quantity);
             }
-            else if (_optionStrategy.Name == OptionStrategyDefinitions.CallCalendarSpread.Name
-                || _optionStrategy.Name == OptionStrategyDefinitions.PutCalendarSpread.Name)
+            else if (_optionStrategy.Name == OptionStrategyDefinitions.CallSTPR001A.Name
+                || _optionStrategy.Name == OptionStrategyDefinitions.PutSTPR001A.Name)
             {
                 result = 0m;
             }
-            else if (_optionStrategy.Name == OptionStrategyDefinitions.ShortCallCalendarSpread.Name
-                || _optionStrategy.Name == OptionStrategyDefinitions.ShortPutCalendarSpread.Name)
+            else if (_optionStrategy.Name == OptionStrategyDefinitions.ShortCallSTPR001A.Name
+                || _optionStrategy.Name == OptionStrategyDefinitions.ShortPutSTPR001A.Name)
             {
                 var shortOptionPosition = parameters.PositionGroup.Positions.Single(position => position.Quantity < 0);
                 var shortOption = (Option)parameters.Portfolio.Securities[shortOptionPosition.Symbol];

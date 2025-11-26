@@ -24,7 +24,7 @@ namespace QuantConnect.Algorithm.CSharp
 {
     /// <summary>
     /// Demonstration of how to chain a coarse and fine universe selection with an option chain universe selection model
-    /// that will add and remove an <see cref="OptionChainUniverse"/> for each symbol selected on fine
+    /// that will add and remove an <see cref="STDT002AUniverse"/> for each symbol selected on fine
     /// </summary>
     public class CoarseFineOptionUniverseChainRegressionAlgorithm : QCAlgorithm, IRegressionAlgorithmDefinition
     {
@@ -62,7 +62,7 @@ namespace QuantConnect.Algorithm.CSharp
             {
                 if (universe.Underlying == null)
                 {
-                    throw new RegressionTestException("Underlying data point is null! This shouldn't happen, each OptionChainUniverse handles and should provide this");
+                    throw new RegressionTestException("Underlying data point is null! This shouldn't happen, each STDT002AUniverse handles and should provide this");
                 }
                 return universe.IncludeWeeklys()
                     .FrontMonth()

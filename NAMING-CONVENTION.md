@@ -41,9 +41,9 @@ This document establishes a hierarchical significant-digit coding system for the
 
 | Code | Category      | Components                                       |
 |------|---------------|--------------------------------------------------|
-| AP   | Approximation | QdPlusApproximation, DoubleBoundaryApproximation |
-| SL   | Solver        | DoubleBoundarySolver, DoubleBoundaryKimSolver    |
-| EN   | Engine        | DoubleBoundaryEngine, PricingEngine              |
+| AP   | Approximation | CA505A, CA504A |
+| SL   | Solver        | CA502A, CA503A    |
+| EN   | Engine        | CA501A, PricingEngine              |
 | MD   | Model         | BoundaryModel, ExerciseRegion                    |
 | RS   | Result        | SolverResult, BoundaryResult                     |
 
@@ -51,13 +51,13 @@ This document establishes a hierarchical significant-digit coding system for the
 
 | Code | Category | Components                                          |
 |------|----------|-----------------------------------------------------|
-| CR   | Core     | SignalGenerator, TermStructureAnalyzer, YangZhangEstimator |
-| IV   | IV Models| HestonModel, KouModel, IVModelSelector              |
-| PR   | Pricing  | CalendarSpread, AdaptiveIntegration, HestonPricing  |
-| RK   | Risk     | KellyPositionSizer, PositionSize                    |
-| BR   | Bridge   | UnifiedPricingEngine, PricingRegime                 |
-| DT   | Data     | IMarketDataProvider, OptionChainData                |
-| TM   | Time     | TimeParameters, EarningsRegime                      |
+| CR   | Core     | CA111A, CA106AAnalyzer, CA108AEstimator |
+| IV   | IV Models| CA101A, CA102A, CA109A              |
+| PR   | Pricing  | CA321A, CA201A, CA204A  |
+| RK   | Risk     | CA401A, PositionSize                    |
+| BR   | Bridge   | CA301A, PricingRegime                 |
+| DT   | Data     | CA303A, CA311AData                |
+| TM   | Time     | CA107A, CA104A                      |
 | CT   | Control  | Control (strategy orchestration)                    |
 
 ### Events Domain (EV)
@@ -97,28 +97,28 @@ This document establishes a hierarchical significant-digit coding system for the
 
 | Code       | Component                  | Academic Reference    |
 |------------|----------------------------|-----------------------|
-| DBAP001A   | QdPlusApproximation        | Healy (2021) § 4      |
-| DBAP002A   | DoubleBoundaryApproximation| Healy (2021) § 5      |
-| DBSL001A   | DoubleBoundarySolver       | Healy (2021) § 5.3    |
-| DBSL002A   | DoubleBoundaryKimSolver    | Kim (1990)            |
-| DBEN001A   | DoubleBoundaryEngine       | Healy (2021)          |
+| DBAP001A   | CA505A        | Healy (2021) § 4      |
+| DBAP002A   | CA504A| Healy (2021) § 5      |
+| DBSL001A   | CA502A       | Healy (2021) § 5.3    |
+| DBSL002A   | CA503A    | Kim (1990)            |
+| DBEN001A   | CA501A       | Healy (2021)          |
 | DBRS001A   | SolverResult               | —                     |
 
 ### Alaris.Strategy
 
 | Code       | Component                | Academic Reference      |
 |------------|--------------------------|-------------------------|
-| STCR001A   | SignalGenerator          | Atilgan (2014)          |
-| STCR002A   | TermStructureAnalyzer    | Leung & Santoli (2014)  |
-| STCR003A   | YangZhangEstimator       | Yang & Zhang (2000)     |
-| STIV001A   | HestonModel              | Heston (1993)           |
-| STIV002A   | KouModel                 | Kou (2002)              |
-| STIV003A   | IVModelSelector          | —                       |
-| STPR001A   | CalendarSpread           | —                       |
-| STPR002A   | AdaptiveIntegration      | MathNet.Numerics        |
-| STPR003A   | HestonPricing            | Heston (1993)           |
-| STRK001A   | KellyPositionSizer       | Kelly Criterion         |
-| STBR001A   | UnifiedPricingEngine     | —                       |
+| STCR001A   | CA111A          | Atilgan (2014)          |
+| STCR002A   | CA106AAnalyzer    | Leung & Santoli (2014)  |
+| STCR003A   | CA108AEstimator       | Yang & Zhang (2000)     |
+| STIV001A   | CA101A              | Heston (1993)           |
+| STIV002A   | CA102A                 | Kou (2002)              |
+| STIV003A   | CA109A          | —                       |
+| STPR001A   | CA321A           | —                       |
+| STPR002A   | CA201A      | MathNet.Numerics        |
+| STPR003A   | CA204A            | Heston (1993)           |
+| STRK001A   | CA401A       | Kelly Criterion         |
+| STBR001A   | CA301A     | —                       |
 | STCT001A   | Control                  | —                       |
 
 ---
@@ -127,10 +127,10 @@ This document establishes a hierarchical significant-digit coding system for the
 
 ```
 DBAP001A = DB (Double Boundary) + AP (Approximation) + 001 + A (Primary)
-         → QdPlusApproximation (primary implementation)
+         → CA505A (primary implementation)
 
 STIV002A = ST (Strategy) + IV (IV Models) + 002 + A (Primary)
-         → KouModel (Kou jump-diffusion model)
+         → CA102A (Kou jump-diffusion model)
 
 TSBM001A = TS (Test Suite) + BM (Benchmark) + 001 + A (Primary)
          → Healy benchmark validation tests

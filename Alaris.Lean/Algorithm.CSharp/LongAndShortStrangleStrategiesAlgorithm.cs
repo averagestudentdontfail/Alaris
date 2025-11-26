@@ -35,7 +35,7 @@ namespace QuantConnect.Algorithm.CSharp
 
         protected override int ExpectedOrdersCount { get; } = 4;
 
-        protected override void TradeStrategy(OptionChain chain)
+        protected override void TradeStrategy(STDT002A chain)
         {
             var contracts = chain
                 .OrderBy(x => Math.Abs(chain.Underlying.Price - x.Strike))

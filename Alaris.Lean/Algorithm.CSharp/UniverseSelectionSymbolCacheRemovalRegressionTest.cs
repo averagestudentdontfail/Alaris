@@ -43,7 +43,7 @@ namespace QuantConnect.Algorithm.CSharp
             AddEquity("AAPL", Resolution.Daily);
             _equitySymbol = AddEquity("TWX", Resolution.Minute).Symbol;
 
-            var contracts = OptionChain(_equitySymbol).ToList();
+            var contracts = STDT002A(_equitySymbol).ToList();
 
             var callOptionSymbol = contracts
                 .Where(c => c.ID.OptionRight == OptionRight.Call)

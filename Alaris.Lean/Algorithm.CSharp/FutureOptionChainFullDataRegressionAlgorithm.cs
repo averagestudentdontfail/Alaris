@@ -24,10 +24,10 @@ using QuantConnect.Securities;
 namespace QuantConnect.Algorithm.CSharp
 {
     /// <summary>
-    /// Regression algorithm illustrating the usage of the <see cref="QCAlgorithm.OptionChain(Symbol)"/> method
+    /// Regression algorithm illustrating the usage of the <see cref="QCAlgorithm.STDT002A(Symbol)"/> method
     /// to get a future option chain.
     /// </summary>
-    public class FutureOptionChainFullDataRegressionAlgorithm : QCAlgorithm, IRegressionAlgorithmDefinition
+    public class FutureSTDT002AFullDataRegressionAlgorithm : QCAlgorithm, IRegressionAlgorithmDefinition
     {
         private Symbol _optionContract;
 
@@ -40,7 +40,7 @@ namespace QuantConnect.Algorithm.CSharp
                 QuantConnect.Symbol.CreateFuture(Futures.Indices.SP500EMini, Market.CME, new DateTime(2020, 3, 20)),
                 Resolution.Minute).Symbol;
 
-            _optionContract = OptionChain(futureContract)
+            _optionContract = STDT002A(futureContract)
                 // Get contracts expiring within 4 months
                 .Where(contractData => contractData.Expiry - Time <= TimeSpan.FromDays(120))
                 // Get the contract with the latest expiration date, highest strike and lowest price

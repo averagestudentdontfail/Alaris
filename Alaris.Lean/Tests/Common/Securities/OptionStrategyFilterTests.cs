@@ -250,10 +250,10 @@ namespace QuantConnect.Tests.Common.Securities
         [TestCase(105, -5, 50, 10)]     // near expiry > far expiry
         [TestCase(105, -5, -10, -5)]    // negative
         [TestCase(105, -5, 0, -5)]      // negative
-        public void FailsCallCalendarSpread(decimal underlyingPrice, decimal strikeFromAtm, int nearExpiry, int farExpiry)
+        public void FailsCallSTPR001A(decimal underlyingPrice, decimal strikeFromAtm, int nearExpiry, int farExpiry)
         {
             Func<OptionFilterUniverse, OptionFilterUniverse> universeFunc = universe => universe
-                                .CallCalendarSpread(strikeFromAtm, nearExpiry, farExpiry);
+                                .CallSTPR001A(strikeFromAtm, nearExpiry, farExpiry);
 
             FailsFiltering(underlyingPrice, universeFunc);
         }
@@ -265,11 +265,11 @@ namespace QuantConnect.Tests.Common.Securities
         [TestCase(100, 0, 40, 350, 2, 3, 2)]
         [TestCase(105, 0, 40, 41, 2, 3, 2)]         // only select later contracts for far expiry
         [TestCase(105, 0, 500, 1000, 0, 0, 0)]      // select none if no further contracts available
-        public void FiltersCallCalendarSpread(decimal underlyingPrice, decimal strikeFromAtm, int nearExpiry, int farExpiry, int expectedNearExpiryCase,
+        public void FiltersCallSTPR001A(decimal underlyingPrice, decimal strikeFromAtm, int nearExpiry, int farExpiry, int expectedNearExpiryCase,
             int expectedFarExpiryCase, int expectedCount)
         {
             Func<OptionFilterUniverse, OptionFilterUniverse> universeFunc = universe => universe
-                                .CallCalendarSpread(strikeFromAtm, nearExpiry, farExpiry);
+                                .CallSTPR001A(strikeFromAtm, nearExpiry, farExpiry);
             var filtered = Filtering(underlyingPrice, universeFunc);
 
             Assert.AreEqual(expectedCount, filtered.Count);
@@ -296,10 +296,10 @@ namespace QuantConnect.Tests.Common.Securities
         [TestCase(105, -5, 50, 10)]     // near expiry > far expiry
         [TestCase(105, -5, -10, -5)]    // negative
         [TestCase(105, -5, 0, -5)]      // negative
-        public void FailsPutCalendarSpread(decimal underlyingPrice, decimal strikeFromAtm, int nearExpiry, int farExpiry)
+        public void FailsPutSTPR001A(decimal underlyingPrice, decimal strikeFromAtm, int nearExpiry, int farExpiry)
         {
             Func<OptionFilterUniverse, OptionFilterUniverse> universeFunc = universe => universe
-                                .PutCalendarSpread(strikeFromAtm, nearExpiry, farExpiry);
+                                .PutSTPR001A(strikeFromAtm, nearExpiry, farExpiry);
 
             FailsFiltering(underlyingPrice, universeFunc);
         }
@@ -311,11 +311,11 @@ namespace QuantConnect.Tests.Common.Securities
         [TestCase(100, 0, 40, 350, 2, 3, 2)]
         [TestCase(105, 0, 40, 41, 2, 3, 2)]         // only select later contracts for far expiry
         [TestCase(105, 0, 500, 1000, 0, 0, 0)]      // select none if no further contracts available
-        public void FiltersPutCalendarSpread(decimal underlyingPrice, decimal strikeFromAtm, int nearExpiry, int farExpiry, int expectedNearExpiryCase,
+        public void FiltersPutSTPR001A(decimal underlyingPrice, decimal strikeFromAtm, int nearExpiry, int farExpiry, int expectedNearExpiryCase,
             int expectedFarExpiryCase, int expectedCount)
         {
             Func<OptionFilterUniverse, OptionFilterUniverse> universeFunc = universe => universe
-                                .PutCalendarSpread(strikeFromAtm, nearExpiry, farExpiry);
+                                .PutSTPR001A(strikeFromAtm, nearExpiry, farExpiry);
             var filtered = Filtering(underlyingPrice, universeFunc);
 
             Assert.AreEqual(expectedCount, filtered.Count);

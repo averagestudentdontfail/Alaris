@@ -3620,7 +3620,7 @@ namespace QuantConnect
                     break;
                 case MarketDataType.Auxiliary:
                 case MarketDataType.Base:
-                case MarketDataType.OptionChain:
+                case MarketDataType.STDT002A:
                 case MarketDataType.FuturesChain:
                     break;
                 default:
@@ -3881,47 +3881,47 @@ namespace QuantConnect
         }
 
         /// <summary>
-        /// Creates a <see cref="OptionChainUniverse"/> for a given symbol
+        /// Creates a <see cref="STDT002AUniverse"/> for a given symbol
         /// </summary>
         /// <param name="algorithm">The algorithm instance to create universes for</param>
         /// <param name="symbol">Symbol of the option</param>
         /// <param name="filter">The option filter to use</param>
         /// <param name="universeSettings">The universe settings, will use algorithm settings if null</param>
-        /// <returns><see cref="OptionChainUniverse"/> for the given symbol</returns>
-        public static OptionChainUniverse CreateOptionChain(this IAlgorithm algorithm, Symbol symbol, PyObject filter, UniverseSettings universeSettings = null)
+        /// <returns><see cref="STDT002AUniverse"/> for the given symbol</returns>
+        public static STDT002AUniverse CreateSTDT002A(this IAlgorithm algorithm, Symbol symbol, PyObject filter, UniverseSettings universeSettings = null)
         {
-            var result = CreateOptionChain(algorithm, symbol, out var option, universeSettings);
+            var result = CreateSTDT002A(algorithm, symbol, out var option, universeSettings);
             option.SetFilter(filter);
             return result;
         }
 
         /// <summary>
-        /// Creates a <see cref="OptionChainUniverse"/> for a given symbol
+        /// Creates a <see cref="STDT002AUniverse"/> for a given symbol
         /// </summary>
         /// <param name="algorithm">The algorithm instance to create universes for</param>
         /// <param name="symbol">Symbol of the option</param>
         /// <param name="filter">The option filter to use</param>
         /// <param name="universeSettings">The universe settings, will use algorithm settings if null</param>
-        /// <returns><see cref="OptionChainUniverse"/> for the given symbol</returns>
-        public static OptionChainUniverse CreateOptionChain(this IAlgorithm algorithm, Symbol symbol, Func<OptionFilterUniverse, OptionFilterUniverse> filter, UniverseSettings universeSettings = null)
+        /// <returns><see cref="STDT002AUniverse"/> for the given symbol</returns>
+        public static STDT002AUniverse CreateSTDT002A(this IAlgorithm algorithm, Symbol symbol, Func<OptionFilterUniverse, OptionFilterUniverse> filter, UniverseSettings universeSettings = null)
         {
-            var result = CreateOptionChain(algorithm, symbol, out var option, universeSettings);
+            var result = CreateSTDT002A(algorithm, symbol, out var option, universeSettings);
             option.SetFilter(filter);
             return result;
         }
 
         /// <summary>
-        /// Creates a <see cref="OptionChainUniverse"/> for a given symbol
+        /// Creates a <see cref="STDT002AUniverse"/> for a given symbol
         /// </summary>
         /// <param name="algorithm">The algorithm instance to create universes for</param>
         /// <param name="symbol">Symbol of the option</param>
         /// <param name="universeSettings">The universe settings, will use algorithm settings if null</param>
-        /// <returns><see cref="OptionChainUniverse"/> for the given symbol</returns>
-        private static OptionChainUniverse CreateOptionChain(this IAlgorithm algorithm, Symbol symbol, out Option option, UniverseSettings universeSettings = null)
+        /// <returns><see cref="STDT002AUniverse"/> for the given symbol</returns>
+        private static STDT002AUniverse CreateSTDT002A(this IAlgorithm algorithm, Symbol symbol, out Option option, UniverseSettings universeSettings = null)
         {
             if (!symbol.SecurityType.IsOption())
             {
-                throw new ArgumentException(Messages.Extensions.CreateOptionChainRequiresOptionSymbol);
+                throw new ArgumentException(Messages.Extensions.CreateSTDT002ARequiresOptionSymbol);
             }
 
             // resolve defaults if not specified
@@ -3929,7 +3929,7 @@ namespace QuantConnect
 
             option = (Option)algorithm.AddSecurity(symbol.Canonical, settings.Resolution, settings.FillForward, settings.Leverage, settings.ExtendedMarketHours);
 
-            return (OptionChainUniverse)algorithm.UniverseManager.Values.Single(universe => universe.Configuration.Symbol == symbol.Canonical);
+            return (STDT002AUniverse)algorithm.UniverseManager.Values.Single(universe => universe.Configuration.Symbol == symbol.Canonical);
         }
 
         /// <summary>

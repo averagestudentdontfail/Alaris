@@ -24,13 +24,13 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text;
 
-namespace QuantConnect.Algorithm.Framework.Portfolio.SignalExports
+namespace QuantConnect.Algorithm.Framework.Portfolio.STCR004AExports
 {
     /// <summary>
     /// Exports signals of desired positions to Collective2 API using JSON and HTTPS.
     /// Accepts signals in quantity(number of shares) i.e symbol:"SPY", quant:40
     /// </summary>
-    public class Collective2SignalExport : BaseSignalExport
+    public class Collective2STCR004AExport : BaseSTCR004AExport
     {
         /// <summary>
         /// Hashset of symbols whose market is unknown but have already been seen by
@@ -110,13 +110,13 @@ namespace QuantConnect.Algorithm.Framework.Portfolio.SignalExports
         private static Lazy<RateGate> _dailyRateLimiter = new Lazy<RateGate>(() => new RateGate(20000, TimeSpan.FromDays(1)));
 
         /// <summary>
-        /// Collective2SignalExport constructor. It obtains the entry information for Collective2 API requests.
+        /// Collective2STCR004AExport constructor. It obtains the entry information for Collective2 API requests.
         /// See API documentation at https://trade.collective2.com/c2-api
         /// </summary>
         /// <param name="apiKey">API key provided by Collective2</param>
         /// <param name="systemId">Trading system's ID number</param>
         /// <param name="useWhiteLabelApi">Whether to use the white-label API instead of the general one</param>
-        public Collective2SignalExport(string apiKey, int systemId, bool useWhiteLabelApi = false)
+        public Collective2STCR004AExport(string apiKey, int systemId, bool useWhiteLabelApi = false)
         {
             _unknownMarketSymbols = new HashSet<string>();
             _unknownSecurityTypes = new HashSet<SecurityType>();
@@ -137,7 +137,7 @@ namespace QuantConnect.Algorithm.Framework.Portfolio.SignalExports
         /// <param name="parameters">A list of holdings from the portfolio
         /// expected to be sent to Collective2 API and the algorithm being ran</param>
         /// <returns>True if the positions were sent correctly and Collective2 sent no errors, false otherwise</returns>
-        public override bool Send(SignalExportTargetParameters parameters)
+        public override bool Send(STCR004AExportTargetParameters parameters)
         {
             if (!base.Send(parameters))
             {
@@ -164,7 +164,7 @@ namespace QuantConnect.Algorithm.Framework.Portfolio.SignalExports
         /// expected to be sent to Collective2 API and the algorithm being ran</param>
         /// <param name="positions">A list of Collective2 positions</param>
         /// <returns>True if the given targets could be converted to a Collective2Position list, false otherwise</returns>
-        protected bool ConvertHoldingsToCollective2(SignalExportTargetParameters parameters, out List<Collective2Position> positions)
+        protected bool ConvertHoldingsToCollective2(STCR004AExportTargetParameters parameters, out List<Collective2Position> positions)
         {
             _algorithm = parameters.Algorithm;
             var targets = parameters.Targets;
@@ -302,7 +302,7 @@ namespace QuantConnect.Algorithm.Framework.Portfolio.SignalExports
             }
             else if (responseObject.Results.Count > 0)
             {
-                _algorithm.Debug($"Collective2: NewSignals={string.Join(',', responseObject.Results[0].NewSignals)} | CanceledSignals={string.Join(',', responseObject.Results[0].CanceledSignals)}{debuggingMessage}");
+                _algorithm.Debug($"Collective2: NewSTCR004As={string.Join(',', responseObject.Results[0].NewSTCR004As)} | CanceledSTCR004As={string.Join(',', responseObject.Results[0].CanceledSTCR004As)}{debuggingMessage}");
             }
 
             return true;
@@ -342,12 +342,12 @@ namespace QuantConnect.Algorithm.Framework.Portfolio.SignalExports
         /// </summary>
         private class DesiredPositionResponse
         {
-            [JsonProperty(PropertyName = "NewSignals")]
-            public List<long> NewSignals { get; set; } = new List<long>();
+            [JsonProperty(PropertyName = "NewSTCR004As")]
+            public List<long> NewSTCR004As { get; set; } = new List<long>();
 
 
-            [JsonProperty(PropertyName = "CanceledSignals")]
-            public List<long> CanceledSignals { get; set; } = new List<long>();
+            [JsonProperty(PropertyName = "CanceledSTCR004As")]
+            public List<long> CanceledSTCR004As { get; set; } = new List<long>();
         }
 
         /// <summary>

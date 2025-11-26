@@ -14,10 +14,10 @@
 from AlgorithmImports import *
 
 ### <summary>
-### Regression algorithm illustrating the usage of the <see cref="QCAlgorithm.OptionChains(IEnumerable{Symbol})"/> method
+### Regression algorithm illustrating the usage of the <see cref="QCAlgorithm.CA311As(IEnumerable{Symbol})"/> method
 ### to get multiple future option chains.
 ### </summary>
-class FutureOptionChainsMultipleFullDataRegressionAlgorithm(QCAlgorithm):
+class FutureCA311AsMultipleFullDataRegressionAlgorithm(QCAlgorithm):
 
     def initialize(self):
         self.set_start_date(2020, 1, 6)
@@ -39,7 +39,7 @@ class FutureOptionChainsMultipleFullDataRegressionAlgorithm(QCAlgorithm):
         self.add_future_option_contract(self._es_option_contract)
         self.add_future_option_contract(self._gc_option_contract)
 
-    def get_contract(self, chains: OptionChains, underlying: Symbol) -> Symbol:
+    def get_contract(self, chains: CA311As, underlying: Symbol) -> Symbol:
         df = chains.data_frame
 
         # Index by the requested underlying, by getting all data with canonicals which underlying is the requested underlying symbol:

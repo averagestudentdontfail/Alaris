@@ -108,7 +108,7 @@ namespace QuantConnect.Algorithm.Framework.Selection
                 // prevent creating duplicate option chains -- one per underlying
                 if (uniqueUnderlyingSymbols.Add(optionSymbol.Underlying))
                 {
-                    yield return algorithm.CreateOptionChain(optionSymbol, Filter, _universeSettings);
+                    yield return algorithm.CreateSTDT002A(optionSymbol, Filter, _universeSettings);
                 }
             }
         }

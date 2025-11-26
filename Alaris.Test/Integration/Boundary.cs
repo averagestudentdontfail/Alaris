@@ -16,7 +16,7 @@ public class DoubleBoundaryIntegrationTests
     public void CompleteWorkflow_HealyTable2_MatchesBenchmark()
     {
         // Arrange: Exact Healy (2021) Table 2 parameters
-        var solver = new DoubleBoundarySolver(
+        var solver = new DBSL001A(
             spot: 100.0,
             strike: 100.0,
             maturity: 10.0,
@@ -60,7 +60,7 @@ public class DoubleBoundaryIntegrationTests
     public void CompleteWorkflow_ScalesWithMaturityAndResolution(double maturity, int collocationPoints)
     {
         // Arrange
-        var solver = new DoubleBoundarySolver(
+        var solver = new DBSL001A(
             spot: 100.0,
             strike: 100.0,
             maturity: maturity,
@@ -111,14 +111,14 @@ public class DoubleBoundaryIntegrationTests
         };
         
         // Arrange
-        var qdPlusOnly = new DoubleBoundarySolver(
+        var qdPlusOnly = new DBSL001A(
             parameters.spot, parameters.strike, parameters.maturity,
             parameters.rate, parameters.dividendYield, parameters.volatility,
             parameters.isCall, parameters.collocationPoints,
             useRefinement: false
         );
         
-        var withRefinement = new DoubleBoundarySolver(
+        var withRefinement = new DBSL001A(
             parameters.spot, parameters.strike, parameters.maturity,
             parameters.rate, parameters.dividendYield, parameters.volatility,
             parameters.isCall, parameters.collocationPoints,
@@ -154,7 +154,7 @@ public class DoubleBoundaryIntegrationTests
     public void CompleteWorkflow_CrossingBoundaries_HandledCorrectly()
     {
         // Parameters designed to cause boundary crossing
-        var solver = new DoubleBoundarySolver(
+        var solver = new DBSL001A(
             spot: 100.0,
             strike: 100.0,
             maturity: 15.0,  // Long maturity
@@ -194,7 +194,7 @@ public class DoubleBoundaryIntegrationTests
     public void CompleteWorkflow_CallPutConsistency(bool isCall)
     {
         // Test both call and put options under negative rates
-        var solver = new DoubleBoundarySolver(
+        var solver = new DBSL001A(
             spot: 100.0,
             strike: 100.0,
             maturity: 5.0,
@@ -233,7 +233,7 @@ public class DoubleBoundaryIntegrationTests
         // Test regime detection for single vs double boundary
         
         // Case 1: Standard put (r > 0) - single boundary
-        var standardPut = new DoubleBoundarySolver(
+        var standardPut = new DBSL001A(
             spot: 100.0,
             strike: 100.0,
             maturity: 1.0,
@@ -246,7 +246,7 @@ public class DoubleBoundaryIntegrationTests
         );
         
         // Case 2: Negative rate put (q < r < 0) - double boundary
-        var negativeRatePut = new DoubleBoundarySolver(
+        var negativeRatePut = new DBSL001A(
             spot: 100.0,
             strike: 100.0,
             maturity: 1.0,
@@ -290,7 +290,7 @@ public class DoubleBoundaryIntegrationTests
         foreach (var testCase in extremeCases)
         {
             // Arrange
-            var solver = new DoubleBoundarySolver(
+            var solver = new DBSL001A(
                 spot: 100.0,
                 strike: 100.0,
                 maturity: testCase.T,
@@ -320,7 +320,7 @@ public class DoubleBoundaryIntegrationTests
     public void CompleteWorkflow_MemoryAndPerformance_IsEfficient()
     {
         // Test memory allocation and performance with large collocation grid
-        var solver = new DoubleBoundarySolver(
+        var solver = new DBSL001A(
             spot: 100.0,
             strike: 100.0,
             maturity: 10.0,

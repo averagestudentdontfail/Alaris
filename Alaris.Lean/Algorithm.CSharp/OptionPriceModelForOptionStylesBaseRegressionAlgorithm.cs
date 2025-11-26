@@ -41,7 +41,7 @@ namespace QuantConnect.Algorithm.CSharp
                 return;
             }
 
-            foreach (var kvp in slice.OptionChains)
+            foreach (var kvp in slice.STDT002As)
             {
                 if (kvp.Key != _option?.Symbol)
                 {
@@ -74,7 +74,7 @@ namespace QuantConnect.Algorithm.CSharp
         }
 
 
-        public void CheckGreeks(OptionChain contracts)
+        public void CheckGreeks(STDT002A contracts)
         {
             if (!_checkGreeks || !contracts.Any())
             {

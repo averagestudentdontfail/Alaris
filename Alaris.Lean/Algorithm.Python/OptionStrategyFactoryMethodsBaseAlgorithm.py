@@ -65,7 +65,7 @@ class OptionStrategyFactoryMethodsBaseAlgorithm(QCAlgorithm):
     def expected_orders_count(self) -> int:
         raise NotImplementedError("ExpectedOrdersCount method is not implemented")
 
-    def trade_strategy(self, chain: OptionChain, option_symbol: Symbol) -> None:
+    def trade_strategy(self, chain: CA311A, option_symbol: Symbol) -> None:
         raise NotImplementedError("TradeStrategy method is not implemented")
 
     def assert_strategy_position_group(self, position_group: IPositionGroup, option_symbol: Symbol) -> None:

@@ -34,7 +34,7 @@ namespace QuantConnect.Tests.Algorithm
     public class AlgorithmChainsTest
     {
         private QCAlgorithm _algorithm;
-        private BacktestingOptionChainProvider _optionChainProvider;
+        private BacktestingSTDT002AProvider _optionChainProvider;
         private BacktestingFutureChainProvider _futureChainProvider;
 
         [SetUp]
@@ -44,14 +44,14 @@ namespace QuantConnect.Tests.Algorithm
             _algorithm.SetHistoryProvider(TestGlobals.HistoryProvider);
             _algorithm.SubscriptionManager.SetDataManager(new DataManagerStub(_algorithm));
 
-            _optionChainProvider = GetOptionChainProvider(TestGlobals.HistoryProvider);
-            _algorithm.SetOptionChainProvider(_optionChainProvider);
+            _optionChainProvider = GetSTDT002AProvider(TestGlobals.HistoryProvider);
+            _algorithm.SetSTDT002AProvider(_optionChainProvider);
 
             _futureChainProvider = GetFutureChainProvider(TestGlobals.HistoryProvider);
             _algorithm.SetFutureChainProvider(_futureChainProvider);
         }
 
-        private static TestCaseData[] OptionChainTestCases => new TestCaseData[]
+        private static TestCaseData[] STDT002ATestCases => new TestCaseData[]
         {
             // By underlying
             new(Symbols.AAPL, new DateTime(2014, 06, 06, 12, 0, 0)),
@@ -62,11 +62,11 @@ namespace QuantConnect.Tests.Algorithm
             new(Symbol.CreateFuture(Futures.Indices.SP500EMini, Market.CME, new DateTime(2020, 6, 19)), new DateTime(2020, 01, 05, 12, 0, 0)),
         };
 
-        [TestCaseSource(nameof(OptionChainTestCases))]
-        public void GetsFullDataOptionChain(Symbol symbol, DateTime date)
+        [TestCaseSource(nameof(STDT002ATestCases))]
+        public void GetsFullDataSTDT002A(Symbol symbol, DateTime date)
         {
             _algorithm.SetDateTime(date.ConvertToUtc(_algorithm.TimeZone));
-            var optionContractsData = _algorithm.OptionChain(symbol).ToList();
+            var optionContractsData = _algorithm.STDT002A(symbol).ToList();
             Assert.IsNotEmpty(optionContractsData);
 
             var optionContractsSymbols = _optionChainProvider.GetOptionContractList(symbol, date.Date).ToList();
@@ -74,20 +74,20 @@ namespace QuantConnect.Tests.Algorithm
             CollectionAssert.AreEquivalent(optionContractsSymbols, optionContractsData.Select(x => x.Symbol));
         }
 
-        private static TestCaseData[] PythonOptionChainTestCases => OptionChainTestCases.SelectMany(x =>
+        private static TestCaseData[] PythonSTDT002ATestCases => STDT002ATestCases.SelectMany(x =>
         {
             return new object[] { true, false }.Select(y => new TestCaseData(x.OriginalArguments.Concat(new[] { y }).ToArray()));
         }).ToArray();
 
-        [TestCaseSource(nameof(PythonOptionChainTestCases))]
-        public void GetsFullDataOptionChainAsDataFrame(Symbol symbol, DateTime date, bool flatten)
+        [TestCaseSource(nameof(PythonSTDT002ATestCases))]
+        public void GetsFullDataSTDT002AAsDataFrame(Symbol symbol, DateTime date, bool flatten)
         {
             _algorithm.SetPandasConverter();
             _algorithm.SetDateTime(date.ConvertToUtc(_algorithm.TimeZone));
 
             using var _ = Py.GIL();
 
-            using var dataFrame = _algorithm.OptionChain(symbol, flatten).DataFrame;
+            using var dataFrame = _algorithm.STDT002A(symbol, flatten).DataFrame;
             List<Symbol> symbols = null;
 
             var expectedOptionContractsSymbols = _optionChainProvider.GetOptionContractList(symbol, date.Date).ToList();
@@ -109,7 +109,7 @@ namespace QuantConnect.Tests.Algorithm
         }
 
         [Test]
-        public void GetsMultipleFullDataOptionChainAsDataFrame([Values] bool flatten)
+        public void GetsMultipleFullDataSTDT002AAsDataFrame([Values] bool flatten)
         {
             var date = new DateTime(2015, 12, 24, 12, 0, 0);
             _algorithm.SetPandasConverter();
@@ -118,20 +118,20 @@ namespace QuantConnect.Tests.Algorithm
             using var _ = Py.GIL();
 
             var symbols = new[] { Symbols.GOOG, Symbols.SPX };
-            using var dataFrame = _algorithm.OptionChains(symbols, flatten).DataFrame;
+            using var dataFrame = _algorithm.STDT002As(symbols, flatten).DataFrame;
 
-            var expectedOptionChains = symbols.ToDictionary(x => x, x => _optionChainProvider.GetOptionContractList(x, date).ToList());
+            var expectedSTDT002As = symbols.ToDictionary(x => x, x => _optionChainProvider.GetOptionContractList(x, date).ToList());
 
-            AssertMultiChainsDataFrame<OptionContract>(flatten, symbols, dataFrame, expectedOptionChains, isOptionChain: true);
+            AssertMultiChainsDataFrame<OptionContract>(flatten, symbols, dataFrame, expectedSTDT002As, isSTDT002A: true);
         }
 
         private static List<Symbol> AssertFlattenedSingleChainDataFrame(PyObject dataFrame, Symbol symbol, bool hasCanonicalIndex = true,
-            bool isOptionChain = true)
+            bool isSTDT002A = true)
         {
             PyObject subDataFrame = null;
             try
             {
-                subDataFrame = GetCanonicalSubDataFrame(dataFrame, symbol, isOptionChain, hasCanonicalIndex, out var canonicalSymbol);
+                subDataFrame = GetCanonicalSubDataFrame(dataFrame, symbol, isSTDT002A, hasCanonicalIndex, out var canonicalSymbol);
 
                 using var dfColumns = subDataFrame.GetAttr("columns");
                 using var dfColumnsList = dfColumns.InvokeMethod("tolist");
@@ -173,22 +173,22 @@ namespace QuantConnect.Tests.Algorithm
             }
         }
 
-        private static List<Symbol> AssertUnflattenedSingleChainDataFrame<T>(PyObject dataFrame, Symbol symbol, bool isOptionChain = true)
+        private static List<Symbol> AssertUnflattenedSingleChainDataFrame<T>(PyObject dataFrame, Symbol symbol, bool isSTDT002A = true)
             where T : BaseContract
         {
-            using var subDataFrame = GetCanonicalSubDataFrame(dataFrame, symbol, isOptionChain, true, out _);
+            using var subDataFrame = GetCanonicalSubDataFrame(dataFrame, symbol, isSTDT002A, true, out _);
 
-            using var dfOptionChainList = subDataFrame["contracts"];
-            var contracts = dfOptionChainList.GetAndDispose<IEnumerable<T>>().ToList();
+            using var dfSTDT002AList = subDataFrame["contracts"];
+            var contracts = dfSTDT002AList.GetAndDispose<IEnumerable<T>>().ToList();
 
             return contracts.Select(x => x.Symbol).ToList();
         }
 
-        private static PyObject GetCanonicalSubDataFrame(PyObject dataFrame, Symbol symbol, bool forOptionChain, bool hasCanonicalIndex,
+        private static PyObject GetCanonicalSubDataFrame(PyObject dataFrame, Symbol symbol, bool forSTDT002A, bool hasCanonicalIndex,
             out Symbol canonicalSymbol)
         {
             canonicalSymbol = symbol;
-            if (canonicalSymbol.SecurityType == SecurityType.Future && !forOptionChain)
+            if (canonicalSymbol.SecurityType == SecurityType.Future && !forSTDT002A)
             {
                 canonicalSymbol = canonicalSymbol.Canonical;
             }
@@ -206,7 +206,7 @@ namespace QuantConnect.Tests.Algorithm
             return dataFrame.GetAttr("loc")[pySymbol];
         }
 
-        private static IEnumerable<TestCaseData> GetOptionChainApisTestData()
+        private static IEnumerable<TestCaseData> GetSTDT002AApisTestData()
         {
             var indexSymbol = Symbols.SPX;
             var equitySymbol = Symbols.GOOG;
@@ -249,8 +249,8 @@ namespace QuantConnect.Tests.Algorithm
             }
         }
 
-        [TestCaseSource(nameof(GetOptionChainApisTestData))]
-        public void OptionChainApisAreConsistent(Symbol symbol, DateTime dateTime, bool withSecurityAdded, bool withExtendedMarketHours)
+        [TestCaseSource(nameof(GetSTDT002AApisTestData))]
+        public void STDT002AApisAreConsistent(Symbol symbol, DateTime dateTime, bool withSecurityAdded, bool withExtendedMarketHours)
         {
             _algorithm.SetDateTime(dateTime.ConvertToUtc(_algorithm.TimeZone));
 
@@ -269,7 +269,7 @@ namespace QuantConnect.Tests.Algorithm
             }
 
             var exchange  = MarketHoursDatabase.FromDataFolder().GetExchangeHours(symbol.ID.Market, symbol, symbol.SecurityType);
-            var chainFromAlgorithmApi = _algorithm.OptionChain(symbol).Select(x => x.Symbol).ToList();
+            var chainFromAlgorithmApi = _algorithm.STDT002A(symbol).Select(x => x.Symbol).ToList();
             var chainFromChainProviderApi = _optionChainProvider.GetOptionContractList(symbol,
                 dateTime.ConvertTo(_algorithm.TimeZone, exchange.TimeZone)).ToList();
 
@@ -343,14 +343,14 @@ namespace QuantConnect.Tests.Algorithm
 
             if (flatten)
             {
-                symbols = AssertFlattenedSingleChainDataFrame(dataFrame, symbol, hasCanonicalIndex: false, isOptionChain: false);
+                symbols = AssertFlattenedSingleChainDataFrame(dataFrame, symbol, hasCanonicalIndex: false, isSTDT002A: false);
             }
             else
             {
                 var dfLength = dataFrame.GetAttr("shape")[0].GetAndDispose<int>();
                 Assert.AreEqual(1, dfLength);
 
-                symbols = AssertUnflattenedSingleChainDataFrame<FuturesContract>(dataFrame, symbol, isOptionChain: false);
+                symbols = AssertUnflattenedSingleChainDataFrame<FuturesContract>(dataFrame, symbol, isSTDT002A: false);
             }
 
             Assert.IsNotNull(symbols);
@@ -377,7 +377,7 @@ namespace QuantConnect.Tests.Algorithm
                 return _futureChainProvider.GetFutureContractList(x, dateTime.ConvertTo(_algorithm.TimeZone, exchange.TimeZone)).ToList();
             });
 
-            AssertMultiChainsDataFrame<FuturesContract>(flatten, symbols, dataFrame, expectedFuturesChains, isOptionChain: false);
+            AssertMultiChainsDataFrame<FuturesContract>(flatten, symbols, dataFrame, expectedFuturesChains, isSTDT002A: false);
         }
 
         private static TestCaseData[] FillForwardTestData => new[] { true, false }
@@ -398,7 +398,7 @@ namespace QuantConnect.Tests.Algorithm
         {
             var historyProvider = new FillForwardTestHistoryProvider(_algorithm.HistoryProvider);
             _algorithm.SetHistoryProvider(historyProvider);
-            _algorithm.SetOptionChainProvider(GetOptionChainProvider(historyProvider));
+            _algorithm.SetSTDT002AProvider(GetSTDT002AProvider(historyProvider));
             _algorithm.SetFutureChainProvider(GetFutureChainProvider(historyProvider));
 
             var exchange = MarketHoursDatabase.FromDataFolder().GetExchangeHours(symbol.ID.Market, symbol, symbol.SecurityType);
@@ -446,16 +446,16 @@ namespace QuantConnect.Tests.Algorithm
 
                 return symbol.SecurityType == SecurityType.Future
                     ? _algorithm.FuturesChain(symbol).Select(x => x.Symbol).ToList()
-                    : _algorithm.OptionChain(symbol).Select(x => x.Symbol).ToList();
+                    : _algorithm.STDT002A(symbol).Select(x => x.Symbol).ToList();
             }
 
             return symbol.SecurityType == SecurityType.Future
                 ? _algorithm.FutureChainProvider.GetFutureContractList(symbol, date).ToList()
-                : _algorithm.OptionChainProvider.GetOptionContractList(symbol, date).ToList();
+                : _algorithm.STDT002AProvider.GetOptionContractList(symbol, date).ToList();
         }
 
         private static void AssertMultiChainsDataFrame<T>(bool flatten, Symbol[] symbols, PyObject dataFrame,
-            Dictionary<Symbol, List<Symbol>> expectedChains, bool isOptionChain)
+            Dictionary<Symbol, List<Symbol>> expectedChains, bool isSTDT002A)
             where T : BaseContract
         {
             var chainsTotalCount = expectedChains.Values.Sum(x => x.Count);
@@ -469,7 +469,7 @@ namespace QuantConnect.Tests.Algorithm
                 {
                     foreach (var (symbol, expectedChain) in expectedChains)
                     {
-                        var chainSymbols = AssertFlattenedSingleChainDataFrame(dataFrame, symbol, isOptionChain: isOptionChain);
+                        var chainSymbols = AssertFlattenedSingleChainDataFrame(dataFrame, symbol, isSTDT002A: isSTDT002A);
 
                         Assert.IsNotNull(chainSymbols);
                         CollectionAssert.AreEquivalent(expectedChain, chainSymbols);
@@ -485,7 +485,7 @@ namespace QuantConnect.Tests.Algorithm
                 {
                     foreach (var (symbol, expectedChain) in expectedChains)
                     {
-                        var chainSymbols = AssertUnflattenedSingleChainDataFrame<T>(dataFrame, symbol, isOptionChain);
+                        var chainSymbols = AssertUnflattenedSingleChainDataFrame<T>(dataFrame, symbol, isSTDT002A);
 
                         Assert.IsNotNull(chainSymbols);
                         CollectionAssert.AreEquivalent(expectedChain, chainSymbols);
@@ -573,10 +573,10 @@ namespace QuantConnect.Tests.Algorithm
             }
         }
 
-        private static BacktestingOptionChainProvider GetOptionChainProvider(IHistoryProvider historyProvider)
+        private static BacktestingSTDT002AProvider GetSTDT002AProvider(IHistoryProvider historyProvider)
         {
             var initParameters = new ChainProviderInitializeParameters(TestGlobals.MapFileProvider, historyProvider);
-            var optionChainProvider = new BacktestingOptionChainProvider();
+            var optionChainProvider = new BacktestingSTDT002AProvider();
             optionChainProvider.Initialize(initParameters);
             return optionChainProvider;
         }

@@ -22,19 +22,19 @@ namespace QuantConnect.Securities.FutureOption.Api
     /// <summary>
     /// CME Option Chain Quotes API call root response
     /// </summary>
-    public class CMEOptionChainQuotes
+    public class CMESTDT002AQuotes
     {
         /// <summary>
         /// The future options contracts with/without settlements
         /// </summary>
         [JsonProperty("optionContractQuotes")]
-        public List<CMEOptionChainQuoteEntry> Quotes { get; private set; }
+        public List<CMESTDT002AQuoteEntry> Quotes { get; private set; }
     }
 
     /// <summary>
     /// Option chain entry quotes, containing strike price
     /// </summary>
-    public class CMEOptionChainQuoteEntry
+    public class CMESTDT002AQuoteEntry
     {
         /// <summary>
         /// Strike price of the future option quote entry

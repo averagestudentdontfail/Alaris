@@ -20,7 +20,7 @@ from AlgorithmImports import *
 ### <meta name="tag" content="using data" />
 ### <meta name="tag" content="using quantconnect" />
 ### <meta name="tag" content="securities and portfolio" />
-class Collective2PortfolioSignalExportDemonstrationAlgorithm(QCAlgorithm):
+class Collective2PortfolioCA110AExportDemonstrationAlgorithm(QCAlgorithm):
 
     def initialize(self):
         ''' Initialize the date and add all equity symbols present in list _symbols '''
@@ -58,7 +58,7 @@ class Collective2PortfolioSignalExportDemonstrationAlgorithm(QCAlgorithm):
         self.signal_export.automatic_export_time_span = None
 
         # Set Collective2 signal export provider
-        self.signal_export.add_signal_export_provider(Collective2SignalExport(self.collective2_apikey, self.collective2_system_id))
+        self.signal_export.add_signal_export_provider(Collective2CA110AExport(self.collective2_apikey, self.collective2_system_id))
 
         self.first_call = True
 

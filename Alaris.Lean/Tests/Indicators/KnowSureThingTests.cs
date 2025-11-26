@@ -32,13 +32,13 @@ namespace QuantConnect.Tests.Indicators
         protected override string TestColumnName => "kst";
 
         [Test]
-        public void ComparesWithExternalDataSignal()
+        public void ComparesWithExternalDataSTCR004A()
         {
             TestHelper.TestIndicator(
                 CreateIndicator() as KnowSureThing,
                 TestFileName,
                 "signal",
-                ind => (double)ind.SignalLine.Current.Value
+                ind => (double)ind.STCR004ALine.Current.Value
             );
         }
     }

@@ -35,7 +35,7 @@ namespace QuantConnect.Data
         private Ticks _ticks;
         private TradeBars _bars;
         private QuoteBars _quoteBars;
-        private OptionChains _optionChains;
+        private STDT002As _optionChains;
         private FuturesChains _futuresChains;
 
         // aux data
@@ -105,9 +105,9 @@ namespace QuantConnect.Data
         }
 
         /// <summary>
-        /// Gets the <see cref="OptionChains"/> for this slice of data
+        /// Gets the <see cref="STDT002As"/> for this slice of data
         /// </summary>
-        public OptionChains OptionChains
+        public STDT002As STDT002As
         {
             get { return _optionChains; }
         }
@@ -240,7 +240,7 @@ namespace QuantConnect.Data
             : this(time, data, CreateCollection<TradeBars, TradeBar>(time, data),
                 CreateCollection<QuoteBars, QuoteBar>(time, data),
                 CreateTicksCollection(time, data),
-                CreateCollection<OptionChains, OptionChain>(time, data),
+                CreateCollection<STDT002As, STDT002A>(time, data),
                 CreateCollection<FuturesChains, FuturesChain>(time, data),
                 CreateCollection<Splits, Split>(time, data),
                 CreateCollection<Dividends, Dividend>(time, data),
@@ -298,7 +298,7 @@ namespace QuantConnect.Data
         /// <param name="marginInterestRates">The margin interest rates for this slice</param>
         /// <param name="utcTime">The timestamp for this slice of data in UTC</param>
         /// <param name="hasData">true if this slice contains data</param>
-        public Slice(DateTime time, List<BaseData> data, TradeBars tradeBars, QuoteBars quoteBars, Ticks ticks, OptionChains optionChains, FuturesChains futuresChains, Splits splits, Dividends dividends, Delistings delistings, SymbolChangedEvents symbolChanges, MarginInterestRates marginInterestRates, DateTime utcTime, bool? hasData = null)
+        public Slice(DateTime time, List<BaseData> data, TradeBars tradeBars, QuoteBars quoteBars, Ticks ticks, STDT002As optionChains, FuturesChains futuresChains, Splits splits, Dividends dividends, Delistings delistings, SymbolChangedEvents symbolChanges, MarginInterestRates marginInterestRates, DateTime utcTime, bool? hasData = null)
         {
             Time = time;
             UtcTime = utcTime;
@@ -458,9 +458,9 @@ namespace QuantConnect.Data
                 {
                     dictionary = Splits;
                 }
-                else if (type == typeof(OptionChain))
+                else if (type == typeof(STDT002A))
                 {
-                    dictionary = OptionChains;
+                    dictionary = STDT002As;
                 }
                 else if (type == typeof(FuturesChain))
                 {
@@ -563,7 +563,7 @@ namespace QuantConnect.Data
             _bars = (TradeBars)UpdateCollection(_bars, inputSlice.Bars);
             _quoteBars = (QuoteBars)UpdateCollection(_quoteBars, inputSlice.QuoteBars);
             _ticks = (Ticks)UpdateCollection(_ticks, inputSlice.Ticks);
-            _optionChains = (OptionChains)UpdateCollection(_optionChains, inputSlice.OptionChains);
+            _optionChains = (STDT002As)UpdateCollection(_optionChains, inputSlice.STDT002As);
             _futuresChains = (FuturesChains)UpdateCollection(_futuresChains, inputSlice.FuturesChains);
             _splits = (Splits)UpdateCollection(_splits, inputSlice.Splits);
             _dividends = (Dividends)UpdateCollection(_dividends, inputSlice.Dividends);

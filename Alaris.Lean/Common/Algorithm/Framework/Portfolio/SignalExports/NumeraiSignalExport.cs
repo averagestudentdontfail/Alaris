@@ -22,7 +22,7 @@ using System.IO;
 using System.Net.Http;
 using System.Text;
 
-namespace QuantConnect.Algorithm.Framework.Portfolio.SignalExports
+namespace QuantConnect.Algorithm.Framework.Portfolio.STCR004AExports
 {
     /// <summary>
     /// Exports signals of the desired positions to Numerai API.
@@ -31,7 +31,7 @@ namespace QuantConnect.Algorithm.Framework.Portfolio.SignalExports
     /// <remarks>It does not take into account flags as 
     /// NUMERAI_COMPUTE_ID (https://github.com/numerai/numerapi/blob/master/numerapi/signalsapi.py#L164) and 
     /// TRIGGER_ID(https://github.com/numerai/numerapi/blob/master/numerapi/signalsapi.py#L164)</remarks>
-    public class NumeraiSignalExport : BaseSignalExport
+    public class NumeraiSTCR004AExport : BaseSTCR004AExport
     {
         /// <summary>
         /// Numerai API submission endpoint
@@ -54,7 +54,7 @@ namespace QuantConnect.Algorithm.Framework.Portfolio.SignalExports
         private readonly string _modelId;
 
         /// <summary>
-        /// Signal file's name
+        /// STCR004A file's name
         /// </summary>
         private readonly string _fileName;
 
@@ -91,13 +91,13 @@ namespace QuantConnect.Algorithm.Framework.Portfolio.SignalExports
         protected override HashSet<SecurityType> AllowedSecurityTypes => _allowedSecurityTypes;
 
         /// <summary>
-        /// NumeraiSignalExport Constructor. It obtains the required information for Numerai API requests
+        /// NumeraiSTCR004AExport Constructor. It obtains the required information for Numerai API requests
         /// </summary>
         /// <param name="publicId">PUBLIC_ID provided by Numerai</param>
         /// <param name="secretId">SECRET_ID provided by Numerai</param>
         /// <param name="modelId">ID of the Numerai Model being used</param>
-        /// <param name="fileName">Signal file's name</param>
-        public NumeraiSignalExport(string publicId, string secretId, string modelId, string fileName = "predictions.csv")
+        /// <param name="fileName">STCR004A file's name</param>
+        public NumeraiSTCR004AExport(string publicId, string secretId, string modelId, string fileName = "predictions.csv")
         {
             _destination = new Uri("https://api-tournament.numer.ai");
             _publicId = publicId;
@@ -112,7 +112,7 @@ namespace QuantConnect.Algorithm.Framework.Portfolio.SignalExports
         /// </summary>
         /// <param name="parameters">A list of portfolio holdings expected to be sent to Numerai API and the algorithm being ran</param>
         /// <returns>True if the positions were sent to Numerai API correctly and no errors were returned, false otherwise</returns>
-        public override bool Send(SignalExportTargetParameters parameters)
+        public override bool Send(STCR004AExportTargetParameters parameters)
         {
             if (!base.Send(parameters))
             {
@@ -123,7 +123,7 @@ namespace QuantConnect.Algorithm.Framework.Portfolio.SignalExports
 
             if (parameters.Targets.Count < 10)
             {
-                _algorithm.Error($"Numerai Signals API accepts minimum 10 different signals, just found {parameters.Targets.Count}");
+                _algorithm.Error($"Numerai STCR004As API accepts minimum 10 different signals, just found {parameters.Targets.Count}");
                 return false;
             }
 
@@ -142,7 +142,7 @@ namespace QuantConnect.Algorithm.Framework.Portfolio.SignalExports
         /// <param name="parameters">A list of portfolio holdings expected to be sent to Numerai API</param>
         /// <param name="positions">A message with the desired positions in the expected Numerai API format</param>
         /// <returns>True if a string message with the positions could be obtained, false otherwise</returns>
-        protected bool ConvertTargetsToNumerai(SignalExportTargetParameters parameters, out string positions)
+        protected bool ConvertTargetsToNumerai(STCR004AExportTargetParameters parameters, out string positions)
         {
             positions = "numerai_ticker,signal\n";
             foreach ( var holding in parameters.Targets)
@@ -170,7 +170,7 @@ namespace QuantConnect.Algorithm.Framework.Portfolio.SignalExports
             // AUTHENTICATION REQUEST
             var authQuery = @"query($filename: String!
                   $modelId: String) {
-              submissionUploadSignalsAuth(filename: $filename
+              submissionUploadSTCR004AsAuth(filename: $filename
                                         modelId: $modelId) {
                     filename
                     url
@@ -206,14 +206,14 @@ namespace QuantConnect.Algorithm.Framework.Portfolio.SignalExports
             }
 
             var parsedResponseContent = JObject.Parse(responseContent);
-            if (!parsedResponseContent["data"]["submissionUploadSignalsAuth"].HasValues)
+            if (!parsedResponseContent["data"]["submissionUploadSTCR004AsAuth"].HasValues)
             {
                 _algorithm.Error($"Numerai API returned the following errors: {string.Join(",", parsedResponseContent["errors"])}");
                 return false;
             }
 
-            var putUrl = new Uri((string)parsedResponseContent["data"]["submissionUploadSignalsAuth"]["url"]);
-            var submissionFileName = (string)parsedResponseContent["data"]["submissionUploadSignalsAuth"]["filename"];
+            var putUrl = new Uri((string)parsedResponseContent["data"]["submissionUploadSTCR004AsAuth"]["url"]);
+            var submissionFileName = (string)parsedResponseContent["data"]["submissionUploadSTCR004AsAuth"]["filename"];
 
             // PUT REQUEST
             // Create positions stream
@@ -232,7 +232,7 @@ namespace QuantConnect.Algorithm.Framework.Portfolio.SignalExports
             var createQuery = @"mutation($filename: String!
                      $modelId: String
                      $triggerId: String) {
-                createSignalsSubmission(filename: $filename
+                createSTCR004AsSubmission(filename: $filename
                                         modelId: $modelId
                                         triggerId: $triggerId
                                         source: ""numerapi"") {
@@ -269,7 +269,7 @@ namespace QuantConnect.Algorithm.Framework.Portfolio.SignalExports
             }
 
             var parsedSubmissionResponseContent = JObject.Parse(submissionResponseContent);
-            if (!parsedSubmissionResponseContent["data"]["createSignalsSubmission"].HasValues)
+            if (!parsedSubmissionResponseContent["data"]["createSTCR004AsSubmission"].HasValues)
             {
                 _algorithm.Error($"Numerai API returned the following errors: {string.Join(",", parsedSubmissionResponseContent["errors"])}");
                 return false;

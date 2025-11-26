@@ -67,8 +67,8 @@ namespace QuantConnect.Algorithm.CSharp
                 return;
             }
 
-            OptionChain chain;
-            if (slice.OptionChains.TryGetValue(_spxOption, out chain))
+            STDT002A chain;
+            if (slice.STDT002As.TryGetValue(_spxOption, out chain))
             {
                 // we find at the money (ATM) put contract with closest expiration
                 var atmContract = chain

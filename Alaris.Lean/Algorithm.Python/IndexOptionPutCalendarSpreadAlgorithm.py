@@ -13,7 +13,7 @@
 
 from AlgorithmImports import *
 
-class IndexOptionPutCalendarSpreadAlgorithm(QCAlgorithm):
+class IndexOptionPutCA321AAlgorithm(QCAlgorithm):
 
     def initialize(self):
         self.set_start_date(2020, 1, 1)
@@ -43,7 +43,7 @@ class IndexOptionPutCalendarSpreadAlgorithm(QCAlgorithm):
         elif index_options_invested:
             return
 
-        # Get the OptionChain
+        # Get the CA311A
         chain = slice.option_chains.get(self.vixw)
         if not chain: return
 

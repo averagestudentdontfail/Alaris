@@ -33,7 +33,7 @@ namespace QuantConnect.Algorithm.CSharp
         /// </summary>
         public override void OnData(Slice slice)
         {
-            foreach (var chain in slice.OptionChains.Values)
+            foreach (var chain in slice.STDT002As.Values)
             {
                 // Select the contract with the lowest AskPrice
                 var contract = chain.Contracts.OrderBy(x => x.Value.AskPrice).FirstOrDefault().Value;

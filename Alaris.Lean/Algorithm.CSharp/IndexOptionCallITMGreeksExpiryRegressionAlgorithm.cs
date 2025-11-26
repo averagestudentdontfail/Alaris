@@ -45,7 +45,7 @@ namespace QuantConnect.Algorithm.CSharp
             _spx = spx.Symbol;
 
             // Select an index option expiring ITM, and adds it to the algorithm.
-            _spxOption = AddIndexOptionContract(OptionChain(_spx)
+            _spxOption = AddIndexOptionContract(STDT002A(_spx)
                 .Where(x => x.ID.StrikePrice <= 3200m && x.ID.OptionRight == OptionRight.Call && x.ID.Date.Year == 2021 && x.ID.Date.Month == 1)
                 .OrderByDescending(x => x.ID.StrikePrice)
                 .Take(1)
@@ -69,26 +69,26 @@ namespace QuantConnect.Algorithm.CSharp
                 return;
             }
 
-            if (slice.OptionChains.Count == 0)
+            if (slice.STDT002As.Count == 0)
             {
                 return;
             }
-            if (slice.OptionChains.Values.All(o => o.Contracts.Values.Any(c => !slice.ContainsKey(c.Symbol))))
+            if (slice.STDT002As.Values.All(o => o.Contracts.Values.Any(c => !slice.ContainsKey(c.Symbol))))
             {
                 return;
             }
-            if (slice.OptionChains.Values.First().Contracts.Count == 0)
+            if (slice.STDT002As.Values.First().Contracts.Count == 0)
             {
-                throw new RegressionTestException($"No contracts found in the option {slice.OptionChains.Keys.First()}");
+                throw new RegressionTestException($"No contracts found in the option {slice.STDT002As.Keys.First()}");
             }
 
-            var deltas = slice.OptionChains.Values.OrderByDescending(y => y.Contracts.Values.Sum(x => x.Volume)).First().Contracts.Values.Select(x => x.Greeks.Delta).ToList();
-            var gammas = slice.OptionChains.Values.OrderByDescending(y => y.Contracts.Values.Sum(x => x.Volume)).First().Contracts.Values.Select(x => x.Greeks.Gamma).ToList();
-            var lambda = slice.OptionChains.Values.OrderByDescending(y => y.Contracts.Values.Sum(x => x.Volume)).First().Contracts.Values.Select(x => x.Greeks.Lambda).ToList();
-            var rho = slice.OptionChains.Values.OrderByDescending(y => y.Contracts.Values.Sum(x => x.Volume)).First().Contracts.Values.Select(x => x.Greeks.Rho).ToList();
-            var theta = slice.OptionChains.Values.OrderByDescending(y => y.Contracts.Values.Sum(x => x.Volume)).First().Contracts.Values.Select(x => x.Greeks.Theta).ToList();
-            var impliedVol = slice.OptionChains.Values.OrderByDescending(y => y.Contracts.Values.Sum(x => x.Volume)).First().Contracts.Values.Select(x => x.ImpliedVolatility).ToList();
-            var vega = slice.OptionChains.Values.OrderByDescending(y => y.Contracts.Values.Sum(x => x.Volume)).First().Contracts.Values.Select(x => x.Greeks.Vega).ToList();
+            var deltas = slice.STDT002As.Values.OrderByDescending(y => y.Contracts.Values.Sum(x => x.Volume)).First().Contracts.Values.Select(x => x.Greeks.Delta).ToList();
+            var gammas = slice.STDT002As.Values.OrderByDescending(y => y.Contracts.Values.Sum(x => x.Volume)).First().Contracts.Values.Select(x => x.Greeks.Gamma).ToList();
+            var lambda = slice.STDT002As.Values.OrderByDescending(y => y.Contracts.Values.Sum(x => x.Volume)).First().Contracts.Values.Select(x => x.Greeks.Lambda).ToList();
+            var rho = slice.STDT002As.Values.OrderByDescending(y => y.Contracts.Values.Sum(x => x.Volume)).First().Contracts.Values.Select(x => x.Greeks.Rho).ToList();
+            var theta = slice.STDT002As.Values.OrderByDescending(y => y.Contracts.Values.Sum(x => x.Volume)).First().Contracts.Values.Select(x => x.Greeks.Theta).ToList();
+            var impliedVol = slice.STDT002As.Values.OrderByDescending(y => y.Contracts.Values.Sum(x => x.Volume)).First().Contracts.Values.Select(x => x.ImpliedVolatility).ToList();
+            var vega = slice.STDT002As.Values.OrderByDescending(y => y.Contracts.Values.Sum(x => x.Volume)).First().Contracts.Values.Select(x => x.Greeks.Vega).ToList();
 
             // The commented out test cases all return zero.
             // This is because of failure to evaluate the greeks in the option pricing model, most likely
@@ -122,7 +122,7 @@ namespace QuantConnect.Algorithm.CSharp
 
             if (!_invested)
             {
-                SetHoldings(slice.OptionChains.Values.First().Contracts.Values.First().Symbol, 1);
+                SetHoldings(slice.STDT002As.Values.First().Contracts.Values.First().Symbol, 1);
                 _invested = true;
             }
         }

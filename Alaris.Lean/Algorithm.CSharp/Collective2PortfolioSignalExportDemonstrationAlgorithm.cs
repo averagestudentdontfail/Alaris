@@ -14,7 +14,7 @@
 */
 
 using System;
-using QuantConnect.Algorithm.Framework.Portfolio.SignalExports;
+using QuantConnect.Algorithm.Framework.Portfolio.STCR004AExports;
 using QuantConnect.Data;
 using QuantConnect.Indicators;
 using QuantConnect.Interfaces;
@@ -29,7 +29,7 @@ namespace QuantConnect.Algorithm.CSharp
     /// <meta name="tag" content="using data" />
     /// <meta name="tag" content="using quantconnect" />
     /// <meta name="tag" content="securities and portfolio" />
-    public class Collective2PortfolioSignalExportDemonstrationAlgorithm : QCAlgorithm, IRegressionAlgorithmDefinition
+    public class Collective2PortfolioSTCR004AExportDemonstrationAlgorithm : QCAlgorithm, IRegressionAlgorithmDefinition
     {
         /// <summary>
         /// Collective2 APIv4 KEY: This value is provided by Collective2 in their webpage in your account section (See https://collective2.com/account-info)
@@ -81,9 +81,9 @@ namespace QuantConnect.Algorithm.CSharp
             _emaFastIsNotSet = true;
 
             // Disable automatic exports as we manually set them
-            SignalExport.AutomaticExportTimeSpan = null;
+            STCR004AExport.AutomaticExportTimeSpan = null;
             // Set Collective2 signal export provider
-            SignalExport.AddSignalExportProvider(new Collective2SignalExport(_collective2ApiKey, _collective2SystemId));
+            STCR004AExport.AddSTCR004AExportProvider(new Collective2STCR004AExport(_collective2ApiKey, _collective2SystemId));
 
             SetWarmUp(100);
         }
@@ -102,7 +102,7 @@ namespace QuantConnect.Algorithm.CSharp
             if (_firstCall)
             {
                 SetHoldings("SPY", 0.1);
-                SignalExport.SetTargetPortfolioFromPortfolio();
+                STCR004AExport.SetTargetPortfolioFromPortfolio();
                 _firstCall = false;
             }
 
@@ -126,12 +126,12 @@ namespace QuantConnect.Algorithm.CSharp
             if ((_fast > _slow * 1.001m) && (!_emaFastWasAbove))
             {
                 SetHoldings("SPY", 0.1);
-                SignalExport.SetTargetPortfolioFromPortfolio();
+                STCR004AExport.SetTargetPortfolioFromPortfolio();
             }
             else if ((_fast < _slow * 0.999m) && (_emaFastWasAbove))
             {
                 SetHoldings("SPY", 0.01);
-                SignalExport.SetTargetPortfolioFromPortfolio();
+                STCR004AExport.SetTargetPortfolioFromPortfolio();
             }
         }
 

@@ -83,7 +83,7 @@ from QuantConnect.Algorithm.Framework.Alphas import *
 from QuantConnect.Algorithm.Framework.Execution import *
 from QuantConnect.Algorithm.Framework.Portfolio import *
 from QuantConnect.Indicators.CandlestickPatterns import *
-from QuantConnect.Algorithm.Framework.Portfolio.SignalExports import *
+from QuantConnect.Algorithm.Framework.Portfolio.CA110AExports import *
 from QuantConnect.Algorithm.Framework.Selection import *
 
 try:

@@ -24,11 +24,11 @@ using QuantConnect.Securities;
 namespace QuantConnect.Algorithm.CSharp
 {
     /// <summary>
-    /// Regression algorithm illustrating the usage of the <see cref="QCAlgorithm.OptionChain(Symbol)"/> method
+    /// Regression algorithm illustrating the usage of the <see cref="QCAlgorithm.STDT002A(Symbol)"/> method
     /// to get an option chain, which contains additional data besides the symbols, including prices, implied volatility and greeks.
     /// It also shows how this data can be used to filter the contracts based on certain criteria.
     /// </summary>
-    public class OptionChainFullDataRegressionAlgorithm : QCAlgorithm, IRegressionAlgorithmDefinition
+    public class STDT002AFullDataRegressionAlgorithm : QCAlgorithm, IRegressionAlgorithmDefinition
     {
         private Symbol _optionContract;
 
@@ -40,7 +40,7 @@ namespace QuantConnect.Algorithm.CSharp
 
             var goog = AddEquity("GOOG").Symbol;
 
-            _optionContract = OptionChain(goog)
+            _optionContract = STDT002A(goog)
                 // Get contracts expiring within 10 days, with an implied volatility greater than 0.5 and a delta less than 0.5
                 .Where(contractData => contractData.ID.Date - Time <= TimeSpan.FromDays(10) &&
                     contractData.ImpliedVolatility > 0.5m &&

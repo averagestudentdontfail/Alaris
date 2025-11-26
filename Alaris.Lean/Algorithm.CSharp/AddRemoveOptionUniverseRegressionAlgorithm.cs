@@ -30,7 +30,7 @@ namespace QuantConnect.Algorithm.CSharp
     {
         private const string UnderlyingTicker = "GOOG";
         private readonly Symbol Underlying = QuantConnect.Symbol.Create(UnderlyingTicker, SecurityType.Equity, Market.USA);
-        private readonly Symbol OptionChainSymbol = QuantConnect.Symbol.Create(UnderlyingTicker, SecurityType.Option, Market.USA);
+        private readonly Symbol STDT002ASymbol = QuantConnect.Symbol.Create(UnderlyingTicker, SecurityType.Option, Market.USA);
         private readonly HashSet<Symbol> _expectedSecurities = new HashSet<Symbol>();
         private readonly HashSet<Symbol> _expectedData = new HashSet<Symbol>();
         private readonly HashSet<Symbol> _expectedUniverses = new HashSet<Symbol>();
@@ -63,11 +63,11 @@ namespace QuantConnect.Algorithm.CSharp
         public override void OnData(Slice slice)
         {
             // verify expectations
-            if (SubscriptionManager.Subscriptions.Count(x => x.Symbol == OptionChainSymbol)
+            if (SubscriptionManager.Subscriptions.Count(x => x.Symbol == STDT002ASymbol)
                 != (_expectUniverseSubscription ? 1 : 0))
             {
                 Log($"SubscriptionManager.Subscriptions:  {string.Join(" -- ", SubscriptionManager.Subscriptions)}");
-                throw new RegressionTestException($"Unexpected {OptionChainSymbol} subscription presence");
+                throw new RegressionTestException($"Unexpected {STDT002ASymbol} subscription presence");
             }
             if (Time != _universeSubscriptionTime && !slice.ContainsKey(Underlying))
             {
@@ -102,13 +102,13 @@ namespace QuantConnect.Algorithm.CSharp
             // 10AM add GOOG option chain
             if (Time.TimeOfDay.Hours == 10 && Time.TimeOfDay.Minutes == 0 && !_expectUniverseSubscription)
             {
-                if (Securities.ContainsKey(OptionChainSymbol))
+                if (Securities.ContainsKey(STDT002ASymbol))
                 {
                     throw new RegressionTestException("The option chain security should not have been added yet");
                 }
 
-                var googOptionChain = AddOption(UnderlyingTicker);
-                googOptionChain.SetFilter(u =>
+                var googSTDT002A = AddOption(UnderlyingTicker);
+                googSTDT002A.SetFilter(u =>
                 {
                     // we added the universe at 10, the universe selection data should not be from before
                     if (u.LocalTime.Hour < 10)
@@ -122,8 +122,8 @@ namespace QuantConnect.Algorithm.CSharp
                         .Contracts(c => c.Where(s => s.ID.OptionRight == OptionRight.Put));
                 });
 
-                _expectedSecurities.Add(OptionChainSymbol);
-                _expectedUniverses.Add(OptionChainSymbol);
+                _expectedSecurities.Add(STDT002ASymbol);
+                _expectedUniverses.Add(STDT002ASymbol);
                 _expectUniverseSubscription = true;
                 _universeSubscriptionTime = Time;
             }
@@ -131,12 +131,12 @@ namespace QuantConnect.Algorithm.CSharp
             // 11:30AM remove GOOG option chain
             if (Time.TimeOfDay.Hours == 11 && Time.TimeOfDay.Minutes == 30)
             {
-                RemoveSecurity(OptionChainSymbol);
+                RemoveSecurity(STDT002ASymbol);
                 // remove contracts from expected data
                 _expectedData.RemoveWhere(s => _expectedContracts.Contains(s));
                 // remove option chain universe from expected universes
-                _expectedUniverses.Remove(OptionChainSymbol);
-                // OptionChainSymbol universe subscription should not be present
+                _expectedUniverses.Remove(STDT002ASymbol);
+                // STDT002ASymbol universe subscription should not be present
                 _expectUniverseSubscription = false;
             }
         }

@@ -37,7 +37,7 @@ namespace QuantConnect.Algorithm.CSharp
 
             var equity = AddEquity("GOOG");
 
-            _optionSymbol = OptionChain(equity.Symbol)
+            _optionSymbol = STDT002A(equity.Symbol)
                 .OrderBy(x => x.ID.StrikePrice)
                 .ThenByDescending(x => x.ID.Date)
                 .First(optionContract => optionContract.ID.OptionRight == OptionRight.Call);

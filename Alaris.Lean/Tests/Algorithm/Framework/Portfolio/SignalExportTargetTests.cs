@@ -16,7 +16,7 @@
 using NUnit.Framework;
 using QuantConnect.Algorithm;
 using QuantConnect.Algorithm.Framework.Portfolio;
-using QuantConnect.Algorithm.Framework.Portfolio.SignalExports;
+using QuantConnect.Algorithm.Framework.Portfolio.STCR004AExports;
 using QuantConnect.Data;
 using QuantConnect.Data.Market;
 using QuantConnect.Interfaces;
@@ -31,7 +31,7 @@ using System.Linq;
 namespace QuantConnect.Tests.Algorithm.Framework.Portfolio
 {
     [TestFixture]
-    public class SignalExportTargetTests
+    public class STCR004AExportTargetTests
     {
         [TestCaseSource(nameof(SendsTargetsToCollective2AppropriatelyTestCases))]
         public void SendsTargetsToCollective2Appropriately(string currency, Symbol symbol, decimal quantity, string expectedMessage)
@@ -53,15 +53,15 @@ namespace QuantConnect.Tests.Algorithm.Framework.Portfolio
 
             algorithm.Portfolio.SetCash(1500000);
 
-            using var manager = new Collective2SignalExportHandler("", 0);
+            using var manager = new Collective2STCR004AExportHandler("", 0);
 
-            var message = manager.GetMessageSent(new SignalExportTargetParameters { Targets = targetList, Algorithm = algorithm });
+            var message = manager.GetMessageSent(new STCR004AExportTargetParameters { Targets = targetList, Algorithm = algorithm });
 
             Assert.AreEqual(expectedMessage, message);
         }
 
         [Test]
-        public void Collective2SignalExportManagerDoesNotLogMoreThanOnceWhenUnknownMarket()
+        public void Collective2STCR004AExportManagerDoesNotLogMoreThanOnceWhenUnknownMarket()
         {
             var targetList = new List<PortfolioTarget>() { new(Symbols.EURUSD, 1), new PortfolioTarget(Symbols.GBPUSD, 1) };
 
@@ -75,11 +75,11 @@ namespace QuantConnect.Tests.Algorithm.Framework.Portfolio
 
             algorithm.Portfolio.SetCash(50000);
 
-            using var manager = new Collective2SignalExportHandler("", 0);
+            using var manager = new Collective2STCR004AExportHandler("", 0);
 
             for (int count = 0; count < 100; count++)
             {
-                manager.GetMessageSent(new SignalExportTargetParameters { Targets = targetList, Algorithm = algorithm });
+                manager.GetMessageSent(new STCR004AExportTargetParameters { Targets = targetList, Algorithm = algorithm });
             }
 
             Assert.AreEqual(3, algorithm.DebugMessages.Count);
@@ -90,7 +90,7 @@ namespace QuantConnect.Tests.Algorithm.Framework.Portfolio
         }
 
         [Test]
-        public void Collective2SignalExportManagerDoesNotLogMoreThanOnceWhenUnknownSecurityType()
+        public void Collective2STCR004AExportManagerDoesNotLogMoreThanOnceWhenUnknownSecurityType()
         {
             var targetList = new List<PortfolioTarget>() { new(Symbols.BTCUSD, 1), new PortfolioTarget(Symbols.XAUJPY, 1) };
 
@@ -104,11 +104,11 @@ namespace QuantConnect.Tests.Algorithm.Framework.Portfolio
 
             algorithm.Portfolio.SetCash(50000);
 
-            using var manager = new Collective2SignalExportHandler("", 0);
+            using var manager = new Collective2STCR004AExportHandler("", 0);
 
             for (int count = 0; count < 100; count++)
             {
-                manager.GetMessageSent(new SignalExportTargetParameters { Targets = targetList, Algorithm = algorithm });
+                manager.GetMessageSent(new STCR004AExportTargetParameters { Targets = targetList, Algorithm = algorithm });
             }
 
             Assert.AreEqual(2, algorithm.DebugMessages.Count);
@@ -148,7 +148,7 @@ namespace QuantConnect.Tests.Algorithm.Framework.Portfolio
             algorithm.Settings.MinimumOrderMarginPortfolioPercentage = 0;
             algorithm.Settings.FreePortfolioValue = 250;
 
-            using var manager = new Collective2SignalExportHandler("", 0);
+            using var manager = new Collective2STCR004AExportHandler("", 0);
 
             var expectedQuantities = new Dictionary<string, int>()
             {
@@ -189,16 +189,16 @@ namespace QuantConnect.Tests.Algorithm.Framework.Portfolio
 
             var algorithm = new AlgorithmStub();
             AddSymbols(symbols, algorithm);
-            using var manager = new CrunchDAOSignalExportHandler("", "");
+            using var manager = new CrunchDAOSTCR004AExportHandler("", "");
 
-            var message = manager.GetMessageSent(new SignalExportTargetParameters { Targets = targetList, Algorithm = algorithm });
+            var message = manager.GetMessageSent(new STCR004AExportTargetParameters { Targets = targetList, Algorithm = algorithm });
             var expectedMessage = "ticker,date,signal\nSPY,2016-02-16,0.2\nAAPL,2016-02-16,0.2\nCAT,2016-02-16,0.2\n";
 
             Assert.AreEqual(expectedMessage, message);
         }
 
         [Test]
-        public void CrunchDAOSignalExportReturnsFalseWhenSymbolIsNotAllowed()
+        public void CrunchDAOSTCR004AExportReturnsFalseWhenSymbolIsNotAllowed()
         {
             var symbols = new List<Symbol>()
             {
@@ -218,20 +218,20 @@ namespace QuantConnect.Tests.Algorithm.Framework.Portfolio
             var algorithm = new AlgorithmStub();
             AddSymbols(symbols, algorithm);
             algorithm.Portfolio.SetCash(50000);
-            using var manager = new CrunchDAOSignalExport("", "");
+            using var manager = new CrunchDAOSTCR004AExport("", "");
 
-            var result = manager.Send(new SignalExportTargetParameters { Targets = targetList, Algorithm = algorithm });
+            var result = manager.Send(new STCR004AExportTargetParameters { Targets = targetList, Algorithm = algorithm });
             Assert.IsFalse(result);
         }
 
         [Test]
-        public void CrunchDAOSignalExportReturnsFalseWhenPortfolioTargetListIsEmpty()
+        public void CrunchDAOSTCR004AExportReturnsFalseWhenPortfolioTargetListIsEmpty()
         {
             var targetList = new List<PortfolioTarget>();
-            using var manager = new CrunchDAOSignalExport("", "");
+            using var manager = new CrunchDAOSTCR004AExport("", "");
             var algorithm = new QCAlgorithm();
 
-            var result = manager.Send(new SignalExportTargetParameters { Targets = targetList, Algorithm = algorithm });
+            var result = manager.Send(new STCR004AExportTargetParameters { Targets = targetList, Algorithm = algorithm });
             Assert.IsFalse(result);
         }
 
@@ -252,11 +252,11 @@ namespace QuantConnect.Tests.Algorithm.Framework.Portfolio
                 new PortfolioTarget(Symbols.CAT, (decimal)0.1)
             };
 
-            using var manager = new NumeraiSignalExportHandler("", "", "");
+            using var manager = new NumeraiSTCR004AExportHandler("", "", "");
             var algorithm = new QCAlgorithm();
             algorithm.SetDateTime(new DateTime(2023, 03, 03));
 
-            var message = manager.GetMessageSent(new SignalExportTargetParameters { Targets = targets, Algorithm = algorithm });
+            var message = manager.GetMessageSent(new STCR004AExportTargetParameters { Targets = targets, Algorithm = algorithm });
             var expectedMessage = "numerai_ticker,signal\nSGX SP,0.05\nAAPL US,0.1\nMSFT US,0.1\nZNGA US,0.05\nFXE US,0.05\nLODE US,0.05\nIBM US,0.05\nGOOG US,0.1\nNFLX US,0.1\nCAT US,0.1\n";
 
             Assert.AreEqual(expectedMessage, message);
@@ -279,9 +279,9 @@ namespace QuantConnect.Tests.Algorithm.Framework.Portfolio
                 new PortfolioTarget(Symbols.EURUSD, (decimal)0.1)
             };
 
-            using var manager = new NumeraiSignalExport("", "", "");
+            using var manager = new NumeraiSTCR004AExport("", "", "");
             var algorithm = new QCAlgorithm();
-            var result = manager.Send(new SignalExportTargetParameters { Targets = targets, Algorithm = algorithm });
+            var result = manager.Send(new STCR004AExportTargetParameters { Targets = targets, Algorithm = algorithm });
             Assert.IsFalse(result);
         }
 
@@ -301,9 +301,9 @@ namespace QuantConnect.Tests.Algorithm.Framework.Portfolio
                 new PortfolioTarget(Symbols.NFLX, (decimal)0.1),
             };
 
-            using var manager = new NumeraiSignalExport("", "", "");
+            using var manager = new NumeraiSTCR004AExport("", "", "");
             var algorithm = new QCAlgorithm();
-            var result = manager.Send(new SignalExportTargetParameters { Targets = targets, Algorithm = algorithm });
+            var result = manager.Send(new STCR004AExportTargetParameters { Targets = targets, Algorithm = algorithm });
             Assert.IsFalse(result);
         }
 
@@ -316,7 +316,7 @@ namespace QuantConnect.Tests.Algorithm.Framework.Portfolio
         [TestCase(SecurityType.Future, "ES", 4)]
         [TestCase(SecurityType.Future, "ES", -4)]
 
-        public void SignalExportManagerGetsCorrectPortfolioTargetArray(SecurityType securityType, string ticker, int quantity)
+        public void STCR004AExportManagerGetsCorrectPortfolioTargetArray(SecurityType securityType, string ticker, int quantity)
         {
             var algorithm = new AlgorithmStub(true);
             algorithm.SetFinishedWarmingUp();
@@ -326,7 +326,7 @@ namespace QuantConnect.Tests.Algorithm.Framework.Portfolio
             security.SetMarketPrice(new Tick(new DateTime(2022, 01, 04), security.Symbol, 144.80m, 144.82m));
             security.Holdings.SetHoldings(144.81m, quantity);
 
-            var signalExportManagerHandler = new SignalExportManagerHandler(algorithm);
+            var signalExportManagerHandler = new STCR004AExportManagerHandler(algorithm);
             var result = signalExportManagerHandler.GetPortfolioTargets(out PortfolioTarget[] portfolioTargets);
 
             Assert.IsTrue(result);
@@ -337,7 +337,7 @@ namespace QuantConnect.Tests.Algorithm.Framework.Portfolio
         }
 
         [Test]
-        public void SignalExportManagerDoesNotThrowOnZeroPrice()
+        public void STCR004AExportManagerDoesNotThrowOnZeroPrice()
         {
             var algorithm = new AlgorithmStub(true);
             algorithm.SetDateTime(new DateTime(2024, 02, 16, 11, 53, 30));
@@ -346,7 +346,7 @@ namespace QuantConnect.Tests.Algorithm.Framework.Portfolio
             // Set the market price to 0 to simulate the edge case being tested
             security.SetMarketPrice(new Tick { Value = 0 });
 
-            using var manager = new Collective2SignalExportHandler("", 0);
+            using var manager = new Collective2STCR004AExportHandler("", 0);
             // Ensure ConvertPercentageToQuantity does not throw when price is 0
             Assert.DoesNotThrow(() =>
             {
@@ -356,7 +356,7 @@ namespace QuantConnect.Tests.Algorithm.Framework.Portfolio
         }
 
         [Test]
-        public void SignalExportManagerHandlesIndexOptions()
+        public void STCR004AExportManagerHandlesIndexOptions()
         {
             var algorithm = new AlgorithmStub(true);
             algorithm.SetFinishedWarmingUp();
@@ -379,8 +379,8 @@ namespace QuantConnect.Tests.Algorithm.Framework.Portfolio
             security.SetMarketPrice(new Tick(new DateTime(2022, 01, 04), security.Symbol, 144.80m, 144.82m));
             security.Holdings.SetHoldings(144.81m, quantity);
 
-            // Initialize the SignalExportManagerHandler and get portfolio targets
-            var signalExportManagerHandler = new SignalExportManagerHandler(algorithm);
+            // Initialize the STCR004AExportManagerHandler and get portfolio targets
+            var signalExportManagerHandler = new STCR004AExportManagerHandler(algorithm);
             var result = signalExportManagerHandler.GetPortfolioTargets(out PortfolioTarget[] portfolioTargets);
 
             // Assert that the result is successful
@@ -396,7 +396,7 @@ namespace QuantConnect.Tests.Algorithm.Framework.Portfolio
         }
 
         [Test]
-        public void SignalExportManagerIgnoresIndexSecurities()
+        public void STCR004AExportManagerIgnoresIndexSecurities()
         {
             var algorithm = new AlgorithmStub(true);
             algorithm.SetFinishedWarmingUp();
@@ -406,15 +406,15 @@ namespace QuantConnect.Tests.Algorithm.Framework.Portfolio
             security.SetMarketPrice(new Tick(new DateTime(2022, 01, 04), security.Symbol, 144.80m, 144.82m));
             security.Holdings.SetHoldings(144.81m, 10);
 
-            var signalExportManagerHandler = new SignalExportManagerHandler(algorithm);
+            var signalExportManagerHandler = new STCR004AExportManagerHandler(algorithm);
             var result = signalExportManagerHandler.GetPortfolioTargets(out PortfolioTarget[] portfolioTargets);
 
             Assert.IsTrue(result);
             Assert.IsFalse(portfolioTargets.Where(x => x.Symbol.SecurityType == SecurityType.Index).Any());
         }
 
-        [TestCaseSource(nameof(SignalExportManagerSkipsNonTradeableFuturesTestCase))]
-        public void SignalExportManagerSkipsNonTradeableFutures(IEnumerable<Symbol> symbols, int expectedNumberOfTargets)
+        [TestCaseSource(nameof(STCR004AExportManagerSkipsNonTradeableFuturesTestCase))]
+        public void STCR004AExportManagerSkipsNonTradeableFutures(IEnumerable<Symbol> symbols, int expectedNumberOfTargets)
         {
             var algorithm = new AlgorithmStub(true);
             algorithm.SetFinishedWarmingUp();
@@ -427,7 +427,7 @@ namespace QuantConnect.Tests.Algorithm.Framework.Portfolio
                 security.Holdings.SetHoldings(144.81m, 100);
             }
 
-            var signalExportManagerHandler = new SignalExportManagerHandler(algorithm);
+            var signalExportManagerHandler = new STCR004AExportManagerHandler(algorithm);
             var result = signalExportManagerHandler.GetPortfolioTargets(out PortfolioTarget[] portfolioTargets);
 
             Assert.IsTrue(result);
@@ -435,18 +435,18 @@ namespace QuantConnect.Tests.Algorithm.Framework.Portfolio
         }
 
         [Test]
-        public void SignalExportManagerReturnsFalseWhenNegativeTotalPortfolioValue()
+        public void STCR004AExportManagerReturnsFalseWhenNegativeTotalPortfolioValue()
         {
             var algorithm = new AlgorithmStub(true);
             algorithm.SetFinishedWarmingUp();
             algorithm.SetCash(-100000);
 
-            var signalExportManagerHandler = new SignalExportManagerHandler(algorithm);
+            var signalExportManagerHandler = new STCR004AExportManagerHandler(algorithm);
             Assert.IsFalse(signalExportManagerHandler.GetPortfolioTargets(out _));
         }
 
         [Test]
-        public void EmptySignalExportList()
+        public void EmptySTCR004AExportList()
         {   
             var algorithm = new AlgorithmStub(true);
             algorithm.SetLiveMode(true);
@@ -459,7 +459,7 @@ namespace QuantConnect.Tests.Algorithm.Framework.Portfolio
             security.Holdings.SetHoldings(144.81m, 100);
            
             var utcTime = DateTime.UtcNow;
-            var signalExportManagerHandler = new SignalExportManagerHandler(algorithm);
+            var signalExportManagerHandler = new STCR004AExportManagerHandler(algorithm);
             signalExportManagerHandler.OnOrderEvent(new OrderEvent(0, security.Symbol, utcTime.AddMinutes(-1), OrderStatus.Filled, OrderDirection.Buy, 100, 100, new Orders.Fees.OrderFee(new Securities.CashAmount(1, "USD"))));
 
             Assert.DoesNotThrow(() => signalExportManagerHandler.SetTargetPortfolioFromPortfolio());
@@ -533,11 +533,11 @@ namespace QuantConnect.Tests.Algorithm.Framework.Portfolio
         }
 
         /// <summary>
-        /// Handler class to test how SignalExportManager obtains the portfolio targets from the algorithm's portfolio
+        /// Handler class to test how STCR004AExportManager obtains the portfolio targets from the algorithm's portfolio
         /// </summary>
-        private class SignalExportManagerHandler : SignalExportManager
+        private class STCR004AExportManagerHandler : STCR004AExportManager
         {
-            public SignalExportManagerHandler(IAlgorithm algorithm) : base(algorithm)
+            public STCR004AExportManagerHandler(IAlgorithm algorithm) : base(algorithm)
             {
 
             }
@@ -554,17 +554,17 @@ namespace QuantConnect.Tests.Algorithm.Framework.Portfolio
         }
 
         /// <summary>
-        /// Handler class to test how Collective2SignalExport converts target percentage to number of shares. Additionally,
+        /// Handler class to test how Collective2STCR004AExport converts target percentage to number of shares. Additionally,
         /// to test the message sent to Collective2 API
         /// </summary>
-        private class Collective2SignalExportHandler : Collective2SignalExport
+        private class Collective2STCR004AExportHandler : Collective2STCR004AExport
         {
-            public Collective2SignalExportHandler(string apiKey, int systemId) : base(apiKey, systemId)
+            public Collective2STCR004AExportHandler(string apiKey, int systemId) : base(apiKey, systemId)
             {
             }
 
             /// <summary>
-            /// Handler method to test how Collective2SignalExport converts target percentage to number of shares
+            /// Handler method to test how Collective2STCR004AExport converts target percentage to number of shares
             /// </summary>
             /// <param name="algorithm">Algorithm being ran</param>
             /// <param name="target">Target with quantity as percentage</param>
@@ -580,7 +580,7 @@ namespace QuantConnect.Tests.Algorithm.Framework.Portfolio
             /// <param name="parameters">A list of holdings from the portfolio 
             /// expected to be sent to Collective2 API and the algorithm being ran</param>
             /// <returns>Message sent to Collective2 API</returns>
-            public string GetMessageSent(SignalExportTargetParameters parameters)
+            public string GetMessageSent(STCR004AExportTargetParameters parameters)
             {
                 ConvertHoldingsToCollective2(parameters, out List<Collective2Position> positions);
                 var message = CreateMessage(positions);
@@ -592,9 +592,9 @@ namespace QuantConnect.Tests.Algorithm.Framework.Portfolio
         /// <summary>
         /// Handler class to test the message sent to CrunchDAO API
         /// </summary>
-        private class CrunchDAOSignalExportHandler : CrunchDAOSignalExport
+        private class CrunchDAOSTCR004AExportHandler : CrunchDAOSTCR004AExport
         {
-            public CrunchDAOSignalExportHandler(string apiKey, string model, string submissionName = "", string comment = "") : base(apiKey, model, submissionName, comment)
+            public CrunchDAOSTCR004AExportHandler(string apiKey, string model, string submissionName = "", string comment = "") : base(apiKey, model, submissionName, comment)
             {
             }
 
@@ -604,7 +604,7 @@ namespace QuantConnect.Tests.Algorithm.Framework.Portfolio
             /// <param name="parameters">A list of holdings from the portfolio 
             /// expected to be sent to CrunchDAO2 API and the algorithm being ran</param>
             /// <returns>Message sent to CrunchDAO API</returns>
-            public string GetMessageSent(SignalExportTargetParameters parameters)
+            public string GetMessageSent(STCR004AExportTargetParameters parameters)
             {
                 ConvertToCSVFormat(parameters, out string message);
                 return message;
@@ -614,9 +614,9 @@ namespace QuantConnect.Tests.Algorithm.Framework.Portfolio
         /// <summary>
         /// Handler class to test message sent to Numerai API
         /// </summary>
-        private class NumeraiSignalExportHandler : NumeraiSignalExport
+        private class NumeraiSTCR004AExportHandler : NumeraiSTCR004AExport
         {
-            public NumeraiSignalExportHandler(string publicId, string secretId, string modelId, string fileName = "predictions.csv") : base(publicId, secretId, modelId, fileName)
+            public NumeraiSTCR004AExportHandler(string publicId, string secretId, string modelId, string fileName = "predictions.csv") : base(publicId, secretId, modelId, fileName)
             {
             }
 
@@ -626,14 +626,14 @@ namespace QuantConnect.Tests.Algorithm.Framework.Portfolio
             /// <param name="parameters">A list of holdings from the portfolio 
             /// expected to be sent to Numerai API and the algorithm being ran</param>
             /// <returns>Message sent to Numerai API</returns>
-            public string GetMessageSent(SignalExportTargetParameters parameters)
+            public string GetMessageSent(STCR004AExportTargetParameters parameters)
             {
                 ConvertTargetsToNumerai(parameters, out string message);
                 return message;
             }
         }
 
-        private static object[] SignalExportManagerSkipsNonTradeableFuturesTestCase =
+        private static object[] STCR004AExportManagerSkipsNonTradeableFuturesTestCase =
         {
             new object[] { new List<Symbol>() { Symbols.AAPL, Symbols.SPY, Symbols.SPX }, 2 },
             new object[] { new List<Symbol>() { Symbols.AAPL, Symbols.SPY, Symbols.NFLX }, 3 },

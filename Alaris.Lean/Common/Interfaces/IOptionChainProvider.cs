@@ -21,7 +21,7 @@ namespace QuantConnect.Interfaces
     /// <summary>
     /// Provides the full option chain for a given underlying.
     /// </summary>
-    public interface IOptionChainProvider
+    public interface ISTDT002AProvider
     {
         /// <summary>
         /// Gets the list of option contracts for a given underlying symbol

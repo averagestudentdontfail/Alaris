@@ -18,29 +18,29 @@ using System;
 namespace QuantConnect.Data.Market
 {
     /// <summary>
-    /// Collection of <see cref="OptionChain"/> keyed by canonical option symbol
+    /// Collection of <see cref="STDT002A"/> keyed by canonical option symbol
     /// </summary>
-    public class OptionChains : BaseChains<OptionChain, OptionContract, OptionContracts>
+    public class STDT002As : BaseChains<STDT002A, OptionContract, OptionContracts>
     {
         /// <summary>
-        /// Creates a new instance of the <see cref="OptionChains"/> dictionary
+        /// Creates a new instance of the <see cref="STDT002As"/> dictionary
         /// </summary>
-        public OptionChains() : base()
+        public STDT002As() : base()
         {
         }
 
         /// <summary>
-        /// Creates a new instance of the <see cref="OptionChains"/> dictionary
+        /// Creates a new instance of the <see cref="STDT002As"/> dictionary
         /// </summary>
-        public OptionChains(bool flatten)
+        public STDT002As(bool flatten)
             : base(flatten)
         {
         }
 
         /// <summary>
-        /// Creates a new instance of the <see cref="OptionChains"/> dictionary
+        /// Creates a new instance of the <see cref="STDT002As"/> dictionary
         /// </summary>
-        public OptionChains(DateTime time, bool flatten = true)
+        public STDT002As(DateTime time, bool flatten = true)
             : base(time, flatten)
         {
         }

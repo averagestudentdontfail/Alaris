@@ -379,7 +379,7 @@ namespace QuantConnect.Interfaces
         /// <summary>
         /// Gets the option chain provider, used to get the list of option contracts for an underlying symbol
         /// </summary>
-        IOptionChainProvider OptionChainProvider
+        ISTDT002AProvider STDT002AProvider
         {
             get;
         }
@@ -865,7 +865,7 @@ namespace QuantConnect.Interfaces
         /// Sets the option chain provider, used to get the list of option contracts for an underlying symbol
         /// </summary>
         /// <param name="optionChainProvider">The option chain provider</param>
-        void SetOptionChainProvider(IOptionChainProvider optionChainProvider);
+        void SetSTDT002AProvider(ISTDT002AProvider optionChainProvider);
 
         /// <summary>
         /// Sets the future chain provider, used to get the list of future contracts for an underlying symbol

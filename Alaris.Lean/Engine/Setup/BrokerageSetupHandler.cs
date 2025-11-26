@@ -253,16 +253,16 @@ namespace QuantConnect.Lean.Engine.Setup
                         //Set the source impl for the event scheduling
                         algorithm.Schedule.SetEventSchedule(parameters.RealTimeHandler);
 
-                        var optionChainProvider = Composer.Instance.GetPart<IOptionChainProvider>();
+                        var optionChainProvider = Composer.Instance.GetPart<ISTDT002AProvider>();
                         if (optionChainProvider == null)
                         {
-                            var baseOptionChainProvider = new LiveOptionChainProvider();
-                            baseOptionChainProvider.Initialize(new(parameters.MapFileProvider, algorithm.HistoryProvider));
-                            optionChainProvider = new CachingOptionChainProvider(baseOptionChainProvider);
+                            var baseSTDT002AProvider = new LiveSTDT002AProvider();
+                            baseSTDT002AProvider.Initialize(new(parameters.MapFileProvider, algorithm.HistoryProvider));
+                            optionChainProvider = new CachingSTDT002AProvider(baseSTDT002AProvider);
                             Composer.Instance.AddPart(optionChainProvider);
                         }
                         // set the option chain provider
-                        algorithm.SetOptionChainProvider(optionChainProvider);
+                        algorithm.SetSTDT002AProvider(optionChainProvider);
 
                         var futureChainProvider = Composer.Instance.GetPart<IFutureChainProvider>();
                         if (futureChainProvider == null)

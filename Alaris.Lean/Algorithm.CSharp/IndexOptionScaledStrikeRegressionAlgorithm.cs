@@ -51,7 +51,7 @@ namespace QuantConnect.Algorithm.CSharp
 
         public override void OnData(Slice slice)
         {
-            var weekly_chain = slice.OptionChains.get(_nqx);
+            var weekly_chain = slice.STDT002As.get(_nqx);
 
             if (!weekly_chain.IsNullOrEmpty() && !Portfolio.Invested)
             {

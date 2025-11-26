@@ -215,15 +215,15 @@ public static class Program
         var mapFileProvider = Composer.Instance.GetExportedValueByTypeName<IMapFileProvider>(Config.Get("map-file-provider", "LocalDiskMapFileProvider"));
         var factorFileProvider = Composer.Instance.GetExportedValueByTypeName<IFactorFileProvider>(Config.Get("factor-file-provider", "LocalDiskFactorFileProvider"));
 
-        var optionChainProvider = Composer.Instance.GetPart<IOptionChainProvider>();
+        var optionChainProvider = Composer.Instance.GetPart<ISTDT002AProvider>();
         if (optionChainProvider == null)
         {
             var historyManager = Composer.Instance.GetExportedValueByTypeName<HistoryProviderManager>(nameof(HistoryProviderManager));
             historyManager.Initialize(new HistoryProviderInitializeParameters(null, null, dataProvider, _dataCacheProvider,
                 mapFileProvider, factorFileProvider, _ => { }, false, new DataPermissionManager(), null, new AlgorithmSettings()));
-            var baseOptionChainProvider = new LiveOptionChainProvider();
-            baseOptionChainProvider.Initialize(new(mapFileProvider, historyManager));
-            optionChainProvider = new CachingOptionChainProvider(baseOptionChainProvider);
+            var baseSTDT002AProvider = new LiveSTDT002AProvider();
+            baseSTDT002AProvider.Initialize(new(mapFileProvider, historyManager));
+            optionChainProvider = new CachingSTDT002AProvider(baseSTDT002AProvider);
             Composer.Instance.AddPart(optionChainProvider);
         }
 

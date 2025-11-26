@@ -1587,7 +1587,7 @@ def RunTest():
     compoundingFrequency = ql.Annual
     spotCurve = ql.ZeroCurve(spotDates, spotRates, dayCount, calendar, interpolation,
                                 compounding, compoundingFrequency)
-    return ql.YieldTermStructureHandle(spotCurve)"
+    return ql.YieldSTTM001AHandle(spotCurve)"
             );
         }
 

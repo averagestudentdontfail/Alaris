@@ -21,12 +21,12 @@ from OptionStrategyFactoryMethodsBaseAlgorithm import *
 ### This algorithm demonstrate how to use OptionStrategies helper class to batch send orders for common strategies.
 ### In this case, the algorithm tests the Put Calendar Spread and Short Put Calendar Spread strategies.
 ### </summary>
-class LongAndShortPutCalendarSpreadStrategiesAlgorithm(OptionStrategyFactoryMethodsBaseAlgorithm):
+class LongAndShortPutCA321AStrategiesAlgorithm(OptionStrategyFactoryMethodsBaseAlgorithm):
 
     def expected_orders_count(self) -> int:
         return 4
 
-    def trade_strategy(self, chain: OptionChain, option_symbol: Symbol) -> None:
+    def trade_strategy(self, chain: CA311A, option_symbol: Symbol) -> None:
         put_contracts = sorted((contract for contract in chain if contract.right == OptionRight.PUT),
                               key=lambda x: abs(x.strike - chain.underlying.value))
         for strike, group in itertools.groupby(put_contracts, lambda x: x.strike):

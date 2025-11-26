@@ -19,7 +19,7 @@ from AlgorithmImports import *
 ### <meta name="tag" content="using data" />
 ### <meta name="tag" content="using quantconnect" />
 ### <meta name="tag" content="securities and portfolio" />
-class Collective2SignalExportDemonstrationAlgorithm(QCAlgorithm):
+class Collective2CA110AExportDemonstrationAlgorithm(QCAlgorithm):
 
     def initialize(self):
         ''' Initialize the date and add all equity symbols present in list _symbols '''
@@ -65,10 +65,10 @@ class Collective2SignalExportDemonstrationAlgorithm(QCAlgorithm):
         self.signal_export.automatic_export_time_span = None
 
         # If using the Collective2 white-label API, you can specify it in the constructor with the optional parameter `use_white_label_api`:
-        # e.g. Collective2SignalExport(self.collective2_apikey, self.collective2_system_id, use_white_label_api=True)
+        # e.g. Collective2CA110AExport(self.collective2_apikey, self.collective2_system_id, use_white_label_api=True)
         # The API url can also be overridden by setting the Destination property:
-        # e.g. Collective2SignalExport(self.collective2_apikey, self.collective2_system_id) { Destination = new Uri("your url") }
-        self.signal_export.add_signal_export_provider(Collective2SignalExport(self.collective2_apikey, self.collective2_system_id))
+        # e.g. Collective2CA110AExport(self.collective2_apikey, self.collective2_system_id) { Destination = new Uri("your url") }
+        self.signal_export.add_signal_export_provider(Collective2CA110AExport(self.collective2_apikey, self.collective2_system_id))
 
         self.first_call = True
 

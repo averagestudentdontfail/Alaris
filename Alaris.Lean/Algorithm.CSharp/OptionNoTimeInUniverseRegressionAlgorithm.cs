@@ -54,7 +54,7 @@ namespace QuantConnect.Algorithm.CSharp
         /// <param name="slice">The current slice of data keyed by symbol string</param>
         public override void OnData(Slice slice)
         {
-            var optionContracts = slice.OptionChains.GetValue(_optionSymbol);
+            var optionContracts = slice.STDT002As.GetValue(_optionSymbol);
             var underlyingPrice = Securities[_optionSymbol.Underlying].Price;
             var strikes = optionContracts.Select(o => o.Strike)
                 // when the strike matches the underlying price it's not taken into account in the +1 -1 range

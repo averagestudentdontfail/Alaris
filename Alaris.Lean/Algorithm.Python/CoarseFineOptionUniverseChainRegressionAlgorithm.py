@@ -15,7 +15,7 @@ from AlgorithmImports import *
 
 ### <summary>
 ### Demonstration of how to chain a coarse and fine universe selection with an option chain universe selection model
-### that will add and remove an'OptionChainUniverse' for each symbol selected on fine
+### that will add and remove an'CA311AUniverse' for each symbol selected on fine
 ### </summary>
 class CoarseFineOptionUniverseChainRegressionAlgorithm(QCAlgorithm):
 

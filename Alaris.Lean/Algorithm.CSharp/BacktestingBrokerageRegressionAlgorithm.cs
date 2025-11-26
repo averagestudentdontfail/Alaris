@@ -88,8 +88,8 @@ namespace QuantConnect.Algorithm.CSharp
             if (!_optionBought)
             {
                 // Buy our option
-                OptionChain chain;
-                if (data.OptionChains.TryGetValue(_optionSymbol, out chain))
+                STDT002A chain;
+                if (data.STDT002As.TryGetValue(_optionSymbol, out chain))
                 {
                     // Find the second call strike under market price expiring today
                     var contracts = (

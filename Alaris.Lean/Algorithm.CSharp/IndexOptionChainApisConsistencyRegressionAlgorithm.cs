@@ -21,9 +21,9 @@ namespace QuantConnect.Algorithm.CSharp
 {
     /// <summary>
     /// Regression algorithm asserting that the option chain APIs return consistent values for index options
-    /// See <see cref="QCAlgorithm.OptionChain(Symbol)"/> and <see cref="QCAlgorithm.OptionChainProvider"/>
+    /// See <see cref="QCAlgorithm.STDT002A(Symbol)"/> and <see cref="QCAlgorithm.STDT002AProvider"/>
     /// </summary>
-    public class IndexOptionChainApisConsistencyRegressionAlgorithm : OptionChainApisConsistencyRegressionAlgorithm
+    public class IndexSTDT002AApisConsistencyRegressionAlgorithm : STDT002AApisConsistencyRegressionAlgorithm
     {
         protected override DateTime TestDate => new DateTime(2021, 1, 4);
 

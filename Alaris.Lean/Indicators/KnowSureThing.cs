@@ -72,12 +72,12 @@ namespace QuantConnect.Indicators
         /// <summary>
         /// Gets the signal line
         /// </summary>
-        public IndicatorBase<IndicatorDataPoint> SignalLine { get; }
+        public IndicatorBase<IndicatorDataPoint> STCR004ALine { get; }
 
         /// <summary>
         /// Gets a flag indicating when this indicator is ready and fully initialized
         /// </summary>
-        public override bool IsReady => ROC1MA.IsReady && ROC2MA.IsReady && ROC3MA.IsReady && ROC4MA.IsReady && SignalLine.IsReady;
+        public override bool IsReady => ROC1MA.IsReady && ROC2MA.IsReady && ROC3MA.IsReady && ROC4MA.IsReady && STCR004ALine.IsReady;
 
         /// <summary>
         /// Required period, in data points, for the indicator to be ready and fully initialized.
@@ -137,7 +137,7 @@ namespace QuantConnect.Indicators
             ROC3MA = movingAverageType.AsIndicator(name + "_ROC3MA", roc3MaPeriod);
             ROC4MA = movingAverageType.AsIndicator(name + "_ROC4MA", roc4MaPeriod);
 
-            SignalLine = movingAverageType.AsIndicator(name + "_SignalLine", signalPeriod);
+            STCR004ALine = movingAverageType.AsIndicator(name + "_STCR004ALine", signalPeriod);
         }
 
         /// <summary>
@@ -171,9 +171,9 @@ namespace QuantConnect.Indicators
 
             var kst = ROC1MA.Current.Value + 2 * ROC2MA.Current.Value + 3 * ROC3MA.Current.Value + 4 * ROC4MA.Current.Value;
 
-            SignalLine.Update(input.EndTime, kst);
+            STCR004ALine.Update(input.EndTime, kst);
 
-            if (!SignalLine.IsReady)
+            if (!STCR004ALine.IsReady)
             {
                 return 0m;
             }
@@ -194,7 +194,7 @@ namespace QuantConnect.Indicators
             ROC2MA.Reset();
             ROC3MA.Reset();
             ROC4MA.Reset();
-            SignalLine.Reset();
+            STCR004ALine.Reset();
             base.Reset();
         }
     }

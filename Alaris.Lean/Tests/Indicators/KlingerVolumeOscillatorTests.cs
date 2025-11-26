@@ -55,16 +55,16 @@ namespace QuantConnect.Tests.Indicators
         }
 
         [Test]
-        public void SignalLineIsReadyAfterWarmUpPeriod()
+        public void STCR004ALineIsReadyAfterWarmUpPeriod()
         {
             var indicator = CreateIndicator() as KlingerVolumeOscillator;
-            Assert.IsFalse(indicator.Signal.IsReady);
+            Assert.IsFalse(indicator.STCR004A.IsReady);
             // Warm up the indicator
             for (int i = 0; i < indicator.WarmUpPeriod; i++)
             {
                 indicator.Update(new TradeBar { Time = DateTime.UtcNow.AddDays(i), Close = 100 + i, Volume = 1000 });
             }
-            Assert.IsTrue(indicator.Signal.IsReady);
+            Assert.IsTrue(indicator.STCR004A.IsReady);
         }
     }
 }

@@ -200,11 +200,11 @@ namespace QuantConnect.Research
                 );
 
                 var initParameters = new ChainProviderInitializeParameters(mapFileProvider, HistoryProvider);
-                var optionChainProvider = new BacktestingOptionChainProvider();
+                var optionChainProvider = new BacktestingSTDT002AProvider();
                 optionChainProvider.Initialize(initParameters);
                 var futureChainProvider = new BacktestingFutureChainProvider();
                 futureChainProvider.Initialize(initParameters);
-                SetOptionChainProvider(new CachingOptionChainProvider(optionChainProvider));
+                SetSTDT002AProvider(new CachingSTDT002AProvider(optionChainProvider));
                 SetFutureChainProvider(new CachingFutureChainProvider(futureChainProvider));
 
                 SetAlgorithmMode(AlgorithmMode.Research);
@@ -1068,7 +1068,7 @@ namespace QuantConnect.Research
                 {
                     throw new ArgumentException("The Future Symbol provided is a canonical Symbol (i.e. a Symbol representing all Futures), which is not supported at this time. " +
                         "If you are using the Symbol accessible from `AddFuture(...)`, use the Symbol from `AddFutureContract(...)` instead. " +
-                        "You can use `qb.FutureOptionChainProvider(canonicalFuture, datetime)` to get a list of futures contracts for a given date, and add them to your algorithm with `AddFutureContract(symbol, Resolution)`.");
+                        "You can use `qb.FutureSTDT002AProvider(canonicalFuture, datetime)` to get a list of futures contracts for a given date, and add them to your algorithm with `AddFutureContract(symbol, Resolution)`.");
                 }
                 if (symbol.SecurityType == SecurityType.Future && !symbol.IsCanonical())
                 {

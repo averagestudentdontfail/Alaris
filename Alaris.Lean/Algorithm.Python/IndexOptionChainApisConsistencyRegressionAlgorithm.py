@@ -14,13 +14,13 @@
 from datetime import datetime
 from AlgorithmImports import *
 
-from OptionChainApisConsistencyRegressionAlgorithm import OptionChainApisConsistencyRegressionAlgorithm
+from CA311AApisConsistencyRegressionAlgorithm import CA311AApisConsistencyRegressionAlgorithm
 
 ### <summary>
 ### Regression algorithm asserting that the option chain APIs return consistent values for index options.
-### See QCAlgorithm.OptionChain(Symbol) and QCAlgorithm.OptionChainProvider
+### See QCAlgorithm.CA311A(Symbol) and QCAlgorithm.CA311AProvider
 ### </summary>
-class IndexOptionChainApisConsistencyRegressionAlgorithm(OptionChainApisConsistencyRegressionAlgorithm):
+class IndexCA311AApisConsistencyRegressionAlgorithm(CA311AApisConsistencyRegressionAlgorithm):
 
     def get_test_date(self) -> datetime:
         return datetime(2021, 1, 4)

@@ -17,10 +17,10 @@ public class DoubleBoundaryBenchmarkTests
     [InlineData(10, 100)]   // 10 points, expect < 100ms
     [InlineData(50, 500)]   // 50 points, expect < 500ms
     [InlineData(100, 2000)] // 100 points, expect < 2000ms
-    public void QdPlusApproximation_PerformanceScaling(int iterations, int maxMilliseconds)
+    public void DBAP001A_PerformanceScaling(int iterations, int maxMilliseconds)
     {
         // Arrange
-        var approximation = new QdPlusApproximation(
+        var approximation = new DBAP001A(
             spot: 100.0,
             strike: 100.0,
             maturity: 10.0,
@@ -54,7 +54,7 @@ public class DoubleBoundaryBenchmarkTests
     public void KimSolverRefinement_ScalesWithCollocation(int collocationPoints, int maxMilliseconds)
     {
         // Arrange
-        var solver = new DoubleBoundarySolver(
+        var solver = new DBSL001A(
             spot: 100.0,
             strike: 100.0,
             maturity: 10.0,
@@ -88,7 +88,7 @@ public class DoubleBoundaryBenchmarkTests
         var stopwatch = Stopwatch.StartNew();
         var results = testCases.Select(tc =>
         {
-            var solver = new DoubleBoundarySolver(
+            var solver = new DBSL001A(
                 tc.Spot, tc.Strike, tc.Maturity,
                 tc.Rate, tc.Dividend, tc.Volatility,
                 tc.IsCall, 20, false  // Quick QD+ only
@@ -115,7 +115,7 @@ public class DoubleBoundaryBenchmarkTests
     public void MaturityScaling_PerformanceCharacteristics(double maturity)
     {
         // Test how performance scales with maturity
-        var solver = new DoubleBoundarySolver(
+        var solver = new DBSL001A(
             spot: 100.0,
             strike: 100.0,
             maturity: maturity,
@@ -144,7 +144,7 @@ public class DoubleBoundaryBenchmarkTests
     public void MemoryAllocation_MinimalGarbageCollection()
     {
         // Test that solver doesn't cause excessive garbage collection
-        var solver = new DoubleBoundarySolver(
+        var solver = new DBSL001A(
             spot: 100.0,
             strike: 100.0,
             maturity: 10.0,
@@ -199,7 +199,7 @@ public class DoubleBoundaryBenchmarkTests
             .WithDegreeOfParallelism(threadCount)
             .Select(tc =>
             {
-                var solver = new DoubleBoundarySolver(
+                var solver = new DBSL001A(
                     tc.Spot, tc.Strike, tc.Maturity,
                     tc.Rate, tc.Dividend, tc.Volatility,
                     tc.IsCall, 30, false
@@ -227,7 +227,7 @@ public class DoubleBoundaryBenchmarkTests
     public void CacheEfficiency_RepeatedCalculations()
     {
         // Test if repeated calculations benefit from any caching
-        var solver = new DoubleBoundarySolver(
+        var solver = new DBSL001A(
             spot: 100.0,
             strike: 100.0,
             maturity: 10.0,
@@ -265,7 +265,7 @@ public class DoubleBoundaryBenchmarkTests
     public void WorstCasePerformance_BoundaryNearCrossing()
     {
         // Test performance when boundaries are very close (worst case for convergence)
-        var solver = new DoubleBoundarySolver(
+        var solver = new DBSL001A(
             spot: 100.0,
             strike: 100.0,
             maturity: 10.0,

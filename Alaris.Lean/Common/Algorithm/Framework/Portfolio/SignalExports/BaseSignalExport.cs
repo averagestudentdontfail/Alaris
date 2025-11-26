@@ -19,12 +19,12 @@ using System;
 using System.Collections.Generic;
 using System.Net.Http;
 
-namespace QuantConnect.Algorithm.Framework.Portfolio.SignalExports
+namespace QuantConnect.Algorithm.Framework.Portfolio.STCR004AExports
 {
     /// <summary>
     /// Base class to send signals to different 3rd party API's
     /// </summary>
-    public abstract class BaseSignalExport : ISignalExportTarget
+    public abstract class BaseSTCR004AExport : ISTCR004AExportTarget
     {
         /// <summary>
         /// Lazy initialization of HttpClient to be used to sent signals to different 3rd party API's
@@ -71,7 +71,7 @@ namespace QuantConnect.Algorithm.Framework.Portfolio.SignalExports
         /// </summary>
         /// <param name="parameters">Holdings the user have defined to be sent to certain 3rd party API and the algorithm being ran</param>
         /// <returns>True if the positions were sent correctly and the 3rd party API sent no errors. False, otherwise</returns>
-        public virtual bool Send(SignalExportTargetParameters parameters)
+        public virtual bool Send(STCR004AExportTargetParameters parameters)
         {
             if (parameters.Targets.Count == 0)
             {
@@ -87,7 +87,7 @@ namespace QuantConnect.Algorithm.Framework.Portfolio.SignalExports
         /// </summary>
         /// <param name="parameters">Holdings the user have defined to be sent to certain 3rd party API and the algorithm being ran</param>
         /// <returns>True if all the targets were allowed, false otherwise</returns>
-        private bool VerifyTargets(SignalExportTargetParameters parameters)
+        private bool VerifyTargets(STCR004AExportTargetParameters parameters)
         {
             foreach (var signal in parameters.Targets)
             {

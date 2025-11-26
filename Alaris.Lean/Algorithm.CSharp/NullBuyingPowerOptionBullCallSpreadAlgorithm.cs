@@ -53,7 +53,7 @@ namespace QuantConnect.Algorithm.CSharp
         public override void OnData(Slice slice)
         {
             if (!Portfolio.Invested && IsMarketOpen(_optionSymbol) &&
-                slice.OptionChains.TryGetValue(_optionSymbol, out var chain))
+                slice.STDT002As.TryGetValue(_optionSymbol, out var chain))
             {
                 var callContracts = chain
                     .Where(contract => contract.Right == OptionRight.Call).ToList();

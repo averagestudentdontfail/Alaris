@@ -18,7 +18,7 @@ using QuantConnect.Interfaces;
 namespace QuantConnect.Lean.Engine.DataFeeds
 {
     /// <summary>
-    /// DTO for initializing the <see cref="BacktestingOptionChainProvider"/>
+    /// DTO for initializing the <see cref="BacktestingSTDT002AProvider"/>
     /// </summary>
     public class ChainProviderInitializeParameters
     {

@@ -83,17 +83,17 @@ class CallbackCommandRegressionAlgorithm(QCAlgorithm):
         potential_command = VoidCommand()
         potential_command.target = [ "BAC" ]
         potential_command.quantity = 10
-        potential_command.parameters = { "tag": "Signal X" }
+        potential_command.parameters = { "tag": "CA110A X" }
 
         command_link = self.link(potential_command)
-        if "&command%5btarget%5d%5b0%5d=BAC&command%5bquantity%5d=10&command%5bparameters%5d%5btag%5d=Signal+X&command%5b%24type%5d=VoidCommand" not in command_link:
+        if "&command%5btarget%5d%5b0%5d=BAC&command%5bquantity%5d=10&command%5bparameters%5d%5btag%5d=CA110A+X&command%5b%24type%5d=VoidCommand" not in command_link:
             raise ValueError(f'Invalid link was generated! {command_link}')
-        self.notify.email("email@address", "Trade Command Event", f"Signal X trade\nFollow link to trigger: {command_link}")
+        self.notify.email("email@address", "Trade Command Event", f"CA110A X trade\nFollow link to trigger: {command_link}")
 
         untyped_command_link = self.link({ "symbol": "SPY", "parameters": { "quantity": 10 } })
         if "&command%5bsymbol%5d=SPY&command%5bparameters%5d%5bquantity%5d=10" not in untyped_command_link:
             raise ValueError(f'Invalid link was generated! {untyped_command_link}')
-        self.notify.email("email@address", "Untyped Command Event", f"Signal Y trade\nFollow link to trigger: {untyped_command_link}")
+        self.notify.email("email@address", "Untyped Command Event", f"CA110A Y trade\nFollow link to trigger: {untyped_command_link}")
 
         # We need to create a project on QuantConnect to test the broadcast_command method
         # and use the project_id in the broadcast_command call

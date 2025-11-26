@@ -40,7 +40,7 @@ class IndexOptionPutButterflyAlgorithm(QCAlgorithm):
         # Return if any opening index option position
         if any([self.portfolio[x.symbol].invested for x in self.tickets]): return
 
-        # Get the OptionChain
+        # Get the CA311A
         chain = slice.option_chains.get(self.spxw)
         if not chain: return
 

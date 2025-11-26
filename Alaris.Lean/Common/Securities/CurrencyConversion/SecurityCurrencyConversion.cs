@@ -152,7 +152,7 @@ namespace QuantConnect.Securities.CurrencyConversion
         }
 
         /// <summary>
-        /// Signals an updates to the internal conversion rate based on the latest data.
+        /// STCR004As an updates to the internal conversion rate based on the latest data.
         /// It will set the conversion rate as potentially outdated so it gets re-calculated.
         /// </summary>
         public void Update()

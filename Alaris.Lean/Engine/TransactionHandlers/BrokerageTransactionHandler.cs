@@ -20,7 +20,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using QuantConnect.Algorithm;
-using QuantConnect.Algorithm.Framework.Portfolio.SignalExports;
+using QuantConnect.Algorithm.Framework.Portfolio.STCR004AExports;
 using QuantConnect.AlgorithmFactory.Python.Wrappers;
 using QuantConnect.Brokerages;
 using QuantConnect.Brokerages.Backtesting;
@@ -42,7 +42,7 @@ namespace QuantConnect.Lean.Engine.TransactionHandlers
     public class BrokerageTransactionHandler : ITransactionHandler
     {
         private IAlgorithm _algorithm;
-        private SignalExportManager _signalExport;
+        private STCR004AExportManager _signalExport;
         private IBrokerage _brokerage;
         private bool _brokerageIsBacktesting;
         private bool _loggedFeeAdjustmentWarning;
@@ -211,8 +211,8 @@ namespace QuantConnect.Lean.Engine.TransactionHandlers
             IsActive = true;
 
             _signalExport = _algorithm is QCAlgorithm
-                ? (_algorithm as QCAlgorithm).SignalExport
-                : (_algorithm as AlgorithmPythonWrapper).SignalExport;
+                ? (_algorithm as QCAlgorithm).STCR004AExport
+                : (_algorithm as AlgorithmPythonWrapper).STCR004AExport;
 
             NewOrderEvent += (s, e) => _signalExport.OnOrderEvent(e);
             InitializeTransactionThread();
@@ -749,7 +749,7 @@ namespace QuantConnect.Lean.Engine.TransactionHandlers
 
 
         /// <summary>
-        /// Signal a end of thread request to stop monitoring the transactions.
+        /// STCR004A a end of thread request to stop monitoring the transactions.
         /// </summary>
         public void Exit()
         {

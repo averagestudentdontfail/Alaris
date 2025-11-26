@@ -7,18 +7,18 @@ using Alaris.Strategy.Pricing;
 namespace Alaris.Test.Unit;
 
 /// <summary>
-/// Unit tests for the UnifiedPricingEngine component.
+/// Unit tests for the STBR001A component.
 /// Tests regime detection, pricing accuracy, and calendar spread calculations.
 /// </summary>
-public sealed class UnifiedPricingEngineTests : IDisposable
+public sealed class STBR001ATests : IDisposable
 {
-    private readonly UnifiedPricingEngine _engine;
+    private readonly STBR001A _engine;
     private readonly Date _valuationDate;
     private bool _disposed;
 
-    public UnifiedPricingEngineTests()
+    public STBR001ATests()
     {
-        _engine = new UnifiedPricingEngine();
+        _engine = new STBR001A();
         _valuationDate = new Date(15, Month.January, 2024);
         Settings.instance().setEvaluationDate(_valuationDate);
     }
@@ -38,7 +38,7 @@ public sealed class UnifiedPricingEngineTests : IDisposable
     public void DetermineRegime_ReturnsCorrectRegime(double rate, double dividend, bool isCall, PricingRegime expected)
     {
         // Act
-        var regime = UnifiedPricingEngine.DetermineRegime(rate, dividend, isCall);
+        var regime = STBR001A.DetermineRegime(rate, dividend, isCall);
 
         // Assert
         regime.Should().Be(expected);
@@ -53,7 +53,7 @@ public sealed class UnifiedPricingEngineTests : IDisposable
         var isCall = false; // Put option
 
         // Act
-        var regime = UnifiedPricingEngine.DetermineRegime(r, q, isCall);
+        var regime = STBR001A.DetermineRegime(r, q, isCall);
 
         // Assert
         regime.Should().Be(PricingRegime.PositiveRates);
@@ -68,7 +68,7 @@ public sealed class UnifiedPricingEngineTests : IDisposable
         var isCall = false; // Put option
 
         // Act
-        var regime = UnifiedPricingEngine.DetermineRegime(r, q, isCall);
+        var regime = STBR001A.DetermineRegime(r, q, isCall);
 
         // Assert
         regime.Should().Be(PricingRegime.DoubleBoundary);
@@ -190,13 +190,13 @@ public sealed class UnifiedPricingEngineTests : IDisposable
     #region Calendar Spread Tests
 
     [Fact]
-    public async Task PriceCalendarSpread_PositiveRates_ValidSpread()
+    public async Task PriceSTPR001A_PositiveRates_ValidSpread()
     {
         // Arrange
-        var parameters = CreateCalendarSpreadParameters();
+        var parameters = CreateSTPR001AParameters();
 
         // Act
-        var result = await _engine.PriceCalendarSpread(parameters);
+        var result = await _engine.PriceSTPR001A(parameters);
 
         // Assert
         result.Should().NotBeNull();
@@ -208,13 +208,13 @@ public sealed class UnifiedPricingEngineTests : IDisposable
     }
 
     [Fact]
-    public async Task PriceCalendarSpread_PositiveRates_CorrectGreeks()
+    public async Task PriceSTPR001A_PositiveRates_CorrectGreeks()
     {
         // Arrange
-        var parameters = CreateCalendarSpreadParameters();
+        var parameters = CreateSTPR001AParameters();
 
         // Act
-        var result = await _engine.PriceCalendarSpread(parameters);
+        var result = await _engine.PriceSTPR001A(parameters);
 
         // Assert
         result.SpreadDelta.Should().BeInRange(-0.2, 0.2); // Near-neutral delta
@@ -224,15 +224,15 @@ public sealed class UnifiedPricingEngineTests : IDisposable
     }
 
     [Fact]
-    public async Task PriceCalendarSpread_NegativeRates_ValidSpread()
+    public async Task PriceSTPR001A_NegativeRates_ValidSpread()
     {
         // Arrange
-        var parameters = CreateCalendarSpreadParameters();
+        var parameters = CreateSTPR001AParameters();
         parameters.RiskFreeRate = -0.005;
         parameters.DividendYield = -0.010; // Double boundary regime
 
         // Act
-        var result = await _engine.PriceCalendarSpread(parameters);
+        var result = await _engine.PriceSTPR001A(parameters);
 
         // Assert
         result.Should().NotBeNull();
@@ -242,13 +242,13 @@ public sealed class UnifiedPricingEngineTests : IDisposable
     }
 
     [Fact]
-    public async Task PriceCalendarSpread_Validation_Works()
+    public async Task PriceSTPR001A_Validation_Works()
     {
         // Arrange
-        var parameters = CreateCalendarSpreadParameters();
+        var parameters = CreateSTPR001AParameters();
 
         // Act
-        var result = await _engine.PriceCalendarSpread(parameters);
+        var result = await _engine.PriceSTPR001A(parameters);
 
         // Assert: Should not throw when validating
         result.Invoking(r => r.Validate()).Should().NotThrow();
@@ -329,23 +329,23 @@ public sealed class UnifiedPricingEngineTests : IDisposable
     }
 
     [Fact]
-    public async Task PriceCalendarSpread_NullParameters_Throws()
+    public async Task PriceSTPR001A_NullParameters_Throws()
     {
         // Act & Assert
-        await _engine.Invoking(e => e.PriceCalendarSpread(null!))
+        await _engine.Invoking(e => e.PriceSTPR001A(null!))
             .Should().ThrowAsync<ArgumentNullException>();
     }
 
     [Fact]
-    public async Task PriceCalendarSpread_FrontAfterBack_Throws()
+    public async Task PriceSTPR001A_FrontAfterBack_Throws()
     {
         // Arrange
-        var parameters = CreateCalendarSpreadParameters();
+        var parameters = CreateSTPR001AParameters();
         // Swap expiries (invalid)
         (parameters.FrontExpiry, parameters.BackExpiry) = (parameters.BackExpiry, parameters.FrontExpiry);
 
         // Act & Assert
-        await _engine.Invoking(e => e.PriceCalendarSpread(parameters))
+        await _engine.Invoking(e => e.PriceSTPR001A(parameters))
             .Should().ThrowAsync<ArgumentException>();
     }
 
@@ -353,9 +353,9 @@ public sealed class UnifiedPricingEngineTests : IDisposable
 
     #region Helper Methods
 
-    private OptionParameters CreateStandardCallParameters()
+    private STDT003As CreateStandardCallParameters()
     {
-        return new OptionParameters
+        return new STDT003As
         {
             UnderlyingPrice = 100.0,
             Strike = 100.0,
@@ -368,9 +368,9 @@ public sealed class UnifiedPricingEngineTests : IDisposable
         };
     }
 
-    private OptionParameters CreateStandardPutParameters()
+    private STDT003As CreateStandardPutParameters()
     {
-        return new OptionParameters
+        return new STDT003As
         {
             UnderlyingPrice = 100.0,
             Strike = 100.0,
@@ -383,10 +383,10 @@ public sealed class UnifiedPricingEngineTests : IDisposable
         };
     }
 
-    private OptionParameters CreateHealyPutParameters()
+    private STDT003As CreateHealyPutParameters()
     {
         // Healy (2021) benchmark parameters
-        return new OptionParameters
+        return new STDT003As
         {
             UnderlyingPrice = 100.0,
             Strike = 100.0,
@@ -399,9 +399,9 @@ public sealed class UnifiedPricingEngineTests : IDisposable
         };
     }
 
-    private OptionParameters CreateHealyCallParameters()
+    private STDT003As CreateHealyCallParameters()
     {
-        return new OptionParameters
+        return new STDT003As
         {
             UnderlyingPrice = 100.0,
             Strike = 100.0,
@@ -414,9 +414,9 @@ public sealed class UnifiedPricingEngineTests : IDisposable
         };
     }
 
-    private CalendarSpreadParameters CreateCalendarSpreadParameters()
+    private STPR001AParameters CreateSTPR001AParameters()
     {
-        return new CalendarSpreadParameters
+        return new STPR001AParameters
         {
             UnderlyingPrice = 150.0,
             Strike = 150.0,

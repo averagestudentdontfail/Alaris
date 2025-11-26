@@ -21,9 +21,9 @@ using QuantConnect.Interfaces;
 namespace QuantConnect.Securities.Option
 {
     /// <summary>
-    /// An implementation of <see cref="IOptionChainProvider"/> that always returns an empty list of contracts
+    /// An implementation of <see cref="ISTDT002AProvider"/> that always returns an empty list of contracts
     /// </summary>
-    public class EmptyOptionChainProvider : IOptionChainProvider
+    public class EmptySTDT002AProvider : ISTDT002AProvider
     {
         /// <summary>
         /// Gets the list of option contracts for a given underlying symbol

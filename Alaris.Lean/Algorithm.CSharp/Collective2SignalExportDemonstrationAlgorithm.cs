@@ -15,7 +15,7 @@
 
 using System;
 using QuantConnect.Algorithm.Framework.Portfolio;
-using QuantConnect.Algorithm.Framework.Portfolio.SignalExports;
+using QuantConnect.Algorithm.Framework.Portfolio.STCR004AExports;
 using QuantConnect.Data;
 using QuantConnect.Indicators;
 using QuantConnect.Interfaces;
@@ -29,7 +29,7 @@ namespace QuantConnect.Algorithm.CSharp
     /// <meta name="tag" content="using data" />
     /// <meta name="tag" content="using quantconnect" />
     /// <meta name="tag" content="securities and portfolio" />
-    public class Collective2SignalExportDemonstrationAlgorithm : QCAlgorithm, IRegressionAlgorithmDefinition
+    public class Collective2STCR004AExportDemonstrationAlgorithm : QCAlgorithm, IRegressionAlgorithmDefinition
     {
         /// <summary>
         /// Collective2 APIv4 KEY: This value is provided by Collective2 in your account section (See https://collective2.com/account-info)
@@ -96,14 +96,14 @@ namespace QuantConnect.Algorithm.CSharp
             _emaFastIsNotSet = true;
 
             // Disable automatic exports as we manually set them
-            SignalExport.AutomaticExportTimeSpan = null;
+            STCR004AExport.AutomaticExportTimeSpan = null;
 
             // Set Collective2 signal export provider.
             // If using the Collective2 white-label API, you can specify it in the constructor with the optional parameter `useWhiteLabelApi`:
-            // e.g. new Collective2SignalExport(_collective2ApiKey, _collective2SystemId, useWhiteLabelApi: true)
+            // e.g. new Collective2STCR004AExport(_collective2ApiKey, _collective2SystemId, useWhiteLabelApi: true)
             // The API url can also be overridden by setting the Destination property:
-            // e.g. new Collective2SignalExport(_collective2ApiKey, _collective2SystemId) { Destination = new Uri("your url") }
-            SignalExport.AddSignalExportProvider(new Collective2SignalExport(_collective2ApiKey, _collective2SystemId));
+            // e.g. new Collective2STCR004AExport(_collective2ApiKey, _collective2SystemId) { Destination = new Uri("your url") }
+            STCR004AExport.AddSTCR004AExportProvider(new Collective2STCR004AExport(_collective2ApiKey, _collective2SystemId));
 
             SetWarmUp(100);
         }
@@ -123,7 +123,7 @@ namespace QuantConnect.Algorithm.CSharp
             {
                 SetHoldings("SPY", 0.1);
                 _targets[0] = new PortfolioTarget(Portfolio["SPY"].Symbol, (decimal)0.1);
-                SignalExport.SetTargetPortfolio(_targets);
+                STCR004AExport.SetTargetPortfolio(_targets);
                 _firstCall = false;
             }
 
@@ -148,13 +148,13 @@ namespace QuantConnect.Algorithm.CSharp
             {
                 SetHoldings("SPY", 0.1);
                 _targets[0] = new PortfolioTarget(Portfolio["SPY"].Symbol, (decimal)0.1);
-                SignalExport.SetTargetPortfolio(_targets);
+                STCR004AExport.SetTargetPortfolio(_targets);
             }
             else if ((_fast < _slow * 0.999m) && (_emaFastWasAbove))
             {
                 SetHoldings("SPY", 0.01);
                 _targets[0] = new PortfolioTarget(Portfolio["SPY"].Symbol, (decimal)0.01);
-                SignalExport.SetTargetPortfolio(_targets);
+                STCR004AExport.SetTargetPortfolio(_targets);
             }
         }
 

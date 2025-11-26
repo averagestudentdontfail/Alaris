@@ -25,10 +25,10 @@ using QuantConnect.Securities;
 namespace QuantConnect.Algorithm.CSharp
 {
     /// <summary>
-    /// Regression algorithm illustrating the usage of the <see cref="QCAlgorithm.OptionChains(IEnumerable{Symbol})"/> method
+    /// Regression algorithm illustrating the usage of the <see cref="QCAlgorithm.STDT002As(IEnumerable{Symbol})"/> method
     /// to get multiple future option chains.
     /// </summary>
-    public class FutureOptionChainsMultipleFullDataRegressionAlgorithm : QCAlgorithm, IRegressionAlgorithmDefinition
+    public class FutureSTDT002AsMultipleFullDataRegressionAlgorithm : QCAlgorithm, IRegressionAlgorithmDefinition
     {
         private Symbol _esOptionContract;
         private Symbol _gcOptionContract;
@@ -47,7 +47,7 @@ namespace QuantConnect.Algorithm.CSharp
                 QuantConnect.Symbol.CreateFuture(Futures.Metals.Gold, Market.COMEX, new DateTime(2020, 4, 28)),
                 Resolution.Minute).Symbol;
 
-            var chains = OptionChains([esFutureContract, gcFutureContract]);
+            var chains = STDT002As([esFutureContract, gcFutureContract]);
 
             _esOptionContract = GetContract(chains, esFutureContract);
             _gcOptionContract = GetContract(chains, gcFutureContract);
@@ -56,7 +56,7 @@ namespace QuantConnect.Algorithm.CSharp
             AddFutureOptionContract(_gcOptionContract);
         }
 
-        private Symbol GetContract(OptionChains chains, Symbol underlying)
+        private Symbol GetContract(STDT002As chains, Symbol underlying)
         {
             return chains
                 .Where(kvp => kvp.Key.Underlying == underlying)

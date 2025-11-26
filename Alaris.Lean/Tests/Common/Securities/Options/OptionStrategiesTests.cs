@@ -609,7 +609,7 @@ namespace QuantConnect.Tests.Common.Securities.Options
         }
 
         [Test]
-        public void FailsBuildingCallCalendarSpreadStrategy()
+        public void FailsBuildingCallSTPR001AStrategy()
         {
             var canonicalOptionSymbol = Symbols.SPY_Option_Chain;
             var underlying = Symbols.SPY;
@@ -619,26 +619,26 @@ namespace QuantConnect.Tests.Common.Securities.Options
 
             // Invalid expiration dates
             Assert.Throws<ArgumentException>(
-                () => OptionStrategies.CallCalendarSpread(canonicalOptionSymbol, strike, DateTime.MinValue, farExpiration));
+                () => OptionStrategies.CallSTPR001A(canonicalOptionSymbol, strike, DateTime.MinValue, farExpiration));
             Assert.Throws<ArgumentException>(
-                () => OptionStrategies.CallCalendarSpread(canonicalOptionSymbol, strike, DateTime.MaxValue, farExpiration));
+                () => OptionStrategies.CallSTPR001A(canonicalOptionSymbol, strike, DateTime.MaxValue, farExpiration));
             Assert.Throws<ArgumentException>(
-                () => OptionStrategies.CallCalendarSpread(canonicalOptionSymbol, strike, nearExpiration, DateTime.MinValue));
+                () => OptionStrategies.CallSTPR001A(canonicalOptionSymbol, strike, nearExpiration, DateTime.MinValue));
             Assert.Throws<ArgumentException>(
-                () => OptionStrategies.CallCalendarSpread(canonicalOptionSymbol, strike, nearExpiration, DateTime.MaxValue));
+                () => OptionStrategies.CallSTPR001A(canonicalOptionSymbol, strike, nearExpiration, DateTime.MaxValue));
 
             // Switched expiration dates
             Assert.Throws<ArgumentException>(
-                () => OptionStrategies.CallCalendarSpread(canonicalOptionSymbol, strike, farExpiration, nearExpiration));
+                () => OptionStrategies.CallSTPR001A(canonicalOptionSymbol, strike, farExpiration, nearExpiration));
 
             // Same expiration dates
             Assert.Throws<ArgumentException>(
-                () => OptionStrategies.CallCalendarSpread(canonicalOptionSymbol, strike, nearExpiration, nearExpiration));
+                () => OptionStrategies.CallSTPR001A(canonicalOptionSymbol, strike, nearExpiration, nearExpiration));
 
         }
 
         [Test]
-        public void BuildsCallCalendarSpreadStrategy()
+        public void BuildsCallSTPR001AStrategy()
         {
             var canonicalOptionSymbol = Symbols.SPY_Option_Chain;
             var underlying = Symbols.SPY;
@@ -646,9 +646,9 @@ namespace QuantConnect.Tests.Common.Securities.Options
             var nearExpiration = new DateTime(2023, 08, 18);
             var farExpiration = new DateTime(2023, 09, 18);
 
-            var strategy = OptionStrategies.CallCalendarSpread(canonicalOptionSymbol, strike, nearExpiration, farExpiration);
+            var strategy = OptionStrategies.CallSTPR001A(canonicalOptionSymbol, strike, nearExpiration, farExpiration);
 
-            Assert.AreEqual(OptionStrategyDefinitions.CallCalendarSpread.Name, strategy.Name);
+            Assert.AreEqual(OptionStrategyDefinitions.CallSTPR001A.Name, strategy.Name);
             Assert.AreEqual(underlying, strategy.Underlying);
             Assert.AreEqual(canonicalOptionSymbol, strategy.CanonicalOption);
 
@@ -667,7 +667,7 @@ namespace QuantConnect.Tests.Common.Securities.Options
         }
 
         [Test]
-        public void BuildsShortCallCalendarSpreadStrategy()
+        public void BuildsShortCallSTPR001AStrategy()
         {
             var canonicalOptionSymbol = Symbols.SPY_Option_Chain;
             var underlying = Symbols.SPY;
@@ -675,9 +675,9 @@ namespace QuantConnect.Tests.Common.Securities.Options
             var nearExpiration = new DateTime(2023, 08, 18);
             var farExpiration = new DateTime(2023, 09, 18);
 
-            var strategy = OptionStrategies.ShortCallCalendarSpread(canonicalOptionSymbol, strike, nearExpiration, farExpiration);
+            var strategy = OptionStrategies.ShortCallSTPR001A(canonicalOptionSymbol, strike, nearExpiration, farExpiration);
 
-            Assert.AreEqual(OptionStrategyDefinitions.ShortCallCalendarSpread.Name, strategy.Name);
+            Assert.AreEqual(OptionStrategyDefinitions.ShortCallSTPR001A.Name, strategy.Name);
             Assert.AreEqual(underlying, strategy.Underlying);
             Assert.AreEqual(canonicalOptionSymbol, strategy.CanonicalOption);
 
@@ -696,7 +696,7 @@ namespace QuantConnect.Tests.Common.Securities.Options
         }
 
         [Test]
-        public void FailsBuildingPutCalendarSpreadStrategy()
+        public void FailsBuildingPutSTPR001AStrategy()
         {
             var canonicalOptionSymbol = Symbols.SPY_Option_Chain;
             var underlying = Symbols.SPY;
@@ -706,26 +706,26 @@ namespace QuantConnect.Tests.Common.Securities.Options
 
             // Invalid expiration dates
             Assert.Throws<ArgumentException>(
-                () => OptionStrategies.PutCalendarSpread(canonicalOptionSymbol, strike, DateTime.MinValue, farExpiration));
+                () => OptionStrategies.PutSTPR001A(canonicalOptionSymbol, strike, DateTime.MinValue, farExpiration));
             Assert.Throws<ArgumentException>(
-                () => OptionStrategies.PutCalendarSpread(canonicalOptionSymbol, strike, DateTime.MaxValue, farExpiration));
+                () => OptionStrategies.PutSTPR001A(canonicalOptionSymbol, strike, DateTime.MaxValue, farExpiration));
             Assert.Throws<ArgumentException>(
-                () => OptionStrategies.PutCalendarSpread(canonicalOptionSymbol, strike, nearExpiration, DateTime.MinValue));
+                () => OptionStrategies.PutSTPR001A(canonicalOptionSymbol, strike, nearExpiration, DateTime.MinValue));
             Assert.Throws<ArgumentException>(
-                () => OptionStrategies.PutCalendarSpread(canonicalOptionSymbol, strike, nearExpiration, DateTime.MaxValue));
+                () => OptionStrategies.PutSTPR001A(canonicalOptionSymbol, strike, nearExpiration, DateTime.MaxValue));
 
             // Switched expiration dates
             Assert.Throws<ArgumentException>(
-                () => OptionStrategies.PutCalendarSpread(canonicalOptionSymbol, strike, farExpiration, nearExpiration));
+                () => OptionStrategies.PutSTPR001A(canonicalOptionSymbol, strike, farExpiration, nearExpiration));
 
             // Same expiration dates
             Assert.Throws<ArgumentException>(
-                () => OptionStrategies.PutCalendarSpread(canonicalOptionSymbol, strike, nearExpiration, nearExpiration));
+                () => OptionStrategies.PutSTPR001A(canonicalOptionSymbol, strike, nearExpiration, nearExpiration));
 
         }
 
         [Test]
-        public void BuildsPutCalendarSpreadStrategy()
+        public void BuildsPutSTPR001AStrategy()
         {
             var canonicalOptionSymbol = Symbols.SPY_Option_Chain;
             var underlying = Symbols.SPY;
@@ -733,9 +733,9 @@ namespace QuantConnect.Tests.Common.Securities.Options
             var nearExpiration = new DateTime(2023, 08, 18);
             var farExpiration = new DateTime(2023, 09, 18);
 
-            var strategy = OptionStrategies.PutCalendarSpread(canonicalOptionSymbol, strike, nearExpiration, farExpiration);
+            var strategy = OptionStrategies.PutSTPR001A(canonicalOptionSymbol, strike, nearExpiration, farExpiration);
 
-            Assert.AreEqual(OptionStrategyDefinitions.PutCalendarSpread.Name, strategy.Name);
+            Assert.AreEqual(OptionStrategyDefinitions.PutSTPR001A.Name, strategy.Name);
             Assert.AreEqual(underlying, strategy.Underlying);
             Assert.AreEqual(canonicalOptionSymbol, strategy.CanonicalOption);
 
@@ -754,7 +754,7 @@ namespace QuantConnect.Tests.Common.Securities.Options
         }
 
         [Test]
-        public void BuildsShortPutCalendarSpreadStrategy()
+        public void BuildsShortPutSTPR001AStrategy()
         {
             var canonicalOptionSymbol = Symbols.SPY_Option_Chain;
             var underlying = Symbols.SPY;
@@ -762,9 +762,9 @@ namespace QuantConnect.Tests.Common.Securities.Options
             var nearExpiration = new DateTime(2023, 08, 18);
             var farExpiration = new DateTime(2023, 09, 18);
 
-            var strategy = OptionStrategies.ShortPutCalendarSpread(canonicalOptionSymbol, strike, nearExpiration, farExpiration);
+            var strategy = OptionStrategies.ShortPutSTPR001A(canonicalOptionSymbol, strike, nearExpiration, farExpiration);
 
-            Assert.AreEqual(OptionStrategyDefinitions.ShortPutCalendarSpread.Name, strategy.Name);
+            Assert.AreEqual(OptionStrategyDefinitions.ShortPutSTPR001A.Name, strategy.Name);
             Assert.AreEqual(underlying, strategy.Underlying);
             Assert.AreEqual(canonicalOptionSymbol, strategy.CanonicalOption);
 

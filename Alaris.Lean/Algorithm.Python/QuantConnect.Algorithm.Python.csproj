@@ -44,8 +44,8 @@
     <Content Include="OptionUniverseFilterOptionsDataRegressionAlgorithm.py" />
     <Content Include="OptionUniverseFilterGreeksRegressionAlgorithm.py" />
     <Content Include="FutureUniverseHistoryRegressionAlgorithm.py" />
-    <Content Include="FutureOptionChainFullDataRegressionAlgorithm.py" />
-    <Content Include="FutureOptionChainsMultipleFullDataRegressionAlgorithm.py" />
+    <Content Include="FutureCA311AFullDataRegressionAlgorithm.py" />
+    <Content Include="FutureCA311AsMultipleFullDataRegressionAlgorithm.py" />
     <Content Include="FuturesChainFullDataRegressionAlgorithm.py" />
     <Content Include="FuturesChainsMultipleFullDataRegressionAlgorithm.py" />
     <Content Include="OptionUniverseHistoryRegressionAlgorithm.py" />
@@ -56,7 +56,7 @@
     <Content Include="IndustryStandardSecurityIdentifiersRegressionAlgorithm.py" />
     <Content Include="AddAlphaModelAlgorithm.py" />
     <Content Include="AddFutureOptionContractDataStreamingRegressionAlgorithm.py" />
-    <Content Include="AddFutureOptionSingleOptionChainSelectedInUniverseFilterRegressionAlgorithm.py" />
+    <Content Include="AddFutureOptionSingleCA311ASelectedInUniverseFilterRegressionAlgorithm.py" />
     <Content Include="AddOptionContractExpiresRegressionAlgorithm.py" />
     <Content Include="AddOptionContractFromUniverseRegressionAlgorithm.py" />
     <Content Include="CustomMarginInterestRateModelAlgorithm.py" />
@@ -226,8 +226,8 @@
     <None Include="MeanVarianceOptimizationFrameworkAlgorithm.py" />
     <None Include="MovingAverageCrossAlgorithm.py" />
     <None Include="MultipleSymbolConsolidationAlgorithm.py" />
-    <None Include="OptionChainConsistencyRegressionAlgorithm.py" />
-    <None Include="OptionChainProviderAlgorithm.py" />
+    <None Include="CA311AConsistencyRegressionAlgorithm.py" />
+    <None Include="CA311AProviderAlgorithm.py" />
     <None Include="OptionExerciseAssignRegressionAlgorithm.py" />
     <None Include="OptionOpenInterestRegressionAlgorithm.py" />
     <None Include="OptionRenameRegressionAlgorithm.py" />

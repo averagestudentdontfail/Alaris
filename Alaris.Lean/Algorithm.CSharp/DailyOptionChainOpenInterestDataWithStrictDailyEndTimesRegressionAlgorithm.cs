@@ -24,7 +24,7 @@ namespace QuantConnect.Algorithm.CSharp
     /// Regression algorithm asserting that the option chain data has valid open interest values for daily resolution.
     /// Reproduces GH issue #8421.
     /// </summary>
-    public class DailyOptionChainOpenInterestDataWithStrictDailyEndTimesRegressionAlgorithm : QCAlgorithm, IRegressionAlgorithmDefinition
+    public class DailySTDT002AOpenInterestDataWithStrictDailyEndTimesRegressionAlgorithm : QCAlgorithm, IRegressionAlgorithmDefinition
     {
         private Symbol _symbol;
 
@@ -47,7 +47,7 @@ namespace QuantConnect.Algorithm.CSharp
 
         public override void OnData(Slice slice)
         {
-            if (slice.OptionChains.TryGetValue(_symbol, out var chain) && chain.Contracts.Count > 0)
+            if (slice.STDT002As.TryGetValue(_symbol, out var chain) && chain.Contracts.Count > 0)
             {
                 var openInterest = chain.Sum(x => x.OpenInterest);
                 _openInterests.Add(openInterest);

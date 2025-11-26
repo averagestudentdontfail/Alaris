@@ -26,17 +26,17 @@ namespace QuantConnect.Algorithm.CSharp
     /// <summary>
     /// Regression algorithm of filtering with Put Calendar Spread option strategy and asserting it's being detected by Lean and works as expected
     /// </summary>
-    public class OptionStrategyFilteringUniversePutCalendarSpreadRegressionAlgorithm : OptionStrategyFilteringUniverseBaseAlgorithm
+    public class OptionStrategyFilteringUniversePutSTPR001ARegressionAlgorithm : OptionStrategyFilteringUniverseBaseAlgorithm
     {
         public override void Initialize()
         {
-            FilterFunc = u => u.IncludeWeeklys().PutCalendarSpread(0, 28, 42);
+            FilterFunc = u => u.IncludeWeeklys().PutSTPR001A(0, 28, 42);
             ExpectedCount = 2;
 
             base.Initialize();
         }
 
-        protected override void TestFiltering(OptionChain chain)
+        protected override void TestFiltering(STDT002A chain)
         {
             var count = chain.Count();
             if (count != ExpectedCount)
@@ -64,7 +64,7 @@ namespace QuantConnect.Algorithm.CSharp
                 throw new RegressionTestException($"No contract returned match condition");
             }
 
-            var strategy = OptionStrategies.PutCalendarSpread(OptionSymbol, strike, nearExpiry, farExpiry);
+            var strategy = OptionStrategies.PutSTPR001A(OptionSymbol, strike, nearExpiry, farExpiry);
             Buy(strategy, 1);
             
             /* we can obtain the same result from market orders
@@ -72,7 +72,7 @@ namespace QuantConnect.Algorithm.CSharp
             MarketOrder(farExpiryContract.Symbol, +1);
             */
 
-            AssertOptionStrategyIsPresent(OptionStrategyDefinitions.PutCalendarSpread.Name, 1);
+            AssertOptionStrategyIsPresent(OptionStrategyDefinitions.PutSTPR001A.Name, 1);
         }
 
         /// <summary>
