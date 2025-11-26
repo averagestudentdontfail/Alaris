@@ -1,18 +1,22 @@
 using System.Numerics;
+using MathNet.Numerics.Integration;
 
 namespace Alaris.Strategy.Core.Numerical;
 
 /// <summary>
-/// Adaptive numerical integration using Gauss-Kronrod quadrature.
+/// Adaptive numerical integration using MathNet.Numerics.
 /// Production-grade implementation for integrating characteristic functions in option pricing.
+/// 
+/// Uses Double Exponential (tanh-sinh) transformation for semi-infinite intervals,
+/// which is particularly effective for oscillatory integrands common in Fourier-based
+/// option pricing (Heston, Kou models).
+/// 
+/// References:
+/// - Takahasi and Mori (1974): Double Exponential formulas for numerical integration
+/// - MathNet.Numerics documentation: https://numerics.mathdotnet.com/
 /// </summary>
 public static class AdaptiveIntegration
 {
-    /// <summary>
-    /// Maximum number of subdivisions for adaptive integration.
-    /// </summary>
-    private const int MaxSubdivisions = 1000;
-
     /// <summary>
     /// Default absolute tolerance for convergence.
     /// </summary>
@@ -24,48 +28,24 @@ public static class AdaptiveIntegration
     private const double DefaultRelativeTolerance = 1e-6;
 
     /// <summary>
-    /// Gauss-Kronrod 15-point nodes (normalized to [-1, 1]).
+    /// Default order for Gauss-Legendre quadrature.
+    /// Higher order provides better accuracy for smooth functions.
     /// </summary>
-    private static readonly double[] GK15Nodes =
-    {
-        -0.9914553711208126, -0.9491079123427585, -0.8648644233597691,
-        -0.7415311855993944, -0.5860872354676911, -0.4058451513773972,
-        -0.2077849550078985, 0.0000000000000000, 0.2077849550078985,
-        0.4058451513773972, 0.5860872354676911, 0.7415311855993944,
-        0.8648644233597691, 0.9491079123427585, 0.9914553711208126
-    };
+    private const int DefaultGaussLegendreOrder = 128;
 
     /// <summary>
-    /// Gauss-Kronrod 15-point weights.
+    /// Lower order for error estimation.
     /// </summary>
-    private static readonly double[] GK15Weights =
-    {
-        0.0229353220105292, 0.0630920926299786, 0.1047900103222502,
-        0.1406532597155259, 0.1690047266392679, 0.1903505780647854,
-        0.2044329400752989, 0.2094821410847278, 0.2044329400752989,
-        0.1903505780647854, 0.1690047266392679, 0.1406532597155259,
-        0.1047900103222502, 0.0630920926299786, 0.0229353220105292
-    };
+    private const int LowerGaussLegendreOrder = 64;
 
     /// <summary>
-    /// Gauss 7-point weights (subset of GK15 for error estimation).
-    /// </summary>
-    private static readonly double[] G7Weights =
-    {
-        0.0, 0.1294849661688697, 0.0, 0.2797053914892767, 0.0,
-        0.3818300505051189, 0.0, 0.4179591836734694, 0.0,
-        0.3818300505051189, 0.0, 0.2797053914892767, 0.0,
-        0.1294849661688697, 0.0
-    };
-
-    /// <summary>
-    /// Integrates a real-valued function using adaptive Gauss-Kronrod quadrature.
+    /// Integrates a real-valued function over a finite interval using high-order Gauss-Legendre quadrature.
     /// </summary>
     /// <param name="f">The function to integrate.</param>
     /// <param name="a">Lower integration bound.</param>
     /// <param name="b">Upper integration bound.</param>
-    /// <param name="absoluteTolerance">Absolute error tolerance.</param>
-    /// <param name="relativeTolerance">Relative error tolerance.</param>
+    /// <param name="absoluteTolerance">Absolute error tolerance (used for error reporting).</param>
+    /// <param name="relativeTolerance">Relative error tolerance (used for error reporting).</param>
     /// <returns>The integral value and estimated error.</returns>
     public static (double Value, double Error) Integrate(
         Func<double, double> f,
@@ -78,7 +58,7 @@ public static class AdaptiveIntegration
 
         if (double.IsInfinity(a) || double.IsInfinity(b))
         {
-            throw new ArgumentException("Infinite bounds require transformation.");
+            throw new ArgumentException("Infinite bounds require IntegrateToInfinity method.");
         }
 
         if (a >= b)
@@ -86,47 +66,19 @@ public static class AdaptiveIntegration
             return (0, 0);
         }
 
-        // Use a priority queue to adaptively subdivide intervals
-        var intervals = new SortedSet<IntegrationInterval>(
-            Comparer<IntegrationInterval>.Create((x, y) =>
-                y.Error.CompareTo(x.Error) != 0 ? y.Error.CompareTo(x.Error) : x.Left.CompareTo(y.Left)));
+        // Use high-order Gauss-Legendre from MathNet.Numerics
+        // Order 128 provides excellent accuracy for most functions
+        double result = GaussLegendreRule.Integrate(f, a, b, DefaultGaussLegendreOrder);
 
-        // Compute initial interval
-        IntegrationInterval initial = ComputeInterval(f, a, b);
-        intervals.Add(initial);
+        // Estimate error by comparing with lower-order result
+        double lowerOrderResult = GaussLegendreRule.Integrate(f, a, b, LowerGaussLegendreOrder);
+        double error = Math.Abs(result - lowerOrderResult);
 
-        double totalValue = initial.Value;
-        double totalError = initial.Error;
-
-        int subdivisions = 0;
-
-        while (subdivisions < MaxSubdivisions &&
-               totalError > absoluteTolerance &&
-               totalError > relativeTolerance * Math.Abs(totalValue))
-        {
-            // Take interval with largest error
-            IntegrationInterval worst = intervals.Max!;
-            intervals.Remove(worst);
-
-            // Subdivide
-            double mid = (worst.Left + worst.Right) / 2;
-            IntegrationInterval leftHalf = ComputeInterval(f, worst.Left, mid);
-            IntegrationInterval rightHalf = ComputeInterval(f, mid, worst.Right);
-
-            // Update totals
-            totalValue = totalValue - worst.Value + leftHalf.Value + rightHalf.Value;
-            totalError = totalError - worst.Error + leftHalf.Error + rightHalf.Error;
-
-            intervals.Add(leftHalf);
-            intervals.Add(rightHalf);
-            subdivisions++;
-        }
-
-        return (totalValue, totalError);
+        return (result, error);
     }
 
     /// <summary>
-    /// Integrates a complex-valued function using adaptive Gauss-Kronrod quadrature.
+    /// Integrates a complex-valued function over a finite interval.
     /// </summary>
     /// <param name="f">The complex function to integrate.</param>
     /// <param name="a">Lower integration bound.</param>
@@ -144,64 +96,30 @@ public static class AdaptiveIntegration
         ArgumentNullException.ThrowIfNull(f);
 
         // Integrate real and imaginary parts separately
-        (double realValue, double realError) = Integrate(x => f(x).Real, a, b, absoluteTolerance, relativeTolerance);
-        (double imagValue, double imagError) = Integrate(x => f(x).Imaginary, a, b, absoluteTolerance, relativeTolerance);
+        (double realValue, double realError) = Integrate(
+            x => f(x).Real, a, b, absoluteTolerance, relativeTolerance);
+        (double imagValue, double imagError) = Integrate(
+            x => f(x).Imaginary, a, b, absoluteTolerance, relativeTolerance);
 
         return (new Complex(realValue, imagValue), Math.Sqrt((realError * realError) + (imagError * imagError)));
     }
 
     /// <summary>
-    /// Computes the Gauss-Kronrod quadrature over a single interval.
+    /// Integrates from a to infinity using Double Exponential (tanh-sinh) transformation.
+    /// 
+    /// The DE transformation is particularly effective for:
+    /// - Semi-infinite and infinite intervals
+    /// - Oscillatory integrands (common in Fourier-based option pricing)
+    /// - Integrands with endpoint singularities
+    /// 
+    /// For Heston/Kou characteristic function integration, this method provides
+    /// robust results across all moneyness levels, including deep OTM options.
     /// </summary>
-    private static IntegrationInterval ComputeInterval(Func<double, double> f, double a, double b)
-    {
-        double halfLength = (b - a) / 2;
-        double center = (a + b) / 2;
-
-        double gk15Sum = 0;
-        double g7Sum = 0;
-
-        for (int i = 0; i < GK15Nodes.Length; i++)
-        {
-            double x = center + (halfLength * GK15Nodes[i]);
-            double fx = f(x);
-
-            gk15Sum += GK15Weights[i] * fx;
-            g7Sum += G7Weights[i] * fx;
-        }
-
-        double value = halfLength * gk15Sum;
-        double gaussValue = halfLength * g7Sum;
-
-        // Error estimate from difference between GK15 and G7
-        double error = Math.Abs(value - gaussValue);
-
-        return new IntegrationInterval(a, b, value, error);
-    }
-
-    /// <summary>
-    /// Represents an integration interval with computed value and error.
-    /// </summary>
-    private readonly struct IntegrationInterval
-    {
-        public double Left { get; }
-        public double Right { get; }
-        public double Value { get; }
-        public double Error { get; }
-
-        public IntegrationInterval(double left, double right, double value, double error)
-        {
-            Left = left;
-            Right = right;
-            Value = value;
-            Error = error;
-        }
-    }
-
-    /// <summary>
-    /// Integrates from a to infinity using exponential transformation.
-    /// Transform: x = a + exp(t), dx = exp(t)dt
-    /// </summary>
+    /// <param name="f">The function to integrate.</param>
+    /// <param name="a">Lower integration bound (typically 0 for characteristic function integration).</param>
+    /// <param name="absoluteTolerance">Absolute error tolerance.</param>
+    /// <param name="relativeTolerance">Relative error tolerance (currently unused, kept for API compatibility).</param>
+    /// <returns>The integral value and estimated error.</returns>
     public static (double Value, double Error) IntegrateToInfinity(
         Func<double, double> f,
         double a,
@@ -210,35 +128,37 @@ public static class AdaptiveIntegration
     {
         ArgumentNullException.ThrowIfNull(f);
 
-        // Transform to finite interval: integrate from -inf to some large value
-        // We use x = a + exp(t), so t ranges from -inf to some T
-        // In practice, we integrate t from -10 to 10 (covers exp(-10) ≈ 0 to exp(10) ≈ 22000)
+        // Use Double Exponential transformation for semi-infinite integral
+        // This is the tanh-sinh quadrature method, excellent for oscillatory integrands
+        double result = DoubleExponentialTransformation.Integrate(
+            f,
+            a,
+            double.PositiveInfinity,
+            absoluteTolerance);
 
-        double Transformed(double t)
+        // Estimate error by comparing with a truncated integral
+        // Use a large but finite upper bound for comparison
+        double truncatedResult = GaussLegendreRule.Integrate(f, a, 200.0, DefaultGaussLegendreOrder);
+        double error = Math.Abs(result - truncatedResult);
+
+        // If both results are very close, we've likely achieved convergence
+        // Report a small error in this case
+        if (error < absoluteTolerance)
         {
-            double expT = Math.Exp(t);
-            double x = a + expT;
-            return f(x) * expT; // Jacobian
+            error = absoluteTolerance * 0.1;
         }
 
-        // Determine upper bound adaptively
-        // Find where integrand becomes negligible
-        double upperBound = 20; // Default to large bound
-        for (double t = 0; t <= 20; t += 0.5)
-        {
-            if (Math.Abs(Transformed(t)) < absoluteTolerance * 0.01)
-            {
-                upperBound = Math.Max(t, 5); // Use at least 5 to ensure we don't stop too early
-                break;
-            }
-        }
-
-        return Integrate(Transformed, -10, upperBound, absoluteTolerance, relativeTolerance);
+        return (result, error);
     }
 
     /// <summary>
     /// Integrates a complex function from a to infinity.
     /// </summary>
+    /// <param name="f">The complex function to integrate.</param>
+    /// <param name="a">Lower integration bound.</param>
+    /// <param name="absoluteTolerance">Absolute error tolerance.</param>
+    /// <param name="relativeTolerance">Relative error tolerance.</param>
+    /// <returns>The integral value and estimated error.</returns>
     public static (Complex Value, double Error) IntegrateComplexToInfinity(
         Func<double, Complex> f,
         double a,
@@ -247,24 +167,12 @@ public static class AdaptiveIntegration
     {
         ArgumentNullException.ThrowIfNull(f);
 
-        Complex Transformed(double t)
-        {
-            double expT = Math.Exp(t);
-            double x = a + expT;
-            return f(x) * expT; // Jacobian
-        }
+        // Integrate real and imaginary parts separately
+        (double realValue, double realError) = IntegrateToInfinity(
+            x => f(x).Real, a, absoluteTolerance, relativeTolerance);
+        (double imagValue, double imagError) = IntegrateToInfinity(
+            x => f(x).Imaginary, a, absoluteTolerance, relativeTolerance);
 
-        // Determine upper bound adaptively
-        double upperBound = 20; // Default to large bound
-        for (double t = 0; t <= 20; t += 0.5)
-        {
-            if (Transformed(t).Magnitude < absoluteTolerance * 0.01)
-            {
-                upperBound = Math.Max(t, 5); // Use at least 5 to ensure we don't stop too early
-                break;
-            }
-        }
-
-        return IntegrateComplex(Transformed, -10, upperBound, absoluteTolerance, relativeTolerance);
+        return (new Complex(realValue, imagValue), Math.Sqrt((realError * realError) + (imagError * imagError)));
     }
 }

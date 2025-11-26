@@ -6,7 +6,6 @@ namespace Alaris.Strategy.Core;
 /// <summary>
 /// Production-grade Heston model pricing using characteristic function integration.
 /// Implements the semi-analytical pricing formula from Heston (1993).
-///
 /// Uses Carr-Madan Fourier inversion or Lewis (2001) approach for option pricing,
 /// then backs out implied volatility using Newton-Raphson iteration.
 ///
@@ -15,6 +14,8 @@ namespace Alaris.Strategy.Core;
 /// Carr and Madan (1999) "Option Valuation Using the Fast Fourier Transform"
 /// Lewis (2001) "A Simple Option Formula for General Jump-Diffusion and Other
 /// Exponential Levy Processes"
+/// Leung and Santoli (2014) "Accounting for Earnings Announcements in the Pricing
+/// of Equity Options" - Extended Heston with EA jumps
 /// </summary>
 public static class HestonPricing
 {
@@ -48,7 +49,7 @@ public static class HestonPricing
         }
 
         // Compute using Heston semi-analytical formula
-        // Call price = S*P1 - K*exp(-rT)*P2
+        // Call price = S*exp(-qT)*P1 - K*exp(-rT)*P2
         // where P1 and P2 are probabilities computed via characteristic function
 
         double discountFactor = Math.Exp(-@params.RiskFreeRate * timeToExpiry);
@@ -154,18 +155,18 @@ public static class HestonPricing
             }
 
             Complex iPhi = new Complex(0, phi);
-            Complex charFunc = CharacteristicFunction(phi, spot, timeToExpiry, @params, j);
+            Complex charFunc = CharacteristicFunction(phi, timeToExpiry, @params, j);
             Complex exponent = Complex.Exp(iPhi * logMoneyness);
 
             return (exponent * charFunc / iPhi).Real;
         }
 
-        // Numerical integration from 0 to infinity
+        // Numerical integration from 0 to infinity using adaptive quadrature
         (double integralValue, double _) = AdaptiveIntegration.IntegrateToInfinity(
             Integrand,
             0,
-            absoluteTolerance: 1e-6,
-            relativeTolerance: 1e-4);
+            absoluteTolerance: 1e-8,
+            relativeTolerance: 1e-6);
 
         double probability = 0.5 + (integralValue / Math.PI);
 
@@ -173,12 +174,12 @@ public static class HestonPricing
     }
 
     /// <summary>
-    /// Heston characteristic function for probability P_j.
+    /// Standard Heston characteristic function for probability P_j.
     /// This is the core of the semi-analytical pricing formula.
+    /// Based on Heston (1993) equations (17) and (18).
     /// </summary>
     private static Complex CharacteristicFunction(
         double phi,
-        double spot,
         double timeToExpiry,
         HestonParameters @params,
         int j)
@@ -191,38 +192,47 @@ public static class HestonPricing
         double rho = @params.Rho;
         double v0 = @params.V0;
         double r = @params.RiskFreeRate;
-        double d = @params.DividendYield;
+        double q = @params.DividendYield;
+        double sigmaSq = sigmaV * sigmaV;
 
         // Parameters u_j and b_j depend on which probability we're computing
+        // For P1 (stock measure): u = 0.5, b = kappa - rho*sigmaV
+        // For P2 (risk-neutral): u = -0.5, b = kappa
         double u = j == 1 ? 0.5 : -0.5;
         double b = j == 1 ? kappa - (rho * sigmaV) : kappa;
 
-        // Complex components
-        // Standard Heston: d = sqrt((ρσiφ - b)² - σ²(2*u*iφ - φ²))
-        // For j=1 (u=0.5): φ² - 2*0.5*iφ = φ² - iφ
-        // For j=2 (u=-0.5): φ² - 2*(-0.5)*iφ = φ² + iφ
-        Complex d_h = Complex.Sqrt(
-            (((rho * sigmaV * i * phi) - b) * ((rho * sigmaV * i * phi) - b)) +
-            (sigmaV * sigmaV * ((phi * phi) - (2 * u * i * phi))));
+        // a = b - rho*sigma*i*phi
+        Complex a = b - (rho * sigmaV * i * phi);
 
-        Complex g = (b - (rho * sigmaV * i * phi) - d_h) /
-                    (b - (rho * sigmaV * i * phi) + d_h);
+        // d² = a² + sigma²*(phi² - 2*u*i*phi)
+        Complex dSquared = (a * a) + (sigmaSq * ((phi * phi) - (2 * u * i * phi)));
+        Complex d = Complex.Sqrt(dSquared);
 
-        Complex exp_dt = Complex.Exp(-d_h * timeToExpiry);
+        // Branch cut handling: ensure Re(d) > 0 for numerical stability
+        if (d.Real < 0)
+        {
+            d = -d;
+        }
 
-        Complex C = ((r - d) * i * phi * timeToExpiry) +
-                    (kappa * theta / (sigmaV * sigmaV) *
-                     (((b - (rho * sigmaV * i * phi) - d_h) * timeToExpiry) -
-                      (2 * Complex.Log((1 - (g * exp_dt)) / (1 - g)))));
+        // g = (a - d) / (a + d)
+        Complex g = (a - d) / (a + d);
 
-        // D term
-        Complex D = ((b - (rho * sigmaV * i * phi) - d_h) / (sigmaV * sigmaV) *
-                     ((1 - exp_dt) / (1 - (g * exp_dt))));
+        Complex expMinusDT = Complex.Exp(-d * timeToExpiry);
 
-        // Characteristic function of log-return ln(S_T/S_0), not ln(S_T)
-        Complex charFunc = Complex.Exp(C + (D * v0));
+        // C term: drift contribution + variance mean-reversion contribution
+        // C = (r-q)*i*phi*T + (kappa*theta/sigma²) * [(a-d)*T - 2*ln((1-g*exp(-dT))/(1-g))]
+        Complex logTerm = Complex.Log((1 - (g * expMinusDT)) / (1 - g));
+        Complex C = ((r - q) * i * phi * timeToExpiry) +
+                    (kappa * theta / sigmaSq *
+                     (((a - d) * timeToExpiry) - (2 * logTerm)));
 
-        return charFunc;
+        // D term: initial variance contribution
+        // D = (a-d)/sigma² * (1 - exp(-dT)) / (1 - g*exp(-dT))
+        Complex D = (a - d) / sigmaSq *
+                    ((1 - expMinusDT) / (1 - (g * expMinusDT)));
+
+        // Characteristic function of log-return ln(S_T/S_0)
+        return Complex.Exp(C + (D * v0));
     }
 
     /// <summary>
@@ -237,10 +247,11 @@ public static class HestonPricing
         double volatility,
         bool isCall)
     {
+        double sqrtT = Math.Sqrt(timeToExpiry);
         double d1 = (Math.Log(spot / strike) +
                     ((riskFreeRate - dividendYield + (0.5 * volatility * volatility)) * timeToExpiry)) /
-                   (volatility * Math.Sqrt(timeToExpiry));
-        double d2 = d1 - (volatility * Math.Sqrt(timeToExpiry));
+                   (volatility * sqrtT);
+        double d2 = d1 - (volatility * sqrtT);
 
         double forward = spot * Math.Exp(-dividendYield * timeToExpiry);
         double discountFactor = Math.Exp(-riskFreeRate * timeToExpiry);
@@ -266,12 +277,13 @@ public static class HestonPricing
         double dividendYield,
         double volatility)
     {
+        double sqrtT = Math.Sqrt(timeToExpiry);
         double d1 = (Math.Log(spot / strike) +
                     ((riskFreeRate - dividendYield + (0.5 * volatility * volatility)) * timeToExpiry)) /
-                   (volatility * Math.Sqrt(timeToExpiry));
+                   (volatility * sqrtT);
 
         double forward = spot * Math.Exp(-dividendYield * timeToExpiry);
-        return forward * Math.Sqrt(timeToExpiry) * NormalPDF(d1);
+        return forward * sqrtT * NormalPDF(d1);
     }
 
     /// <summary>
@@ -331,10 +343,10 @@ public static class HestonPricing
 
     /// <summary>
     /// Error function approximation.
+    /// Uses Abramowitz and Stegun formula 7.1.26 with maximum error 1.5e-7.
     /// </summary>
     private static double Erf(double x)
     {
-        // Abramowitz and Stegun approximation
         double a1 = 0.254829592;
         double a2 = -0.284496736;
         double a3 = 1.421413741;
