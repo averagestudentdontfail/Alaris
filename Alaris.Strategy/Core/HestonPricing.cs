@@ -149,10 +149,8 @@ public static class HestonPricing
 
         double Integrand(double phi)
         {
-            if (phi < 1e-10)
-            {
-                return 0;
-            }
+            // UPDATED: Removed the "if (phi < 1e-10) return 0;" check to ensure smoothness
+            // for high-order quadrature. The integration lower bound handles the singularity.
 
             Complex iPhi = new Complex(0, phi);
             Complex charFunc = CharacteristicFunction(phi, timeToExpiry, @params, j);
@@ -161,10 +159,11 @@ public static class HestonPricing
             return (exponent * charFunc / iPhi).Real;
         }
 
-        // Numerical integration from 0 to infinity using adaptive quadrature
+        // Numerical integration from slightly above 0 to infinity using adaptive quadrature
+        // UPDATED: Start at 1e-8 to avoid singularity at phi=0
         (double integralValue, double _) = AdaptiveIntegration.IntegrateToInfinity(
             Integrand,
-            0,
+            1e-8,
             absoluteTolerance: 1e-8,
             relativeTolerance: 1e-6);
 
