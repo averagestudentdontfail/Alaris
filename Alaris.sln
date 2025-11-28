@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Alaris.Events", "Alaris.Eve
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Alaris.Test", "Alaris.Test\Alaris.Test.csproj", "{C2D00E91-48DE-4779-B438-2BC4E2953934}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Alaris.Simulation", "Alaris.Simulation\Alaris.Simulation.csproj", "{E9F28E1D-68AF-4FC0-BA7C-BF01C544C596}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -83,6 +85,18 @@ Global
 		{C2D00E91-48DE-4779-B438-2BC4E2953934}.Release|x64.Build.0 = Release|Any CPU
 		{C2D00E91-48DE-4779-B438-2BC4E2953934}.Release|x86.ActiveCfg = Release|Any CPU
 		{C2D00E91-48DE-4779-B438-2BC4E2953934}.Release|x86.Build.0 = Release|Any CPU
+		{E9F28E1D-68AF-4FC0-BA7C-BF01C544C596}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E9F28E1D-68AF-4FC0-BA7C-BF01C544C596}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E9F28E1D-68AF-4FC0-BA7C-BF01C544C596}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{E9F28E1D-68AF-4FC0-BA7C-BF01C544C596}.Debug|x64.Build.0 = Debug|Any CPU
+		{E9F28E1D-68AF-4FC0-BA7C-BF01C544C596}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{E9F28E1D-68AF-4FC0-BA7C-BF01C544C596}.Debug|x86.Build.0 = Debug|Any CPU
+		{E9F28E1D-68AF-4FC0-BA7C-BF01C544C596}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E9F28E1D-68AF-4FC0-BA7C-BF01C544C596}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E9F28E1D-68AF-4FC0-BA7C-BF01C544C596}.Release|x64.ActiveCfg = Release|Any CPU
+		{E9F28E1D-68AF-4FC0-BA7C-BF01C544C596}.Release|x64.Build.0 = Release|Any CPU
+		{E9F28E1D-68AF-4FC0-BA7C-BF01C544C596}.Release|x86.ActiveCfg = Release|Any CPU
+		{E9F28E1D-68AF-4FC0-BA7C-BF01C544C596}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
