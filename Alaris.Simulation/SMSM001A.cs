@@ -47,6 +47,7 @@ using Alaris.Strategy.Bridge;
 using Alaris.Strategy.Core;
 using Alaris.Strategy.Model;
 using Microsoft.Extensions.Logging;
+using System.Globalization;
 
 // Type aliases for coded naming convention compatibility
 using Signal = Alaris.Strategy.Core.STCR004A;
@@ -256,10 +257,10 @@ internal static class SMSM001A
         Console.WriteLine("│ PHASE 1: MARKET CONDITIONS                                                  │");
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
         Console.WriteLine(FormatBoxLine("Symbol:              ", SimulationSymbol));
-        Console.WriteLine(FormatBoxLine("Evaluation Date:     ", evaluationDate.ToString("yyyy-MM-dd")));
-        Console.WriteLine(FormatBoxLine("Earnings Date:       ", earningsDate.ToString("yyyy-MM-dd")));
-        Console.WriteLine(FormatBoxLine("Days to Earnings:    ", (earningsDate - evaluationDate).Days.ToString()));
-        Console.WriteLine(FormatBoxLine("Portfolio Value:     ", PortfolioValue.ToString("C0")));
+        Console.WriteLine(FormatBoxLine("Evaluation Date:     ", evaluationDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)));
+        Console.WriteLine(FormatBoxLine("Earnings Date:       ", earningsDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)));
+        Console.WriteLine(FormatBoxLine("Days to Earnings:    ", (earningsDate - evaluationDate).Days.ToString(CultureInfo.InvariantCulture)));
+        Console.WriteLine(FormatBoxLine("Portfolio Value:     ", PortfolioValue.ToString("C0", CultureInfo.InvariantCulture)));
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
         Console.WriteLine("│ SCENARIO: Pre-earnings with elevated IV and inverted term structure         │");
         Console.WriteLine("│ OBJECTIVE: Generate Recommended signal per Atilgan (2014) criteria          │");
@@ -1326,7 +1327,7 @@ internal static class SMSM001A
         Console.WriteLine("┌──────────────────────────────────────────────────────────────────────────────┐");
         Console.WriteLine("│ PHASE 10: POSITION SIZING - Kelly Criterion                                 │");
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
-        Console.WriteLine(FormatBoxLine("Historical Trades:   ", result.HistoricalTrades.ToString()));
+        Console.WriteLine(FormatBoxLine("Historical Trades:   ", result.HistoricalTrades.ToString(CultureInfo.InvariantCulture)));
         Console.WriteLine(FormatBoxLine("Win Rate:            ", $"{result.WinRate:P1}"));
         Console.WriteLine(FormatBoxLine("Win/Loss Ratio:      ", $"{result.WinLossRatio:F2}x"));
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
@@ -1336,7 +1337,7 @@ internal static class SMSM001A
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
         Console.WriteLine(FormatBoxLine("Portfolio Value:     ", $"${PortfolioValue:N0}"));
         Console.WriteLine(FormatBoxLine("Dollar Allocation:   ", $"${result.DollarAllocation:N2}"));
-        Console.WriteLine(FormatBoxLine("Contracts:           ", result.Contracts.ToString()));
+        Console.WriteLine(FormatBoxLine("Contracts:           ", result.Contracts.ToString(CultureInfo.InvariantCulture)));
         Console.WriteLine(FormatBoxLine("Max Loss/Contract:   ", $"${result.MaxLossPerContract:N2}"));
         Console.WriteLine(FormatBoxLine("Total Risk:          ", $"${result.TotalRisk:N2}"));
         Console.WriteLine("└──────────────────────────────────────────────────────────────────────────────┘");
@@ -1378,7 +1379,7 @@ internal static class SMSM001A
         Console.WriteLine(FormatDoubleBoxLine("  Strike:        ", $"${spreadResult.Strike:F2}"));
         Console.WriteLine(FormatDoubleBoxLine("  Front Month:   ", $"{spreadResult.FrontExpiry:yyyy-MM-dd} (Sell)"));
         Console.WriteLine(FormatDoubleBoxLine("  Back Month:    ", $"{spreadResult.BackExpiry:yyyy-MM-dd} (Buy)"));
-        Console.WriteLine(FormatDoubleBoxLine("  Contracts:     ", positionResult.Contracts.ToString()));
+        Console.WriteLine(FormatDoubleBoxLine("  Contracts:     ", positionResult.Contracts.ToString(CultureInfo.InvariantCulture)));
         Console.WriteLine(FormatDoubleBoxLine($"  {costLabel,-14}", $"${totalCost:N2}"));
         Console.WriteLine(FormatDoubleBoxLine("  Max Risk:      ", $"${positionResult.TotalRisk:N2}"));
         Console.WriteLine("╠══════════════════════════════════════════════════════════════════════════════╣");
