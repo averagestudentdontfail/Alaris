@@ -36,16 +36,27 @@
 //   - Rule 15: Fault Isolation (SafeLog pattern)
 //   - Rule 16: Deterministic Cleanup
 //
+// Analyzer Suppressions:
+//   - CA1303: Literal strings acceptable for console simulation output
+//   - CA5394: Deterministic Random acceptable for reproducible simulation
+//
 // ============================================================================
 
-using System.Diagnostics;
 using Alaris.Double;
 using Alaris.Strategy.Bridge;
 using Alaris.Strategy.Core;
 using Alaris.Strategy.Model;
-using Alaris.Strategy.Pricing;
-using Alaris.Strategy.Risk;
 using Microsoft.Extensions.Logging;
+
+// Type aliases for coded naming convention compatibility
+using Signal = Alaris.Strategy.Core.STCR004A;
+using SignalStrength = Alaris.Strategy.Core.STCR004AStrength;
+using OptionChain = Alaris.Strategy.Model.STDT002A;
+
+// Suppress CA1303 for entire file - simulation console output uses literal strings intentionally
+#pragma warning disable CA1303 // Do not pass literals as localized parameters
+// Suppress CA5394 for entire file - deterministic Random used for reproducible simulation
+#pragma warning disable CA5394 // Do not use insecure randomness
 
 namespace Alaris.Simulation;
 
@@ -69,7 +80,7 @@ namespace Alaris.Simulation;
 /// rate (Alaris.Double with Healy 2021 methodology) pricing regimes.
 /// </para>
 /// </remarks>
-public static class SMSM001A
+internal static class SMSM001A
 {
     // ========================================================================
     // Simulation Configuration Constants
@@ -93,6 +104,9 @@ public static class SMSM001A
     /// <summary>Trading days per year for annualisation.</summary>
     private const double TradingDaysPerYear = 252.0;
 
+    /// <summary>Box width for console output formatting.</summary>
+    private const int BoxWidth = 78;
+
     // ========================================================================
     // Entry Point
     // ========================================================================
@@ -102,6 +116,9 @@ public static class SMSM001A
     /// </summary>
     public static async Task Main(string[] args)
     {
+        // Suppress unused parameter warning
+        _ = args;
+
         // Configure logging
         using ILoggerFactory loggerFactory = LoggerFactory.Create(builder =>
         {
@@ -141,6 +158,28 @@ public static class SMSM001A
     }
 
     // ========================================================================
+    // Formatting Helpers
+    // ========================================================================
+
+    /// <summary>
+    /// Formats a line for box output with proper padding.
+    /// </summary>
+    private static string FormatBoxLine(string label, string value, char border = '│')
+    {
+        string content = $"{label}{value}";
+        int padding = BoxWidth - content.Length - 2; // -2 for borders
+        return $"{border} {content}{new string(' ', Math.Max(0, padding))} {border}";
+    }
+
+    /// <summary>
+    /// Formats a line for double-border box output.
+    /// </summary>
+    private static string FormatDoubleBoxLine(string label, string value)
+    {
+        return FormatBoxLine(label, value, '║');
+    }
+
+    // ========================================================================
     // Simulation Orchestration
     // ========================================================================
 
@@ -149,6 +188,8 @@ public static class SMSM001A
     /// </summary>
     private static async Task RunSimulation(ILoggerFactory loggerFactory)
     {
+        _ = loggerFactory; // Reserved for future logging integration
+
         // Define simulation dates
         DateTime earningsDate = new DateTime(2025, 1, 30); // Earnings announcement
         DateTime evaluationDate = new DateTime(2025, 1, 24); // 6 days before EA
@@ -190,7 +231,7 @@ public static class SMSM001A
         DisplayCalendarSpread(negativeRateSpread);
 
         // Phase 9: Demonstrate Alaris.Double pricing
-        DoubleBoundaryResult doubleBoundary = DemonstrateDoubleBoundaryPricing();
+        DoubleBoundaryDemoResult doubleBoundary = DemonstrateDoubleBoundaryPricing();
         DisplayDoubleBoundaryResult(doubleBoundary);
 
         // Phase 10: Calculate position size (Kelly Criterion)
@@ -214,11 +255,11 @@ public static class SMSM001A
         Console.WriteLine("┌──────────────────────────────────────────────────────────────────────────────┐");
         Console.WriteLine("│ PHASE 1: MARKET CONDITIONS                                                  │");
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
-        Console.WriteLine($"│ Symbol:              {SimulationSymbol,-56} │");
-        Console.WriteLine($"│ Evaluation Date:     {evaluationDate:yyyy-MM-dd,-53} │");
-        Console.WriteLine($"│ Earnings Date:       {earningsDate:yyyy-MM-dd,-53} │");
-        Console.WriteLine($"│ Days to Earnings:    {(earningsDate - evaluationDate).Days,-56} │");
-        Console.WriteLine($"│ Portfolio Value:     {PortfolioValue:C,-53} │");
+        Console.WriteLine(FormatBoxLine("Symbol:              ", SimulationSymbol));
+        Console.WriteLine(FormatBoxLine("Evaluation Date:     ", evaluationDate.ToString("yyyy-MM-dd")));
+        Console.WriteLine(FormatBoxLine("Earnings Date:       ", earningsDate.ToString("yyyy-MM-dd")));
+        Console.WriteLine(FormatBoxLine("Days to Earnings:    ", (earningsDate - evaluationDate).Days.ToString()));
+        Console.WriteLine(FormatBoxLine("Portfolio Value:     ", PortfolioValue.ToString("C0")));
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
         Console.WriteLine("│ SCENARIO: Pre-earnings with elevated IV and inverted term structure         │");
         Console.WriteLine("│ OBJECTIVE: Generate Recommended signal per Atilgan (2014) criteria          │");
@@ -236,14 +277,14 @@ public static class SMSM001A
     /// <remarks>
     /// Market data is constructed to satisfy Atilgan (2014) entry criteria:
     /// <list type="bullet">
-    ///   <item><description>IV30/RV30 ≥ 1.25 → Set IV30 = 0.45, RV30 ≈ 0.28</description></item>
+    ///   <item><description>IV30/RV30 ≥ 1.25 → Set IV30 elevated via term structure</description></item>
     ///   <item><description>Term slope ≤ -0.00406 → Create inverted term structure</description></item>
     ///   <item><description>Volume ≥ 1.5M → Set daily volume ~3.5M average</description></item>
     /// </list>
     /// </remarks>
     private static SimulatedMarketData GenerateMarketData(DateTime evaluationDate, DateTime earningsDate)
     {
-        // Generate price history with moderate volatility (~28% annualised)
+        // Generate price history with moderate volatility (~25% annualised)
         List<PriceBar> priceHistory = GeneratePriceHistory(evaluationDate, 90);
 
         // Generate option chain with inverted term structure (pre-earnings IV elevation)
@@ -265,13 +306,18 @@ public static class SMSM001A
     /// <summary>
     /// Generates 90 days of OHLCV price history with realistic volatility characteristics.
     /// </summary>
+    /// <remarks>
+    /// Volatility is set to ~22% annualised to ensure IV30/RV30 ratio exceeds 1.25
+    /// when IV30 is elevated to ~32% due to pre-earnings term structure.
+    /// </remarks>
     private static List<PriceBar> GeneratePriceHistory(DateTime endDate, int days)
     {
         List<PriceBar> bars = new List<PriceBar>(days);
         Random rng = new Random(42); // Deterministic seed for reproducibility
 
         double price = 180.00; // Starting price
-        double dailyVol = 0.28 / Math.Sqrt(TradingDaysPerYear); // ~28% annualised vol
+        // Target ~22% annualised vol so that IV30 (~32%) / RV30 (~22%) ≈ 1.45 (> 1.25)
+        double dailyVol = 0.22 / Math.Sqrt(TradingDaysPerYear);
 
         for (int i = days - 1; i >= 0; i--)
         {
@@ -284,14 +330,14 @@ public static class SMSM001A
             }
 
             // Generate log-normal return
-            double return_ = (rng.NextDouble() - 0.5) * 2 * dailyVol * 1.5;
-            price *= Math.Exp(return_);
+            double returnVal = (rng.NextDouble() - 0.5) * 2 * dailyVol * 1.5;
+            price *= Math.Exp(returnVal);
 
             // Generate OHLC with realistic intraday range
             double range = price * dailyVol * (0.5 + rng.NextDouble());
-            double open = price * (1 + (rng.NextDouble() - 0.5) * dailyVol * 0.3);
-            double high = Math.Max(open, price) + range * 0.5 * rng.NextDouble();
-            double low = Math.Min(open, price) - range * 0.5 * rng.NextDouble();
+            double open = price * (1 + ((rng.NextDouble() - 0.5) * dailyVol * 0.3));
+            double high = Math.Max(open, price) + (range * 0.5 * rng.NextDouble());
+            double low = Math.Min(open, price) - (range * 0.5 * rng.NextDouble());
             double close = price;
 
             // High volume (averaging ~3.5M to meet ≥1.5M criterion)
@@ -315,9 +361,15 @@ public static class SMSM001A
     /// Generates an option chain with inverted term structure characteristic of pre-earnings.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Per Leung &amp; Santoli (2014), pre-earnings IV follows:
     ///   I(t) = sqrt(σ² + σₑ²/(T-t))
     /// where σₑ is earnings jump volatility. This creates higher IV for near-term options.
+    /// </para>
+    /// <para>
+    /// IV30 is elevated to ~32% to ensure IV30/RV30 ratio exceeds 1.25 threshold.
+    /// The term structure shows gradual decay from front-month to back-month.
+    /// </para>
     /// </remarks>
     private static OptionChain GenerateOptionChain(DateTime evaluationDate, DateTime earningsDate)
     {
@@ -329,8 +381,9 @@ public static class SMSM001A
         };
 
         // Parameters for inverted term structure
-        double baseVol = 0.25; // σ (base diffusion volatility)
-        double sigmaE = 0.08;  // σₑ (earnings jump volatility, ~8%)
+        // Elevated base vol to ensure IV30/RV30 > 1.25
+        double baseVol = 0.28; // σ (base diffusion volatility, elevated for pre-earnings)
+        double sigmaE = 0.12;  // σₑ (earnings jump volatility, ~12%)
 
         // Define expiry dates
         DateTime[] expiryDates = new[]
@@ -349,19 +402,9 @@ public static class SMSM001A
             double timeToExpiry = dte / TradingDaysPerYear;
 
             // Leung-Santoli IV formula: I(t) = sqrt(σ² + σₑ²/(T-t))
-            // Apply only if expiry is before or near earnings
-            double iv;
-            if (expiry <= earningsDate.AddDays(7))
-            {
-                // Pre-earnings: elevated IV per L&S model
-                double varianceComponent = (sigmaE * sigmaE) / timeToExpiry;
-                iv = Math.Sqrt((baseVol * baseVol) + varianceComponent);
-            }
-            else
-            {
-                // Post-earnings: IV reverts towards base volatility
-                iv = baseVol + 0.02 * Math.Exp(-0.05 * dte);
-            }
+            // Apply earnings effect that decays with time to expiry
+            double varianceComponent = sigmaE * sigmaE / timeToExpiry;
+            double iv = Math.Sqrt((baseVol * baseVol) + varianceComponent);
 
             // Cap IV at reasonable levels
             iv = Math.Min(iv, 0.80);
@@ -375,7 +418,7 @@ public static class SMSM001A
             {
                 // Slight volatility smile: higher IV for OTM options
                 double moneyness = Math.Abs(strike - chain.UnderlyingPrice) / chain.UnderlyingPrice;
-                double strikeIV = iv * (1 + 0.15 * moneyness);
+                double strikeIV = iv * (1 + (0.15 * moneyness));
 
                 // Create call and put contracts
                 expiryColl.Calls.Add(CreateOptionContract(strike, strikeIV, chain.UnderlyingPrice, true));
@@ -399,12 +442,16 @@ public static class SMSM001A
         double midPrice = intrinsic + timeValue;
 
         double spread = midPrice * 0.02; // 2% bid-ask spread
-        double bid = Math.Max(0.01, midPrice - spread / 2);
-        double ask = midPrice + spread / 2;
+        double bid = Math.Max(0.01, midPrice - (spread / 2));
+        double ask = midPrice + (spread / 2);
 
         // Delta approximation
-        double delta = isCall ? 0.5 + 0.4 * (spot - strike) / spot : -0.5 + 0.4 * (spot - strike) / spot;
+        double delta = isCall 
+            ? 0.5 + (0.4 * (spot - strike) / spot) 
+            : -0.5 + (0.4 * (spot - strike) / spot);
         delta = Math.Max(-1, Math.Min(1, delta));
+
+        Random localRng = new Random((int)(strike * 100));
 
         return new OptionContract
         {
@@ -417,8 +464,8 @@ public static class SMSM001A
             Gamma = Math.Round(0.02 / spot, 6),
             Vega = Math.Round(spot * 0.002, 4),
             Theta = Math.Round(-0.05, 4),
-            OpenInterest = 500 + new Random().Next(2000),
-            Volume = 100 + new Random().Next(500)
+            OpenInterest = 500 + localRng.Next(2000),
+            Volume = 100 + localRng.Next(500)
         };
     }
 
@@ -446,10 +493,10 @@ public static class SMSM001A
         Console.WriteLine("┌──────────────────────────────────────────────────────────────────────────────┐");
         Console.WriteLine("│ PHASE 2: SIMULATED MARKET DATA                                              │");
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
-        Console.WriteLine($"│ Current Price:       ${data.CurrentPrice,-54:F2} │");
-        Console.WriteLine($"│ Price History:       {data.PriceHistory.Count} trading days                                       │");
-        Console.WriteLine($"│ Option Expiries:     {data.OptionChain.Expiries.Count} dates                                               │");
-        Console.WriteLine($"│ Historical Earnings: {data.HistoricalEarningsDates.Count} quarters (for σₑ calibration)                     │");
+        Console.WriteLine(FormatBoxLine("Current Price:       ", $"${data.CurrentPrice:F2}"));
+        Console.WriteLine(FormatBoxLine("Price History:       ", $"{data.PriceHistory.Count} trading days"));
+        Console.WriteLine(FormatBoxLine("Option Expiries:     ", $"{data.OptionChain.Expiries.Count} dates"));
+        Console.WriteLine(FormatBoxLine("Historical Earnings: ", $"{data.HistoricalEarningsDates.Count} quarters (for σₑ calibration)"));
         Console.WriteLine("│                                                                              │");
         Console.WriteLine("│ Term Structure Preview (ATM IV):                                             │");
 
@@ -459,7 +506,7 @@ public static class SMSM001A
             OptionContract? atmCall = expiry.Calls.OrderBy(c => Math.Abs(c.Strike - data.CurrentPrice)).FirstOrDefault();
             if (atmCall != null)
             {
-                Console.WriteLine($"│   DTE {dte,3}: IV = {atmCall.ImpliedVolatility:P2}                                                  │");
+                Console.WriteLine(FormatBoxLine($"  DTE {dte,3}: IV = ", $"{atmCall.ImpliedVolatility:P2}"));
             }
         }
 
@@ -498,7 +545,7 @@ public static class SMSM001A
             double logReturn = Math.Log(recentBars[i].Open / recentBars[i - 1].Close);
             overnightVariance += logReturn * logReturn;
         }
-        overnightVariance /= (n - 1);
+        overnightVariance /= n - 1;
 
         // Open-to-close variance component
         double openCloseVariance = 0;
@@ -507,7 +554,7 @@ public static class SMSM001A
             double logReturn = Math.Log(bar.Close / bar.Open);
             openCloseVariance += logReturn * logReturn;
         }
-        openCloseVariance /= (n - 1);
+        openCloseVariance /= n - 1;
 
         // Rogers-Satchell variance component
         double rsVariance = 0;
@@ -539,7 +586,7 @@ public static class SMSM001A
         Console.WriteLine("┌──────────────────────────────────────────────────────────────────────────────┐");
         Console.WriteLine("│ PHASE 3: REALISED VOLATILITY - Yang-Zhang (2000)                            │");
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
-        Console.WriteLine($"│ 30-Day Realised Vol: {realisedVol:P2}                                                 │");
+        Console.WriteLine(FormatBoxLine("30-Day Realised Vol: ", $"{realisedVol:P2}"));
         Console.WriteLine("│ Estimator:           Yang-Zhang OHLC-based                                  │");
         Console.WriteLine("│ Reference:           Yang & Zhang (2000) \"Drift-Independent Estimation\"     │");
         Console.WriteLine("└──────────────────────────────────────────────────────────────────────────────┘");
@@ -564,7 +611,7 @@ public static class SMSM001A
                 .OrderBy(c => Math.Abs(c.Strike - chain.UnderlyingPrice))
                 .FirstOrDefault();
 
-            if (atmCall != null && dte > 0 && dte <= 45)
+            if (atmCall != null && dte > 0 && dte <= 90)
             {
                 termPoints.Add((dte, atmCall.ImpliedVolatility));
             }
@@ -630,18 +677,19 @@ public static class SMSM001A
         Console.WriteLine("┌──────────────────────────────────────────────────────────────────────────────┐");
         Console.WriteLine("│ PHASE 4: TERM STRUCTURE ANALYSIS                                            │");
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
-        Console.WriteLine($"│ Term Structure Shape: {shape,-53} │");
-        Console.WriteLine($"│ Slope (∂IV/∂DTE):     {result.Slope:F6}                                            │");
-        Console.WriteLine($"│ Atilgan Threshold:    ≤ -0.00406                                            │");
-        Console.WriteLine($"│ Trading Criterion:    {criterion,-54} │");
-        Console.WriteLine($"│ Interpolated IV30:    {result.IV30:P2}                                                 │");
+        Console.WriteLine(FormatBoxLine("Term Structure Shape: ", shape));
+        Console.WriteLine(FormatBoxLine("Slope (∂IV/∂DTE):     ", $"{result.Slope:F6}"));
+        Console.WriteLine("│ Atilgan Threshold:    ≤ -0.00406                                            │");
+        Console.WriteLine(FormatBoxLine("Trading Criterion:    ", criterion));
+        Console.WriteLine(FormatBoxLine("Interpolated IV30:    ", $"{result.IV30:P2}"));
         Console.WriteLine("│                                                                              │");
         Console.WriteLine("│ Term Structure Points:                                                       │");
 
         foreach ((int dte, double iv) in result.Points.Take(4))
         {
-            string bar = new string('█', (int)(iv * 100));
-            Console.WriteLine($"│   DTE {dte,3}: {iv:P2} {bar,-35} │");
+            int barLength = Math.Min(40, (int)(iv * 100));
+            string bar = new string('█', barLength);
+            Console.WriteLine(FormatBoxLine($"  DTE {dte,3}: {iv:P2} ", bar));
         }
 
         Console.WriteLine("└──────────────────────────────────────────────────────────────────────────────┘");
@@ -668,6 +716,8 @@ public static class SMSM001A
         double realisedVol,
         TermStructureResult termResult)
     {
+        _ = data; // Reserved for future use
+
         // Calibrate σₑ from historical earnings moves
         // Using simulated jump moves averaging ~4% (realistic for large-cap tech)
         double[] historicalJumps = new[] { 0.045, -0.038, 0.052, -0.041, 0.035, -0.048, 0.055, -0.032, 0.042, -0.039, 0.048, -0.036 };
@@ -681,7 +731,7 @@ public static class SMSM001A
         double timeToExpiry = dteToEarnings / TradingDaysPerYear;
 
         // Theoretical pre-EA IV: I(t) = √(σ² + σₑ²/(T-t))
-        double varianceComponent = (sigmaE * sigmaE) / timeToExpiry;
+        double varianceComponent = sigmaE * sigmaE / timeToExpiry;
         double theoreticalIV = Math.Sqrt((baseVol * baseVol) + varianceComponent);
 
         // IV mispricing signal
@@ -730,13 +780,13 @@ public static class SMSM001A
         Console.WriteLine("│ Reference: \"Accounting for Earnings Announcements in Option Pricing\"        │");
         Console.WriteLine("│ Formula:   I(t) = √(σ² + σₑ²/(T-t))                                          │");
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
-        Console.WriteLine($"│ Earnings Jump Vol (σₑ):  {metrics.SigmaE:P2} (calibrated from {metrics.HistoricalSamples} quarters)       │");
-        Console.WriteLine($"│ Base Volatility (σ):     {metrics.BaseVolatility:P2}                                              │");
-        Console.WriteLine($"│ Theoretical Pre-EA IV:   {metrics.TheoreticalIV:P2}                                              │");
-        Console.WriteLine($"│ Market IV:               {metrics.MarketIV:P2}                                              │");
-        Console.WriteLine($"│ Mispricing Signal:       {metrics.MispricingSignal:+0.00%;-0.00%} ({mispricing} {mispricingArrow})                         │");
+        Console.WriteLine(FormatBoxLine("Earnings Jump Vol (σₑ):  ", $"{metrics.SigmaE:P2} (calibrated from {metrics.HistoricalSamples} quarters)"));
+        Console.WriteLine(FormatBoxLine("Base Volatility (σ):     ", $"{metrics.BaseVolatility:P2}"));
+        Console.WriteLine(FormatBoxLine("Theoretical Pre-EA IV:   ", $"{metrics.TheoreticalIV:P2}"));
+        Console.WriteLine(FormatBoxLine("Market IV:               ", $"{metrics.MarketIV:P2}"));
+        Console.WriteLine(FormatBoxLine("Mispricing Signal:       ", $"{metrics.MispricingSignal:+0.00%;-0.00%} ({mispricing} {mispricingArrow})"));
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
-        Console.WriteLine($"│ Expected IV Crush:       {metrics.ExpectedIVCrush:P2} ({metrics.IVCrushRatio:P1} of pre-EA IV)              │");
+        Console.WriteLine(FormatBoxLine("Expected IV Crush:       ", $"{metrics.ExpectedIVCrush:P2} ({metrics.IVCrushRatio:P1} of pre-EA IV)"));
         Console.WriteLine("└──────────────────────────────────────────────────────────────────────────────┘");
         Console.WriteLine();
     }
@@ -781,15 +831,15 @@ public static class SMSM001A
                 Symbol = data.Symbol,
                 Strength = strength,
                 IVRVRatio = ivRvRatio,
-                TermStructureSlope = termSlope,
+                STTM001ASlope = termSlope,
                 AverageVolume = avgVolume,
                 ImpliedVolatility30 = termResult.IV30,
                 RealizedVolatility30 = realisedVol,
                 EarningsDate = earningsDate,
-                SignalDate = evaluationDate,
+                STCR004ADate = evaluationDate,
                 EarningsJumpVolatility = lsMetrics.SigmaE,
                 TheoreticalIV = lsMetrics.TheoreticalIV,
-                IVMispricingSignal = lsMetrics.MispricingSignal,
+                IVMispricingSTCR004A = lsMetrics.MispricingSignal,
                 ExpectedIVCrush = lsMetrics.ExpectedIVCrush,
                 IVCrushRatio = lsMetrics.IVCrushRatio,
                 BaseVolatility = lsMetrics.BaseVolatility,
@@ -821,7 +871,7 @@ public static class SMSM001A
         Console.WriteLine("┌──────────────────────────────────────────────────────────────────────────────┐");
         Console.WriteLine("│ PHASE 6: TRADING SIGNAL - Atilgan (2014) Criteria                           │");
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
-        Console.WriteLine($"│ Signal Strength:         {strengthDisplay,-50} │");
+        Console.WriteLine(FormatBoxLine("Signal Strength:         ", strengthDisplay));
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
         Console.WriteLine("│ Criterion                Value              Threshold          Result       │");
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
@@ -829,7 +879,8 @@ public static class SMSM001A
         foreach (KeyValuePair<string, (bool Pass, string Value, string Threshold)> kvp in result.CriteriaResults)
         {
             string passStr = kvp.Value.Pass ? "✓ PASS" : "✗ FAIL";
-            Console.WriteLine($"│ {kvp.Key,-20}    {kvp.Value.Value,-18} {kvp.Value.Threshold,-18} {passStr,-10} │");
+            string line = $"{kvp.Key,-22} {kvp.Value.Value,-18} {kvp.Value.Threshold,-18} {passStr}";
+            Console.WriteLine(FormatBoxLine("", line));
         }
 
         Console.WriteLine("└──────────────────────────────────────────────────────────────────────────────┘");
@@ -914,10 +965,13 @@ public static class SMSM001A
         // Calendar spread: long back month, short front month
         double spreadCost = backPrice - frontPrice;
         double spreadDelta = backDelta - frontDelta;
-        double spreadTheta = backTheta - frontTheta; // Positive for calendar (time decay of short > long)
+        double spreadTheta = backTheta - frontTheta;
         double spreadVega = backVega - frontVega;
 
-        await Task.CompletedTask; // Placeholder for async pricing engine
+        // Determine if this is a credit or debit spread
+        bool isCredit = spreadCost < 0;
+
+        await Task.CompletedTask.ConfigureAwait(false); // Placeholder for async pricing engine
 
         return new CalendarSpreadResult
         {
@@ -934,7 +988,9 @@ public static class SMSM001A
             SpreadDelta = spreadDelta,
             SpreadTheta = spreadTheta,
             SpreadVega = spreadVega,
-            MaxLoss = spreadCost * 100, // Per contract
+            IsCredit = isCredit,
+            MaxLoss = isCredit ? double.NaN : spreadCost * 100, // Credit spreads have undefined max loss
+            MaxGain = isCredit ? Math.Abs(spreadCost) * 100 : double.NaN,
             BreakEven = atmStrike,
             RiskFreeRate = riskFreeRate,
             DividendYield = dividendYield
@@ -1000,8 +1056,9 @@ public static class SMSM001A
         double spot, double strike, int dte, double rate, double div, double vol, bool isCall)
     {
         double t = dte / TradingDaysPerYear;
-        double d1 = (Math.Log(spot / strike) + ((rate - div + (vol * vol / 2)) * t)) / (vol * Math.Sqrt(t));
-        double d2 = d1 - (vol * Math.Sqrt(t));
+        double sqrtT = Math.Sqrt(t);
+        double d1 = (Math.Log(spot / strike) + ((rate - div + (vol * vol / 2)) * t)) / (vol * sqrtT);
+        double d2 = d1 - (vol * sqrtT);
 
         double nd1 = NormCdf(isCall ? d1 : -d1);
         double nd2 = NormCdf(isCall ? d2 : -d2);
@@ -1015,8 +1072,8 @@ public static class SMSM001A
             : Math.Exp(-div * t) * (nd1 - 1);
 
         double npd1 = Math.Exp(-d1 * d1 / 2) / Math.Sqrt(2 * Math.PI);
-        double vega = spot * Math.Exp(-div * t) * npd1 * Math.Sqrt(t) * 0.01;
-        double theta = ((-spot * Math.Exp(-div * t) * npd1 * vol / (2 * Math.Sqrt(t))) -
+        double vega = spot * Math.Exp(-div * t) * npd1 * sqrtT * 0.01;
+        double theta = ((-spot * Math.Exp(-div * t) * npd1 * vol / (2 * sqrtT)) -
                        (rate * strike * Math.Exp(-rate * t) * nd2)) / TradingDaysPerYear;
 
         return (price, delta, theta, vega);
@@ -1038,37 +1095,49 @@ public static class SMSM001A
         x = Math.Abs(x) / Math.Sqrt(2);
 
         double t = 1.0 / (1.0 + (p * x));
-        double y = 1.0 - ((((((a5 * t) + a4) * t) + a3) * t + a2) * t + a1) * t * Math.Exp(-x * x);
+        double y = 1.0 - (((((((((a5 * t) + a4) * t) + a3) * t) + a2) * t) + a1) * t * Math.Exp(-x * x));
 
         return 0.5 * (1.0 + (sign * y));
     }
 
     /// <summary>
-    /// Displays calendar spread pricing results.
+    /// Displays calendar spread pricing results with credit/debit handling.
     /// </summary>
     private static void DisplayCalendarSpread(CalendarSpreadResult result)
     {
         string regimeIndicator = result.Regime == PricingRegime.DoubleBoundary ? "[Healy 2021]" : "[Standard]";
+        string spreadType = result.IsCredit ? "Credit" : "Debit";
+        string spreadCostLabel = result.IsCredit ? "Spread Credit:     " : "Spread Cost (Debit):";
 
         Console.WriteLine("┌──────────────────────────────────────────────────────────────────────────────┐");
-        Console.WriteLine($"│ CALENDAR SPREAD PRICING - {result.RegimeName,-48} │");
+        Console.WriteLine(FormatBoxLine("CALENDAR SPREAD PRICING - ", result.RegimeName));
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
-        Console.WriteLine($"│ Pricing Engine:      {regimeIndicator,-54} │");
-        Console.WriteLine($"│ Risk-Free Rate:      {result.RiskFreeRate:P2}                                                 │");
-        Console.WriteLine($"│ Dividend Yield:      {result.DividendYield:P2}                                                 │");
+        Console.WriteLine(FormatBoxLine("Pricing Engine:      ", regimeIndicator));
+        Console.WriteLine(FormatBoxLine("Risk-Free Rate:      ", $"{result.RiskFreeRate:P2}"));
+        Console.WriteLine(FormatBoxLine("Dividend Yield:      ", $"{result.DividendYield:P2}"));
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
-        Console.WriteLine($"│ Strike (ATM):        ${result.Strike,-54:F2} │");
-        Console.WriteLine($"│ Front Month:         {result.FrontExpiry:yyyy-MM-dd} (DTE: {result.FrontDTE})                              │");
-        Console.WriteLine($"│ Back Month:          {result.BackExpiry:yyyy-MM-dd} (DTE: {result.BackDTE})                              │");
+        Console.WriteLine(FormatBoxLine("Strike (ATM):        ", $"${result.Strike:F2}"));
+        Console.WriteLine(FormatBoxLine("Front Month:         ", $"{result.FrontExpiry:yyyy-MM-dd} (DTE: {result.FrontDTE})"));
+        Console.WriteLine(FormatBoxLine("Back Month:          ", $"{result.BackExpiry:yyyy-MM-dd} (DTE: {result.BackDTE})"));
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
-        Console.WriteLine($"│ Front Option Price:  ${result.FrontPrice,-54:F4} │");
-        Console.WriteLine($"│ Back Option Price:   ${result.BackPrice,-54:F4} │");
-        Console.WriteLine($"│ Spread Cost (Debit): ${result.SpreadCost,-54:F4} │");
+        Console.WriteLine(FormatBoxLine("Front Option Price:  ", $"${result.FrontPrice:F4}"));
+        Console.WriteLine(FormatBoxLine("Back Option Price:   ", $"${result.BackPrice:F4}"));
+        Console.WriteLine(FormatBoxLine(spreadCostLabel, $"${Math.Abs(result.SpreadCost):F4} ({spreadType})"));
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
-        Console.WriteLine($"│ Spread Delta:        {result.SpreadDelta,-56:F4} │");
-        Console.WriteLine($"│ Spread Theta:        {result.SpreadTheta,-55:F4} │");
-        Console.WriteLine($"│ Spread Vega:         {result.SpreadVega,-55:F4} │");
-        Console.WriteLine($"│ Max Loss/Contract:   ${result.MaxLoss,-54:F2} │");
+        Console.WriteLine(FormatBoxLine("Spread Delta:        ", $"{result.SpreadDelta:F4}"));
+        Console.WriteLine(FormatBoxLine("Spread Theta:        ", $"{result.SpreadTheta:F4}"));
+        Console.WriteLine(FormatBoxLine("Spread Vega:         ", $"{result.SpreadVega:F4}"));
+
+        if (result.IsCredit)
+        {
+            Console.WriteLine(FormatBoxLine("Max Gain/Contract:   ", $"${result.MaxGain:F2} (credit received)"));
+            Console.WriteLine(FormatBoxLine("Risk Profile:        ", "Undefined max loss (calendar credit)"));
+        }
+        else
+        {
+            Console.WriteLine(FormatBoxLine("Max Loss/Contract:   ", $"${result.MaxLoss:F2}"));
+        }
+
         Console.WriteLine("└──────────────────────────────────────────────────────────────────────────────┘");
         Console.WriteLine();
     }
@@ -1080,17 +1149,7 @@ public static class SMSM001A
     /// <summary>
     /// Demonstrates Alaris.Double double boundary pricing (Healy 2021).
     /// </summary>
-    /// <remarks>
-    /// Under negative interest rates with q &lt; r &lt; 0, early exercise becomes optimal
-    /// within a range [S_l, S_u] rather than above a single boundary. This requires
-    /// the double boundary method from Healy (2021).
-    /// 
-    /// Physical constraints (Healy Appendix A):
-    /// - A1: Boundaries positive (S_u, S_l &gt; 0)
-    /// - A2: Upper &gt; Lower (S_u &gt; S_l)
-    /// - A3: Put boundaries &lt; Strike
-    /// </remarks>
-    private static DoubleBoundaryResult DemonstrateDoubleBoundaryPricing()
+    private static DoubleBoundaryDemoResult DemonstrateDoubleBoundaryPricing()
     {
         // Healy (2021) benchmark parameters
         double spot = 100.0;
@@ -1104,16 +1163,17 @@ public static class SMSM001A
         DBAP002A putApprox = new DBAP002A(spot, strike, maturity, rate, div, vol, isCall: false);
         double putPrice = putApprox.ApproximateValue();
 
-        // Get boundaries
-        (double upperBoundary, double lowerBoundary) = GetBoundaryApproximations(
-            spot, strike, maturity, rate, div, vol);
+        // Get boundaries using DBAP002A.CalculateBoundaries()
+        BoundaryResult boundaryResult = putApprox.CalculateBoundaries();
+        double upperBoundary = boundaryResult.UpperBoundary;
+        double lowerBoundary = boundaryResult.LowerBoundary;
 
         // Validate physical constraints
         bool a1Pass = upperBoundary > 0 && lowerBoundary > 0;
         bool a2Pass = upperBoundary > lowerBoundary;
         bool a3Pass = upperBoundary < strike && lowerBoundary < strike;
 
-        return new DoubleBoundaryResult
+        return new DoubleBoundaryDemoResult
         {
             Spot = spot,
             Strike = strike,
@@ -1132,26 +1192,9 @@ public static class SMSM001A
     }
 
     /// <summary>
-    /// Gets approximate boundary values using QD+ method.
-    /// </summary>
-    private static (double Upper, double Lower) GetBoundaryApproximations(
-        double spot, double strike, double maturity, double rate, double div, double vol)
-    {
-        // Create QD+ approximation for boundary calculation
-        DBAP001A qdPlus = new DBAP001A(spot, strike, maturity, rate, div, vol, isCall: false);
-
-        // Get boundaries from QD+ approximation
-        // Upper boundary: where early exercise becomes optimal as stock rises
-        // Lower boundary: where early exercise becomes optimal as stock falls
-        (double upper, double lower) = qdPlus.GetBoundaries();
-
-        return (upper, lower);
-    }
-
-    /// <summary>
     /// Displays double boundary pricing demonstration results.
     /// </summary>
-    private static void DisplayDoubleBoundaryResult(DoubleBoundaryResult result)
+    private static void DisplayDoubleBoundaryResult(DoubleBoundaryDemoResult result)
     {
         string constraintsResult = result.AllConstraintsPass ? "✓ ALL PASS" : "✗ SOME FAIL";
 
@@ -1161,24 +1204,24 @@ public static class SMSM001A
         Console.WriteLine("│ Reference: \"Pricing American Options Under Negative Rates\"                  │");
         Console.WriteLine("│ Method:    QD+ Approximation with Super Halley's iteration                  │");
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
-        Console.WriteLine($"│ Spot Price:          ${result.Spot,-54:F2} │");
-        Console.WriteLine($"│ Strike Price:        ${result.Strike,-54:F2} │");
-        Console.WriteLine($"│ Time to Maturity:    {result.Maturity,-56:F2} │");
-        Console.WriteLine($"│ Risk-Free Rate:      {result.Rate:P2}                                                │");
-        Console.WriteLine($"│ Dividend Yield:      {result.DividendYield:P2}                                                │");
-        Console.WriteLine($"│ Volatility:          {result.Volatility:P2}                                                  │");
+        Console.WriteLine(FormatBoxLine("Spot Price:          ", $"${result.Spot:F2}"));
+        Console.WriteLine(FormatBoxLine("Strike Price:        ", $"${result.Strike:F2}"));
+        Console.WriteLine(FormatBoxLine("Time to Maturity:    ", $"{result.Maturity:F2} years"));
+        Console.WriteLine(FormatBoxLine("Risk-Free Rate:      ", $"{result.Rate:P2}"));
+        Console.WriteLine(FormatBoxLine("Dividend Yield:      ", $"{result.DividendYield:P2}"));
+        Console.WriteLine(FormatBoxLine("Volatility:          ", $"{result.Volatility:P2}"));
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
-        Console.WriteLine($"│ American Put Price:  ${result.PutPrice,-54:F4} │");
+        Console.WriteLine(FormatBoxLine("American Put Price:  ", $"${result.PutPrice:F4}"));
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
         Console.WriteLine("│ DOUBLE BOUNDARY (Exercise Optimal in Range [S_l, S_u]):                     │");
-        Console.WriteLine($"│   Upper Boundary:    ${result.UpperBoundary,-54:F4} │");
-        Console.WriteLine($"│   Lower Boundary:    ${result.LowerBoundary,-54:F4} │");
+        Console.WriteLine(FormatBoxLine("  Upper Boundary:    ", $"${result.UpperBoundary:F4}"));
+        Console.WriteLine(FormatBoxLine("  Lower Boundary:    ", $"${result.LowerBoundary:F4}"));
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
         Console.WriteLine("│ PHYSICAL CONSTRAINTS (Healy Appendix A):                                    │");
-        Console.WriteLine($"│   A1 (S_u,S_l > 0):  {(result.A1Pass ? "✓ PASS" : "✗ FAIL"),-55} │");
-        Console.WriteLine($"│   A2 (S_u > S_l):    {(result.A2Pass ? "✓ PASS" : "✗ FAIL"),-55} │");
-        Console.WriteLine($"│   A3 (Put < K):      {(result.A3Pass ? "✓ PASS" : "✗ FAIL"),-55} │");
-        Console.WriteLine($"│   Overall:          {constraintsResult,-56} │");
+        Console.WriteLine(FormatBoxLine("  A1 (S_u,S_l > 0):  ", result.A1Pass ? "✓ PASS" : "✗ FAIL"));
+        Console.WriteLine(FormatBoxLine("  A2 (S_u > S_l):    ", result.A2Pass ? "✓ PASS" : "✗ FAIL"));
+        Console.WriteLine(FormatBoxLine("  A3 (Put < K):      ", result.A3Pass ? "✓ PASS" : "✗ FAIL"));
+        Console.WriteLine(FormatBoxLine("  Overall:           ", constraintsResult));
         Console.WriteLine("└──────────────────────────────────────────────────────────────────────────────┘");
         Console.WriteLine();
     }
@@ -1228,7 +1271,8 @@ public static class SMSM001A
 
         // Calculate contract count
         double dollarAllocation = PortfolioValue * adjustedAllocation;
-        int contracts = (int)Math.Floor(dollarAllocation / (spreadCost * 100));
+        double costPerContract = Math.Abs(spreadCost) * 100;
+        int contracts = costPerContract > 0 ? (int)Math.Floor(dollarAllocation / costPerContract) : 0;
 
         return new PositionSizeResult
         {
@@ -1240,8 +1284,8 @@ public static class SMSM001A
             WinRate = winRate,
             WinLossRatio = winLossRatio,
             HistoricalTrades = historicalTrades.Count,
-            MaxLossPerContract = spreadCost * 100,
-            TotalRisk = contracts * spreadCost * 100
+            MaxLossPerContract = costPerContract,
+            TotalRisk = contracts * costPerContract
         };
     }
 
@@ -1264,7 +1308,7 @@ public static class SMSM001A
             trades.Add(new Trade
             {
                 EntryDate = DateTime.Today.AddDays(-(count - i) * 7),
-                ExitDate = DateTime.Today.AddDays(-(count - i) * 7 + 3),
+                ExitDate = DateTime.Today.AddDays((-(count - i) * 7) + 3),
                 ProfitLoss = pnl,
                 Symbol = SimulationSymbol,
                 Strategy = "EarningsCalendarSpread"
@@ -1282,19 +1326,19 @@ public static class SMSM001A
         Console.WriteLine("┌──────────────────────────────────────────────────────────────────────────────┐");
         Console.WriteLine("│ PHASE 10: POSITION SIZING - Kelly Criterion                                 │");
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
-        Console.WriteLine($"│ Historical Trades:    {result.HistoricalTrades,-54} │");
-        Console.WriteLine($"│ Win Rate:             {result.WinRate:P1}                                                 │");
-        Console.WriteLine($"│ Win/Loss Ratio:       {result.WinLossRatio:F2}x                                                 │");
+        Console.WriteLine(FormatBoxLine("Historical Trades:   ", result.HistoricalTrades.ToString()));
+        Console.WriteLine(FormatBoxLine("Win Rate:            ", $"{result.WinRate:P1}"));
+        Console.WriteLine(FormatBoxLine("Win/Loss Ratio:      ", $"{result.WinLossRatio:F2}x"));
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
-        Console.WriteLine($"│ Full Kelly:           {result.FullKelly:P2}                                                │");
-        Console.WriteLine($"│ Fractional Kelly:     {result.FractionalKelly:P2} (25% of full)                             │");
-        Console.WriteLine($"│ Final Allocation:     {result.AllocationPercent:P2}                                                │");
+        Console.WriteLine(FormatBoxLine("Full Kelly:          ", $"{result.FullKelly:P2}"));
+        Console.WriteLine(FormatBoxLine("Fractional Kelly:    ", $"{result.FractionalKelly:P2} (25% of full)"));
+        Console.WriteLine(FormatBoxLine("Final Allocation:    ", $"{result.AllocationPercent:P2}"));
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
-        Console.WriteLine($"│ Portfolio Value:      ${PortfolioValue:N0}                                           │");
-        Console.WriteLine($"│ Dollar Allocation:    ${result.DollarAllocation:N2}                                         │");
-        Console.WriteLine($"│ Contracts:            {result.Contracts,-56} │");
-        Console.WriteLine($"│ Max Loss/Contract:    ${result.MaxLossPerContract:N2}                                            │");
-        Console.WriteLine($"│ Total Risk:           ${result.TotalRisk:N2}                                         │");
+        Console.WriteLine(FormatBoxLine("Portfolio Value:     ", $"${PortfolioValue:N0}"));
+        Console.WriteLine(FormatBoxLine("Dollar Allocation:   ", $"${result.DollarAllocation:N2}"));
+        Console.WriteLine(FormatBoxLine("Contracts:           ", result.Contracts.ToString()));
+        Console.WriteLine(FormatBoxLine("Max Loss/Contract:   ", $"${result.MaxLossPerContract:N2}"));
+        Console.WriteLine(FormatBoxLine("Total Risk:          ", $"${result.TotalRisk:N2}"));
         Console.WriteLine("└──────────────────────────────────────────────────────────────────────────────┘");
         Console.WriteLine();
     }
@@ -1319,21 +1363,24 @@ public static class SMSM001A
             _ => "UNKNOWN"
         };
 
+        double totalCost = positionResult.Contracts * Math.Abs(spreadResult.SpreadCost) * 100;
+        string costLabel = spreadResult.IsCredit ? "Total Credit:" : "Total Debit:";
+
         Console.WriteLine("╔══════════════════════════════════════════════════════════════════════════════╗");
         Console.WriteLine("║                        TRADE RECOMMENDATION SUMMARY                         ║");
         Console.WriteLine("╠══════════════════════════════════════════════════════════════════════════════╣");
-        Console.WriteLine($"║ Symbol:          {SimulationSymbol,-60} ║");
-        Console.WriteLine($"║ Strategy:        Earnings Calendar Spread                                   ║");
-        Console.WriteLine($"║ Signal:          {signalResult.Signal.Strength,-60} ║");
-        Console.WriteLine($"║ Action:          {action,-60} ║");
+        Console.WriteLine(FormatDoubleBoxLine("Symbol:          ", SimulationSymbol));
+        Console.WriteLine("║ Strategy:        Earnings Calendar Spread                                   ║");
+        Console.WriteLine(FormatDoubleBoxLine("Signal:          ", signalResult.Signal.Strength.ToString()));
+        Console.WriteLine(FormatDoubleBoxLine("Action:          ", action));
         Console.WriteLine("╠══════════════════════════════════════════════════════════════════════════════╣");
         Console.WriteLine("║ POSITION DETAILS:                                                            ║");
-        Console.WriteLine($"║   Strike:        ${spreadResult.Strike,-58:F2} ║");
-        Console.WriteLine($"║   Front Month:   {spreadResult.FrontExpiry:yyyy-MM-dd} (Sell)                                          ║");
-        Console.WriteLine($"║   Back Month:    {spreadResult.BackExpiry:yyyy-MM-dd} (Buy)                                           ║");
-        Console.WriteLine($"║   Contracts:     {positionResult.Contracts,-60} ║");
-        Console.WriteLine($"║   Total Debit:   ${positionResult.Contracts * spreadResult.SpreadCost * 100:N2,-55} ║");
-        Console.WriteLine($"║   Max Risk:      ${positionResult.TotalRisk:N2,-55} ║");
+        Console.WriteLine(FormatDoubleBoxLine("  Strike:        ", $"${spreadResult.Strike:F2}"));
+        Console.WriteLine(FormatDoubleBoxLine("  Front Month:   ", $"{spreadResult.FrontExpiry:yyyy-MM-dd} (Sell)"));
+        Console.WriteLine(FormatDoubleBoxLine("  Back Month:    ", $"{spreadResult.BackExpiry:yyyy-MM-dd} (Buy)"));
+        Console.WriteLine(FormatDoubleBoxLine("  Contracts:     ", positionResult.Contracts.ToString()));
+        Console.WriteLine(FormatDoubleBoxLine($"  {costLabel,-14}", $"${totalCost:N2}"));
+        Console.WriteLine(FormatDoubleBoxLine("  Max Risk:      ", $"${positionResult.TotalRisk:N2}"));
         Console.WriteLine("╠══════════════════════════════════════════════════════════════════════════════╣");
         Console.WriteLine("║ STRATEGY RATIONALE:                                                          ║");
         Console.WriteLine("║   • Pre-earnings IV elevation creates calendar spread opportunity            ║");
@@ -1398,7 +1445,7 @@ internal sealed class SignalResult
 }
 
 /// <summary>
-/// Calendar spread pricing result.
+/// Calendar spread pricing result with credit/debit handling.
 /// </summary>
 internal sealed class CalendarSpreadResult
 {
@@ -1415,7 +1462,9 @@ internal sealed class CalendarSpreadResult
     public double SpreadDelta { get; init; }
     public double SpreadTheta { get; init; }
     public double SpreadVega { get; init; }
+    public bool IsCredit { get; init; }
     public double MaxLoss { get; init; }
+    public double MaxGain { get; init; }
     public double BreakEven { get; init; }
     public double RiskFreeRate { get; init; }
     public double DividendYield { get; init; }
@@ -1424,7 +1473,7 @@ internal sealed class CalendarSpreadResult
 /// <summary>
 /// Double boundary pricing demonstration result.
 /// </summary>
-internal sealed class DoubleBoundaryResult
+internal sealed class DoubleBoundaryDemoResult
 {
     public double Spot { get; init; }
     public double Strike { get; init; }
@@ -1459,6 +1508,18 @@ internal sealed class PositionSizeResult
 }
 
 /// <summary>
+/// Simulated trade record for Kelly calculation.
+/// </summary>
+internal sealed class Trade
+{
+    public DateTime EntryDate { get; init; }
+    public DateTime ExitDate { get; init; }
+    public double ProfitLoss { get; init; }
+    public string Symbol { get; init; } = string.Empty;
+    public string Strategy { get; init; } = string.Empty;
+}
+
+/// <summary>
 /// Pricing regime enumeration.
 /// </summary>
 internal enum PricingRegime
@@ -1472,3 +1533,6 @@ internal enum PricingRegime
     /// <summary>Negative rates with single boundary (q ≥ r).</summary>
     NegativeRatesSingleBoundary
 }
+
+#pragma warning restore CA5394 // Do not use insecure randomness
+#pragma warning restore CA1303 // Do not pass literals as localized parameters
