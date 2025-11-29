@@ -280,12 +280,12 @@ internal static class SMSM001A
             loggerFactory.CreateLogger<STHD005A>());
 
         // Extract option contracts
-        var frontExpiry = marketData.OptionChain.Expiries[0];
-        var backExpiry = marketData.OptionChain.Expiries[2];
-        var strike = pricingResult.Strike;
+        OptionExpiry frontExpiry = marketData.OptionChain.Expiries[0];
+        OptionExpiry backExpiry = marketData.OptionChain.Expiries[2];
+        double strike = pricingResult.Strike;
 
-        var frontCall = frontExpiry.Calls.First(c => c.Strike == strike);
-        var backCall = backExpiry.Calls.First(c => c.Strike == strike);
+        OptionContract frontCall = frontExpiry.Calls.First(c => c.Strike == strike);
+        OptionContract backCall = backExpiry.Calls.First(c => c.Strike == strike);
 
         // Prepare order parameters
         var frontLegParams = new STCS002A
