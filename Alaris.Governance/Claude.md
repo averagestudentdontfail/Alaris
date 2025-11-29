@@ -31,6 +31,23 @@ Alaris/
 │   │   ├── STTM003A.cs         (Trading Calendar)
 │   │   ├── STPR003A.cs         (Heston Pricing)
 │   │   └── STPR006A.cs         (Kou Pricing)
+│   ├── Cost/               (Transaction Costs & Liquidity)
+│   │   ├── STCS001A.cs         (IExecutionCostModel)
+│   │   ├── STCS002A.cs         (OrderParameters)
+│   │   ├── STCS003A.cs         (ExecutionCostResult)
+│   │   ├── STCS004A.cs         (SpreadCostResult)
+│   │   ├── STCS005A.cs         (ConstantFeeModel)
+│   │   ├── STCS006A.cs         (SignalCostValidator)
+│   │   ├── STCS007A.cs         (CostValidationResult)
+│   │   ├── STCS008A.cs         (LiquidityValidator)
+│   │   └── STCS009A.cs         (LiquidityResult)
+│   ├── Hedging/            (Hedging & Production Safety)
+│   │   ├── STHD001A.cs         (VegaCorrelationAnalyser)
+│   │   ├── STHD002A.cs         (VegaCorrelationResult)
+│   │   ├── STHD003A.cs         (GammaRiskManager)
+│   │   ├── STHD004A.cs         (GammaRiskAssessment)
+│   │   ├── STHD005A.cs         (ProductionValidator)
+│   │   └── STHD006A.cs         (ProductionResult)
 │   ├── Pricing/
 │   │   └── STPR001A.cs         (Calendar Spread Valuation)
 │   ├── Risk/
@@ -180,6 +197,18 @@ else
 
 **Position Sizing**: Kelly Criterion with fractional sizing
 
+### Production Safety (New)
+
+**Cost Validation** (Alaris.Strategy/Cost):
+- Execution Cost Modeling (`STCS001A`)
+- Slippage & Spread Penalty (`STCS006A`)
+- Liquidity Constraints (`STCS008A`)
+
+**Hedging & Risk** (Alaris.Strategy/Hedging):
+- Vega Decoupling Analysis (`STHD001A`)
+- Gamma Risk Management (`STHD003A`)
+- Production Validation Orchestration (`STHD005A`)
+
 ---
 
 ## Critical Implementation Details
@@ -263,10 +292,10 @@ dotnet build && dotnet test
 - CI Integration via GitHub Actions (`.github/workflows/ci.yml`)
 - 50+ additional Roslyn analyzers for zero-allocation enforcement
 
-### All Phases Complete
-
-The Alaris system is now fully compliant with the High-Integrity Coding Standard v1.2.
-All 17 rules are enforced via build-time Roslyn analyzers with `TreatWarningsAsErrors=true`.
+### Phase 6: Production Readiness (Active)
+- Implementation of Cost & Hedging subdomains
+- Integration of Slippage/Liquidity validators
+- Vega Decoupling analysis
 
 ---
 
