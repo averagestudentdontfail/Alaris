@@ -89,7 +89,7 @@ public sealed record STCS007A
     /// Expressed as a percentage: (PreCost - PostCost) / PreCost × 100.
     /// </remarks>
     public double RatioDegradationPercent => PreCostIVRVRatio > 0
-        ? ((PreCostIVRVRatio - PostCostIVRVRatio) / PreCostIVRVRatio) * 100.0
+        ? (PreCostIVRVRatio - PostCostIVRVRatio) / PreCostIVRVRatio * 100.0
         : 0.0;
 
     /// <summary>

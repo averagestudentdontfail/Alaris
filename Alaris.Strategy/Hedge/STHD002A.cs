@@ -6,7 +6,7 @@
 // Compliance: High-Integrity Coding Standard v1.2
 // =============================================================================
 
-namespace Alaris.Strategy.Hedging;
+namespace Alaris.Strategy.Hedge;
 
 /// <summary>
 /// Represents the result of vega correlation analysis.

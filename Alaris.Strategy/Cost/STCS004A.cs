@@ -101,7 +101,7 @@ public sealed record STCS004A
     /// A value exceeding 5-10% may indicate insufficient liquidity.
     /// </remarks>
     public double SlippagePercent => TheoreticalDebit > 0
-        ? ((ExecutionDebit - TheoreticalDebit) / TheoreticalDebit) * 100.0
+        ? (ExecutionDebit - TheoreticalDebit) / TheoreticalDebit * 100.0
         : 0.0;
 
     /// <summary>
@@ -128,6 +128,6 @@ public sealed record STCS004A
     /// Typical threshold: &lt; 5% for viable strategies.
     /// </remarks>
     public double ExecutionCostPercent => TheoreticalCapitalRequired > 0
-        ? (TotalExecutionCost / TheoreticalCapitalRequired) * 100.0
+        ? TotalExecutionCost / TheoreticalCapitalRequired * 100.0
         : 0.0;
 }

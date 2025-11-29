@@ -10,7 +10,12 @@ using Alaris.Strategy.Core;
 using Alaris.Strategy.Cost;
 using Microsoft.Extensions.Logging;
 
-namespace Alaris.Strategy.Hedging;
+// Type aliases for coded naming convention compatibility
+using Signal = Alaris.Strategy.Core.STCR004A;
+using SignalStrength = Alaris.Strategy.Core.STCR004AStrength;
+using OptionChain = Alaris.Strategy.Model.STDT002A;
+
+namespace Alaris.Strategy.Hedge;
 
 /// <summary>
 /// Orchestrates all pre-trade validations for production deployment.

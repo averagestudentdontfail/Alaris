@@ -94,7 +94,7 @@ public sealed record STCS003A
     /// Gets the slippage as a percentage of theoretical value.
     /// </summary>
     public double SlippagePercent => TheoreticalPrice > 0
-        ? (Slippage / (TheoreticalPrice * Contracts * 100.0)) * 100.0
+        ? Slippage / (TheoreticalPrice * Contracts * 100.0) * 100.0
         : 0.0;
 
     /// <summary>

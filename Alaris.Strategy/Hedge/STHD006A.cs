@@ -9,7 +9,12 @@
 using Alaris.Strategy.Core;
 using Alaris.Strategy.Cost;
 
-namespace Alaris.Strategy.Hedging;
+// Type aliases for coded naming convention compatibility
+using Signal = Alaris.Strategy.Core.STCR004A;
+using SignalStrength = Alaris.Strategy.Core.STCR004AStrength;
+using OptionChain = Alaris.Strategy.Model.STDT002A;
+
+namespace Alaris.Strategy.Hedge;
 
 /// <summary>
 /// Represents the complete production validation result for a trading signal.
@@ -138,7 +143,7 @@ public sealed record STHD006A
                 "Validation Checks:"
             };
 
-            foreach (var check in Checks)
+            foreach (ValidationCheck check in Checks)
             {
                 string checkStatus = check.Passed ? "✓ PASS" : "✗ FAIL";
                 lines.Add($"  [{checkStatus}] {check.Name}");

@@ -10,7 +10,7 @@
 using MathNet.Numerics.Statistics;
 using Microsoft.Extensions.Logging;
 
-namespace Alaris.Strategy.Hedging;
+namespace Alaris.Strategy.Hedge;
 
 /// <summary>
 /// Analyses the correlation between front-month and back-month implied
@@ -225,8 +225,8 @@ public sealed class STHD001A
         ArgumentNullException.ThrowIfNull(backIVHistory);
 
         // Compute daily changes (first differences)
-        var frontChanges = ComputeChanges(frontIVHistory);
-        var backChanges = ComputeChanges(backIVHistory);
+        double[] frontChanges = ComputeChanges(frontIVHistory);
+        double[] backChanges = ComputeChanges(backIVHistory);
 
         return Analyse(symbol, frontChanges, backChanges);
     }
@@ -243,7 +243,7 @@ public sealed class STHD001A
             return [];
         }
 
-        var changes = new double[levels.Count - 1];
+        double[] changes = new double[levels.Count - 1];
         for (int i = 1; i < levels.Count; i++)
         {
             changes[i - 1] = levels[i] - levels[i - 1];

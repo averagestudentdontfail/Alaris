@@ -27,7 +27,7 @@ public interface STCS001A
     /// <summary>
     /// Gets the name of the cost model for logging and identification.
     /// </summary>
-    string ModelName { get; }
+    public string ModelName { get; }
 
     /// <summary>
     /// Computes the execution cost for an option order.
@@ -37,7 +37,7 @@ public interface STCS001A
     /// <exception cref="ArgumentNullException">
     /// Thrown when <paramref name="parameters"/> is null.
     /// </exception>
-    STCS003A ComputeOptionCost(STCS002A parameters);
+    public STCS003A ComputeOptionCost(STCS002A parameters);
 
     /// <summary>
     /// Computes the execution cost for a calendar spread order.
@@ -48,5 +48,5 @@ public interface STCS001A
     /// <exception cref="ArgumentNullException">
     /// Thrown when either parameter is null.
     /// </exception>
-    STCS004A ComputeSpreadCost(STCS002A frontLegParameters, STCS002A backLegParameters);
+    public STCS004A ComputeSpreadCost(STCS002A frontLegParameters, STCS002A backLegParameters);
 }

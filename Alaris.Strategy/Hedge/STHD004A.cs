@@ -6,7 +6,7 @@
 // Compliance: High-Integrity Coding Standard v1.2
 // =============================================================================
 
-namespace Alaris.Strategy.Hedging;
+namespace Alaris.Strategy.Hedge;
 
 /// <summary>
 /// Represents the result of gamma risk assessment for a calendar spread.
@@ -124,7 +124,7 @@ public sealed record STHD004A
     /// Gets the percentage distance to delta threshold.
     /// </summary>
     public double DeltaMarginPercent => DeltaThreshold > 0
-        ? ((DeltaThreshold - Math.Abs(CurrentDelta)) / DeltaThreshold) * 100.0
+        ? (DeltaThreshold - Math.Abs(CurrentDelta)) / DeltaThreshold * 100.0
         : 0.0;
 
     /// <summary>
@@ -136,7 +136,7 @@ public sealed record STHD004A
     /// Gets the percentage move required to hit strike.
     /// </summary>
     public double MoveToStrikePercent => SpotPrice > 0
-        ? (MoveToStrike / SpotPrice) * 100.0
+        ? MoveToStrike / SpotPrice * 100.0
         : 0.0;
 
     /// <summary>

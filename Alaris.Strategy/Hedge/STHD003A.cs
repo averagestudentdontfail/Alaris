@@ -8,7 +8,7 @@
 
 using Microsoft.Extensions.Logging;
 
-namespace Alaris.Strategy.Hedging;
+namespace Alaris.Strategy.Hedge;
 
 /// <summary>
 /// Monitors and manages gamma risk for calendar spread positions.
@@ -161,7 +161,7 @@ public sealed class STHD003A
         double moneynessDeviation = Math.Abs(moneyness - 1.0);
 
         // Determine recommended action
-        var (action, rationale) = DetermineAction(
+        (RehedgeAction action, string? rationale) = DetermineAction(
             spreadDelta,
             spreadGamma,
             moneynessDeviation,

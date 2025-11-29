@@ -10,6 +10,11 @@
 using Alaris.Strategy.Core;
 using Microsoft.Extensions.Logging;
 
+// Type aliases for coded naming convention compatibility
+using Signal = Alaris.Strategy.Core.STCR004A;
+using SignalStrength = Alaris.Strategy.Core.STCR004AStrength;
+using OptionChain = Alaris.Strategy.Model.STDT002A;
+
 namespace Alaris.Strategy.Cost;
 
 /// <summary>
@@ -243,7 +248,7 @@ public sealed class STCS006A
 
         var results = new List<STCS007A>(signalsWithParams.Count);
 
-        foreach (var (signal, frontParams, backParams) in signalsWithParams)
+        foreach ((Signal? signal, STCS002A? frontParams, STCS002A? backParams) in signalsWithParams)
         {
             STCS007A result = Validate(signal, frontParams, backParams);
             results.Add(result);

@@ -100,7 +100,7 @@ public sealed record STCS009A
     /// Gets the percentage reduction in position size.
     /// </summary>
     public double ReductionPercent => RequestedContracts > 0
-        ? ((RequestedContracts - RecommendedContracts) / (double)RequestedContracts) * 100.0
+        ? (RequestedContracts - RecommendedContracts) / (double)RequestedContracts * 100.0
         : 0.0;
 
     /// <summary>

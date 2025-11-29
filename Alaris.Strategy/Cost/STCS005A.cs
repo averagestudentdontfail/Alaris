@@ -176,11 +176,11 @@ public sealed class STCS005A : STCS001A
         backLegParameters.Validate();
 
         // Front leg: SELL (receive bid)
-        var adjustedFrontParams = frontLegParameters with { Direction = OrderDirection.Sell };
+        STCS002A adjustedFrontParams = frontLegParameters with { Direction = OrderDirection.Sell };
         STCS003A frontCost = ComputeOptionCost(adjustedFrontParams);
 
         // Back leg: BUY (pay ask)
-        var adjustedBackParams = backLegParameters with { Direction = OrderDirection.Buy };
+        STCS002A adjustedBackParams = backLegParameters with { Direction = OrderDirection.Buy };
         STCS003A backCost = ComputeOptionCost(adjustedBackParams);
 
         // Theoretical debit (mid-price based)
