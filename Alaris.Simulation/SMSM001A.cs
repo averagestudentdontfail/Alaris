@@ -7,13 +7,15 @@
 // Domain:         SM (Simulation)
 // Category:       SM (Simulation Main)
 // Sequence:       001
-// Variant:        A (Primary Implementation)
+// Variant:        B (Production Implementation)
 //
 // Purpose:
 //   Demonstrates the complete Alaris system workflow during a quarterly earnings
 //   announcement, integrating:
 //   - Alaris.Double: Negative rate American option pricing (Healy 2021)
 //   - Alaris.Strategy: Earnings volatility calendar spread strategy (Atilgan 2014)
+//   - Alaris.Strategy.Cost: Execution cost modeling and liquidity validation
+//   - Alaris.Strategy.Hedge: Risk validation (Vega correlation, Gamma, Gap risk)
 //   - Leung & Santoli (2014): Pre-EA implied volatility model with jump calibration
 //   - Yang-Zhang (2000): Realized volatility estimation
 //   - Kelly Criterion: Fractional position sizing
@@ -45,6 +47,8 @@
 using Alaris.Double;
 using Alaris.Strategy.Bridge;
 using Alaris.Strategy.Core;
+using Alaris.Strategy.Cost;
+using Alaris.Strategy.Hedge;
 using Alaris.Strategy.Model;
 using Microsoft.Extensions.Logging;
 using System.Globalization;
@@ -77,8 +81,8 @@ namespace Alaris.Simulation;
 ///   <item><description>Average Volume ≥ 1,500,000 shares (sufficient liquidity)</description></item>
 /// </list>
 /// <para>
-/// The simulation demonstrates both positive rate (Alaris.Quantlib) and negative
-/// rate (Alaris.Double with Healy 2021 methodology) pricing regimes.
+/// The simulation demonstrates positive rate pricing, negative rate pricing (Healy 2021),
+/// and comprehensive production validation including cost analysis and hedging checks.
 /// </para>
 /// </remarks>
 internal static class SMSM001A
@@ -189,8 +193,6 @@ internal static class SMSM001A
     /// </summary>
     private static async Task RunSimulation(ILoggerFactory loggerFactory)
     {
-        _ = loggerFactory; // Reserved for future logging integration
-
         // Define simulation dates
         DateTime earningsDate = new DateTime(2025, 1, 30); // Earnings announcement
         DateTime evaluationDate = new DateTime(2025, 1, 24); // 6 days before EA
@@ -235,13 +237,117 @@ internal static class SMSM001A
         DoubleBoundaryDemoResult doubleBoundary = DemonstrateDoubleBoundaryPricing();
         DisplayDoubleBoundaryResult(doubleBoundary);
 
-        // Phase 10: Calculate position size (Kelly Criterion)
-        PositionSizeResult positionResult = CalculatePositionSize(
-            signalResult.Signal, positiveRateSpread.SpreadCost);
-        DisplayPositionSize(positionResult);
+        // Phase 10: Production Validation (Cost & Hedge)
+        // Only proceed if signal is recommended
+        if (signalResult.Signal.Strength == SignalStrength.Recommended)
+        {
+            await RunProductionValidation(
+                loggerFactory,
+                signalResult.Signal,
+                marketData,
+                positiveRateSpread,
+                earningsDate,
+                evaluationDate).ConfigureAwait(false);
+        }
+    }
 
-        // Phase 11: Display final trade recommendation
-        DisplayTradeRecommendation(signalResult, positiveRateSpread, positionResult);
+    /// <summary>
+    /// Executes the production validation phase including cost and hedging analysis.
+    /// </summary>
+    private static async Task RunProductionValidation(
+        ILoggerFactory loggerFactory,
+        Signal signal,
+        SimulatedMarketData marketData,
+        CalendarSpreadResult pricingResult,
+        DateTime earningsDate,
+        DateTime evaluationDate)
+    {
+        Console.WriteLine("┌──────────────────────────────────────────────────────────────────────────────┐");
+        Console.WriteLine("│ PHASE 10: PRODUCTION VALIDATION (Cost & Hedge Integration)                  │");
+        Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
+
+        // Initialize validators
+        var costModel = new STCS005A(logger: loggerFactory.CreateLogger<STCS005A>());
+        var costValidator = new STCS006A(costModel, logger: loggerFactory.CreateLogger<STCS006A>());
+        var liquidityValidator = new STCS008A(logger: loggerFactory.CreateLogger<STCS008A>());
+        var vegaAnalyser = new STHD001A(logger: loggerFactory.CreateLogger<STHD001A>());
+        var gammaManager = new STHD003A(logger: loggerFactory.CreateLogger<STHD003A>());
+        var productionValidator = new STHD005A(
+            costValidator,
+            vegaAnalyser,
+            liquidityValidator,
+            gammaManager,
+            loggerFactory.CreateLogger<STHD005A>());
+
+        // Extract option contracts
+        var frontExpiry = marketData.OptionChain.Expiries[0];
+        var backExpiry = marketData.OptionChain.Expiries[2];
+        var strike = pricingResult.Strike;
+
+        var frontCall = frontExpiry.Calls.First(c => c.Strike == strike);
+        var backCall = backExpiry.Calls.First(c => c.Strike == strike);
+
+        // Prepare order parameters
+        var frontLegParams = new STCS002A
+        {
+            Symbol = SimulationSymbol,
+            Contracts = 1,
+            Direction = OrderDirection.Sell,
+            BidPrice = frontCall.Bid,
+            AskPrice = frontCall.Ask,
+            MidPrice = frontCall.LastPrice,
+            Premium = frontCall.LastPrice
+        };
+
+        var backLegParams = new STCS002A
+        {
+            Symbol = SimulationSymbol,
+            Contracts = 1,
+            Direction = OrderDirection.Buy,
+            BidPrice = backCall.Bid,
+            AskPrice = backCall.Ask,
+            MidPrice = backCall.LastPrice,
+            Premium = backCall.LastPrice
+        };
+
+        // Prepare spread Greeks
+        var spreadGreeks = new SpreadGreeks
+        {
+            Delta = pricingResult.SpreadDelta,
+            Gamma = pricingResult.SpreadGamma,
+            Vega = pricingResult.SpreadVega,
+            Theta = pricingResult.SpreadTheta
+        };
+
+        // Generate synthetic IV history for vega correlation analysis
+        (List<double> frontIVHistory, List<double> backIVHistory) = GenerateSyntheticIVHistory(30);
+
+        // Execute full validation
+        STHD006A validationResult = productionValidator.Validate(
+            signal,
+            frontLegParams,
+            backLegParams,
+            frontIVHistory,
+            backIVHistory,
+            backMonthVolume: 5000,
+            backMonthOpenInterest: 15000,
+            spotPrice: marketData.CurrentPrice,
+            strikePrice: strike,
+            spreadGreeks: spreadGreeks,
+            daysToEarnings: (earningsDate - evaluationDate).Days);
+
+        Console.WriteLine(validationResult.DetailedReport);
+        Console.WriteLine("└──────────────────────────────────────────────────────────────────────────────┘");
+        Console.WriteLine();
+
+        // Calculate final position size based on execution cost (not mid-price)
+        PositionSizeResult positionResult = CalculatePositionSize(
+            signal, validationResult.AdjustedDebit);
+
+        // Cap based on liquidity validation
+        int finalContracts = Math.Min(positionResult.Contracts, validationResult.RecommendedContracts);
+
+        DisplayFinalTradeRecommendation(validationResult, finalContracts, positionResult.TotalRisk);
     }
 
     // ========================================================================
@@ -275,17 +381,9 @@ internal static class SMSM001A
     /// <summary>
     /// Generates simulated market data with conditions that trigger a Recommended signal.
     /// </summary>
-    /// <remarks>
-    /// Market data is constructed to satisfy Atilgan (2014) entry criteria:
-    /// <list type="bullet">
-    ///   <item><description>IV30/RV30 ≥ 1.25 → Set IV30 elevated via term structure</description></item>
-    ///   <item><description>Term slope ≤ -0.00406 → Create inverted term structure</description></item>
-    ///   <item><description>Volume ≥ 1.5M → Set daily volume ~3.5M average</description></item>
-    /// </list>
-    /// </remarks>
     private static SimulatedMarketData GenerateMarketData(DateTime evaluationDate, DateTime earningsDate)
     {
-        // Generate price history with moderate volatility (~25% annualised)
+        // Generate price history with moderate volatility (~20% annualised)
         List<PriceBar> priceHistory = GeneratePriceHistory(evaluationDate, 90);
 
         // Generate option chain with inverted term structure (pre-earnings IV elevation)
@@ -305,43 +403,34 @@ internal static class SMSM001A
     }
 
     /// <summary>
-    /// Generates 90 days of OHLCV price history with realistic volatility characteristics.
+    /// Generates 90 days of OHLCV price history.
     /// </summary>
-    /// <remarks>
-    /// Volatility is set to ~22% annualised to ensure IV30/RV30 ratio exceeds 1.25
-    /// when IV30 is elevated to ~32% due to pre-earnings term structure.
-    /// </remarks>
     private static List<PriceBar> GeneratePriceHistory(DateTime endDate, int days)
     {
         List<PriceBar> bars = new List<PriceBar>(days);
-        Random rng = new Random(42); // Deterministic seed for reproducibility
+        Random rng = new Random(42);
 
-        double price = 180.00; // Starting price
-        // Target ~22% annualised vol so that IV30 (~32%) / RV30 (~22%) ≈ 1.45 (> 1.25)
-        double dailyVol = 0.22 / Math.Sqrt(TradingDaysPerYear);
+        double price = 180.00;
+        double dailyVol = 0.20 / Math.Sqrt(TradingDaysPerYear);
 
         for (int i = days - 1; i >= 0; i--)
         {
             DateTime date = endDate.AddDays(-i);
 
-            // Skip weekends
             if (date.DayOfWeek == DayOfWeek.Saturday || date.DayOfWeek == DayOfWeek.Sunday)
             {
                 continue;
             }
 
-            // Generate log-normal return
             double returnVal = (rng.NextDouble() - 0.5) * 2 * dailyVol * 1.5;
             price *= Math.Exp(returnVal);
 
-            // Generate OHLC with realistic intraday range
             double range = price * dailyVol * (0.5 + rng.NextDouble());
             double open = price * (1 + ((rng.NextDouble() - 0.5) * dailyVol * 0.3));
             double high = Math.Max(open, price) + (range * 0.5 * rng.NextDouble());
             double low = Math.Min(open, price) - (range * 0.5 * rng.NextDouble());
             double close = price;
 
-            // High volume (averaging ~3.5M to meet ≥1.5M criterion)
             long volume = 2_500_000 + (long)(rng.NextDouble() * 2_000_000);
 
             bars.Add(new PriceBar
@@ -359,19 +448,8 @@ internal static class SMSM001A
     }
 
     /// <summary>
-    /// Generates an option chain with inverted term structure characteristic of pre-earnings.
+    /// Generates an option chain with realistic bid-ask spreads and inverted term structure.
     /// </summary>
-    /// <remarks>
-    /// <para>
-    /// Per Leung &amp; Santoli (2014), pre-earnings IV follows:
-    ///   I(t) = sqrt(σ² + σₑ²/(T-t))
-    /// where σₑ is earnings jump volatility. This creates higher IV for near-term options.
-    /// </para>
-    /// <para>
-    /// IV30 is elevated to ~32% to ensure IV30/RV30 ratio exceeds 1.25 threshold.
-    /// The term structure shows gradual decay from front-month to back-month.
-    /// </para>
-    /// </remarks>
     private static OptionChain GenerateOptionChain(DateTime evaluationDate, DateTime earningsDate)
     {
         OptionChain chain = new OptionChain
@@ -381,20 +459,18 @@ internal static class SMSM001A
             Timestamp = evaluationDate
         };
 
-        // Parameters for inverted term structure
-        // Elevated base vol to ensure IV30/RV30 > 1.25
-        double baseVol = 0.28; // σ (base diffusion volatility, elevated for pre-earnings)
-        double sigmaE = 0.12;  // σₑ (earnings jump volatility, ~12%)
+        // Parameters ensuring IV30 > RV30 (20%)
+        double baseVol = 0.25; // 25% post-earnings baseline
+        double sigmaE = 0.12;
 
-        // Define expiry dates
         DateTime[] expiryDates = new[]
         {
-            evaluationDate.AddDays(7),   // Weekly (before earnings)
+            evaluationDate.AddDays(7),   // Weekly
             evaluationDate.AddDays(14),  // 2 weeks
-            evaluationDate.AddDays(30),  // Monthly (after earnings)
-            evaluationDate.AddDays(45),  // 6 weeks
-            evaluationDate.AddDays(60),  // 2 months
-            evaluationDate.AddDays(90)   // 3 months
+            evaluationDate.AddDays(30),  // Monthly
+            evaluationDate.AddDays(45),
+            evaluationDate.AddDays(60),
+            evaluationDate.AddDays(90)
         };
 
         foreach (DateTime expiry in expiryDates)
@@ -402,26 +478,18 @@ internal static class SMSM001A
             int dte = (expiry - evaluationDate).Days;
             double timeToExpiry = dte / TradingDaysPerYear;
 
-            // Leung-Santoli IV formula: I(t) = sqrt(σ² + σₑ²/(T-t))
-            // Apply earnings effect that decays with time to expiry
             double varianceComponent = sigmaE * sigmaE / timeToExpiry;
             double iv = Math.Sqrt((baseVol * baseVol) + varianceComponent);
-
-            // Cap IV at reasonable levels
             iv = Math.Min(iv, 0.80);
 
             OptionExpiry expiryColl = new OptionExpiry { ExpiryDate = expiry };
-
-            // Generate strikes around ATM
             double[] strikes = new[] { 175.0, 180.0, 182.5, 185.0, 187.5, 190.0, 195.0 };
 
             foreach (double strike in strikes)
             {
-                // Slight volatility smile: higher IV for OTM options
                 double moneyness = Math.Abs(strike - chain.UnderlyingPrice) / chain.UnderlyingPrice;
                 double strikeIV = iv * (1 + (0.15 * moneyness));
 
-                // Create call and put contracts
                 expiryColl.Calls.Add(CreateOptionContract(strike, strikeIV, chain.UnderlyingPrice, true));
                 expiryColl.Puts.Add(CreateOptionContract(strike, strikeIV, chain.UnderlyingPrice, false));
             }
@@ -433,22 +501,21 @@ internal static class SMSM001A
     }
 
     /// <summary>
-    /// Creates a single option contract with realistic market data.
+    /// Creates a single option contract with realistic pricing and spreads.
     /// </summary>
     private static OptionContract CreateOptionContract(double strike, double iv, double spot, bool isCall)
     {
-        // Simplified Black-Scholes approximation for bid/ask
         double intrinsic = isCall ? Math.Max(0, spot - strike) : Math.Max(0, strike - spot);
-        double timeValue = spot * iv * 0.1; // Rough approximation
+        double timeValue = spot * iv * 0.1;
         double midPrice = intrinsic + timeValue;
 
-        double spread = midPrice * 0.02; // 2% bid-ask spread
+        // Realistic spread (~1.5% of premium for liquid names)
+        double spread = midPrice * 0.015;
         double bid = Math.Max(0.01, midPrice - (spread / 2));
         double ask = midPrice + (spread / 2);
 
-        // Delta approximation
-        double delta = isCall 
-            ? 0.5 + (0.4 * (spot - strike) / spot) 
+        double delta = isCall
+            ? 0.5 + (0.4 * (spot - strike) / spot)
             : -0.5 + (0.4 * (spot - strike) / spot);
         delta = Math.Max(-1, Math.Min(1, delta));
 
@@ -465,24 +532,47 @@ internal static class SMSM001A
             Gamma = Math.Round(0.02 / spot, 6),
             Vega = Math.Round(spot * 0.002, 4),
             Theta = Math.Round(-0.05, 4),
-            OpenInterest = 500 + localRng.Next(2000),
-            Volume = 100 + localRng.Next(500)
+            OpenInterest = 5000 + localRng.Next(15000),
+            Volume = 1000 + localRng.Next(5000)
         };
     }
 
     /// <summary>
-    /// Generates historical earnings dates for Leung-Santoli sigma_e calibration.
+    /// Generates synthetic IV history for vega correlation analysis.
+    /// </summary>
+    private static (List<double>, List<double>) GenerateSyntheticIVHistory(int days)
+    {
+        var front = new List<double>();
+        var back = new List<double>();
+
+        double fIv = 0.30;
+        double bIv = 0.28;
+
+        Random rng = new Random(123);
+
+        for (int i = 0; i < days; i++)
+        {
+            front.Add(fIv);
+            back.Add(bIv);
+
+            // Simulate decoupling: Front ramps up, Back stable/drifting
+            fIv += 0.01 + (rng.NextDouble() * 0.005);
+            bIv += (rng.NextDouble() - 0.5) * 0.005;
+        }
+
+        return (front, back);
+    }
+
+    /// <summary>
+    /// Generates historical earnings dates.
     /// </summary>
     private static List<DateTime> GenerateHistoricalEarningsDates(DateTime currentEarnings, int quarters)
     {
         List<DateTime> dates = new List<DateTime>(quarters);
-
         for (int i = 1; i <= quarters; i++)
         {
-            // Quarterly earnings approximately every 91 days
             dates.Add(currentEarnings.AddDays(-91 * i));
         }
-
         return dates;
     }
 
@@ -522,24 +612,17 @@ internal static class SMSM001A
     /// <summary>
     /// Calculates 30-day realised volatility using the Yang-Zhang estimator.
     /// </summary>
-    /// <remarks>
-    /// Yang-Zhang (2000) estimator combines overnight, open-close, and Rogers-Satchell
-    /// components for superior efficiency with OHLC data:
-    ///   σ²_YZ = σ²_overnight + k·σ²_open-close + (1-k)·σ²_RS
-    /// </remarks>
     private static double CalculateRealisedVolatility(List<PriceBar> priceHistory)
     {
-        // Take last 30 trading days
         List<PriceBar> recentBars = priceHistory.TakeLast(31).ToList();
 
         if (recentBars.Count < 2)
         {
-            return 0.25; // Default fallback
+            return 0.25;
         }
 
         double n = recentBars.Count - 1;
 
-        // Overnight variance component
         double overnightVariance = 0;
         for (int i = 1; i < recentBars.Count; i++)
         {
@@ -548,7 +631,6 @@ internal static class SMSM001A
         }
         overnightVariance /= n - 1;
 
-        // Open-to-close variance component
         double openCloseVariance = 0;
         foreach (PriceBar bar in recentBars.Skip(1))
         {
@@ -557,7 +639,6 @@ internal static class SMSM001A
         }
         openCloseVariance /= n - 1;
 
-        // Rogers-Satchell variance component
         double rsVariance = 0;
         foreach (PriceBar bar in recentBars.Skip(1))
         {
@@ -569,14 +650,10 @@ internal static class SMSM001A
         }
         rsVariance /= n;
 
-        // Yang-Zhang combination (k = 0.34 is optimal for efficiency)
         double k = 0.34;
         double yzVariance = overnightVariance + (k * openCloseVariance) + ((1 - k) * rsVariance);
 
-        // Annualise
-        double annualisedVol = Math.Sqrt(yzVariance * TradingDaysPerYear);
-
-        return annualisedVol;
+        return Math.Sqrt(yzVariance * TradingDaysPerYear);
     }
 
     /// <summary>
@@ -629,7 +706,6 @@ internal static class SMSM001A
             };
         }
 
-        // Calculate slope using linear regression
         double sumX = termPoints.Sum(p => p.dte);
         double sumY = termPoints.Sum(p => p.iv);
         double sumXY = termPoints.Sum(p => p.dte * p.iv);
@@ -638,7 +714,6 @@ internal static class SMSM001A
 
         double slope = ((n * sumXY) - (sumX * sumY)) / ((n * sumX2) - (sumX * sumX));
 
-        // Interpolate IV30
         (int dte, double iv) lower = termPoints.Where(p => p.dte <= 30).OrderByDescending(p => p.dte).FirstOrDefault();
         (int dte, double iv) upper = termPoints.Where(p => p.dte > 30).OrderBy(p => p.dte).FirstOrDefault();
 
@@ -661,7 +736,7 @@ internal static class SMSM001A
         {
             Slope = slope,
             IsInverted = slope < 0,
-            MeetsTradingCriterion = slope <= -0.00406, // Atilgan (2014) threshold
+            MeetsTradingCriterion = slope <= -0.00406,
             IV30 = iv30,
             Points = termPoints
         };
@@ -704,12 +779,6 @@ internal static class SMSM001A
     /// <summary>
     /// Calculates Leung-Santoli pre-earnings implied volatility metrics.
     /// </summary>
-    /// <remarks>
-    /// Per Leung &amp; Santoli (2014) Equation 2.4:
-    ///   I(t; K, T) = √(σ² + σₑ²/(T-t))
-    /// 
-    /// Where σₑ is calibrated from historical earnings moves.
-    /// </remarks>
     private static LeungSantoliMetrics CalculateLeungSantoliMetrics(
         SimulatedMarketData data,
         DateTime earningsDate,
@@ -717,29 +786,21 @@ internal static class SMSM001A
         double realisedVol,
         TermStructureResult termResult)
     {
-        _ = data; // Reserved for future use
+        _ = data;
 
-        // Calibrate σₑ from historical earnings moves
-        // Using simulated jump moves averaging ~4% (realistic for large-cap tech)
         double[] historicalJumps = new[] { 0.045, -0.038, 0.052, -0.041, 0.035, -0.048, 0.055, -0.032, 0.042, -0.039, 0.048, -0.036 };
         double sigmaE = CalculateJumpVolatility(historicalJumps);
 
-        // Base volatility (σ) - use realised vol as proxy
         double baseVol = realisedVol;
-
-        // Time to expiry for front-month option
         int dteToEarnings = (earningsDate - evaluationDate).Days;
         double timeToExpiry = dteToEarnings / TradingDaysPerYear;
 
-        // Theoretical pre-EA IV: I(t) = √(σ² + σₑ²/(T-t))
         double varianceComponent = sigmaE * sigmaE / timeToExpiry;
         double theoreticalIV = Math.Sqrt((baseVol * baseVol) + varianceComponent);
 
-        // IV mispricing signal
         double marketIV = termResult.IV30;
         double mispricingSignal = marketIV - theoreticalIV;
 
-        // Expected IV crush
         double expectedCrush = theoreticalIV - baseVol;
         double crushRatio = theoreticalIV > 0 ? expectedCrush / theoreticalIV : 0;
 
@@ -807,17 +868,14 @@ internal static class SMSM001A
         DateTime earningsDate,
         DateTime evaluationDate)
     {
-        // Atilgan (2014) entry criteria
         double ivRvRatio = termResult.IV30 / realisedVol;
         double termSlope = termResult.Slope;
         long avgVolume = (long)data.PriceHistory.TakeLast(30).Average(p => p.Volume);
 
-        // Thresholds from Atilgan (2014)
         bool ivRvPass = ivRvRatio >= 1.25;
         bool termSlopePass = termSlope <= -0.00406;
         bool volumePass = avgVolume >= 1_500_000;
 
-        // Determine signal strength
         SignalStrength strength = (ivRvPass, termSlopePass, volumePass) switch
         {
             (true, true, true) => SignalStrength.Recommended,
@@ -902,7 +960,6 @@ internal static class SMSM001A
         double dividendYield,
         string regimeName)
     {
-        // Select front and back month expiries
         List<OptionExpiry> sortedExpiries = data.OptionChain.Expiries
             .OrderBy(e => e.ExpiryDate)
             .ToList();
@@ -912,10 +969,9 @@ internal static class SMSM001A
             throw new InvalidOperationException("Insufficient option expiries for calendar spread");
         }
 
-        OptionExpiry frontExpiry = sortedExpiries[0]; // Weekly
-        OptionExpiry backExpiry = sortedExpiries[2];  // Monthly
+        OptionExpiry frontExpiry = sortedExpiries[0];
+        OptionExpiry backExpiry = sortedExpiries[2];
 
-        // Select ATM strike
         double atmStrike = sortedExpiries.First().Calls
             .OrderBy(c => Math.Abs(c.Strike - data.CurrentPrice))
             .First().Strike;
@@ -928,21 +984,15 @@ internal static class SMSM001A
             throw new InvalidOperationException("Could not find ATM options for calendar spread");
         }
 
-        // Determine pricing regime
         PricingRegime regime = DeterminePricingRegime(riskFreeRate, dividendYield);
 
-        double frontPrice;
-        double backPrice;
-        double frontDelta;
-        double backDelta;
-        double frontTheta;
-        double backTheta;
-        double frontVega;
-        double backVega;
+        double frontPrice, backPrice;
+        double frontDelta, backDelta;
+        double frontTheta, backTheta;
+        double frontVega, backVega;
 
         if (regime == PricingRegime.DoubleBoundary)
         {
-            // Use Alaris.Double (Healy 2021) for negative rates
             (frontPrice, frontDelta, frontTheta, frontVega) = PriceWithDouble(
                 data.CurrentPrice, atmStrike, frontExpiry.GetDaysToExpiry(evaluationDate),
                 riskFreeRate, dividendYield, frontCall.ImpliedVolatility, true);
@@ -953,7 +1003,6 @@ internal static class SMSM001A
         }
         else
         {
-            // Use simulated pricing (would use Alaris.Quantlib in production)
             (frontPrice, frontDelta, frontTheta, frontVega) = SimulateOptionPrice(
                 data.CurrentPrice, atmStrike, frontExpiry.GetDaysToExpiry(evaluationDate),
                 riskFreeRate, dividendYield, frontCall.ImpliedVolatility, true);
@@ -963,16 +1012,14 @@ internal static class SMSM001A
                 riskFreeRate, dividendYield, backCall.ImpliedVolatility, true);
         }
 
-        // Calendar spread: long back month, short front month
         double spreadCost = backPrice - frontPrice;
         double spreadDelta = backDelta - frontDelta;
         double spreadTheta = backTheta - frontTheta;
         double spreadVega = backVega - frontVega;
 
-        // Determine if this is a credit or debit spread
         bool isCredit = spreadCost < 0;
 
-        await Task.CompletedTask.ConfigureAwait(false); // Placeholder for async pricing engine
+        await Task.CompletedTask.ConfigureAwait(false);
 
         return new CalendarSpreadResult
         {
@@ -990,7 +1037,7 @@ internal static class SMSM001A
             SpreadTheta = spreadTheta,
             SpreadVega = spreadVega,
             IsCredit = isCredit,
-            MaxLoss = isCredit ? double.NaN : spreadCost * 100, // Credit spreads have undefined max loss
+            MaxLoss = isCredit ? double.NaN : spreadCost * 100,
             MaxGain = isCredit ? Math.Abs(spreadCost) * 100 : double.NaN,
             BreakEven = atmStrike,
             RiskFreeRate = riskFreeRate,
@@ -1024,11 +1071,9 @@ internal static class SMSM001A
     {
         double timeToExpiry = dte / TradingDaysPerYear;
 
-        // Use Alaris.Double DoubleBoundaryApproximation
         DBAP002A approx = new DBAP002A(spot, strike, timeToExpiry, rate, div, vol, isCall);
         double price = approx.ApproximateValue();
 
-        // Calculate Greeks via finite differences
         const double ds = 0.01;
         const double dv = 0.001;
         const double dt = 1.0 / TradingDaysPerYear;
@@ -1152,24 +1197,20 @@ internal static class SMSM001A
     /// </summary>
     private static DoubleBoundaryDemoResult DemonstrateDoubleBoundaryPricing()
     {
-        // Healy (2021) benchmark parameters
         double spot = 100.0;
         double strike = 100.0;
-        double maturity = 1.0; // 1 year
-        double rate = -0.005; // -0.5%
-        double div = -0.010;  // -1.0% (q < r for double boundary)
-        double vol = 0.20;    // 20%
+        double maturity = 1.0;
+        double rate = -0.005;
+        double div = -0.010;
+        double vol = 0.20;
 
-        // Create double boundary approximation (QD+ method)
         DBAP002A putApprox = new DBAP002A(spot, strike, maturity, rate, div, vol, isCall: false);
         double putPrice = putApprox.ApproximateValue();
 
-        // Get boundaries using DBAP002A.CalculateBoundaries()
         BoundaryResult boundaryResult = putApprox.CalculateBoundaries();
         double upperBoundary = boundaryResult.UpperBoundary;
         double lowerBoundary = boundaryResult.LowerBoundary;
 
-        // Validate physical constraints
         bool a1Pass = upperBoundary > 0 && lowerBoundary > 0;
         bool a2Pass = upperBoundary > lowerBoundary;
         bool a3Pass = upperBoundary < strike && lowerBoundary < strike;
@@ -1236,10 +1277,8 @@ internal static class SMSM001A
     /// </summary>
     private static PositionSizeResult CalculatePositionSize(Signal signal, double spreadCost)
     {
-        // Simulated historical trade performance for Kelly calculation
         List<Trade> historicalTrades = GenerateHistoricalTrades(50);
 
-        // Calculate win rate and average win/loss
         List<Trade> winners = historicalTrades.Where(t => t.ProfitLoss > 0).ToList();
         List<Trade> losers = historicalTrades.Where(t => t.ProfitLoss <= 0).ToList();
 
@@ -1249,19 +1288,14 @@ internal static class SMSM001A
 
         double winLossRatio = avgLoss > 0 ? avgWin / avgLoss : 1;
 
-        // Kelly formula: f* = (p*b - q) / b
-        // where p = win rate, q = loss rate, b = win/loss ratio
         double fullKelly = ((winRate * winLossRatio) - (1 - winRate)) / winLossRatio;
 
-        // Apply fractional Kelly (25% of full Kelly for safety)
         const double fractionalKelly = 0.25;
         double kellyFraction = fullKelly * fractionalKelly;
 
-        // Cap at maximum allocation (6%)
         const double maxAllocation = 0.06;
         double allocationPercent = Math.Max(0, Math.Min(kellyFraction, maxAllocation));
 
-        // Adjust for signal strength
         double adjustedAllocation = signal.Strength switch
         {
             SignalStrength.Recommended => allocationPercent * 1.0,
@@ -1270,7 +1304,6 @@ internal static class SMSM001A
             _ => 0.0
         };
 
-        // Calculate contract count
         double dollarAllocation = PortfolioValue * adjustedAllocation;
         double costPerContract = Math.Abs(spreadCost) * 100;
         int contracts = costPerContract > 0 ? (int)Math.Floor(dollarAllocation / costPerContract) : 0;
@@ -1296,15 +1329,14 @@ internal static class SMSM001A
     private static List<Trade> GenerateHistoricalTrades(int count)
     {
         List<Trade> trades = new List<Trade>(count);
-        Random rng = new Random(123); // Deterministic seed
+        Random rng = new Random(123);
 
-        // Simulate ~55% win rate with 1.8:1 average win/loss ratio
         for (int i = 0; i < count; i++)
         {
             bool isWinner = rng.NextDouble() < 0.55;
             double pnl = isWinner
-                ? 150 + (rng.NextDouble() * 200) // Wins: $150-$350
-                : -(80 + (rng.NextDouble() * 120)); // Losses: -$80 to -$200
+                ? 150 + (rng.NextDouble() * 200)
+                : -(80 + (rng.NextDouble() * 120));
 
             trades.Add(new Trade
             {
@@ -1388,6 +1420,46 @@ internal static class SMSM001A
         Console.WriteLine("║   • Short front-month captures accelerated time decay                        ║");
         Console.WriteLine("║   • Long back-month provides vega exposure to IV crush                       ║");
         Console.WriteLine("║   • Atilgan (2014) criteria satisfied for systematic entry                   ║");
+        Console.WriteLine("╚══════════════════════════════════════════════════════════════════════════════╝");
+    }
+
+    /// <summary>
+    /// Displays the final trade recommendation after production validation.
+    /// </summary>
+    private static void DisplayFinalTradeRecommendation(
+        STHD006A validation,
+        int contracts,
+        double totalRisk)
+    {
+        string action = validation.ProductionReady ? "EXECUTE (LIMIT ORDER)" : "ABORT";
+
+        Console.WriteLine("╔══════════════════════════════════════════════════════════════════════════════╗");
+        Console.WriteLine("║                        FINAL PRODUCTION DECISION                             ║");
+        Console.WriteLine("╠══════════════════════════════════════════════════════════════════════════════╣");
+        Console.WriteLine(FormatDoubleBoxLine("Symbol:          ", validation.BaseSignal.Symbol));
+        Console.WriteLine(FormatDoubleBoxLine("Status:          ", action));
+        Console.WriteLine("╠══════════════════════════════════════════════════════════════════════════════╣");
+
+        if (validation.ProductionReady)
+        {
+            double totalDebit = contracts * validation.AdjustedDebit * 100;
+            Console.WriteLine(FormatDoubleBoxLine("Type:            ", "Calendar Spread (Debit)"));
+            Console.WriteLine(FormatDoubleBoxLine("Contracts:       ", contracts.ToString(CultureInfo.InvariantCulture)));
+            Console.WriteLine(FormatDoubleBoxLine("Limit Price:     ", $"${validation.AdjustedDebit:F2} (Natural Debit)"));
+            Console.WriteLine(FormatDoubleBoxLine("Total Capital:   ", $"${totalDebit:N2}"));
+            Console.WriteLine(FormatDoubleBoxLine("Max Risk:        ", $"${totalRisk:N2} (Defined Risk)"));
+            Console.WriteLine("║                                                                              ║");
+            Console.WriteLine("║ NOTE: Execute 'BUY BACK / SELL FRONT' as a single complex order.             ║");
+            Console.WriteLine("║       Do not leg in. Ensure Limit Price respects the Debit.                  ║");
+        }
+        else
+        {
+            Console.WriteLine("║ REASON FOR REJECTION:                                                        ║");
+            foreach (string fail in validation.FailedChecks)
+            {
+                Console.WriteLine(FormatDoubleBoxLine("  - ", fail));
+            }
+        }
         Console.WriteLine("╚══════════════════════════════════════════════════════════════════════════════╝");
     }
 }
