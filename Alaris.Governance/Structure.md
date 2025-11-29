@@ -1,7 +1,9 @@
+--- START OF FILE Structure.md ---
+
 # Alaris Structural Compliance Standard
 
 **Document ID:** ALARIS-STD-STRUC-001
-**Version:** 1.0
+**Version:** 1.1
 **Date:** November 2025
 **Status:** Active
 
@@ -71,6 +73,8 @@ The naming format consists of four segments:
 | `DT` | Data | Market data structures and providers. |
 | `TM` | Time | Time management, calendars, and term structures. |
 | `CT` | Control | Strategy control and orchestration. |
+| `CS` | Cost | Transaction cost models, execution cost validation, liquidity analysis. |
+| `HD` | Hedging | Hedging analysis, vega correlation, gamma risk management. |
 
 #### 4.3.3 Events (EV)
 | Code | Category | Description |
@@ -101,6 +105,8 @@ The following table lists the primary components and their academic references.
 | `DBEN001A` | `DoubleBoundaryEngine` | Pricing Engine | Healy (2021) |
 
 ### 5.2 Alaris.Strategy
+
+#### 5.2.1 Core & Pricing
 | Component Code | Class Name | Description | Reference |
 |----------------|------------|-------------|-----------|
 | `STCR001A` | `SignalGenerator` | Signal Generation | Atilgan (2014) |
@@ -108,6 +114,29 @@ The following table lists the primary components and their academic references.
 | `STIV002A` | `KouModel` | Jump Diffusion | Kou (2002) |
 | `STPR004A` | `LevenbergMarquardtOptimizer` | Optimization | MathNet.Numerics |
 | `STRK001A` | `KellyPositionSizer` | Position Sizing | Kelly Criterion |
+
+#### 5.2.2 Cost Subdirectory (Alaris.Strategy/Cost/)
+| Component Code | Class Name | Description | Reference |
+|----------------|------------|-------------|-----------|
+| `STCS001A` | `IExecutionCostModel` | Execution cost model interface | QuantConnect FeeModel |
+| `STCS002A` | `OrderParameters` | Order parameters for cost calc | IBKR Fee Structure |
+| `STCS003A` | `ExecutionCostResult` | Single leg execution cost result | - |
+| `STCS004A` | `SpreadCostResult` | Calendar spread cost result | - |
+| `STCS005A` | `ConstantFeeModel` | Brokerage-agnostic constant fees | QC ConstantFeeModel |
+| `STCS006A` | `SignalCostValidator` | Validates signal survives costs | Atilgan (2014) § IV/RV |
+| `STCS007A` | `CostValidationResult` | Cost validation result | - |
+| `STCS008A` | `LiquidityValidator` | Position size vs liquidity | Institutional Practice |
+| `STCS009A` | `LiquidityResult` | Liquidity validation result | - |
+
+#### 5.2.3 Hedging Subdirectory (Alaris.Strategy/Hedging/)
+| Component Code | Class Name | Description | Reference |
+|----------------|------------|-------------|-----------|
+| `STHD001A` | `VegaCorrelationAnalyser` | Front/back IV correlation analysis | MathNet.Numerics |
+| `STHD002A` | `VegaCorrelationResult` | Vega correlation result | - |
+| `STHD003A` | `GammaRiskManager` | Gamma/delta monitoring & rehedge | Options Risk Management |
+| `STHD004A` | `GammaRiskAssessment` | Gamma risk assessment result | - |
+| `STHD005A` | `ProductionValidator` | Orchestrates all pre-trade checks | - |
+| `STHD006A` | `ProductionResult` | Complete production validation | - |
 
 ## 6. Compliance
 All changes to the codebase must adhere to this standard. Non-compliant components will be rejected during code review.
