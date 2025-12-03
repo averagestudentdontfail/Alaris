@@ -1448,7 +1448,7 @@ internal static class SMSM001A
     private static void DisplayLeungSantoliMetrics(LeungSantoliMetrics metrics)
     {
         Console.WriteLine("┌──────────────────────────────────────────────────────────────────────────────┐");
-        Console.WriteLine("│ PHASE 5: LEUNG-SANTOLI PRE-EARNINGS MODEL (2014)                            │");
+        Console.WriteLine("│ PHASE 5: LEUNG-SANTOLI PRE-EARNINGS MODEL (2014)                             │");
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
         Console.WriteLine(FormatBoxLine("Historical Samples:  ", metrics.HistoricalSamples.ToString(CultureInfo.InvariantCulture)));
         Console.WriteLine(FormatBoxLine("Calibration Status:  ", metrics.IsCalibrated ? "✓ Calibrated" : "✗ Using Default"));
@@ -1478,11 +1478,11 @@ internal static class SMSM001A
         };
 
         Console.WriteLine("┌──────────────────────────────────────────────────────────────────────────────┐");
-        Console.WriteLine("│ PHASE 6: TRADING SIGNAL - Atilgan (2014) Criteria                           │");
+        Console.WriteLine("│ PHASE 6: TRADING SIGNAL - Atilgan (2014) Criteria                            │");
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
         Console.WriteLine(FormatBoxLine("Signal Strength:         ", strengthSymbol));
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
-        Console.WriteLine("│ Criterion                Value              Threshold          Result       │");
+        Console.WriteLine("│ Criterion                Value              Threshold          Result        │");
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
 
         foreach (KeyValuePair<string, (bool Pass, string Value, string Threshold)> kvp in result.CriteriaResults)
@@ -1535,10 +1535,10 @@ internal static class SMSM001A
         string constraintsResult = result.AllConstraintsPass ? "✓ ALL PASS" : "✗ CONSTRAINTS VIOLATED";
 
         Console.WriteLine("┌──────────────────────────────────────────────────────────────────────────────┐");
-        Console.WriteLine("│ PHASE 9: ALARIS.DOUBLE - Healy (2021) Double Boundary Demonstration         │");
+        Console.WriteLine("│ PHASE 9: ALARIS.DOUBLE - Healy (2021) Double Boundary Demonstration          │");
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
         Console.WriteLine("│ Reference: \"Pricing American Options Under Negative Rates\"                  │");
-        Console.WriteLine("│ Method:    QD+ Approximation with Super Halley's iteration                  │");
+        Console.WriteLine("│ Method:    QD+ Approximation with Super Halley's iteration                   │");
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
         Console.WriteLine(FormatBoxLine("Spot Price:          ", $"${result.Spot:F2}"));
         Console.WriteLine(FormatBoxLine("Strike Price:        ", $"${result.Strike:F2}"));
@@ -1549,11 +1549,11 @@ internal static class SMSM001A
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
         Console.WriteLine(FormatBoxLine("American Put Price:  ", $"${result.PutPrice:F4}"));
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
-        Console.WriteLine("│ DOUBLE BOUNDARY (Exercise Optimal in Range [S_l, S_u]):                     │");
+        Console.WriteLine("│ DOUBLE BOUNDARY (Exercise Optimal in Range [S_l, S_u]):                      │");
         Console.WriteLine(FormatBoxLine("  Upper Boundary:    ", $"${result.UpperBoundary:F4}"));
         Console.WriteLine(FormatBoxLine("  Lower Boundary:    ", $"${result.LowerBoundary:F4}"));
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
-        Console.WriteLine("│ PHYSICAL CONSTRAINTS (Healy Appendix A):                                    │");
+        Console.WriteLine("│ PHYSICAL CONSTRAINTS (Healy Appendix A):                                     │");
         Console.WriteLine(FormatBoxLine("  A1 (S_u,S_l > 0):  ", result.A1Pass ? "✓ PASS" : "✗ FAIL"));
         Console.WriteLine(FormatBoxLine("  A2 (S_u > S_l):    ", result.A2Pass ? "✓ PASS" : "✗ FAIL"));
         Console.WriteLine(FormatBoxLine("  A3 (Put < K):      ", result.A3Pass ? "✓ PASS" : "✗ FAIL"));
@@ -1623,7 +1623,7 @@ internal static class SMSM001A
         Console.WriteLine("║                        TRADE RECOMMENDATION SUMMARY                          ║");
         Console.WriteLine("╠══════════════════════════════════════════════════════════════════════════════╣");
         Console.WriteLine(FormatDoubleBoxLine("Symbol:          ", SimulationSymbol));
-        Console.WriteLine("║ Strategy:        Earnings Calendar Spread                                   ║");
+        Console.WriteLine("║ Strategy:        Earnings Calendar Spread                                    ║");
         Console.WriteLine(FormatDoubleBoxLine("Signal:          ", signalResult.Signal.Strength.ToString()));
         Console.WriteLine(FormatDoubleBoxLine("Action:          ", action));
         Console.WriteLine("╠══════════════════════════════════════════════════════════════════════════════╣");
