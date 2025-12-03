@@ -638,7 +638,12 @@ internal static class SMSM001A
     /// This corrected implementation addresses the Greek calculation issues:
     /// - Uses adaptive step sizes: dS = 0.5% of spot price (not fixed 0.01)
     /// - Validates Greeks against physical constraints
-    /// - Falls back to Black-Scholes Greeks if validation fails
+    /// - Falls back to Black-Scholes analytical Greeks if validation fails
+    /// </para>
+    /// <para>
+    /// For calls in the q &lt; r &lt; 0 regime, the method prices the corresponding
+    /// put using the double boundary framework and applies put-call parity:
+    /// C = P + S·exp(-qT) - K·exp(-rT)
     /// </para>
     /// </remarks>
     private static (double Price, double Delta, double Gamma, double Theta, double Vega) PriceWithDoubleValidated(
@@ -652,35 +657,68 @@ internal static class SMSM001A
     {
         double timeToExpiry = dte / TradingDaysPerYear;
 
-        // Use Alaris.Double DoubleBoundaryApproximation for price
-        DBAP002A approx = new DBAP002A(spot, strike, timeToExpiry, rate, div, vol, isCall);
-        double price = approx.ApproximateValue();
+        // For calls in negative rate regimes (q < r < 0), use put-call parity
+        // because Healy (2021) double boundary is designed for puts
+        double price;
+        if (isCall && div < rate && rate < 0)
+        {
+            // Price the corresponding put
+            DBAP002A putApprox = new DBAP002A(spot, strike, timeToExpiry, rate, div, vol, isCall: false);
+            double putPrice = putApprox.ApproximateValue();
+
+            // Apply put-call parity: C = P + S·exp(-qT) - K·exp(-rT)
+            double forwardFactor = Math.Exp(-div * timeToExpiry);
+            double discountFactor = Math.Exp(-rate * timeToExpiry);
+            price = putPrice + (spot * forwardFactor) - (strike * discountFactor);
+        }
+        else
+        {
+            // Use DBAP002A directly for puts or other regimes
+            DBAP002A approx = new DBAP002A(spot, strike, timeToExpiry, rate, div, vol, isCall);
+            price = approx.ApproximateValue();
+        }
 
         // Adaptive step sizes proportional to spot and volatility
         double ds = spot * 0.005; // 0.5% of spot price
         double dv = 0.001;        // 0.1% volatility bump
         double dt = 1.0 / TradingDaysPerYear;
 
+        // Helper function to price with put-call parity if needed
+        double PriceOption(double s, double k, double t, double r, double q, double v, bool call)
+        {
+            if (call && q < r && r < 0)
+            {
+                DBAP002A putA = new DBAP002A(s, k, t, r, q, v, isCall: false);
+                double putP = putA.ApproximateValue();
+                double ff = Math.Exp(-q * t);
+                double df = Math.Exp(-r * t);
+                return putP + (s * ff) - (k * df);
+            }
+            else
+            {
+                DBAP002A a = new DBAP002A(s, k, t, r, q, v, call);
+                return a.ApproximateValue();
+            }
+        }
+
         // Delta: central difference with adaptive step
-        DBAP002A approxUp = new DBAP002A(spot + ds, strike, timeToExpiry, rate, div, vol, isCall);
-        DBAP002A approxDown = new DBAP002A(spot - ds, strike, timeToExpiry, rate, div, vol, isCall);
-        double priceUp = approxUp.ApproximateValue();
-        double priceDown = approxDown.ApproximateValue();
+        double priceUp = PriceOption(spot + ds, strike, timeToExpiry, rate, div, vol, isCall);
+        double priceDown = PriceOption(spot - ds, strike, timeToExpiry, rate, div, vol, isCall);
         double delta = (priceUp - priceDown) / (2.0 * ds);
 
         // Gamma: central difference second derivative
         double gamma = (priceUp - (2.0 * price) + priceDown) / (ds * ds);
 
         // Vega: forward difference with vol bump
-        DBAP002A approxVegaUp = new DBAP002A(spot, strike, timeToExpiry, rate, div, vol + dv, isCall);
-        double vega = (approxVegaUp.ApproximateValue() - price) / dv * 0.01;
+        double priceVegaUp = PriceOption(spot, strike, timeToExpiry, rate, div, vol + dv, isCall);
+        double vega = (priceVegaUp - price) / dv * 0.01;
 
         // Theta: forward difference for time decay
         double theta = 0.0;
         if (timeToExpiry > dt)
         {
-            DBAP002A approxTheta = new DBAP002A(spot, strike, timeToExpiry - dt, rate, div, vol, isCall);
-            theta = (approxTheta.ApproximateValue() - price) / dt / TradingDaysPerYear;
+            double priceTheta = PriceOption(spot, strike, timeToExpiry - dt, rate, div, vol, isCall);
+            theta = (priceTheta - price) / dt / TradingDaysPerYear;
         }
 
         // Validate Greeks against physical constraints
@@ -1374,7 +1412,7 @@ internal static class SMSM001A
     private static void DisplayRealisedVolatility(double realisedVolatility)
     {
         Console.WriteLine("┌──────────────────────────────────────────────────────────────────────────────┐");
-        Console.WriteLine("│ PHASE 3: REALISED VOLATILITY - Yang-Zhang (2000)                             │");
+        Console.WriteLine("│ PHASE 3: REALISED VOLATILITY - Yang-Zhang (2000)                            │");
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
         Console.WriteLine(FormatBoxLine("Estimator:           ", "Yang-Zhang OHLC"));
         Console.WriteLine(FormatBoxLine("30-Day RV:           ", $"{realisedVolatility:P2}"));
@@ -1410,7 +1448,7 @@ internal static class SMSM001A
     private static void DisplayLeungSantoliMetrics(LeungSantoliMetrics metrics)
     {
         Console.WriteLine("┌──────────────────────────────────────────────────────────────────────────────┐");
-        Console.WriteLine("│ PHASE 5: LEUNG-SANTOLI PRE-EARNINGS MODEL (2014)                             │");
+        Console.WriteLine("│ PHASE 5: LEUNG-SANTOLI PRE-EARNINGS MODEL (2014)                            │");
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
         Console.WriteLine(FormatBoxLine("Historical Samples:  ", metrics.HistoricalSamples.ToString(CultureInfo.InvariantCulture)));
         Console.WriteLine(FormatBoxLine("Calibration Status:  ", metrics.IsCalibrated ? "✓ Calibrated" : "✗ Using Default"));
@@ -1440,11 +1478,11 @@ internal static class SMSM001A
         };
 
         Console.WriteLine("┌──────────────────────────────────────────────────────────────────────────────┐");
-        Console.WriteLine("│ PHASE 6: TRADING SIGNAL - Atilgan (2014) Criteria                            │");
+        Console.WriteLine("│ PHASE 6: TRADING SIGNAL - Atilgan (2014) Criteria                           │");
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
         Console.WriteLine(FormatBoxLine("Signal Strength:         ", strengthSymbol));
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
-        Console.WriteLine("│ Criterion                Value              Threshold          Result        │");
+        Console.WriteLine("│ Criterion                Value              Threshold          Result       │");
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
 
         foreach (KeyValuePair<string, (bool Pass, string Value, string Threshold)> kvp in result.CriteriaResults)
@@ -1497,10 +1535,10 @@ internal static class SMSM001A
         string constraintsResult = result.AllConstraintsPass ? "✓ ALL PASS" : "✗ CONSTRAINTS VIOLATED";
 
         Console.WriteLine("┌──────────────────────────────────────────────────────────────────────────────┐");
-        Console.WriteLine("│ PHASE 9: ALARIS.DOUBLE - Healy (2021) Double Boundary Demonstration          │");
+        Console.WriteLine("│ PHASE 9: ALARIS.DOUBLE - Healy (2021) Double Boundary Demonstration         │");
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
-        Console.WriteLine("│ Reference: \"Pricing American Options Under Negative Rates\"                 │");
-        Console.WriteLine("│ Method:    QD+ Approximation with Super Halley's iteration                   │");
+        Console.WriteLine("│ Reference: \"Pricing American Options Under Negative Rates\"                  │");
+        Console.WriteLine("│ Method:    QD+ Approximation with Super Halley's iteration                  │");
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
         Console.WriteLine(FormatBoxLine("Spot Price:          ", $"${result.Spot:F2}"));
         Console.WriteLine(FormatBoxLine("Strike Price:        ", $"${result.Strike:F2}"));
@@ -1511,11 +1549,11 @@ internal static class SMSM001A
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
         Console.WriteLine(FormatBoxLine("American Put Price:  ", $"${result.PutPrice:F4}"));
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
-        Console.WriteLine("│ DOUBLE BOUNDARY (Exercise Optimal in Range [S_l, S_u]):                      │");
+        Console.WriteLine("│ DOUBLE BOUNDARY (Exercise Optimal in Range [S_l, S_u]):                     │");
         Console.WriteLine(FormatBoxLine("  Upper Boundary:    ", $"${result.UpperBoundary:F4}"));
         Console.WriteLine(FormatBoxLine("  Lower Boundary:    ", $"${result.LowerBoundary:F4}"));
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
-        Console.WriteLine("│ PHYSICAL CONSTRAINTS (Healy Appendix A):                                     │");
+        Console.WriteLine("│ PHYSICAL CONSTRAINTS (Healy Appendix A):                                    │");
         Console.WriteLine(FormatBoxLine("  A1 (S_u,S_l > 0):  ", result.A1Pass ? "✓ PASS" : "✗ FAIL"));
         Console.WriteLine(FormatBoxLine("  A2 (S_u > S_l):    ", result.A2Pass ? "✓ PASS" : "✗ FAIL"));
         Console.WriteLine(FormatBoxLine("  A3 (Put < K):      ", result.A3Pass ? "✓ PASS" : "✗ FAIL"));
@@ -1585,7 +1623,7 @@ internal static class SMSM001A
         Console.WriteLine("║                        TRADE RECOMMENDATION SUMMARY                          ║");
         Console.WriteLine("╠══════════════════════════════════════════════════════════════════════════════╣");
         Console.WriteLine(FormatDoubleBoxLine("Symbol:          ", SimulationSymbol));
-        Console.WriteLine("║ Strategy:        Earnings Calendar Spread                                    ║");
+        Console.WriteLine("║ Strategy:        Earnings Calendar Spread                                   ║");
         Console.WriteLine(FormatDoubleBoxLine("Signal:          ", signalResult.Signal.Strength.ToString()));
         Console.WriteLine(FormatDoubleBoxLine("Action:          ", action));
         Console.WriteLine("╠══════════════════════════════════════════════════════════════════════════════╣");
