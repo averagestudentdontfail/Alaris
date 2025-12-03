@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <AssemblyName>Alaris.Lean</AssemblyName>
+    <RootNamespace>Alaris.Lean</RootNamespace>
+    <Version>1.0.0</Version>
+    <Authors>Kiran K. Nath</Authors>
+    <Company>Alaris Quantitative Systems</Company>
+    <Description>QuantConnect LEAN integration for Alaris earnings volatility trading strategy</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Reference to Lean Engine (from Alaris/Alaris.Lean/Common) -->
+    <!-- Note: Adjust path based on actual Lean installation location -->
+    <Reference Include="QuantConnect.Common">
+      <HintPath>../Alaris.Lean/Common/bin/Release/QuantConnect.Common.dll</HintPath>
+    </Reference>
+    <Reference Include="QuantConnect.Algorithm">
+      <HintPath>../Alaris.Lean/Algorithm/bin/Release/QuantConnect.Algorithm.dll</HintPath>
+    </Reference>
+    <Reference Include="QuantConnect.Algorithm.Framework">
+      <HintPath>../Alaris.Lean/Algorithm.Framework/bin/Release/QuantConnect.Algorithm.Framework.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Alaris project references -->
+    <ProjectReference Include="..\Alaris.Data\Alaris.Data.csproj" />
+    <ProjectReference Include="..\Alaris.Strategy\Alaris.Strategy.csproj" />
+    <ProjectReference Include="..\Alaris.Events\Alaris.Events.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Logging -->
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.0" />
+  </ItemGroup>
+
+</Project>
