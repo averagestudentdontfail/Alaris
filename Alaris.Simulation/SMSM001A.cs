@@ -264,12 +264,14 @@ internal static class SMSM001A
         // Convert to HashSet for O(1) lookup
         var earningsDateSet = new HashSet<DateTime>(historicalEarnings.Select(d => d.Date));
 
-        // Generate 60 days of price history with earnings gaps
+        // Generate 365 days of price history to capture all 4 quarterly earnings dates
+        // This ensures proper Leung-Santoli calibration with sufficient samples
+        const int PriceHistoryDays = 365;
         var priceHistory = new List<PriceBar>();
         double currentPrice = 150.00;
-        DateTime startDate = evaluationDate.AddDays(-60);
+        DateTime startDate = evaluationDate.AddDays(-PriceHistoryDays);
 
-        for (int i = 0; i < 60; i++)
+        for (int i = 0; i < PriceHistoryDays; i++)
         {
             DateTime date = startDate.AddDays(i);
 
@@ -611,6 +613,7 @@ internal static class SMSM001A
             Strike = atmStrike,
             FrontExpiry = frontExpiry.ExpiryDate,
             BackExpiry = backExpiry.ExpiryDate,
+            EvaluationDate = evaluationDate,
             FrontPrice = frontPrice,
             BackPrice = backPrice,
             SpreadCost = spreadCost,
@@ -873,6 +876,7 @@ internal static class SMSM001A
             Strike = atmStrike,
             FrontExpiry = frontExpiry.ExpiryDate,
             BackExpiry = backExpiry.ExpiryDate,
+            EvaluationDate = evaluationDate,
             FrontPrice = frontPrice,
             BackPrice = backPrice,
             SpreadCost = spreadCost,
@@ -1469,8 +1473,8 @@ internal static class SMSM001A
         Console.WriteLine(FormatBoxLine("Dividend Yield:      ", $"{result.DividendYield:P2}"));
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
         Console.WriteLine(FormatBoxLine("Strike (ATM):        ", $"${result.Strike:F2}"));
-        Console.WriteLine(FormatBoxLine("Front Month:         ", $"{result.FrontExpiry:yyyy-MM-dd} (DTE: {(result.FrontExpiry - DateTime.Today).Days})"));
-        Console.WriteLine(FormatBoxLine("Back Month:          ", $"{result.BackExpiry:yyyy-MM-dd} (DTE: {(result.BackExpiry - DateTime.Today).Days})"));
+        Console.WriteLine(FormatBoxLine("Front Month:         ", $"{result.FrontExpiry:yyyy-MM-dd} (DTE: {(result.FrontExpiry - result.EvaluationDate).Days})"));
+        Console.WriteLine(FormatBoxLine("Back Month:          ", $"{result.BackExpiry:yyyy-MM-dd} (DTE: {(result.BackExpiry - result.EvaluationDate).Days})"));
         Console.WriteLine("├──────────────────────────────────────────────────────────────────────────────┤");
         Console.WriteLine(FormatBoxLine("Front Option Price:  ", $"${result.FrontPrice:F4}"));
         Console.WriteLine(FormatBoxLine("Back Option Price:   ", $"${result.BackPrice:F4}"));
@@ -1722,6 +1726,7 @@ internal sealed class CalendarSpreadResult
     public double Strike { get; init; }
     public DateTime FrontExpiry { get; init; }
     public DateTime BackExpiry { get; init; }
+    public DateTime EvaluationDate { get; init; }
     public double FrontPrice { get; init; }
     public double BackPrice { get; init; }
     public double SpreadCost { get; init; }
