@@ -909,35 +909,36 @@ internal static class SMSM001A
 
         double frontPrice, backPrice;
         double frontDelta, backDelta;
+        double frontGamma, backGamma;
         double frontTheta, backTheta;
         double frontVega, backVega;
 
         if (regime == PricingRegime.DoubleBoundary)
         {
-            (frontPrice, frontDelta, frontTheta, frontVega) = PriceWithDouble(
+            (frontPrice, frontDelta, frontGamma, frontTheta, frontVega) = PriceWithDouble(
                 data.CurrentPrice, atmStrike, frontExpiry.GetDaysToExpiry(evaluationDate),
                 riskFreeRate, dividendYield, frontCall.ImpliedVolatility, true);
 
-            (backPrice, backDelta, backTheta, backVega) = PriceWithDouble(
+            (backPrice, backDelta, backGamma, backTheta, backVega) = PriceWithDouble(
                 data.CurrentPrice, atmStrike, backExpiry.GetDaysToExpiry(evaluationDate),
                 riskFreeRate, dividendYield, backCall.ImpliedVolatility, true);
         }
         else
         {
-            (frontPrice, frontDelta, frontTheta, frontVega) = SimulateOptionPrice(
+            (frontPrice, frontDelta, frontGamma, frontTheta, frontVega) = SimulateOptionPrice(
                 data.CurrentPrice, atmStrike, frontExpiry.GetDaysToExpiry(evaluationDate),
                 riskFreeRate, dividendYield, frontCall.ImpliedVolatility, true);
 
-            (backPrice, backDelta, backTheta, backVega) = SimulateOptionPrice(
+            (backPrice, backDelta, backGamma, backTheta, backVega) = SimulateOptionPrice(
                 data.CurrentPrice, atmStrike, backExpiry.GetDaysToExpiry(evaluationDate),
                 riskFreeRate, dividendYield, backCall.ImpliedVolatility, true);
         }
 
         double spreadCost = backPrice - frontPrice;
         double spreadDelta = backDelta - frontDelta;
+        double spreadGamma = backGamma - frontGamma;
         double spreadTheta = backTheta - frontTheta;
         double spreadVega = backVega - frontVega;
-        double spreadGamma = backGamma - frontGamma;
 
         bool isCredit = spreadCost < 0;
 
@@ -983,7 +984,8 @@ internal static class SMSM001A
     /// <summary>
     /// Prices an option using Alaris.Double (Healy 2021 methodology).
     /// </summary>
-    private static (double Price, double Delta, double Theta, double Vega) PriceWithDouble(
+    /// <returns>Tuple containing (Price, Delta, Gamma, Theta, Vega).</returns>
+    private static (double Price, double Delta, double Gamma, double Theta, double Vega) PriceWithDouble(
         double spot, double strike, int dte, double rate, double div, double vol, bool isCall)
     {
         double timeToExpiry = dte / TradingDaysPerYear;
@@ -997,13 +999,19 @@ internal static class SMSM001A
         const double dv = 0.001;
         const double dt = 1.0 / TradingDaysPerYear;
 
+        // Delta
         DBAP002A approxUp = new DBAP002A(spot + ds, strike, timeToExpiry, rate, div, vol, isCall);
         DBAP002A approxDown = new DBAP002A(spot - ds, strike, timeToExpiry, rate, div, vol, isCall);
         double delta = (approxUp.ApproximateValue() - approxDown.ApproximateValue()) / (2 * ds);
 
+        // Gamma (second derivative with respect to spot)
+        double gamma = (approxUp.ApproximateValue() - (2 * price) + approxDown.ApproximateValue()) / (ds * ds);
+
+        // Vega
         DBAP002A approxVegaUp = new DBAP002A(spot, strike, timeToExpiry, rate, div, vol + dv, isCall);
         double vega = (approxVegaUp.ApproximateValue() - price) / dv * 0.01;
 
+        // Theta
         double theta = 0;
         if (timeToExpiry > dt)
         {
@@ -1011,13 +1019,14 @@ internal static class SMSM001A
             theta = (approxTheta.ApproximateValue() - price) / dt / TradingDaysPerYear;
         }
 
-        return (price, delta, theta, vega);
+        return (price, delta, gamma, theta, vega);
     }
 
     /// <summary>
     /// Simulates option pricing using Black-Scholes with American approximation.
     /// </summary>
-    private static (double Price, double Delta, double Theta, double Vega) SimulateOptionPrice(
+    /// <returns>Tuple containing (Price, Delta, Gamma, Theta, Vega).</returns>
+    private static (double Price, double Delta, double Gamma, double Theta, double Vega) SimulateOptionPrice(
         double spot, double strike, int dte, double rate, double div, double vol, bool isCall)
     {
         double t = dte / TradingDaysPerYear;
@@ -1037,11 +1046,15 @@ internal static class SMSM001A
             : Math.Exp(-div * t) * (nd1 - 1);
 
         double npd1 = Math.Exp(-d1 * d1 / 2) / Math.Sqrt(2 * Math.PI);
+        
+        // Gamma: second derivative of price with respect to spot
+        double gamma = Math.Exp(-div * t) * npd1 / (spot * vol * sqrtT);
+        
         double vega = spot * Math.Exp(-div * t) * npd1 * sqrtT * 0.01;
         double theta = ((-spot * Math.Exp(-div * t) * npd1 * vol / (2 * sqrtT)) -
                        (rate * strike * Math.Exp(-rate * t) * nd2)) / TradingDaysPerYear;
 
-        return (price, delta, theta, vega);
+        return (price, delta, gamma, theta, vega);
     }
 
     /// <summary>
@@ -1157,9 +1170,6 @@ internal static class SMSM001A
         };
     }
 
-    /// <summary>
-    /// Displays the double boundary pricing demonstration.
-    /// </summary>
     /// <summary>
     /// Displays double boundary pricing demonstration results.
     /// </summary>
