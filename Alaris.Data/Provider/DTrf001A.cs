@@ -74,7 +74,7 @@ public sealed class TreasuryDirectRateProvider : IRiskFreeRateProvider
             }
 
             // Find most recent 3-month T-bill (91-day maturity)
-            var threemoMonthBill = response.Securities
+            var threeMonthBill = response.Securities
                 .Where(s => s.Term != null && s.Term.Contains("91"))
                 .OrderByDescending(s => s.IssueDate)
                 .FirstOrDefault();

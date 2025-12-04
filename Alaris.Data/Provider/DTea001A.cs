@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using Alaris.Data.Model;
 
-namespace Alaris.Data.Providers.FMP;
+namespace Alaris.Data.Provider.FMP;
 
 /// <summary>
 /// Financial Modeling Prep earnings calendar provider.
@@ -231,7 +231,7 @@ public sealed class FinancialModelingPrepProvider : IEarningsCalendarProvider
 
 #region FMP API Response Models
 
-file sealed class FmpEarningsEvent
+internal sealed class FmpEarningsEvent
 {
     [JsonPropertyName("symbol")]
     public required string Symbol { get; init; }

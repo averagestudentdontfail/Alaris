@@ -179,7 +179,7 @@ public sealed class IvArbitrageValidator : IDataQualityValidator
                 // For short-dated options, approximate: C - P ≈ S - K
                 var lhs = call.Mid - put.Mid;
                 var rhs = snapshot.SpotPrice - strike;
-                var parityd if = Math.Abs(lhs - rhs);
+                var parityDiff = Math.Abs(lhs - rhs);
                 var parityErrorPct = parityDiff / Math.Max(call.Mid, put.Mid);
 
                 if (parityErrorPct > 0.02m) // 2% threshold

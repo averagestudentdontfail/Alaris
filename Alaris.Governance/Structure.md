@@ -3,8 +3,8 @@
 # Alaris Structural Compliance Standard
 
 **Document ID:** ALARIS-STD-STRUC-001
-**Version:** 1.1
-**Date:** November 2025
+**Version:** 1.2
+**Date:** December 2025
 **Status:** Active
 
 ---
@@ -24,6 +24,7 @@ The Alaris system follows a strict domain-driven directory structure. All compon
 |-----------|--------|-------------|
 | `Alaris.Double` | Double Boundary | Negative rate American option pricing engine. |
 | `Alaris.Strategy` | Strategy | Trading strategy implementation, including core logic, pricing, and risk management. |
+| `Alaris.Data` | Data | Data acquisition, validation, and integration layer. |
 | `Alaris.Events` | Events | Event sourcing, audit logging, and domain event definitions. |
 | `Alaris.Governance` | Governance | Compliance documentation, standards, and project governance artifacts. |
 | `Alaris.Test` | Test Suite | Unit, integration, and diagnostic tests. |
@@ -47,6 +48,7 @@ The naming format consists of four segments:
 |------|--------|-------------|
 | `DB` | Double Boundary | Components related to the `Alaris.Double` project. |
 | `ST` | Strategy | Components related to the `Alaris.Strategy` project. |
+| `DT` | Data | Components related to the `Alaris.Data` project. |
 | `EV` | Events | Components related to the `Alaris.Events` project. |
 | `TS` | Test Suite | Components related to testing and validation. |
 | `CM` | Common | Shared utilities and infrastructure. |
@@ -70,13 +72,22 @@ The naming format consists of four segments:
 | `PR` | Pricing | Option pricing models and numerical methods. |
 | `RK` | Risk | Risk management and position sizing. |
 | `BR` | Bridge | Interfaces and bridges to other domains (e.g., QuantLib). |
-| `DT` | Data | Market data structures and providers. |
+| `DT` | Data | Market data structures and providers (Legacy/Strategy-specific). |
 | `TM` | Time | Time management, calendars, and term structures. |
 | `CT` | Control | Strategy control and orchestration. |
 | `CS` | Cost | Transaction cost models, execution cost validation, liquidity analysis. |
 | `HD` | Hedging | Hedging analysis, vega correlation, gamma risk management. |
+| `UN` | Universe | Universe selection models. |
 
-#### 4.3.3 Events (EV)
+#### 4.3.3 Data (DT)
+| Code | Category | Description |
+|------|----------|-------------|
+| `PR` | Provider | Data providers (API clients, scrapers). |
+| `MD` | Model | Data models and DTOs. |
+| `BR` | Bridge | Data bridges and adapters. |
+| `QC` | Quality | Data quality validators. |
+
+#### 4.3.4 Events (EV)
 | Code | Category | Description |
 |------|----------|-------------|
 | `CR` | Core | Core event interfaces and base classes. |
@@ -137,6 +148,16 @@ The following table lists the primary components and their academic references.
 | `STHD004A` | `GammaRiskAssessment` | Gamma risk assessment result | - |
 | `STHD005A` | `ProductionValidator` | Orchestrates all pre-trade checks | - |
 | `STHD006A` | `ProductionResult` | Complete production validation | - |
+
+### 5.3 Alaris.Data
+| Component Code | Class Name | Description | Reference |
+|----------------|------------|-------------|-----------|
+| `DTpr001A` | `PolygonDataProvider` | Polygon.io API client | - |
+| `DTpr002A` | `IExecutionQuoteProvider` | Execution quote interface | - |
+| `DTmd001A` | `MarketDataSnapshot` | Market data model | - |
+| `DTmd002A` | `CalendarSpreadQuote` | Calendar spread model | - |
+| `DTib005A` | `InteractiveBrokersSnapshotProvider` | IBKR snapshot provider | - |
+| `DTea001A` | `FmpEarningsProvider` | FMP earnings calendar | - |
 
 ## 6. Compliance
 All changes to the codebase must adhere to this standard. Non-compliant components will be rejected during code review.

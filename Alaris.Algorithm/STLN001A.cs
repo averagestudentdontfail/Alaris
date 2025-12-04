@@ -8,7 +8,6 @@
 // Reference: Healy (2021) - American Option Pricing Under Negative Rates
 // Compliance: High-Integrity Coding Standard v1.2
 // =============================================================================
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -23,30 +22,31 @@ using QuantConnect.Data;
 using QuantConnect.Orders;
 using QuantConnect.Securities.Option;
 
-// Alaris.Data components
 using Alaris.Data.Bridge;
 using Alaris.Data.Model;
 using Alaris.Data.Provider;
-using Alaris.Data.Provider.Polygon;
-using Alaris.Data.Provider.Earnings;
-using Alaris.Data.Provider.Execution;
-using Alaris.Data.Provider.RiskFree;
 using Alaris.Data.Quality;
-
-// Alaris.Strategy components
+using Alaris.Events;
+using Alaris.Strategy.Bridge;
+using Alaris.Strategy.Risk;
 using Alaris.Strategy.Core;
 using Alaris.Strategy.Cost;
 using Alaris.Strategy.Hedge;
-using Alaris.Strategy.Risk;
-
-// Alaris.Algorithm components
 using Alaris.Algorithm.Universe;
+using Alaris.Events.Infrastructure;
 
-// Alaris.Events components
-using Alaris.Events;
+using QCOptionRight = QuantConnect.OptionRight;
+using AlarisOptionRight = Alaris.Data.Model.OptionRight;
 
 namespace Alaris.Algorithm;
 
+public struct OptionParameters
+{
+    public double Strike { get; set; }
+    public double DTE { get; set; }
+    public double ImpliedVolatility { get; set; }
+    public bool IsCall { get; set; }
+}
 /// <summary>
 /// Alaris Earnings Volatility Trading Algorithm.
 /// </summary>
@@ -112,7 +112,7 @@ public sealed class STLN001A : QCAlgorithm
     private IMarketDataProvider? _marketDataProvider;
     private IEarningsCalendarProvider? _earningsProvider;
     private IRiskFreeRateProvider? _riskFreeRateProvider;
-    private IExecutionQuoteProvider? _executionQuoteProvider;
+    private DTpr002A? _executionQuoteProvider;
     
     // Strategy Components
     private STCR003AEstimator? _yangZhangEstimator;
@@ -132,8 +132,8 @@ public sealed class STLN001A : QCAlgorithm
     private STUN001A? _universeSelector;
     
     // Audit & Events
-    private InMemoryEventStore? _eventStore;
-    private InMemoryAuditLogger? _auditLogger;
+    private EVIF001A? _eventStore;
+    private EVIF002A? _auditLogger;
     
     // Logging
     private ILogger<STLN001A>? _logger;
@@ -393,10 +393,10 @@ public sealed class STLN001A : QCAlgorithm
     /// </summary>
     private void InitialiseAuditTrail()
     {
-        _eventStore = new InMemoryEventStore();
-        _auditLogger = new InMemoryAuditLogger(
+        _eventStore = new EVIF001A();
+        _auditLogger = new EVIF002A(
             _eventStore,
-            _loggerFactory!.CreateLogger<InMemoryAuditLogger>());
+            _loggerFactory!.CreateLogger<EVIF002A>());
         
         Log("STLN001A: Audit trail initialised");
     }
@@ -601,11 +601,11 @@ public sealed class STLN001A : QCAlgorithm
         // Phase 6: Execution Pricing
         // =====================================================================
         
-        CalendarSpreadQuote? spreadQuote;
+        DTmd002A? spreadQuote;
         try
         {
             using var cts = new CancellationTokenSource(ApiTimeout);
-            spreadQuote = _executionQuoteProvider!.GetCalendarSpreadQuoteAsync(
+            spreadQuote = _executionQuoteProvider!.GetDTmd002AAsync(
                 ticker,
                 signal.Strike,
                 signal.FrontExpiry,
@@ -777,7 +777,7 @@ public sealed class STLN001A : QCAlgorithm
     private OrderExecutionResult ExecuteCalendarSpread(
         Symbol underlyingSymbol,
         STCR004A signal,
-        CalendarSpreadQuote quote,
+        DTmd002A quote,
         int contracts)
     {
         try
@@ -834,7 +834,7 @@ public sealed class STLN001A : QCAlgorithm
         Symbol underlying,
         decimal strike,
         DateTime expiry,
-        OptionRight right)
+        QCOptionRight right)
     {
         return Symbol.CreateOption(
             underlying,

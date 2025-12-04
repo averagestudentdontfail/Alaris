@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Alaris.Data.Model;
 using Alaris.Data.Provider;
+using Alaris.Data.Quality;
 
 namespace Alaris.Data.Bridge;
 

@@ -1,218 +1,391 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 using Alaris.Data.Model;
 
-namespace Alaris.Data.Provider;
+namespace Alaris.Data.Provider.Polygon;
 
 /// <summary>
-/// Interface for market data providers (Polygon, IBKR, etc.).
-/// Component ID: Interface specification
+/// Polygon.io REST API client for market data retrieval.
+/// Component ID: DTpl001A
 /// </summary>
-public interface IMarketDataProvider
+/// <remarks>
+/// Implements IMarketDataProvider using Polygon.io Options Starter plan ($25/month).
+/// - Provides 2 years historical options data
+/// - Unlimited API calls
+/// - 15-minute delayed quotes
+/// - EOD updates at 5 PM ET
+/// 
+/// API Documentation: https://polygon.io/docs/options
+/// </remarks>
+public sealed class PolygonApiClient : IMarketDataProvider
 {
+    private readonly HttpClient _httpClient;
+    private readonly ILogger<PolygonApiClient> _logger;
+    private readonly string _apiKey;
+    private const string BaseUrl = "https://api.polygon.io";
+
     /// <summary>
-    /// Gets historical OHLCV bars for a symbol.
+    /// Initializes a new instance of the <see cref="PolygonApiClient"/> class.
     /// </summary>
-    /// <param name="symbol">The symbol to retrieve.</param>
-    /// <param name="startDate">Start date (inclusive).</param>
-    /// <param name="endDate">End date (inclusive).</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>List of price bars.</returns>
-    Task<IReadOnlyList<PriceBar>> GetHistoricalBarsAsync(
+    /// <param name="httpClient">HTTP client.</param>
+    /// <param name="configuration">Configuration containing API key.</param>
+    /// <param name="logger">Logger instance.</param>
+    public PolygonApiClient(
+        HttpClient httpClient,
+        IConfiguration configuration,
+        ILogger<PolygonApiClient> logger)
+    {
+        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        
+        _apiKey = configuration["Polygon:ApiKey"] 
+            ?? throw new InvalidOperationException("Polygon API key not configured");
+
+        _httpClient.BaseAddress = new Uri(BaseUrl);
+    }
+
+    /// <inheritdoc/>
+    public async Task<IReadOnlyList<PriceBar>> GetHistoricalBarsAsync(
         string symbol,
         DateTime startDate,
         DateTime endDate,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(symbol))
+            throw new ArgumentException("Symbol cannot be null or whitespace", nameof(symbol));
 
-    /// <summary>
-    /// Gets the current options chain for a symbol.
-    /// </summary>
-    /// <param name="symbol">The underlying symbol.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Option chain snapshot.</returns>
-    Task<OptionChainSnapshot> GetOptionChainAsync(
+        _logger.LogInformation(
+            "Fetching historical bars for {Symbol} from {StartDate:yyyy-MM-dd} to {EndDate:yyyy-MM-dd}",
+            symbol, startDate, endDate);
+
+        // Polygon aggregates endpoint: /v2/aggs/ticker/{ticker}/range/{multiplier}/{timespan}/{from}/{to}
+        var url = $"/v2/aggs/ticker/{symbol}/range/1/day/{startDate:yyyy-MM-dd}/{endDate:yyyy-MM-dd}?adjusted=true&sort=asc&apiKey={_apiKey}";
+
+        try
+        {
+            var response = await _httpClient.GetFromJsonAsync<PolygonAggregatesResponse>(
+                url, 
+                cancellationToken: cancellationToken);
+
+            if (response == null || response.Results == null || response.Results.Length == 0)
+            {
+                _logger.LogWarning("No data returned from Polygon for {Symbol}", symbol);
+                return Array.Empty<PriceBar>();
+            }
+
+            var bars = response.Results.Select(r => new PriceBar
+            {
+                Symbol = symbol,
+                Timestamp = DateTimeOffset.FromUnixTimeMilliseconds(r.Timestamp).DateTime,
+                Open = r.Open,
+                High = r.High,
+                Low = r.Low,
+                Close = r.Close,
+                Volume = r.Volume
+            }).ToList();
+
+            _logger.LogInformation("Retrieved {Count} bars for {Symbol}", bars.Count, symbol);
+            return bars;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "HTTP error fetching bars for {Symbol}", symbol);
+            throw new InvalidOperationException($"Failed to fetch historical bars for {symbol}", ex);
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<OptionChainSnapshot> GetOptionChainAsync(
         string symbol,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(symbol))
+            throw new ArgumentException("Symbol cannot be null or whitespace", nameof(symbol));
 
-    /// <summary>
-    /// Gets the current spot price for a symbol.
-    /// </summary>
-    /// <param name="symbol">The symbol.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Current spot price.</returns>
-    Task<decimal> GetSpotPriceAsync(
+        _logger.LogInformation("Fetching option chain for {Symbol}", symbol);
+
+        // First get current spot price
+        var spotPrice = await GetSpotPriceAsync(symbol, cancellationToken);
+
+        // Get options contracts: /v3/reference/options/contracts
+        var url = $"/v3/reference/options/contracts?underlying_ticker={symbol}&limit=1000&apiKey={_apiKey}";
+
+        try
+        {
+            var response = await _httpClient.GetFromJsonAsync<PolygonOptionsContractsResponse>(
+                url,
+                cancellationToken: cancellationToken);
+
+            if (response == null || response.Results == null || response.Results.Length == 0)
+            {
+                _logger.LogWarning("No options contracts found for {Symbol}", symbol);
+                return new OptionChainSnapshot
+                {
+                    Symbol = symbol,
+                    SpotPrice = spotPrice,
+                    Timestamp = DateTime.UtcNow,
+                    Contracts = Array.Empty<OptionContract>()
+                };
+            }
+
+            // For each contract, get current quote
+            var contracts = new List<OptionContract>();
+            foreach (var contract in response.Results.Take(100)) // Limit for initial implementation
+            {
+                try
+                {
+                    var quote = await GetOptionQuoteAsync(contract.Ticker, cancellationToken);
+                    contracts.Add(quote);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to get quote for {Ticker}", contract.Ticker);
+                }
+            }
+
+            _logger.LogInformation(
+                "Retrieved chain with {Count} contracts for {Symbol}",
+                contracts.Count, symbol);
+
+            return new OptionChainSnapshot
+            {
+                Symbol = symbol,
+                SpotPrice = spotPrice,
+                Timestamp = DateTime.UtcNow,
+                Contracts = contracts
+            };
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "HTTP error fetching option chain for {Symbol}", symbol);
+            throw new InvalidOperationException($"Failed to fetch option chain for {symbol}", ex);
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<decimal> GetSpotPriceAsync(
         string symbol,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(symbol))
+            throw new ArgumentException("Symbol cannot be null or whitespace", nameof(symbol));
 
-    /// <summary>
-    /// Gets 30-day average volume for a symbol.
-    /// </summary>
-    /// <param name="symbol">The symbol.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>30-day average volume.</returns>
-    Task<decimal> GetAverageVolume30DayAsync(
+        // Get previous close: /v2/aggs/ticker/{ticker}/prev
+        var url = $"/v2/aggs/ticker/{symbol}/prev?adjusted=true&apiKey={_apiKey}";
+
+        try
+        {
+            var response = await _httpClient.GetFromJsonAsync<PolygonAggregatesResponse>(
+                url,
+                cancellationToken: cancellationToken);
+
+            if (response == null || response.Results == null || response.Results.Length == 0)
+                throw new InvalidOperationException($"No spot price data for {symbol}");
+
+            var spotPrice = response.Results[0].Close;
+            _logger.LogDebug("Spot price for {Symbol}: {Price}", symbol, spotPrice);
+
+            return spotPrice;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "HTTP error fetching spot price for {Symbol}", symbol);
+            throw new InvalidOperationException($"Failed to fetch spot price for {symbol}", ex);
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<decimal> GetAverageVolume30DayAsync(
         string symbol,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default)
+    {
+        // Calculate from last 30 days of bars
+        var endDate = DateTime.UtcNow.Date;
+        var startDate = endDate.AddDays(-30);
+
+        var bars = await GetHistoricalBarsAsync(symbol, startDate, endDate, cancellationToken);
+
+        if (bars.Count == 0)
+            throw new InvalidOperationException($"No historical data available for {symbol}");
+
+        var avgVolume = (decimal)bars.Average(b => b.Volume);
+        return avgVolume;
+    }
+
+    /// <summary>
+    /// Gets a quote for a specific option ticker.
+    /// </summary>
+    private async Task<OptionContract> GetOptionQuoteAsync(
+        string optionTicker,
+        CancellationToken cancellationToken)
+    {
+        // Parse OCC format option ticker
+        var (underlying, strike, expiration, right) = ParseOptionTicker(optionTicker);
+
+        // Get snapshot quote: /v3/snapshot/options/{ticker}
+        var url = $"/v3/snapshot/options/{underlying}/{optionTicker}?apiKey={_apiKey}";
+
+        var response = await _httpClient.GetFromJsonAsync<PolygonOptionSnapshotResponse>(
+            url,
+            cancellationToken: cancellationToken);
+
+        if (response?.Results?.Quote == null)
+            throw new InvalidOperationException($"No quote data for {optionTicker}");
+
+        var quote = response.Results.Quote;
+        var greeks = response.Results.Greeks;
+
+        return new OptionContract
+        {
+            UnderlyingSymbol = underlying,
+            OptionSymbol = optionTicker,
+            Strike = strike,
+            Expiration = expiration,
+            Right = right,
+            Bid = quote.Bid ?? 0,
+            Ask = quote.Ask ?? 0,
+            Last = quote.Last,
+            Volume = quote.Volume ?? 0,
+            OpenInterest = response.Results.OpenInterest ?? 0,
+            ImpliedVolatility = greeks?.Iv,
+            Delta = greeks?.Delta,
+            Gamma = greeks?.Gamma,
+            Theta = greeks?.Theta,
+            Vega = greeks?.Vega,
+            Timestamp = DateTimeOffset.FromUnixTimeMilliseconds(quote.LastUpdated).DateTime
+        };
+    }
+
+    /// <summary>
+    /// Parses OCC format option ticker.
+    /// Format: AAPL250117C00150000 = AAPL 2025-01-17 Call $150
+    /// </summary>
+    private static (string underlying, decimal strike, DateTime expiration, OptionRight right) 
+        ParseOptionTicker(string ticker)
+    {
+        // OCC format: SYMBOL + YYMMDD + C/P + 00000000 (strike * 1000)
+        // Example: AAPL250117C00150000
+        
+        var underlying = new string(ticker.TakeWhile(char.IsLetter).ToArray());
+        var remaining = ticker[underlying.Length..];
+
+        var dateStr = remaining[..6]; // YYMMDD
+        var rightChar = remaining[6]; // C or P
+        var strikeStr = remaining[7..]; // 00150000
+
+        var expiration = DateTime.ParseExact($"20{dateStr}", "yyyyMMdd", null);
+        var right = rightChar == 'C' ? OptionRight.Call : OptionRight.Put;
+        var strike = decimal.Parse(strikeStr) / 1000m;
+
+        return (underlying, strike, expiration, right);
+    }
 }
 
-/// <summary>
-/// Interface for earnings calendar providers (FMP, etc.).
-/// Component ID: Interface specification
-/// </summary>
-public interface IEarningsCalendarProvider
+#region Polygon API Response Models
+
+file sealed class PolygonAggregatesResponse
 {
-    /// <summary>
-    /// Gets upcoming earnings events for a symbol.
-    /// </summary>
-    /// <param name="symbol">The symbol.</param>
-    /// <param name="daysAhead">Number of days ahead to look.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>List of upcoming earnings events.</returns>
-    Task<IReadOnlyList<EarningsEvent>> GetUpcomingEarningsAsync(
-        string symbol,
-        int daysAhead = 90,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets historical earnings events for a symbol.
-    /// </summary>
-    /// <param name="symbol">The symbol.</param>
-    /// <param name="lookbackDays">Number of days to look back.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>List of historical earnings events.</returns>
-    Task<IReadOnlyList<EarningsEvent>> GetHistoricalEarningsAsync(
-        string symbol,
-        int lookbackDays = 730, // ~2 years
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets all symbols with earnings in date range.
-    /// </summary>
-    /// <param name="startDate">Start date.</param>
-    /// <param name="endDate">End date.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>List of symbols with earnings.</returns>
-    Task<IReadOnlyList<string>> GetSymbolsWithEarningsAsync(
-        DateTime startDate,
-        DateTime endDate,
-        CancellationToken cancellationToken = default);
+    [JsonPropertyName("results")]
+    public PolygonBar[]? Results { get; init; }
 }
 
-/// <summary>
-/// Interface for execution quote providers (IBKR snapshots).
-/// Component ID: Interface specification
-/// </summary>
-public interface IExecutionQuoteProvider
+file sealed class PolygonBar
 {
-    /// <summary>
-    /// Gets a real-time snapshot quote for an option contract.
-    /// </summary>
-    /// <param name="underlyingSymbol">The underlying symbol.</param>
-    /// <param name="strike">The strike price.</param>
-    /// <param name="expiration">The expiration date.</param>
-    /// <param name="right">Call or put.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Real-time option quote.</returns>
-    Task<OptionContract> GetSnapshotQuoteAsync(
-        string underlyingSymbol,
-        decimal strike,
-        DateTime expiration,
-        OptionRight right,
-        CancellationToken cancellationToken = default);
+    [JsonPropertyName("t")]
+    public long Timestamp { get; init; }
 
-    /// <summary>
-    /// Gets real-time calendar spread quote.
-    /// </summary>
-    /// <param name="underlyingSymbol">The underlying symbol.</param>
-    /// <param name="strike">The strike price.</param>
-    /// <param name="frontExpiration">Front month expiration.</param>
-    /// <param name="backExpiration">Back month expiration.</param>
-    /// <param name="right">Call or put.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Calendar spread quote (back - front).</returns>
-    Task<CalendarSpreadQuote> GetCalendarSpreadQuoteAsync(
-        string underlyingSymbol,
-        decimal strike,
-        DateTime frontExpiration,
-        DateTime backExpiration,
-        OptionRight right,
-        CancellationToken cancellationToken = default);
+    [JsonPropertyName("o")]
+    public decimal Open { get; init; }
+
+    [JsonPropertyName("h")]
+    public decimal High { get; init; }
+
+    [JsonPropertyName("l")]
+    public decimal Low { get; init; }
+
+    [JsonPropertyName("c")]
+    public decimal Close { get; init; }
+
+    [JsonPropertyName("v")]
+    public long Volume { get; init; }
 }
 
-/// <summary>
-/// Calendar spread quote with bid/ask for the spread.
-/// </summary>
-public sealed class CalendarSpreadQuote
+file sealed class PolygonOptionsContractsResponse
 {
-    /// <summary>Gets the underlying symbol.</summary>
-    public required string UnderlyingSymbol { get; init; }
-
-    /// <summary>Gets the strike.</summary>
-    public required decimal Strike { get; init; }
-
-    /// <summary>Gets the front month contract.</summary>
-    public required OptionContract FrontLeg { get; init; }
-
-    /// <summary>Gets the back month contract.</summary>
-    public required OptionContract BackLeg { get; init; }
-
-    /// <summary>Gets the spread bid (back bid - front ask).</summary>
-    public required decimal SpreadBid { get; init; }
-
-    /// <summary>Gets the spread ask (back ask - front bid).</summary>
-    public required decimal SpreadAsk { get; init; }
-
-    /// <summary>Gets the spread mid.</summary>
-    public decimal SpreadMid => (SpreadBid + SpreadAsk) / 2m;
-
-    /// <summary>Gets the spread width.</summary>
-    public decimal SpreadWidth => SpreadAsk - SpreadBid;
-
-    /// <summary>Gets the quote timestamp.</summary>
-    public required DateTime Timestamp { get; init; }
+    [JsonPropertyName("results")]
+    public PolygonOptionContract[]? Results { get; init; }
 }
 
-/// <summary>
-/// Interface for data quality validators.
-/// Component ID: Interface specification
-/// </summary>
-public interface IDataQualityValidator
+file sealed class PolygonOptionContract
 {
-    /// <summary>Gets the validator component ID (e.g., "DTqc001A").</summary>
-    string ComponentId { get; }
+    [JsonPropertyName("ticker")]
+    public required string Ticker { get; init; }
 
-    /// <summary>
-    /// Validates market data snapshot.
-    /// </summary>
-    /// <param name="snapshot">The market data to validate.</param>
-    /// <returns>Validation result.</returns>
-    DataQualityResult Validate(MarketDataSnapshot snapshot);
+    [JsonPropertyName("underlying_ticker")]
+    public required string UnderlyingTicker { get; init; }
 }
 
-/// <summary>
-/// Interface for risk-free rate providers.
-/// Component ID: Interface specification
-/// </summary>
-public interface IRiskFreeRateProvider
+file sealed class PolygonOptionSnapshotResponse
 {
-    /// <summary>
-    /// Gets the current risk-free rate (e.g., 3-month T-bill).
-    /// </summary>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Risk-free rate as decimal (e.g., 0.0525 for 5.25%).</returns>
-    Task<decimal> GetCurrentRateAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets historical risk-free rates.
-    /// </summary>
-    /// <param name="startDate">Start date.</param>
-    /// <param name="endDate">End date.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Dictionary of date to rate.</returns>
-    Task<IReadOnlyDictionary<DateTime, decimal>> GetHistoricalRatesAsync(
-        DateTime startDate,
-        DateTime endDate,
-        CancellationToken cancellationToken = default);
+    [JsonPropertyName("results")]
+    public PolygonOptionDetails? Results { get; init; }
 }
+
+file sealed class PolygonOptionDetails
+{
+    [JsonPropertyName("last_quote")]
+    public PolygonQuote? Quote { get; init; }
+
+    [JsonPropertyName("greeks")]
+    public PolygonGreeks? Greeks { get; init; }
+
+    [JsonPropertyName("open_interest")]
+    public long? OpenInterest { get; init; }
+}
+
+file sealed class PolygonQuote
+{
+    [JsonPropertyName("bid")]
+    public decimal? Bid { get; init; }
+
+    [JsonPropertyName("ask")]
+    public decimal? Ask { get; init; }
+
+    [JsonPropertyName("last")]
+    public decimal? Last { get; init; }
+
+    [JsonPropertyName("volume")]
+    public long? Volume { get; init; }
+
+    [JsonPropertyName("last_updated")]
+    public long LastUpdated { get; init; }
+}
+
+file sealed class PolygonGreeks
+{
+    [JsonPropertyName("delta")]
+    public decimal? Delta { get; init; }
+
+    [JsonPropertyName("gamma")]
+    public decimal? Gamma { get; init; }
+
+    [JsonPropertyName("theta")]
+    public decimal? Theta { get; init; }
+
+    [JsonPropertyName("vega")]
+    public decimal? Vega { get; init; }
+
+    [JsonPropertyName("iv")]
+    public decimal? Iv { get; init; }
+}
+
+#endregion
