@@ -105,6 +105,7 @@ public sealed class STUN001A : FundamentalUniverseSelectionModel
     /// <summary>
     /// Selects symbols from the coarse universe that meet earnings criteria.
     /// </summary>
+    [Obsolete("Use Select instead")]
     public override IEnumerable<Symbol> SelectCoarse(
         QCAlgorithm algorithm,
         IEnumerable<CoarseFundamental> coarse)
@@ -144,6 +145,7 @@ public sealed class STUN001A : FundamentalUniverseSelectionModel
     /// <summary>
     /// Optional fine selection - not used for this strategy.
     /// </summary>
+    [Obsolete("Use Select instead")]
     public override IEnumerable<Symbol> SelectFine(
         QCAlgorithm algorithm,
         IEnumerable<FineFundamental> fine)

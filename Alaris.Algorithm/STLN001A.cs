@@ -22,6 +22,8 @@ using QuantConnect.Data;
 using QuantConnect.Orders;
 using QuantConnect.Securities.Option;
 
+using StrategyPriceBar = Alaris.Strategy.Bridge.PriceBar;
+using StrategyOptionChain = Alaris.Strategy.Model.STDT002A;
 using Alaris.Data.Bridge;
 using Alaris.Data.Model;
 using Alaris.Data.Provider;
@@ -808,13 +810,15 @@ public sealed class STLN001A : QCAlgorithm
             
             // Submit combo limit order at mid price
             var limitPrice = quote.SpreadMid;
-            var ticket = ComboLimitOrder(legs, contracts, limitPrice);
+            var tickets = ComboLimitOrder(legs, contracts, limitPrice);
             
+            return new OrderExecutionResult
+            var orderId = tickets.FirstOrDefault()?.OrderId ?? 0;
             return new OrderExecutionResult
             {
                 Success = true,
-                OrderId = ticket.OrderId,
-                Message = $"Order {ticket.OrderId} submitted at ${limitPrice:F2}"
+                OrderId = orderId,
+                Message = $"Order {orderId} submitted at ${limitPrice:F2}"
             };
         }
         catch (Exception ex)
@@ -836,7 +840,7 @@ public sealed class STLN001A : QCAlgorithm
         DateTime expiry,
         QCOptionRight right)
     {
-        return Symbol.CreateOption(
+        return QuantConnect.Symbol.CreateOption(
             underlying,
             Market.USA,
             OptionStyle.American,
@@ -855,13 +859,23 @@ public sealed class STLN001A : QCAlgorithm
         {
             Log($"STLN001A: Order filled - {orderEvent.Symbol} @ ${orderEvent.FillPrice:F2}");
             
-            _auditLogger?.LogOrderFill(new OrderFillEvent
+            _auditLogger?.LogAsync(new Alaris.Events.Core.AuditEntry
             {
-                OrderId = orderEvent.OrderId,
-                Symbol = orderEvent.Symbol.Value,
-                Quantity = orderEvent.FillQuantity,
-                FillPrice = orderEvent.FillPrice,
-                Timestamp = Time
+                OccurredAtUtc = DateTime.UtcNow,
+                Action = "OrderFill",
+                EntityType = "Order",
+                EntityId = orderEvent.OrderId.ToString(),
+                InitiatedBy = "STLN001A",
+                Description = $"Order filled: {orderEvent.Symbol} {orderEvent.FillQuantity} @ {orderEvent.FillPrice}",
+                Severity = Alaris.Events.Core.AuditSeverity.Information,
+                Outcome = Alaris.Events.Core.AuditOutcome.Success,
+                AdditionalData = new Dictionary<string, string>
+                {
+                    ["Symbol"] = orderEvent.Symbol.Value,
+                    ["Quantity"] = orderEvent.FillQuantity.ToString(),
+                    ["FillPrice"] = orderEvent.FillPrice.ToString(),
+                    ["Timestamp"] = Time.ToString("O")
+                }
             });
         }
         else if (orderEvent.Status == OrderStatus.Canceled)
@@ -974,9 +988,6 @@ internal sealed class LeanLogger : ILogger
 // Market Data Adapter
 // =============================================================================
 
-/// <summary>
-/// Adapts AlarisDataBridge to the strategy's market data interface.
-/// </summary>
 internal sealed class DataBridgeMarketDataAdapter : STDT001A
 {
     private readonly AlarisDataBridge _bridge;
@@ -986,6 +997,107 @@ internal sealed class DataBridgeMarketDataAdapter : STDT001A
         _bridge = bridge;
     }
 
-    // Implementation would delegate to _bridge methods
-    // This is a placeholder - actual implementation depends on STDT001A interface
+    public StrategyOptionChain GetSTDT002A(string symbol, DateTime expirationDate)
+    {
+        var snapshot = _bridge.GetMarketDataSnapshotAsync(symbol).GetAwaiter().GetResult();
+        
+        var chain = new StrategyOptionChain
+        {
+            Symbol = symbol,
+            UnderlyingPrice = (double)snapshot.SpotPrice,
+            Timestamp = snapshot.Timestamp
+        };
+        
+        if (snapshot.OptionChain != null)
+        {
+            var contracts = snapshot.OptionChain.Contracts
+                .Where(c => c.Expiry.Date == expirationDate.Date)
+                .ToList();
+
+            if (contracts.Any())
+            {
+                var expiry = new OptionExpiry
+                {
+                    ExpiryDate = expirationDate
+                };
+
+                foreach (var c in contracts)
+                {
+                    var contract = new Alaris.Strategy.Model.OptionContract
+                    {
+                        Strike = (double)c.Strike,
+                        Bid = (double)c.Bid,
+                        Ask = (double)c.Ask,
+                        LastPrice = (double)c.LastPrice,
+                        ImpliedVolatility = c.ImpliedVolatility,
+                        Delta = (double)c.Greeks.Delta,
+                        Gamma = (double)c.Greeks.Gamma,
+                        Vega = (double)c.Greeks.Vega,
+                        Theta = (double)c.Greeks.Theta,
+                        OpenInterest = (int)c.OpenInterest,
+                        Volume = (int)c.Volume
+                    };
+
+                    if (c.Right == AlarisOptionRight.Call)
+                        expiry.Calls.Add(contract);
+                    else
+                        expiry.Puts.Add(contract);
+                }
+                
+                chain.Expiries.Add(expiry);
+            }
+        }
+
+        return chain;
+    }
+
+    public IReadOnlyList<StrategyPriceBar> GetHistoricalPrices(string symbol, int days)
+    {
+        var snapshot = _bridge.GetMarketDataSnapshotAsync(symbol).GetAwaiter().GetResult();
+        
+        return snapshot.HistoricalBars
+            .Select(b => new StrategyPriceBar
+            {
+                Date = b.Time,
+                Open = (double)b.Open,
+                High = (double)b.High,
+                Low = (double)b.Low,
+                Close = (double)b.Close,
+                Volume = (long)b.Volume
+            })
+            .OrderBy(b => b.Date)
+            .ToList();
+    }
+
+    public double GetCurrentPrice(string symbol)
+    {
+        var snapshot = _bridge.GetMarketDataSnapshotAsync(symbol).GetAwaiter().GetResult();
+        return (double)snapshot.SpotPrice;
+    }
+
+    public async Task<IReadOnlyList<DateTime>> GetEarningsDates(string symbol)
+    {
+        var snapshot = await _bridge.GetMarketDataSnapshotAsync(symbol);
+        var dates = new List<DateTime>();
+        if (snapshot.NextEarnings != null)
+        {
+            dates.Add(snapshot.NextEarnings.Date);
+        }
+        return dates;
+    }
+
+    public async Task<IReadOnlyList<DateTime>> GetHistoricalEarningsDates(string symbol, int lookbackQuarters = 12)
+    {
+        var snapshot = await _bridge.GetMarketDataSnapshotAsync(symbol);
+        return snapshot.HistoricalEarnings
+            .Select(e => e.Date)
+            .OrderByDescending(d => d)
+            .Take(lookbackQuarters)
+            .ToList();
+    }
+
+    public async Task<bool> IsDataAvailable(string symbol)
+    {
+        return await _bridge.MeetsBasicCriteriaAsync(symbol);
+    }
 }
