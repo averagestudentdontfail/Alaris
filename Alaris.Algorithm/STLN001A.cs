@@ -568,7 +568,7 @@ public sealed class STLN001A : QCAlgorithm
         
         var signal = _signalGenerator!.Generate(
             ticker,
-            snapshot.NextEarnings.AnnouncementDate,
+            snapshot.NextEarnings.Date,
             Time);
         
         Log($"  {ticker}: Signal = {signal.Strength} (IV/RV = {signal.IVRVRatio:F3})");
@@ -612,7 +612,7 @@ public sealed class STLN001A : QCAlgorithm
                 signal.Strike,
                 signal.FrontExpiry,
                 signal.BackExpiry,
-                OptionRight.Call,
+                AlarisOptionRight.Call,
                 cts.Token)
                 .GetAwaiter().GetResult();
         }
@@ -789,25 +789,25 @@ public sealed class STLN001A : QCAlgorithm
                 underlyingSymbol,
                 signal.Strike,
                 signal.FrontExpiry,
-                OptionRight.Call);
-            
+                QCOptionRight.Call);
+
             var backOption = CreateOptionSymbol(
                 underlyingSymbol,
                 signal.Strike,
                 signal.BackExpiry,
-                OptionRight.Call);
-            
+                QCOptionRight.Call);
+
             // Add option contracts to universe
             AddOptionContract(frontOption);
             AddOptionContract(backOption);
-            
+
             // Create combo order legs
-            var legs = new List<Leg>
+            var legs = new List<QuantConnect.Orders.Leg>
             {
-                Leg.Create(frontOption, -contracts),  // Sell front month
-                Leg.Create(backOption, contracts)     // Buy back month
+                QuantConnect.Orders.Leg.Create(frontOption, -contracts),  // Sell front month
+                QuantConnect.Orders.Leg.Create(backOption, contracts)     // Buy back month
             };
-            
+
             // Submit combo limit order at mid price
             var limitPrice = quote.SpreadMid;
             var tickets = ComboLimitOrder(legs, contracts, limitPrice);
@@ -860,6 +860,7 @@ public sealed class STLN001A : QCAlgorithm
             
             _auditLogger?.LogAsync(new Alaris.Events.Core.AuditEntry
             {
+                AuditId = Guid.NewGuid(),
                 OccurredAtUtc = DateTime.UtcNow,
                 Action = "OrderFill",
                 EntityType = "Order",
@@ -1010,12 +1011,12 @@ internal sealed class DataBridgeMarketDataAdapter : STDT001A
         if (snapshot.OptionChain != null)
         {
             var contracts = snapshot.OptionChain.Contracts
-                .Where(c => c.Expiry.Date == expirationDate.Date)
+                .Where(c => c.Expiration.Date == expirationDate.Date)
                 .ToList();
 
             if (contracts.Any())
             {
-                var expiry = new OptionExpiry
+                var expiry = new Alaris.Strategy.Model.OptionExpiry
                 {
                     ExpiryDate = expirationDate
                 };
@@ -1027,12 +1028,12 @@ internal sealed class DataBridgeMarketDataAdapter : STDT001A
                         Strike = (double)c.Strike,
                         Bid = (double)c.Bid,
                         Ask = (double)c.Ask,
-                        LastPrice = (double)c.LastPrice,
-                        ImpliedVolatility = c.ImpliedVolatility,
-                        Delta = (double)c.Greeks.Delta,
-                        Gamma = (double)c.Greeks.Gamma,
-                        Vega = (double)c.Greeks.Vega,
-                        Theta = (double)c.Greeks.Theta,
+                        LastPrice = (double)(c.Last ?? 0m),
+                        ImpliedVolatility = (double)(c.ImpliedVolatility ?? 0m),
+                        Delta = (double)(c.Delta ?? 0m),
+                        Gamma = (double)(c.Gamma ?? 0m),
+                        Vega = (double)(c.Vega ?? 0m),
+                        Theta = (double)(c.Theta ?? 0m),
                         OpenInterest = (int)c.OpenInterest,
                         Volume = (int)c.Volume
                     };
@@ -1042,7 +1043,7 @@ internal sealed class DataBridgeMarketDataAdapter : STDT001A
                     else
                         expiry.Puts.Add(contract);
                 }
-                
+
                 chain.Expiries.Add(expiry);
             }
         }
@@ -1057,12 +1058,12 @@ internal sealed class DataBridgeMarketDataAdapter : STDT001A
         return snapshot.HistoricalBars
             .Select(b => new StrategyPriceBar
             {
-                Date = b.Time,
+                Date = b.Timestamp,
                 Open = (double)b.Open,
                 High = (double)b.High,
                 Low = (double)b.Low,
                 Close = (double)b.Close,
-                Volume = (long)b.Volume
+                Volume = b.Volume
             })
             .OrderBy(b => b.Date)
             .ToList();

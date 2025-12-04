@@ -123,7 +123,7 @@ public sealed class STUN001A : FundamentalUniverseSelectionModel
         // Step 1: Apply coarse filters (volume, price, has fundamental data)
         var coarseFiltered = coarse
             .Where(c => c.HasFundamentalData)
-            .Where(c => c.DollarVolume >= _minimumDollarVolume)
+            .Where(c => c.DollarVolume >= (double)_minimumDollarVolume)
             .Where(c => c.Price >= _minimumPrice)
             .OrderByDescending(c => c.DollarVolume)
             .Take(500) // Pre-filter to top 500 by volume
