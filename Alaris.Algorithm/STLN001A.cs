@@ -811,8 +811,7 @@ public sealed class STLN001A : QCAlgorithm
             // Submit combo limit order at mid price
             var limitPrice = quote.SpreadMid;
             var tickets = ComboLimitOrder(legs, contracts, limitPrice);
-            
-            return new OrderExecutionResult
+
             var orderId = tickets.FirstOrDefault()?.OrderId ?? 0;
             return new OrderExecutionResult
             {

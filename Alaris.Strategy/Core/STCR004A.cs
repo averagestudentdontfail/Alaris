@@ -122,6 +122,40 @@ public sealed class STCR004A
     /// </summary>
     public bool IsLeungSantoliCalibrated { get; set; }
 
+    // ============================================================================
+    // Calendar Spread Position Properties
+    // ============================================================================
+
+    /// <summary>
+    /// Gets or sets the strike price for the calendar spread.
+    /// Typically selected at-the-money based on underlying price.
+    /// </summary>
+    public decimal Strike { get; set; }
+
+    /// <summary>
+    /// Gets or sets the front-month option expiration date.
+    /// This is the short leg that expires before or at earnings.
+    /// </summary>
+    public DateTime FrontExpiry { get; set; }
+
+    /// <summary>
+    /// Gets or sets the back-month option expiration date.
+    /// This is the long leg that expires after earnings.
+    /// </summary>
+    public DateTime BackExpiry { get; set; }
+
+    /// <summary>
+    /// Gets or sets the front-month implied volatility.
+    /// Expected to be elevated pre-earnings due to jump risk.
+    /// </summary>
+    public double FrontIV { get; set; }
+
+    /// <summary>
+    /// Gets or sets the back-month implied volatility.
+    /// Expected to be lower as it spans beyond the earnings event.
+    /// </summary>
+    public double BackIV { get; set; }
+
     /// <summary>
     /// Evaluates all criteria and determines signal strength.
     /// </summary>

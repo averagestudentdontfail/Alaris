@@ -85,21 +85,29 @@ public sealed class STUN001A : FundamentalUniverseSelectionModel
         int daysBeforeEarningsMax = 7,
         decimal minimumDollarVolume = 1_500_000m,
         decimal minimumPrice = 5.00m,
-        int maxSymbols = 50,
+        int maxCoarseSymbols = 500,
+        int maxFinalSymbols = 50,
         ILogger<STUN001A>? logger = null)
-         : base(false) /* 
-            DateRules.EveryDay(),
-            TimeRules.At(9, 30), // 9:30 AM ET - at market open
-             */ 
+         : base()
     {
-        _earningsProvider = earningsProvider 
+        _earningsProvider = earningsProvider
             ?? throw new ArgumentNullException(nameof(earningsProvider));
         _daysBeforeEarningsMin = daysBeforeEarningsMin;
         _daysBeforeEarningsMax = daysBeforeEarningsMax;
         _minimumDollarVolume = minimumDollarVolume;
         _minimumPrice = minimumPrice;
-        _maxSymbols = maxSymbols;
+        _maxSymbols = maxFinalSymbols;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// Returns configuration summary for logging.
+    /// </summary>
+    public string GetConfigurationSummary()
+    {
+        return $"Days before earnings: [{_daysBeforeEarningsMin}, {_daysBeforeEarningsMax}], " +
+               $"Min volume: {_minimumDollarVolume:C0}, Min price: {_minimumPrice:C2}, " +
+               $"Max symbols: {_maxSymbols}";
     }
 
     /// <summary>

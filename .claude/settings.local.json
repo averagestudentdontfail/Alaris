@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(for dir in //wsl.localhost/Ubuntu/home/sunny/.project/Alaris/Alaris.*)",
+      "Bash(do if [ -d \"$dir\" ])",
+      "Bash(wc:*)",
+      "Bash(dotnet build:*)",
+      "Bash(dotnet restore:*)",
+      "Bash(dotnet clean:*)",
+      "Bash(cd:*)",
+      "Bash(wsl ls:*)",
+      "Bash(grep:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
