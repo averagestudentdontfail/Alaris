@@ -27,9 +27,6 @@ using StrategyOptionChain = Alaris.Strategy.Model.STDT002A;
 using Alaris.Data.Bridge;
 using Alaris.Data.Model;
 using Alaris.Data.Provider;
-using Alaris.Data.Provider.Polygon;
-using Alaris.Data.Provider.FMP;
-using Alaris.Data.Provider.Treasury;
 using Alaris.Data.Quality;
 using Alaris.Events;
 using Alaris.Strategy.Bridge;
@@ -269,24 +266,24 @@ public sealed class STLN001A : QCAlgorithm
         _earningsProvider = new FinancialModelingPrepProvider(
             _httpClient,
             configuration,
-            _loggerFactory!.CreateLogger<FinancialModelingPrepProvider>());
+            _loggerFactory.CreateLogger<FinancialModelingPrepProvider>());
         
         // Initialise risk-free rate provider (Treasury Direct)
         _riskFreeRateProvider = new TreasuryDirectRateProvider(
             _httpClient,
-            _loggerFactory!.CreateLogger<TreasuryDirectRateProvider>());
+            _loggerFactory.CreateLogger<TreasuryDirectRateProvider>());
         
         // Initialise execution quote provider (IBKR Snapshots)
         _executionQuoteProvider = new InteractiveBrokersSnapshotProvider(
-            _loggerFactory!.CreateLogger<InteractiveBrokersSnapshotProvider>());
+            _loggerFactory.CreateLogger<InteractiveBrokersSnapshotProvider>());
         
         // Create data quality validators
         var validators = new IDataQualityValidator[]
         {
-            new PriceReasonablenessValidator(_loggerFactory!.CreateLogger<PriceReasonablenessValidator>()),
-            new IvArbitrageValidator(_loggerFactory!.CreateLogger<IvArbitrageValidator>()),
-            new VolumeOpenInterestValidator(_loggerFactory!.CreateLogger<VolumeOpenInterestValidator>()),
-            new EarningsDateValidator(_loggerFactory!.CreateLogger<EarningsDateValidator>())
+            new PriceReasonablenessValidator(_loggerFactory.CreateLogger<PriceReasonablenessValidator>()),
+            new IvArbitrageValidator(_loggerFactory.CreateLogger<IvArbitrageValidator>()),
+            new VolumeOpenInterestValidator(_loggerFactory.CreateLogger<VolumeOpenInterestValidator>()),
+            new EarningsDateValidator(_loggerFactory.CreateLogger<EarningsDateValidator>())
         };
         
         // Create unified data bridge
@@ -295,7 +292,7 @@ public sealed class STLN001A : QCAlgorithm
             _earningsProvider,
             _riskFreeRateProvider,
             validators,
-            _loggerFactory!.CreateLogger<AlarisDataBridge>());
+            _loggerFactory.CreateLogger<AlarisDataBridge>());
         
         Log("STLN001A: Data providers initialised");
     }
@@ -322,7 +319,8 @@ public sealed class STLN001A : QCAlgorithm
         
         // Position sizer (Kelly criterion)
         _positionSizer = new STRK001A(
-            _loggerFactory!.CreateLogger<STRK001A>());
+            maxAllocationPercent: (double)MaxPositionAllocation,
+            logger: _loggerFactory.CreateLogger<STRK001A>());
         
         Log("STLN001A: Strategy components initialised");
     }
@@ -334,34 +332,25 @@ public sealed class STLN001A : QCAlgorithm
     {
         // Fee model for IBKR
         _feeModel = new STCS005A(
-            feePerContract: 0.65,
-            exchangeFeePerContract: 0.30,
-            regulatoryFeePerContract: 0.02,
-            logger: _loggerFactory!.CreateLogger<STCS005A>());
+            commissionPerContract: 0.65m,
+            feePerContract: 0.25m);
         
         // Cost validator (signal survives costs)
         _costValidator = new STCS006A(
             _feeModel,
-            logger: _loggerFactory!.CreateLogger<STCS006A>());
+            _loggerFactory!.CreateLogger<STCS006A>());
         
         // Vega correlation analyser
         _vegaAnalyser = new STHD001A(
-            maxAcceptableCorrelation: 0.70,
-            minimumObservations: 20,
-            logger: _loggerFactory!.CreateLogger<STHD001A>());
+            _loggerFactory.CreateLogger<STHD001A>());
         
         // Liquidity validator
         _liquidityValidator = new STCS008A(
-            maxPositionToVolumeRatio: 0.05,
-            maxPositionToOpenInterestRatio: 0.02,
-            logger: _loggerFactory!.CreateLogger<STCS008A>());
+            _loggerFactory.CreateLogger<STCS008A>());
         
         // Gamma risk manager
         _gammaRiskManager = new STHD003A(
-            deltaRehedgeThreshold: 0.10,
-            gammaWarningThreshold: -0.05,
-            moneynessAlertThreshold: 0.03,
-            logger: _loggerFactory!.CreateLogger<STHD003A>());
+            _loggerFactory.CreateLogger<STHD003A>());
         
         // Production validator (orchestrates all checks)
         _productionValidator = new STHD005A(
@@ -369,7 +358,7 @@ public sealed class STLN001A : QCAlgorithm
             _vegaAnalyser,
             _liquidityValidator,
             _gammaRiskManager,
-            _loggerFactory!.CreateLogger<STHD005A>());
+            _loggerFactory.CreateLogger<STHD005A>());
         
         Log("STLN001A: Production validation initialised");
     }
@@ -407,7 +396,9 @@ public sealed class STLN001A : QCAlgorithm
     private void InitialiseAuditTrail()
     {
         _eventStore = new EVIF001A();
-        _auditLogger = new EVIF002A();
+        _auditLogger = new EVIF002A(
+            _eventStore,
+            _loggerFactory!.CreateLogger<EVIF002A>());
         
         Log("STLN001A: Audit trail initialised");
     }
@@ -498,19 +489,7 @@ public sealed class STLN001A : QCAlgorithm
                 catch (Exception ex)
                 {
                     Error($"STLN001A: Error evaluating {symbol}: {ex.Message}");
-                    // Log error to audit trail
-                    _auditLogger?.LogAsync(new Alaris.Events.Core.AuditEntry
-                    {
-                        AuditId = Guid.NewGuid(),
-                        OccurredAtUtc = DateTime.UtcNow,
-                        Action = "EvaluationError",
-                        EntityType = "Symbol",
-                        EntityId = symbol.Value,
-                        InitiatedBy = "STLN001A",
-                        Description = $"Evaluation failed for {symbol}: {ex.Message}",
-                        Severity = Alaris.Events.Core.AuditSeverity.Error,
-                        Outcome = Alaris.Events.Core.AuditOutcome.Failure
-                    });
+                    _auditLogger?.LogError($"Evaluation failed for {symbol}", ex);
                 }
             }
             
@@ -524,19 +503,7 @@ public sealed class STLN001A : QCAlgorithm
         catch (Exception ex)
         {
             Error($"STLN001A: Fatal error in evaluation: {ex.Message}");
-            // Log error to audit trail
-            _auditLogger?.LogAsync(new Alaris.Events.Core.AuditEntry
-            {
-                AuditId = Guid.NewGuid(),
-                OccurredAtUtc = DateTime.UtcNow,
-                Action = "FatalEvaluationError",
-                EntityType = "Algorithm",
-                EntityId = "STLN001A",
-                InitiatedBy = "STLN001A",
-                Description = $"Daily evaluation failed: {ex.Message}",
-                Severity = Alaris.Events.Core.AuditSeverity.Error,
-                Outcome = Alaris.Events.Core.AuditOutcome.Failure
-            });
+            _auditLogger?.LogError("Daily evaluation failed", ex);
         }
     }
 
@@ -585,16 +552,15 @@ public sealed class STLN001A : QCAlgorithm
         // Phase 2: Realised Volatility Calculation
         // =====================================================================
         
-        var priceBars = ConvertToPriceBars(snapshot.HistoricalBars);
-        var rv = _yangZhangEstimator!.Calculate(priceBars, 30, true);
+        var rv = _yangZhangEstimator!.Calculate(snapshot.HistoricalBars);
         Log($"  {ticker}: 30-day RV = {rv:P2}");
         
         // =====================================================================
         // Phase 3: Term Structure Analysis
         // =====================================================================
         
-        var termStructure = _termStructureAnalyzer!.Analyze(ConvertToTermStructurePoints(snapshot.OptionChain));
-        Log($"  {ticker}: Term structure = {termStructure.GetIVAt(30):P2} / {termStructure.GetIVAt(60):P2} / {termStructure.GetIVAt(90):P2}");
+        var termStructure = _termStructureAnalyzer!.Analyze(snapshot.OptionChain);
+        Log($"  {ticker}: Term structure = {termStructure.ThirtyDayIV:P2} / {termStructure.SixtyDayIV:P2} / {termStructure.NinetyDayIV:P2}");
         
         // =====================================================================
         // Phase 4: Signal Generation
@@ -625,21 +591,9 @@ public sealed class STLN001A : QCAlgorithm
             Log($"  {ticker}: Failed production validation");
             foreach (var check in validation.Checks.Where(c => !c.Passed))
             {
-                Log($"    - {check.Name}: {check.Detail}");
+                Log($"    - {check.Name}: {check.Reason}");
             }
-            // Log warning to audit trail
-            _auditLogger?.LogAsync(new Alaris.Events.Core.AuditEntry
-            {
-                AuditId = Guid.NewGuid(),
-                OccurredAtUtc = DateTime.UtcNow,
-                Action = "ValidationFailed",
-                EntityType = "Signal",
-                EntityId = ticker,
-                InitiatedBy = "STLN001A",
-                Description = $"{ticker}: Production validation failed",
-                Severity = Alaris.Events.Core.AuditSeverity.Warning,
-                Outcome = Alaris.Events.Core.AuditOutcome.Failure
-            });
+            _auditLogger?.LogWarning($"{ticker}: Production validation failed", validation);
             return result;
         }
         
@@ -680,9 +634,8 @@ public sealed class STLN001A : QCAlgorithm
         // Phase 7: Position Sizing
         // =====================================================================
         
-        var sizing = _positionSizer!.CalculateFromHistory(
+        var sizing = _positionSizer!.Calculate(
             portfolioValue: (double)Portfolio.TotalPortfolioValue,
-            historicalTrades: Array.Empty<Alaris.Strategy.Risk.Trade>(),
             spreadCost: (double)spreadQuote.SpreadMid,
             signal: signal);
         
@@ -714,24 +667,14 @@ public sealed class STLN001A : QCAlgorithm
             _positionEntryDates[symbol] = Time;
             
             // Log to audit trail
-            _auditLogger?.LogAsync(new Alaris.Events.Core.AuditEntry
+            _auditLogger?.LogTrade(new TradeEvent
             {
-                AuditId = Guid.NewGuid(),
-                OccurredAtUtc = DateTime.UtcNow,
-                Action = "TradeOpened",
-                EntityType = "CalendarSpread",
-                EntityId = ticker,
-                InitiatedBy = "STLN001A",
-                Description = $"Opened calendar spread: {finalContracts} contracts @ ${spreadQuote.SpreadMid:F2}",
-                Severity = Alaris.Events.Core.AuditSeverity.Information,
-                Outcome = Alaris.Events.Core.AuditOutcome.Success,
-                AdditionalData = new Dictionary<string, string>
-                {
-                    ["Contracts"] = finalContracts.ToString(),
-                    ["Price"] = spreadQuote.SpreadMid.ToString(),
-                    ["FrontExpiry"] = signal.FrontExpiry.ToString("O"),
-                    ["BackExpiry"] = signal.BackExpiry.ToString("O")
-                }
+                Symbol = ticker,
+                Action = "OPEN",
+                Contracts = finalContracts,
+                Price = spreadQuote.SpreadMid,
+                Signal = signal,
+                Timestamp = Time
             });
             
             Log($"  {ticker}: Order submitted successfully");
@@ -789,7 +732,7 @@ public sealed class STLN001A : QCAlgorithm
             backLegParams: CreateOptionParams(signal, false),
             frontIVHistory: Array.Empty<double>(),  // Would come from historical data
             backIVHistory: Array.Empty<double>(),
-            backMonthVolume: (int)(snapshot.AverageVolume30Day * 0.1m),  // Estimate
+            backMonthVolume: (long)(snapshot.AverageVolume30Day * 0.1),  // Estimate
             backMonthOpenInterest: 1000,  // Would come from options chain
             spotPrice: (double)snapshot.SpotPrice,
             strikePrice: (double)signal.Strike,
@@ -798,26 +741,19 @@ public sealed class STLN001A : QCAlgorithm
     }
 
     /// <summary>
-    /// Creates order parameters for validation.
+    /// Creates option parameters for validation.
     /// </summary>
-    private STCS002A CreateOptionParams(STCR004A signal, bool isFrontMonth)
+    private OptionParameters CreateOptionParams(STCR004A signal, bool isFrontMonth)
     {
         var expiry = isFrontMonth ? signal.FrontExpiry : signal.BackExpiry;
-        var iv = isFrontMonth ? signal.FrontIV : signal.BackIV;
+        var dte = (expiry - Time).Days;
         
-        // Estimate contract prices from IV (simplified)
-        var midPrice = iv * 0.1; // Simplified estimate
-        var spread = midPrice * 0.05; // 5% bid-ask spread estimate
-        
-        return new STCS002A
+        return new OptionParameters
         {
-            Contracts = 1,
-            MidPrice = midPrice,
-            BidPrice = midPrice - (spread / 2),
-            AskPrice = midPrice + (spread / 2),
-            Direction = isFrontMonth ? Alaris.Strategy.Cost.OrderDirection.Sell : Alaris.Strategy.Cost.OrderDirection.Buy,
-            Premium = midPrice,
-            Symbol = signal.Symbol
+            Strike = (double)signal.Strike,
+            DTE = dte,
+            ImpliedVolatility = isFrontMonth ? signal.FrontIV : signal.BackIV,
+            IsCall = true
         };
     }
 
@@ -835,61 +771,6 @@ public sealed class STLN001A : QCAlgorithm
             Vega = 0.05,
             Theta = -0.02
         };
-    }
-
-    /// <summary>
-    /// Converts Alaris.Data.Model.PriceBar to Alaris.Strategy.Bridge.PriceBar for volatility calculation.
-    /// </summary>
-    private IReadOnlyList<Alaris.Strategy.Bridge.PriceBar> ConvertToPriceBars(
-        IReadOnlyList<Alaris.Data.Model.PriceBar> dataBars)
-    {
-        return dataBars.Select(b => new Alaris.Strategy.Bridge.PriceBar
-        {
-            Date = b.Timestamp,
-            Open = (double)b.Open,
-            High = (double)b.High,
-            Low = (double)b.Low,
-            Close = (double)b.Close
-        }).ToList();
-    }
-
-    /// <summary>
-    /// Converts option chain snapshot to term structure points for analysis.
-    /// </summary>
-    private IReadOnlyList<STTM001APoint> ConvertToTermStructurePoints(
-        OptionChainSnapshot optionChain)
-    {
-        var points = new List<STTM001APoint>();
-        
-        if (optionChain?.Contracts == null)
-            return points;
-        
-        // Group by expiration and calculate average IV at ATM strikes
-        var byExpiry = optionChain.Contracts
-            .GroupBy(c => c.Expiration.Date)
-            .OrderBy(g => g.Key);
-        
-        foreach (var group in byExpiry)
-        {
-            var daysToExpiry = (group.Key - DateTime.UtcNow.Date).Days;
-            if (daysToExpiry <= 0) continue;
-            
-            // Average IV across ATM options
-            var avgIV = group
-                .Where(c => c.ImpliedVolatility.HasValue && c.ImpliedVolatility > 0)
-                .Select(c => (double)c.ImpliedVolatility!.Value)
-                .DefaultIfEmpty(0.2) // Default 20% IV if no data
-                .Average();
-            
-            points.Add(new STTM001APoint
-            {
-                DaysToExpiry = daysToExpiry,
-                ImpliedVolatility = avgIV,
-                Strike = (double)optionChain.Contracts[0].Strike
-            });
-        }
-        
-        return points;
     }
 
     /// <summary>
@@ -1133,7 +1014,7 @@ internal sealed class DataBridgeMarketDataAdapter : STDT001A
                 .Where(c => c.Expiration.Date == expirationDate.Date)
                 .ToList();
 
-            if (contracts.Count > 0)
+            if (contracts.Any())
             {
                 var expiry = new Alaris.Strategy.Model.OptionExpiry
                 {

@@ -77,7 +77,8 @@ public sealed class STUN001A : FundamentalUniverseSelectionModel
     /// <param name="daysBeforeEarningsMax">Maximum days before earnings (default: 7).</param>
     /// <param name="minimumDollarVolume">Minimum 30-day dollar volume (default: 1.5M).</param>
     /// <param name="minimumPrice">Minimum share price (default: $5).</param>
-    /// <param name="maxSymbols">Maximum symbols to select (default: 50).</param>
+    /// <param name="maxCoarseSymbols">Maximum coarse symbols to process (default: 500).</param>
+    /// <param name="maxFinalSymbols">Maximum symbols to select (default: 50).</param>
     /// <param name="logger">Optional logger instance.</param>
     public STUN001A(
         IEarningsCalendarProvider earningsProvider,
