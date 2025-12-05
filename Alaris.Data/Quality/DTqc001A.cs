@@ -16,7 +16,7 @@ namespace Alaris.Data.Quality;
 /// - Option ask &lt; intrinsic value + $10
 /// - No stale timestamps (>1 hour old)
 /// </remarks>
-public sealed class PriceReasonablenessValidator : IDataQualityValidator
+public sealed class PriceReasonablenessValidator : DTqc002A
 {
     private readonly ILogger<PriceReasonablenessValidator> _logger;
 
@@ -133,7 +133,7 @@ public sealed class PriceReasonablenessValidator : IDataQualityValidator
 /// - Calendar spread IV differences reasonable
 /// - No butterfly arbitrage opportunities >$0.50
 /// </remarks>
-public sealed class IvArbitrageValidator : IDataQualityValidator
+public sealed class IvArbitrageValidator : DTqc002A
 {
     private readonly ILogger<IvArbitrageValidator> _logger;
 
@@ -243,7 +243,7 @@ public sealed class IvArbitrageValidator : IDataQualityValidator
 /// - Volume within 10× of 30-day average
 /// - OI change consistent with volume
 /// </remarks>
-public sealed class VolumeOpenInterestValidator : IDataQualityValidator
+public sealed class VolumeOpenInterestValidator : DTqc002A
 {
     private readonly ILogger<VolumeOpenInterestValidator> _logger;
 
@@ -334,7 +334,7 @@ public sealed class VolumeOpenInterestValidator : IDataQualityValidator
 /// - Date within next 90 days
 /// - No conflicting dates in recent history
 /// </remarks>
-public sealed class EarningsDateValidator : IDataQualityValidator
+public sealed class EarningsDateValidator : DTqc002A
 {
     private readonly ILogger<EarningsDateValidator> _logger;
 

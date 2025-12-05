@@ -152,12 +152,18 @@ The following table lists the primary components and their academic references.
 ### 5.3 Alaris.Data
 | Component Code | Class Name | Description | Reference |
 |----------------|------------|-------------|-----------|
-| `DTpr001A` | `PolygonDataProvider` | Polygon.io API client | - |
-| `DTpr002A` | `IExecutionQuoteProvider` | Execution quote interface | - |
+| `DTpr001A` | `PolygonApiClient` | Polygon.io API client | - |
+| `DTpr002A` | `InteractiveBrokersSnapshotProvider` | Execution quote provider | IBKR API |
+| `DTpr003A` | Market data provider interface | Interface for market data providers | - |
+| `DTpr004A` | Earnings calendar interface | Interface for earnings calendar providers | - |
+| `DTpr005A` | Risk-free rate interface | Interface for risk-free rate providers | - |
 | `DTmd001A` | `MarketDataSnapshot` | Market data model | - |
 | `DTmd002A` | `CalendarSpreadQuote` | Calendar spread model | - |
-| `DTib005A` | `InteractiveBrokersSnapshotProvider` | IBKR snapshot provider | - |
-| `DTea001A` | `FmpEarningsProvider` | FMP earnings calendar | - |
+| `DTea001A` | `FinancialModelingPrepProvider` | FMP earnings calendar | - |
+| `DTrf001A` | `TreasuryDirectRateProvider` | Treasury rate provider | US Treasury |
+| `DTqc001A` | Data quality validators | Price, IV, Volume/OI, Earnings validators | - |
+| `DTqc002A` | Data quality validator interface | Interface for data quality validators | - |
+| `DTbr001A` | `AlarisDataBridge` | Unified data bridge | - |
 
 ## 6. Compliance
 All changes to the codebase must adhere to this standard. Non-compliant components will be rejected during code review.

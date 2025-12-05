@@ -1,3 +1,11 @@
+// =============================================================================
+// DTpr004A.cs - Earnings Calendar Provider Interface
+// Component: DTpr004A | Category: Provider | Variant: A (Primary)
+// =============================================================================
+// Reference: Alaris.Governance/Structure.md § 4.3.3
+// Compliance: High-Integrity Coding Standard v1.2
+// =============================================================================
+
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -9,7 +17,16 @@ namespace Alaris.Data.Provider;
 /// <summary>
 /// Interface for earnings calendar providers (FMP, etc.).
 /// </summary>
-public interface IEarningsCalendarProvider
+/// <remarks>
+/// <para>
+/// Component ID: DTpr004A
+/// </para>
+/// <para>
+/// Implementations provide upcoming and historical earnings events,
+/// including announcement dates, EPS estimates, and fiscal period data.
+/// </para>
+/// </remarks>
+public interface DTpr004A
 {
     /// <summary>
     /// Gets upcoming earnings events for a symbol.

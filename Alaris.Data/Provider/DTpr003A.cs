@@ -1,3 +1,11 @@
+// =============================================================================
+// DTpr003A.cs - Market Data Provider Interface
+// Component: DTpr003A | Category: Provider | Variant: A (Primary)
+// =============================================================================
+// Reference: Alaris.Governance/Structure.md § 4.3.3
+// Compliance: High-Integrity Coding Standard v1.2
+// =============================================================================
+
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -9,7 +17,16 @@ namespace Alaris.Data.Provider;
 /// <summary>
 /// Interface for market data providers (Polygon, IBKR, etc.).
 /// </summary>
-public interface IMarketDataProvider
+/// <remarks>
+/// <para>
+/// Component ID: DTpr003A
+/// </para>
+/// <para>
+/// Implementations provide historical OHLCV bars, options chains,
+/// spot prices, and volume data from various market data vendors.
+/// </para>
+/// </remarks>
+public interface DTpr003A
 {
     /// <summary>
     /// Gets historical OHLCV bars for a symbol.

@@ -17,7 +17,7 @@ namespace Alaris.Data.Provider.FMP;
 /// Component ID: DTea001A
 /// </summary>
 /// <remarks>
-/// Implements IEarningsCalendarProvider using FMP free tier (250 calls/day).
+/// Implements DTpr004A (Earnings Calendar Provider interface) using FMP free tier (250 calls/day).
 /// 
 /// API Documentation: https://financialmodelingprep.com/developer/docs/#Earnings-Calendar
 /// Endpoint: /v3/earnings-calendar
@@ -28,7 +28,7 @@ namespace Alaris.Data.Provider.FMP;
 /// - Fiscal quarter information
 /// - Up to 250 API calls per day
 /// </remarks>
-public sealed class FinancialModelingPrepProvider : IEarningsCalendarProvider
+public sealed class FinancialModelingPrepProvider : DTpr004A
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<FinancialModelingPrepProvider> _logger;

@@ -114,9 +114,9 @@ public sealed class STLN001A : QCAlgorithm
     
     // Data Infrastructure
     private AlarisDataBridge? _dataBridge;
-    private IMarketDataProvider? _marketDataProvider;
-    private IEarningsCalendarProvider? _earningsProvider;
-    private IRiskFreeRateProvider? _riskFreeRateProvider;
+    private DTpr003A? _marketDataProvider;
+    private DTpr004A? _earningsProvider;
+    private DTpr005A? _riskFreeRateProvider;
     private DTpr002A? _executionQuoteProvider;
     
     // Strategy Components
@@ -281,7 +281,7 @@ public sealed class STLN001A : QCAlgorithm
             _loggerFactory!.CreateLogger<InteractiveBrokersSnapshotProvider>());
         
         // Create data quality validators
-        var validators = new IDataQualityValidator[]
+        var validators = new DTqc002A[]
         {
             new PriceReasonablenessValidator(_loggerFactory!.CreateLogger<PriceReasonablenessValidator>()),
             new IvArbitrageValidator(_loggerFactory!.CreateLogger<IvArbitrageValidator>()),

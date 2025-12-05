@@ -18,7 +18,7 @@ namespace Alaris.Data.Provider.Polygon;
 /// Component ID: DTpl001A
 /// </summary>
 /// <remarks>
-/// Implements IMarketDataProvider using Polygon.io Options Starter plan ($25/month).
+/// Implements DTpr003A (Market Data Provider interface) using Polygon.io Options Starter plan ($25/month).
 /// - Provides 2 years historical options data
 /// - Unlimited API calls
 /// - 15-minute delayed quotes
@@ -26,7 +26,7 @@ namespace Alaris.Data.Provider.Polygon;
 /// 
 /// API Documentation: https://polygon.io/docs/options
 /// </remarks>
-public sealed class PolygonApiClient : IMarketDataProvider
+public sealed class PolygonApiClient : DTpr003A
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<PolygonApiClient> _logger;

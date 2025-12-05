@@ -17,6 +17,7 @@ namespace Alaris.Data.Provider.Treasury;
 /// </summary>
 /// <remarks>
 /// Provides risk-free rates using official US Treasury data.
+/// Implements DTpr005A (Risk-Free Rate Provider interface).
 /// 
 /// API: https://www.treasurydirect.gov/TA_WS/securities
 /// Cost: FREE (official US government API)
@@ -28,7 +29,7 @@ namespace Alaris.Data.Provider.Treasury;
 /// - Updated daily
 /// - No rate limits on official API
 /// </remarks>
-public sealed class TreasuryDirectRateProvider : IRiskFreeRateProvider
+public sealed class TreasuryDirectRateProvider : DTpr005A
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<TreasuryDirectRateProvider> _logger;

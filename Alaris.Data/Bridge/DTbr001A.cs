@@ -26,10 +26,10 @@ namespace Alaris.Data.Bridge;
 /// </remarks>
 public sealed class AlarisDataBridge
 {
-    private readonly IMarketDataProvider _marketDataProvider;
-    private readonly IEarningsCalendarProvider _earningsProvider;
-    private readonly IRiskFreeRateProvider _riskFreeRateProvider;
-    private readonly IReadOnlyList<IDataQualityValidator> _validators;
+    private readonly DTpr003A _marketDataProvider;
+    private readonly DTpr004A _earningsProvider;
+    private readonly DTpr005A _riskFreeRateProvider;
+    private readonly IReadOnlyList<DTqc002A> _validators;
     private readonly ILogger<AlarisDataBridge> _logger;
 
     /// <summary>
@@ -41,10 +41,10 @@ public sealed class AlarisDataBridge
     /// <param name="validators">Data quality validators.</param>
     /// <param name="logger">Logger instance.</param>
     public AlarisDataBridge(
-        IMarketDataProvider marketDataProvider,
-        IEarningsCalendarProvider earningsProvider,
-        IRiskFreeRateProvider riskFreeRateProvider,
-        IReadOnlyList<IDataQualityValidator> validators,
+        DTpr003A marketDataProvider,
+        DTpr004A earningsProvider,
+        DTpr005A riskFreeRateProvider,
+        IReadOnlyList<DTqc002A> validators,
         ILogger<AlarisDataBridge> logger)
     {
         _marketDataProvider = marketDataProvider ?? throw new ArgumentNullException(nameof(marketDataProvider));

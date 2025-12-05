@@ -42,7 +42,7 @@ namespace Alaris.Algorithm.Universe;
 /// </remarks>
 public sealed class STUN001A : FundamentalUniverseSelectionModel
 {
-    private readonly IEarningsCalendarProvider _earningsProvider;
+    private readonly DTpr004A _earningsProvider;
     private readonly ILogger<STUN001A>? _logger;
     
     // Atilgan (2014) parameters
@@ -81,7 +81,7 @@ public sealed class STUN001A : FundamentalUniverseSelectionModel
     /// <param name="maxFinalSymbols">Maximum symbols to select (default: 50).</param>
     /// <param name="logger">Optional logger instance.</param>
     public STUN001A(
-        IEarningsCalendarProvider earningsProvider,
+        DTpr004A earningsProvider,
         int daysBeforeEarningsMin = 5,
         int daysBeforeEarningsMax = 7,
         decimal minimumDollarVolume = 1_500_000m,
