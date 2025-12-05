@@ -42,6 +42,7 @@
     <ProjectReference Include="../Alaris.Strategy/Alaris.Strategy.csproj" />
     <ProjectReference Include="../Alaris.Data/Alaris.Data.csproj" />
     <ProjectReference Include="../Alaris.Events/Alaris.Events.csproj" />
+    <ProjectReference Include="../Alaris.Algorithm/Alaris.Algorithm.csproj" />
   </ItemGroup>
 
   <!-- Explicitly copy native libraries to test output directory -->
