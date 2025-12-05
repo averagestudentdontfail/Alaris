@@ -40,6 +40,8 @@
     <ProjectReference Include="../Alaris.Quantlib/Alaris.Quantlib.csproj" />
     <ProjectReference Include="../Alaris.Double/Alaris.Double.csproj" />
     <ProjectReference Include="../Alaris.Strategy/Alaris.Strategy.csproj" />
+    <ProjectReference Include="../Alaris.Data/Alaris.Data.csproj" />
+    <ProjectReference Include="../Alaris.Events/Alaris.Events.csproj" />
   </ItemGroup>
 
   <!-- Explicitly copy native libraries to test output directory -->
