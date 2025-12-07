@@ -1,5 +1,5 @@
 // =============================================================================
-// BacktestSessionService.cs - Backtest Session Lifecycle Management
+// APsv001A.cs - Backtest Session Lifecycle Management
 // Component: APsv001A | Category: Services | Variant: A (Primary)
 // =============================================================================
 // Manages backtest session lifecycle: create, list, run, delete.
@@ -11,25 +11,28 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
-using Alaris.Application.Models;
+using Alaris.Application.Model;
 using Microsoft.Extensions.Logging;
 
-namespace Alaris.Application.Services;
+using System.Text.Json.Serialization;
+
+namespace Alaris.Application.Service;
 
 /// <summary>
 /// Service for managing backtest session lifecycle.
 /// Component ID: APsv001A
 /// </summary>
-public sealed class BacktestSessionService
+public sealed class APsv001A
 {
     private readonly string _sessionsRoot;
     private readonly string _indexPath;
-    private readonly ILogger<BacktestSessionService>? _logger;
+    private readonly ILogger<APsv001A>? _logger;
     
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        Converters = { new JsonStringEnumConverter() }
     };
 
     /// <summary>
@@ -37,10 +40,10 @@ public sealed class BacktestSessionService
     /// </summary>
     /// <param name="sessionsRoot">Root directory for sessions (defaults to Alaris.Sessions/).</param>
     /// <param name="logger">Logger instance.</param>
-    public BacktestSessionService(string? sessionsRoot = null, ILogger<BacktestSessionService>? logger = null)
+    public APsv001A(string? sessionsRoot = null, ILogger<APsv001A>? logger = null)
     {
         _sessionsRoot = sessionsRoot ?? FindSessionsRoot();
-        _indexPath = Path.Combine(_sessionsRoot, "sessions.json");
+        _indexPath = System.IO.Path.Combine(_sessionsRoot, "sessions.json");
         _logger = logger;
         
         // Ensure sessions directory exists
@@ -54,7 +57,7 @@ public sealed class BacktestSessionService
     /// <param name="endDate">Backtest end date.</param>
     /// <param name="symbols">Optional list of symbols (null = generate universe).</param>
     /// <returns>Created session.</returns>
-    public async Task<BacktestSession> CreateAsync(DateTime startDate, DateTime endDate, IEnumerable<string>? symbols = null)
+    public async Task<APmd001A> CreateAsync(DateTime startDate, DateTime endDate, IEnumerable<string>? symbols = null)
     {
         if (endDate <= startDate)
         {
@@ -63,20 +66,20 @@ public sealed class BacktestSessionService
 
         // Generate session ID
         var sessionId = await GenerateSessionIdAsync(startDate, endDate);
-        var sessionPath = Path.Combine(_sessionsRoot, sessionId);
+        var sessionPath = System.IO.Path.Combine(_sessionsRoot, sessionId);
 
         _logger?.LogInformation("Creating session {SessionId} at {Path}", sessionId, sessionPath);
 
         // Create folder structure
         Directory.CreateDirectory(sessionPath);
-        Directory.CreateDirectory(Path.Combine(sessionPath, "universe"));
-        Directory.CreateDirectory(Path.Combine(sessionPath, "data", "equity", "usa", "daily"));
-        Directory.CreateDirectory(Path.Combine(sessionPath, "results"));
-        Directory.CreateDirectory(Path.Combine(sessionPath, "earnings"));
+        Directory.CreateDirectory(System.IO.Path.Combine(sessionPath, "universe"));
+        Directory.CreateDirectory(System.IO.Path.Combine(sessionPath, "data", "equity", "usa", "daily"));
+        Directory.CreateDirectory(System.IO.Path.Combine(sessionPath, "results"));
+        Directory.CreateDirectory(System.IO.Path.Combine(sessionPath, "earnings"));
 
         var symbolList = symbols?.ToList() ?? new List<string>();
 
-        var session = new BacktestSession
+        var session = new APmd001A
         {
             SessionId = sessionId,
             StartDate = startDate,
@@ -102,10 +105,10 @@ public sealed class BacktestSessionService
     /// <summary>
     /// Gets a session by ID.
     /// </summary>
-    public async Task<BacktestSession?> GetAsync(string sessionId)
+    public async Task<APmd001A?> GetAsync(string sessionId)
     {
-        var sessionPath = Path.Combine(_sessionsRoot, sessionId);
-        var metadataPath = Path.Combine(sessionPath, "session.json");
+        var sessionPath = System.IO.Path.Combine(_sessionsRoot, sessionId);
+        var metadataPath = System.IO.Path.Combine(sessionPath, "session.json");
 
         if (!File.Exists(metadataPath))
         {
@@ -113,17 +116,17 @@ public sealed class BacktestSessionService
         }
 
         var json = await File.ReadAllTextAsync(metadataPath);
-        return JsonSerializer.Deserialize<BacktestSession>(json, JsonOptions);
+        return JsonSerializer.Deserialize<APmd001A>(json, JsonOptions);
     }
 
     /// <summary>
     /// Lists all sessions.
     /// </summary>
-    public async Task<IReadOnlyList<BacktestSession>> ListAsync()
+    public async Task<IReadOnlyList<APmd001A>> ListAsync()
     {
         if (!File.Exists(_indexPath))
         {
-            return Array.Empty<BacktestSession>();
+            return Array.Empty<APmd001A>();
         }
 
         var json = await File.ReadAllTextAsync(_indexPath);
@@ -131,10 +134,10 @@ public sealed class BacktestSessionService
         
         if (index?.Sessions == null)
         {
-            return Array.Empty<BacktestSession>();
+            return Array.Empty<APmd001A>();
         }
 
-        var sessions = new List<BacktestSession>();
+        var sessions = new List<APmd001A>();
         foreach (var sessionId in index.Sessions)
         {
             var session = await GetAsync(sessionId);
@@ -150,7 +153,7 @@ public sealed class BacktestSessionService
     /// <summary>
     /// Updates a session's status and metadata.
     /// </summary>
-    public async Task UpdateAsync(BacktestSession session)
+    public async Task UpdateAsync(APmd001A session)
     {
         var updated = session with { UpdatedAt = DateTime.UtcNow };
         await SaveSessionMetadataAsync(updated);
@@ -162,7 +165,7 @@ public sealed class BacktestSessionService
     /// </summary>
     public async Task DeleteAsync(string sessionId)
     {
-        var sessionPath = Path.Combine(_sessionsRoot, sessionId);
+        var sessionPath = System.IO.Path.Combine(_sessionsRoot, sessionId);
 
         if (!Directory.Exists(sessionPath))
         {
@@ -185,7 +188,7 @@ public sealed class BacktestSessionService
     /// </summary>
     public string GetDataPath(string sessionId)
     {
-        return Path.Combine(_sessionsRoot, sessionId, "data");
+        return System.IO.Path.Combine(_sessionsRoot, sessionId, "data");
     }
 
     /// <summary>
@@ -193,7 +196,7 @@ public sealed class BacktestSessionService
     /// </summary>
     public string GetResultsPath(string sessionId)
     {
-        return Path.Combine(_sessionsRoot, sessionId, "results");
+        return System.IO.Path.Combine(_sessionsRoot, sessionId, "results");
     }
 
     /// <summary>
@@ -249,9 +252,9 @@ public sealed class BacktestSessionService
     /// <summary>
     /// Saves session metadata to session.json.
     /// </summary>
-    private async Task SaveSessionMetadataAsync(BacktestSession session)
+    private async Task SaveSessionMetadataAsync(APmd001A session)
     {
-        var metadataPath = Path.Combine(session.SessionPath, "session.json");
+        var metadataPath = System.IO.Path.Combine(session.SessionPath, "session.json");
         var json = JsonSerializer.Serialize(session, JsonOptions);
         await File.WriteAllTextAsync(metadataPath, json);
     }
@@ -259,7 +262,7 @@ public sealed class BacktestSessionService
     /// <summary>
     /// Adds a session to the index.
     /// </summary>
-    private async Task AddToIndexAsync(BacktestSession session)
+    private async Task AddToIndexAsync(APmd001A session)
     {
         var index = await LoadIndexAsync();
         if (!index.Sessions.Contains(session.SessionId))
@@ -313,8 +316,8 @@ public sealed class BacktestSessionService
         
         for (int i = 0; i < 5; i++)
         {
-            var candidate = Path.Combine(current, "Alaris.Sessions");
-            var configPath = Path.Combine(current, "config.json");
+            var candidate = System.IO.Path.Combine(current, "Alaris.Sessions");
+            var configPath = System.IO.Path.Combine(current, "config.json");
             
             // If we find config.json, this is likely the project root
             if (File.Exists(configPath))
@@ -328,7 +331,7 @@ public sealed class BacktestSessionService
         }
 
         // Default to current directory
-        return Path.Combine(Directory.GetCurrentDirectory(), "Alaris.Sessions");
+        return System.IO.Path.Combine(Directory.GetCurrentDirectory(), "Alaris.Sessions");
     }
 }
 

@@ -1,6 +1,6 @@
 // =============================================================================
-// APcm002A.cs - Backtest Command Group
-// Component: APcm002A | Category: Commands | Variant: A (Primary)
+// APcm005A.cs - Backtest Command Group
+// Component: APcm005A | Category: Commands | Variant: A (Primary)
 // =============================================================================
 // Implements 'alaris backtest create|run|list|delete|view' commands.
 // Manages session-based backtest infrastructure.
@@ -12,12 +12,18 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Alaris.Application.Models;
-using Alaris.Application.Services;
+using Alaris.Application.Model;
+using Alaris.Application.Service;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
-namespace Alaris.Application.Commands;
+using Alaris.Data.Provider.Polygon;
+using Alaris.Data.Provider.SEC;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using System.Diagnostics.CodeAnalysis;
+
+namespace Alaris.Application.Command;
 
 // =============================================================================
 // Create Command
@@ -67,24 +73,18 @@ public sealed class BacktestCreateCommand : AsyncCommand<BacktestCreateSettings>
 
         var symbols = settings.Symbols?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-        var service = new BacktestSessionService();
+        var service = new APsv001A();
 
         try
         {
-            var session = await AnsiConsole.Status()
+            APmd001A session = null!;
+            
+            await AnsiConsole.Status()
                 .Spinner(Spinner.Known.Dots)
                 .StartAsync("[yellow]Creating backtest session...[/]", async ctx =>
                 {
                     ctx.Status("[green]Generating session ID...[/]");
-                    var sess = await service.CreateAsync(startDate, endDate, symbols);
-
-                    if (!settings.SkipDownload)
-                    {
-                        ctx.Status("[green]Session created. Data download pending...[/]");
-                        // TODO: Implement data download in Phase 2
-                    }
-
-                    return sess;
+                    session = await service.CreateAsync(startDate, endDate, symbols);
                 });
 
             AnsiConsole.MarkupLine($"[green]✓[/] Session created: [bold]{session.SessionId}[/]");
@@ -96,9 +96,26 @@ public sealed class BacktestCreateCommand : AsyncCommand<BacktestCreateSettings>
                 AnsiConsole.MarkupLine($"  Symbols: {string.Join(", ", symbols)}");
             }
 
+            if (!settings.SkipDownload)
+            {
+                AnsiConsole.WriteLine();
+                AnsiConsole.MarkupLine("[yellow]Initiating data download...[/]");
+                
+                using var dataService = DependencyFactory.CreateAPsv002A();
+                var targets = symbols?.Length > 0 ? symbols : new string[] { "SPY", "QQQ", "IWM", "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META" }; // Default universe if none specified
+                
+                await dataService.DownloadEquityDataAsync(service.GetDataPath(session.SessionId), targets, startDate, endDate);
+                
+                // Update status to Ready
+                await service.UpdateAsync(session with { Status = SessionStatus.Ready });
+            }
+
             AnsiConsole.WriteLine();
             AnsiConsole.MarkupLine("[grey]Next steps:[/]");
-            AnsiConsole.MarkupLine($"  1. Download data: [cyan]alaris backtest prepare {session.SessionId}[/]");
+            if (settings.SkipDownload)
+            {
+                AnsiConsole.MarkupLine($"  1. Download data: [cyan]alaris backtest prepare {session.SessionId}[/]");
+            }
             AnsiConsole.MarkupLine($"  2. Run backtest:  [cyan]alaris backtest run {session.SessionId}[/]");
 
             return 0;
@@ -108,6 +125,75 @@ public sealed class BacktestCreateCommand : AsyncCommand<BacktestCreateSettings>
             AnsiConsole.MarkupLine($"[red]Error creating session: {ex.Message}[/]");
             return 1;
         }
+    }
+}
+
+// =============================================================================
+// Prepare Command
+// =============================================================================
+
+public sealed class BacktestPrepareSettings : CommandSettings
+{
+    [CommandArgument(0, "<SESSION_ID>")]
+    [Description("Session ID to prepare")]
+    public required string SessionId { get; init; }
+}
+
+public sealed class BacktestPrepareCommand : AsyncCommand<BacktestPrepareSettings>
+{
+    public override async Task<int> ExecuteAsync(CommandContext context, BacktestPrepareSettings settings)
+    {
+        var service = new APsv001A();
+        var session = await service.GetAsync(settings.SessionId);
+
+        if (session == null)
+        {
+            AnsiConsole.MarkupLine($"[red]Session not found: {settings.SessionId}[/]");
+            return 1;
+        }
+
+        using var dataService = DependencyFactory.CreateAPsv002A();
+        var targets = session.Symbols.Count > 0 
+            ? session.Symbols 
+            : new List<string> { "SPY", "QQQ", "IWM", "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META" };
+
+        AnsiConsole.MarkupLine($"[yellow]Downloading data for session {session.SessionId}...[/]");
+        await dataService.DownloadEquityDataAsync(service.GetDataPath(session.SessionId), targets, session.StartDate, session.EndDate);
+        
+        await service.UpdateAsync(session with { Status = SessionStatus.Ready });
+        AnsiConsole.MarkupLine($"[green]✓[/] Session {session.SessionId} is ready.");
+        
+        return 0;
+    }
+}
+
+internal static class DependencyFactory
+{
+    [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "Services persist for command duration")]
+    public static APsv002A CreateAPsv002A()
+    {
+        var config = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.json", optional: true)
+            .AddJsonFile("config.json", optional: true)
+            .Build();
+
+        var httpClient = new HttpClient();
+        var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Warning));
+        
+        var polygonClient = new PolygonApiClient(
+            httpClient, 
+            config, 
+            loggerFactory.CreateLogger<PolygonApiClient>());
+
+        var secClient = new SecEdgarProvider(
+            httpClient,
+            loggerFactory.CreateLogger<SecEdgarProvider>());
+
+        return new APsv002A(
+            polygonClient, 
+            secClient,
+            loggerFactory.CreateLogger<APsv002A>());
     }
 }
 
@@ -137,14 +223,14 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
 {
     public override async Task<int> ExecuteAsync(CommandContext context, BacktestRunSettings settings)
     {
-        var service = new BacktestSessionService();
+        var service = new APsv001A();
 
         string? sessionId = settings.SessionId;
 
         if (settings.Latest || string.IsNullOrEmpty(sessionId))
         {
             var sessions = await service.ListAsync();
-            var latest = sessions.FirstOrDefault();
+            var latest = sessions.Count > 0 ? sessions[0] : null;
 
             if (latest == null)
             {
@@ -193,7 +279,7 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
         return exitCode;
     }
 
-    private static async Task<int> ExecuteLeanForSession(BacktestSession session, BacktestSessionService service)
+    private static async Task<int> ExecuteLeanForSession(APmd001A session, APsv001A service)
     {
         // Find config and launcher
         var configPath = FindConfigPath();
@@ -209,7 +295,7 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
         {
             FileName = "dotnet",
             Arguments = $"run --project \"{launcherPath}\"",
-            WorkingDirectory = Path.GetDirectoryName(configPath),
+            WorkingDirectory = System.IO.Path.GetDirectoryName(configPath),
             UseShellExecute = false,
             RedirectStandardOutput = true,
             RedirectStandardError = true
@@ -217,6 +303,11 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
 
         // Set session-specific environment variables
         psi.Environment["QC_ENVIRONMENT"] = "backtesting";
+        // Inject data folder override for LEAN engine to pick up session data automatically
+        psi.Environment["QC_DATA_FOLDER"] = service.GetDataPath(session.SessionId);
+        // Inject static universe symbols for STUN001B to bypass universe file requirement
+        psi.Environment["ALARIS_SESSION_SYMBOLS"] = string.Join(",", session.Symbols);
+
         psi.Environment["ALARIS_SESSION_ID"] = session.SessionId;
         psi.Environment["ALARIS_SESSION_PATH"] = session.SessionPath;
         psi.Environment["ALARIS_SESSION_DATA"] = service.GetDataPath(session.SessionId);
@@ -254,7 +345,7 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
     private static string? FindConfigPath()
     {
         var paths = new[] { "config.json", "../config.json", "../../config.json" };
-        return paths.FirstOrDefault(File.Exists) is string p ? Path.GetFullPath(p) : null;
+        return paths.FirstOrDefault(File.Exists) is string p ? System.IO.Path.GetFullPath(p) : null;
     }
 
     private static string? FindLeanLauncher()
@@ -265,7 +356,7 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
             "../Alaris.Lean/Launcher/QuantConnect.Lean.Launcher.csproj",
             "../../Alaris.Lean/Launcher/QuantConnect.Lean.Launcher.csproj"
         };
-        return paths.FirstOrDefault(File.Exists) is string p ? Path.GetFullPath(p) : null;
+        return paths.FirstOrDefault(File.Exists) is string p ? System.IO.Path.GetFullPath(p) : null;
     }
 }
 
@@ -291,7 +382,7 @@ public sealed class BacktestListCommand : AsyncCommand<BacktestListSettings>
 {
     public override async Task<int> ExecuteAsync(CommandContext context, BacktestListSettings settings)
     {
-        var service = new BacktestSessionService();
+        var service = new APsv001A();
         var sessions = await service.ListAsync();
 
         if (sessions.Count == 0)
@@ -360,7 +451,7 @@ public sealed class BacktestDeleteCommand : AsyncCommand<BacktestDeleteSettings>
 {
     public override async Task<int> ExecuteAsync(CommandContext context, BacktestDeleteSettings settings)
     {
-        var service = new BacktestSessionService();
+        var service = new APsv001A();
         var session = await service.GetAsync(settings.SessionId);
 
         if (session == null)
@@ -422,7 +513,7 @@ public sealed class BacktestViewCommand : AsyncCommand<BacktestViewSettings>
 {
     public override async Task<int> ExecuteAsync(CommandContext context, BacktestViewSettings settings)
     {
-        var service = new BacktestSessionService();
+        var service = new APsv001A();
         var session = await service.GetAsync(settings.SessionId);
 
         if (session == null)
@@ -473,7 +564,7 @@ public sealed class BacktestViewCommand : AsyncCommand<BacktestViewSettings>
         // Show logs if requested
         if (settings.ShowLogs)
         {
-            var logPath = Path.Combine(service.GetResultsPath(session.SessionId), "log.txt");
+            var logPath = System.IO.Path.Combine(service.GetResultsPath(session.SessionId), "log.txt");
             if (File.Exists(logPath))
             {
                 AnsiConsole.WriteLine();

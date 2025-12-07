@@ -8,7 +8,7 @@
 
 using Spectre.Console;
 using Spectre.Console.Cli;
-using Alaris.Application.Commands;
+using Alaris.Application.Command;
 
 namespace Alaris.Application;
 
@@ -43,6 +43,31 @@ public static class APap001A
                 .WithExample("run", "--mode", "backtest")
                 .WithExample("run", "--mode", "paper")
                 .WithExample("run", "--mode", "live");
+
+            config.AddBranch("backtest", backtest =>
+            {
+                backtest.SetDescription("Manage backtest sessions");
+                backtest.AddCommand<BacktestCreateCommand>("create")
+                    .WithDescription("Create a new backtest session")
+                    .WithExample("backtest", "create", "--start", "2023-01-01", "--end", "2023-01-31");
+
+                backtest.AddCommand<BacktestPrepareCommand>("prepare")
+                    .WithDescription("Download data for an existing session")
+                    .WithExample("backtest", "prepare", "BT001A-20230101-20230131");
+                
+                backtest.AddCommand<BacktestRunCommand>("run")
+                    .WithDescription("Run a backtest session")
+                    .WithExample("backtest", "run", "--latest");
+                
+                backtest.AddCommand<BacktestListCommand>("list")
+                    .WithDescription("List all backtest sessions");
+                
+                backtest.AddCommand<BacktestViewCommand>("view")
+                    .WithDescription("View session details");
+                
+                backtest.AddCommand<BacktestDeleteCommand>("delete")
+                    .WithDescription("Delete a session");
+            });
 
             config.AddCommand<APcm002A>("config")
                 .WithDescription("View or modify Alaris configuration")

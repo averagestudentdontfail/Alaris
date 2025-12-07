@@ -447,6 +447,13 @@ public sealed class STLN001A : QCAlgorithm
     /// </summary>
     private static string FindLeanDataPath()
     {
+        // Check for session data path (Backtest Mode override)
+        var sessionData = Environment.GetEnvironmentVariable("ALARIS_SESSION_DATA");
+        if (!string.IsNullOrEmpty(sessionData) && System.IO.Directory.Exists(sessionData))
+        {
+            return sessionData;
+        }
+
         var candidates = new[]
         {
             "Alaris.Lean/Data",

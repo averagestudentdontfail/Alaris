@@ -88,7 +88,7 @@ public sealed class SecEdgarProvider : DTpr004A, IDisposable
     }
 
     /// <inheritdoc/>
-    public async Task<IReadOnlyList<EarningsEvent>> GetUpcomingEarningsAsync(
+    public Task<IReadOnlyList<EarningsEvent>> GetUpcomingEarningsAsync(
         string symbol,
         int daysAhead = 90,
         CancellationToken cancellationToken = default)
@@ -101,54 +101,12 @@ public sealed class SecEdgarProvider : DTpr004A, IDisposable
             symbol, daysAhead);
 
         // SEC only has historical filings, not future dates
-        // Return empty for "upcoming" - use historical patterns instead
+        // Return empty for "upcoming" - strictly avoiding inference heuristics
         _logger.LogWarning(
-            "SEC EDGAR does not provide future earnings dates. Returning historical pattern for {Symbol}",
+            "SEC EDGAR does not provide future earnings dates. Returning empty list for {Symbol}",
             symbol);
 
-        // Get historical earnings and estimate next based on quarterly pattern
-        var historical = await GetHistoricalEarningsAsync(symbol, 730, cancellationToken);
-
-        if (historical.Count < 2)
-        {
-            return Array.Empty<EarningsEvent>();
-        }
-
-        // Estimate next earnings date based on historical quarterly cadence
-        var sortedDates = historical
-            .OrderByDescending(e => e.Date)
-            .Take(4)
-            .ToList();
-
-        if (sortedDates.Count >= 2)
-        {
-            var lastEarnings = sortedDates[0].Date;
-            var secondLast = sortedDates[1].Date;
-            var avgDaysBetween = (lastEarnings - secondLast).Days;
-
-            // Apply typical quarterly cadence (85-95 days)
-            int estimatedDays = avgDaysBetween > 0 ? avgDaysBetween : 91;
-            var estimatedNext = lastEarnings.AddDays(estimatedDays);
-
-            if (estimatedNext > DateTime.UtcNow && estimatedNext <= DateTime.UtcNow.AddDays(daysAhead))
-            {
-                return new[]
-                {
-                    new EarningsEvent
-                    {
-                        Symbol = symbol,
-                        Date = estimatedNext,
-                        FiscalQuarter = EstimateQuarter(estimatedNext),
-                        FiscalYear = estimatedNext.Year,
-                        Timing = EarningsTiming.Unknown,
-                        Source = "SEC-EDGAR-Estimated",
-                        FetchedAt = DateTime.UtcNow
-                    }
-                };
-            }
-        }
-
-        return Array.Empty<EarningsEvent>();
+        return Task.FromResult<IReadOnlyList<EarningsEvent>>(Array.Empty<EarningsEvent>());
     }
 
     /// <inheritdoc/>
@@ -159,6 +117,31 @@ public sealed class SecEdgarProvider : DTpr004A, IDisposable
     {
         if (string.IsNullOrWhiteSpace(symbol))
             throw new ArgumentException("Symbol cannot be null or whitespace", nameof(symbol));
+
+        // Check for session-based local cache (Backtesting Mode)
+        var sessionDataPath = Environment.GetEnvironmentVariable("ALARIS_SESSION_DATA");
+        if (!string.IsNullOrEmpty(sessionDataPath))
+        {
+            var cachePath = System.IO.Path.Combine(sessionDataPath, "earnings", $"{symbol.ToLowerInvariant()}.json");
+            if (System.IO.File.Exists(cachePath))
+            {
+                _logger.LogInformation("Loading earnings for {Symbol} from local session cache: {Path}", symbol, cachePath);
+                try
+                {
+                    using var stream = System.IO.File.OpenRead(cachePath);
+                    var cachedEvents = await JsonSerializer.DeserializeAsync<List<EarningsEvent>>(stream, JsonOptions, cancellationToken);
+                    if (cachedEvents != null)
+                    {
+                        return cachedEvents;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to load cached earnings for {Symbol}", symbol);
+                    // Fallback to API if cache load fails
+                }
+            }
+        }
 
         _logger.LogInformation(
             "Fetching historical earnings for {Symbol} from SEC EDGAR ({Days} days back)",
@@ -190,8 +173,8 @@ public sealed class SecEdgarProvider : DTpr004A, IDisposable
             {
                 Symbol = symbol,
                 Date = f.FilingDate,
-                FiscalQuarter = EstimateQuarter(f.FilingDate),
-                FiscalYear = f.FilingDate.Year,
+                FiscalQuarter = "Unknown", // Avoid heuristic inference
+                FiscalYear = f.FilingDate.Year, // Using filing year as proxy, explicitly noted
                 Timing = EarningsTiming.Unknown, // SEC doesn't specify BMO/AMC
                 Source = "SEC-EDGAR",
                 FetchedAt = DateTime.UtcNow
@@ -427,19 +410,7 @@ public sealed class SecEdgarProvider : DTpr004A, IDisposable
         }
     }
 
-    /// <summary>
-    /// Estimates fiscal quarter from date.
-    /// </summary>
-    private static string EstimateQuarter(DateTime date)
-    {
-        return date.Month switch
-        {
-            1 or 2 or 3 => "Q4", // Reports Q4 in Q1
-            4 or 5 or 6 => "Q1", // Reports Q1 in Q2
-            7 or 8 or 9 => "Q2", // Reports Q2 in Q3
-            _ => "Q3"            // Reports Q3 in Q4
-        };
-    }
+
 
     /// <inheritdoc/>
     public void Dispose()

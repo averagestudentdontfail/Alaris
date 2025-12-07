@@ -13,7 +13,7 @@ using Microsoft.Extensions.Configuration;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
-namespace Alaris.Application.Commands;
+namespace Alaris.Application.Command;
 
 /// <summary>
 /// Run Command settings.

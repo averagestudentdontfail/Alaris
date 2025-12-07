@@ -1,5 +1,5 @@
 // =============================================================================
-// BacktestSession.cs - Backtest Session Model
+// APmd001A.cs - Backtest Session Model
 // Component: APmd001A | Category: Models | Variant: A (Primary)
 // =============================================================================
 // Represents a backtest session with isolated data, universe, and results.
@@ -9,7 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
-namespace Alaris.Application.Models;
+namespace Alaris.Application.Model;
 
 /// <summary>
 /// Status of a backtest session.
@@ -44,7 +44,7 @@ public enum SessionStatus
 /// Format: BT[Sequence][Variant]-[StartDate]-[EndDate]
 /// Example: BT001A-20230601-20230630
 /// </remarks>
-public sealed record BacktestSession
+public sealed record APmd001A
 {
     /// <summary>
     /// Unique session identifier.

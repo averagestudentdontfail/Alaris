@@ -14,7 +14,7 @@ using System.Text.Json.Serialization;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
-namespace Alaris.Application.Commands;
+namespace Alaris.Application.Command;
 
 /// <summary>
 /// Data Command settings.

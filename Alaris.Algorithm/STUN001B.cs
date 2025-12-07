@@ -139,9 +139,37 @@ public sealed class STUN001B : UniverseSelectionModel
     /// <summary>
     /// Loads universe from pre-generated CSV file.
     /// </summary>
+    private static readonly char[] Separators = new[] { ',', ';' };
+
+    /// <summary>
+    /// Loads universe from pre-generated CSV file or ALARIS_SESSION_SYMBOLS.
+    /// </summary>
     private void LoadUniverseForDate(QCAlgorithm algorithm, DateTime date)
     {
         _cachedUniverse.Clear();
+
+        // Check for static session symbols (Backtest Mode override)
+        var sessionSymbols = Environment.GetEnvironmentVariable("ALARIS_SESSION_SYMBOLS");
+        if (!string.IsNullOrEmpty(sessionSymbols))
+        {
+            algorithm.Debug("STUN001B: Using static session universe from environment");
+            var tickers = sessionSymbols.Split(Separators, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            
+            foreach (var ticker in tickers)
+            {
+                _cachedUniverse.Add(new UniverseEntry
+                {
+                    SymbolId = ticker,
+                    Ticker = ticker.ToUpperInvariant(),
+                    Close = 1000m, // Dummy high value to pass filter
+                    Volume = 1_000_000,
+                    DollarVolume = 100_000_000m // Dummy high value to pass filter
+                });
+            }
+            
+            // Note: Filters at lines 197-200 will run but pass due to dummy values.
+            return;
+        }
 
         var filePath = System.IO.Path.Combine(_dataPath, "equity", "usa", "fundamental", "coarse", $"{date:yyyyMMdd}.csv");
 
