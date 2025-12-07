@@ -120,7 +120,7 @@ public sealed class APcm004A : Command<UniverseSettings>
 
         foreach (var date in tradingDays)
         {
-            var (success, stockCount) = GenerateUniverseForDate(date, apiKey, universeDir, settings.MinDollarVolume, settings.MinPrice);
+            var (success, stockCount, error) = GenerateUniverseForDate(date, apiKey, universeDir, settings.MinDollarVolume, settings.MinPrice);
             
             if (success)
             {
@@ -130,7 +130,7 @@ public sealed class APcm004A : Command<UniverseSettings>
             }
             else
             {
-                AnsiConsole.MarkupLine($"  [yellow]{date:yyyy-MM-dd}:[/] No data (weekend/holiday?)");
+                AnsiConsole.MarkupLine($"  [yellow]{date:yyyy-MM-dd}:[/] {Markup.Escape(error ?? "Unknown error")}");
             }
 
             // Rate limiting: 5 calls per minute for free tier
@@ -149,7 +149,7 @@ public sealed class APcm004A : Command<UniverseSettings>
         return 0;
     }
 
-    private static (bool success, int stockCount) GenerateUniverseForDate(
+    private static (bool success, int stockCount, string? error) GenerateUniverseForDate(
         DateTime date,
         string apiKey,
         string outputDir,
@@ -163,11 +163,30 @@ public sealed class APcm004A : Command<UniverseSettings>
             var dateStr = date.ToString("yyyy-MM-dd");
             var url = $"https://api.polygon.io/v2/aggs/grouped/locale/us/market/stocks/{dateStr}?adjusted=true&apiKey={apiKey}";
 
-            var response = httpClient.GetFromJsonAsync<PolygonGroupedResponse>(url).GetAwaiter().GetResult();
-
-            if (response?.Results == null || response.Results.Length == 0)
+            // First get the raw response to check for errors
+            var httpResponse = httpClient.GetAsync(url).GetAwaiter().GetResult();
+            var content = httpResponse.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+            
+            if (!httpResponse.IsSuccessStatusCode)
             {
-                return (false, 0);
+                return (false, 0, $"HTTP {(int)httpResponse.StatusCode}: {content.Substring(0, Math.Min(100, content.Length))}");
+            }
+
+            var response = System.Text.Json.JsonSerializer.Deserialize<PolygonGroupedResponse>(content);
+
+            if (response == null)
+            {
+                return (false, 0, "Failed to parse response");
+            }
+
+            if (response.Status != null && response.Status != "OK")
+            {
+                return (false, 0, $"API status: {response.Status}");
+            }
+
+            if (response.Results == null || response.Results.Length == 0)
+            {
+                return (false, 0, "No results in response");
             }
 
             // Filter stocks
@@ -181,7 +200,7 @@ public sealed class APcm004A : Command<UniverseSettings>
 
             if (filteredStocks.Count == 0)
             {
-                return (false, 0);
+                return (false, 0, $"0 stocks after filtering (raw: {response.Results.Length})");
             }
 
             // Write coarse universe file in LEAN format
@@ -198,11 +217,11 @@ public sealed class APcm004A : Command<UniverseSettings>
                 writer.WriteLine(line);
             }
 
-            return (true, filteredStocks.Count);
+            return (true, filteredStocks.Count, null);
         }
-        catch
+        catch (Exception ex)
         {
-            return (false, 0);
+            return (false, 0, ex.Message);
         }
     }
 
