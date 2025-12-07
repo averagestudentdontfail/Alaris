@@ -108,7 +108,70 @@ public static class APap001A
 
     private static int ManageData()
     {
-        AnsiConsole.MarkupLine("[grey]Data management coming soon...[/]");
-        return 0;
+        AnsiConsole.MarkupLine("[bold blue]Data Management[/]");
+        AnsiConsole.WriteLine();
+
+        var action = AnsiConsole.Prompt(
+            new SelectionPrompt<string>()
+                .Title("[green]Select data action:[/]")
+                .AddChoices(new[]
+                {
+                    "Download equity data from Polygon",
+                    "Download option data from Polygon",
+                    "List existing data",
+                    "Check data status",
+                    "Back to main menu"
+                }));
+
+        return action switch
+        {
+            "Download equity data from Polygon" => DownloadData("equity"),
+            "Download option data from Polygon" => DownloadData("option"),
+            "List existing data" => Main(new[] { "data", "list" }),
+            "Check data status" => Main(new[] { "data", "status" }),
+            _ => RunInteractiveMode()
+        };
+    }
+
+    private static int DownloadData(string dataType)
+    {
+        AnsiConsole.MarkupLine($"[yellow]Download {dataType} data[/]");
+        AnsiConsole.WriteLine();
+
+        // Prompt for ticker(s)
+        var tickers = AnsiConsole.Ask<string>(
+            "[green]Enter ticker(s)[/] [grey](comma-separated, e.g., AAPL,MSFT,GOOGL)[/]:");
+
+        // Prompt for date range
+        var defaultFrom = DateTime.Now.AddYears(-1).ToString("yyyyMMdd");
+        var fromDate = AnsiConsole.Ask(
+            $"[green]Start date[/] [grey](YYYYMMDD)[/]:", 
+            defaultFrom);
+
+        var defaultTo = DateTime.Now.ToString("yyyyMMdd");
+        var toDate = AnsiConsole.Ask(
+            $"[green]End date[/] [grey](YYYYMMDD)[/]:", 
+            defaultTo);
+
+        // Prompt for resolution
+        var resolution = AnsiConsole.Prompt(
+            new SelectionPrompt<string>()
+                .Title("[green]Select resolution:[/]")
+                .AddChoices(new[] { "minute", "hour", "daily" }));
+
+        AnsiConsole.WriteLine();
+
+        // Execute the download command
+        var args = new List<string>
+        {
+            "data", "download",
+            "--tickers", tickers,
+            "--from", fromDate,
+            "--to", toDate,
+            "--resolution", resolution,
+            "--type", dataType
+        };
+
+        return Main(args.ToArray());
     }
 }
