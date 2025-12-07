@@ -29,6 +29,7 @@ using Alaris.Data.Model;
 using Alaris.Data.Provider;
 using Alaris.Data.Provider.Polygon;
 using Alaris.Data.Provider.FMP;
+using Alaris.Data.Provider.SEC;
 using Alaris.Data.Provider.Treasury;
 using Alaris.Data.Quality;
 using Alaris.Events;
@@ -164,9 +165,32 @@ public sealed class STLN001A : QCAlgorithm
         // Basic Algorithm Configuration
         // =====================================================================
         
-        SetStartDate(2025, 1, 1);
-        SetEndDate(2025, 12, 31);
-        SetCash(100_000);
+        // Load configuration first to get backtest dates
+        var config = BuildConfiguration();
+        
+        // Read dates from config with sensible defaults (2023-2024 for 2-year Polygon history)
+        var startDate = config.GetValue<DateTime?>("Alaris:Backtest:StartDate") 
+            ?? new DateTime(2023, 1, 1);
+        var endDate = config.GetValue<DateTime?>("Alaris:Backtest:EndDate") 
+            ?? new DateTime(2024, 12, 31);
+        var initialCash = config.GetValue<int?>("Alaris:Backtest:InitialCash") ?? 100_000;
+        
+        // CLI can override via environment variables (set by Alaris.Application)
+        var envStart = Environment.GetEnvironmentVariable("ALARIS_BACKTEST_STARTDATE");
+        if (!string.IsNullOrEmpty(envStart) && DateTime.TryParse(envStart, out var cliStart))
+        {
+            startDate = cliStart;
+        }
+        
+        var envEnd = Environment.GetEnvironmentVariable("ALARIS_BACKTEST_ENDDATE");
+        if (!string.IsNullOrEmpty(envEnd) && DateTime.TryParse(envEnd, out var cliEnd))
+        {
+            endDate = cliEnd;
+        }
+        
+        SetStartDate(startDate);
+        SetEndDate(endDate);
+        SetCash(initialCash);
         
         // Use Interactive Brokers as brokerage
         SetBrokerageModel(BrokerageName.InteractiveBrokersBrokerage);
@@ -264,11 +288,10 @@ public sealed class STLN001A : QCAlgorithm
             configuration,
             _loggerFactory!.CreateLogger<PolygonApiClient>());
         
-        // Initialise earnings provider (Financial Modeling Prep)
-        _earningsProvider = new FinancialModelingPrepProvider(
+        // Initialise earnings provider (SEC EDGAR - free, uses per-ticker queries)
+        _earningsProvider = new SecEdgarProvider(
             _httpClient,
-            configuration,
-            _loggerFactory!.CreateLogger<FinancialModelingPrepProvider>());
+            _loggerFactory!.CreateLogger<SecEdgarProvider>());
         
         // Initialise risk-free rate provider (Treasury Direct)
         _riskFreeRateProvider = new TreasuryDirectRateProvider(

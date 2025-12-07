@@ -10,6 +10,12 @@
             "MaxPositionAllocation": 0.06,
             "MaxConcurrentPositions": 15
         },
+        // Backtest Configuration
+        "Backtest": {
+            "StartDate": "2023-01-01",
+            "EndDate": "2024-12-31",
+            "InitialCash": 100000
+        },
         // Data Provider Settings
         "DataProviders": {
             "Polygon": {

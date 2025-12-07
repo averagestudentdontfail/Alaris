@@ -150,6 +150,16 @@ public sealed class APcm001A : Command<RunSettings>
 
         // Override environment in config
         psi.Environment["QC_ENVIRONMENT"] = environment;
+        
+        // Pass backtest dates to algorithm via environment variables
+        if (settings.StartDate is not null)
+        {
+            psi.Environment["ALARIS_BACKTEST_STARTDATE"] = settings.StartDate;
+        }
+        if (settings.EndDate is not null)
+        {
+            psi.Environment["ALARIS_BACKTEST_ENDDATE"] = settings.EndDate;
+        }
 
         using var process = Process.Start(psi);
         if (process is null)
