@@ -8,7 +8,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
+// using System.IO; -- Using fully qualified names due to QuantConnect namespace conflict
 using System.Linq;
 using System.Threading;
 using QuantConnect;
@@ -143,20 +143,20 @@ public sealed class STUN001B : UniverseSelectionModel
     {
         _cachedUniverse.Clear();
 
-        var filePath = Path.Combine(_dataPath, "equity", "usa", "fundamental", "coarse", $"{date:yyyyMMdd}.csv");
+        var filePath = System.IO.Path.Combine(_dataPath, "equity", "usa", "fundamental", "coarse", $"{date:yyyyMMdd}.csv");
 
-        if (!File.Exists(filePath))
+        if (!System.IO.File.Exists(filePath))
         {
             // Try to find the most recent available file
-            var universeDir = Path.Combine(_dataPath, "equity", "usa", "fundamental", "coarse");
-            if (!Directory.Exists(universeDir))
+            var universeDir = System.IO.Path.Combine(_dataPath, "equity", "usa", "fundamental", "coarse");
+            if (!System.IO.Directory.Exists(universeDir))
             {
                 algorithm.Error($"STUN001B: Universe directory not found: {universeDir}");
                 algorithm.Error("STUN001B: Run 'alaris universe generate' to create universe files");
                 return;
             }
 
-            var files = Directory.GetFiles(universeDir, "*.csv")
+            var files = System.IO.Directory.GetFiles(universeDir, "*.csv")
                 .OrderByDescending(f => f)
                 .ToList();
 
@@ -168,15 +168,15 @@ public sealed class STUN001B : UniverseSelectionModel
 
             // Find the most recent file before or on the date
             var targetDate = date.ToString("yyyyMMdd");
-            filePath = files.FirstOrDefault(f => Path.GetFileNameWithoutExtension(f).CompareTo(targetDate) <= 0)
+            filePath = files.FirstOrDefault(f => string.Compare(System.IO.Path.GetFileNameWithoutExtension(f), targetDate, StringComparison.Ordinal) <= 0)
                        ?? files.Last();
 
-            algorithm.Debug($"STUN001B: Using universe file: {Path.GetFileName(filePath)}");
+            algorithm.Debug($"STUN001B: Using universe file: {System.IO.Path.GetFileName(filePath)}");
         }
 
         try
         {
-            var lines = File.ReadAllLines(filePath);
+            var lines = System.IO.File.ReadAllLines(filePath);
             foreach (var line in lines)
             {
                 var parts = line.Split(',');
@@ -200,7 +200,7 @@ public sealed class STUN001B : UniverseSelectionModel
                 .OrderByDescending(u => u.DollarVolume)
                 .ToList();
 
-            algorithm.Debug($"STUN001B: Loaded {_cachedUniverse.Count} stocks from {Path.GetFileName(filePath)}");
+            algorithm.Debug($"STUN001B: Loaded {_cachedUniverse.Count} stocks from {System.IO.Path.GetFileName(filePath)}");
         }
         catch (Exception ex)
         {

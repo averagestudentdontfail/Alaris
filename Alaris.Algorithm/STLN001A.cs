@@ -133,8 +133,7 @@ public sealed class STLN001A : QCAlgorithm
     private STCS008A? _liquidityValidator;
     private STHD003A? _gammaRiskManager;
     
-    // Universe Selection
-    private STUN001A? _universeSelector;
+    // Universe Selection - now using STUN001B (Polygon-based), no field needed
     
     // Audit & Events
     private EVIF001A? _eventStore;
@@ -375,30 +374,59 @@ public sealed class STLN001A : QCAlgorithm
     }
 
     /// <summary>
-    /// Initialises universe selection using STUN001A.
+    /// Initialises universe selection.
+    /// Uses STUN001B (Polygon-based) which reads pre-generated universe files.
     /// </summary>
     private void InitialiseUniverseSelection()
     {
-        // Create earnings universe selector
-        _universeSelector = new STUN001A(
+        // Determine data path (where universe files are located)
+        var dataPath = FindLeanDataPath();
+        
+        // Create Polygon-based universe selector (reads pre-generated files)
+        var polygonUniverseSelector = new STUN001B(
             _earningsProvider!,
+            dataPath,
             daysBeforeEarningsMin: DaysBeforeEarnings - 1,
             daysBeforeEarningsMax: DaysBeforeEarnings + 1,
             minimumDollarVolume: MinimumDollarVolume,
             minimumPrice: MinimumPrice,
-            maxCoarseSymbols: 500,
             maxFinalSymbols: 50,
-            _loggerFactory!.CreateLogger<STUN001A>());
+            _loggerFactory!.CreateLogger<STUN001B>());
         
         // Register universe with LEAN
-        AddUniverseSelection(_universeSelector);
+        AddUniverseSelection(polygonUniverseSelector);
         
         // Configure options for selected symbols
         UniverseSettings.Resolution = Resolution.Minute;
         UniverseSettings.DataNormalizationMode = DataNormalizationMode.Raw;
         
-        Log($"STLN001A: Universe selection configured");
-        Log($"  {_universeSelector.GetConfigurationSummary()}");
+        Log($"STLN001A: Universe selection configured (Polygon-based)");
+        Log($"  {polygonUniverseSelector.GetConfigurationSummary()}");
+    }
+
+    /// <summary>
+    /// Finds the LEAN data path for universe files.
+    /// </summary>
+    private static string FindLeanDataPath()
+    {
+        var candidates = new[]
+        {
+            "Alaris.Lean/Data",
+            "../Alaris.Lean/Data",
+            "../../Alaris.Lean/Data",
+            "../../../Alaris.Lean/Data"
+        };
+        
+        foreach (var candidate in candidates)
+        {
+            if (System.IO.Directory.Exists(candidate))
+            {
+                return System.IO.Path.GetFullPath(candidate);
+            }
+        }
+        
+        // Default fallback
+        return System.IO.Path.GetFullPath("Alaris.Lean/Data");
     }
 
     /// <summary>
