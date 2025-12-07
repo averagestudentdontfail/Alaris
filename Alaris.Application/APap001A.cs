@@ -52,6 +52,11 @@ public static class APap001A
             config.AddCommand<APcm003A>("data")
                 .WithDescription("Download and manage market data")
                 .WithExample("data", "download", "--ticker", "AAPL");
+
+            config.AddCommand<APcm004A>("universe")
+                .WithDescription("Generate and manage universe files from Polygon")
+                .WithExample("universe", "generate", "--from", "20240101", "--to", "20241201")
+                .WithExample("universe", "list");
         });
 
         return app.Run(args);
