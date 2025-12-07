@@ -5,7 +5,7 @@
   // anything, and just require definition in this file. There's
   // two predefined environments, 'backtesting' and 'live', feel free
   // to add more!
-  "environment": "live-interactive", // "live-paper", "backtesting", "live-interactive"
+  "environment": "backtesting", // "live-paper", "backtesting", "live-interactive"
   // algorithm class selector
   "algorithm-type-name": "Alaris.Algorithm.STLN001A",
   // Algorithm language selector - options CSharp, Python
@@ -14,9 +14,9 @@
   "algorithm-location": "Alaris.Algorithm/bin/Debug/net9.0/Alaris.Algorithm.dll",
   //"algorithm-location": "../../../Algorithm.Python/BasicTemplateFrameworkAlgorithm.py",
   //Research notebook
-  //"composer-dll-directory": ".",
+  "composer-dll-directory": "Alaris.Lean/Launcher/bin/Debug",
   // engine
-  "data-folder": "../../Data/",
+  "data-folder": "/home/sunny/.project/Alaris/Alaris.Lean/Data",
   // debugging configuration - options for debugging-method LocalCmdLine, VisualStudio, Debugpy, PyCharm
   "debugging": false,
   "debugging-method": "LocalCmdline",
@@ -45,9 +45,13 @@
   "show-missing-data-logs": false,
   // For live trading during warmup we limit the amount of historical data fetched from the history provider and expect the data to be on disk for older data
   "maximum-warmup-history-days-look-back": 5,
-  // limits the amount of data points per chart series. Applies only for backtesting
+  // limits the amount of data points per chart series. Applies only for backte
   "maximum-data-points-per-chart-series": 1000000,
   "maximum-chart-series": 30,
+  // Alaris Output Directories (keep root clean)
+  "results-destination-folder": "./Alaris.Output/Results",
+  "object-store-root": "./Alaris.Output/Storage",
+  "log-file-path": "./Alaris.Output/Logs/lean.log",
   // if one uses true in following token, market hours will remain open all hours and all days.
   // if one uses false will make lean operate only during regular market hours.
   "force-exchange-always-open": false,

@@ -109,3 +109,7 @@ secrets.json
 logs/
 Data/
 *.log
+
+# Alaris Output Directory (LEAN runtime artifacts)
+Alaris.Output/
+storage/
