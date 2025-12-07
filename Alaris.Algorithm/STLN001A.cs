@@ -198,6 +198,21 @@ public sealed class STLN001A : QCAlgorithm
         // Set benchmark
         SetBenchmark("SPY");
         
+        // Set warmup period for historical data preloading (required for History() to work)
+        SetWarmUp(TimeSpan.FromDays(45), Resolution.Daily);
+        
+        // Pre-subscribe to test symbols with available LEAN data for backtest validation
+        // These symbols have confirmed historical data in the LEAN data folder
+        if (!LiveMode)
+        {
+            var testSymbols = new[] { "AAPL", "GOOG", "GOOGL", "IBM", "BAC", "AIG" };
+            foreach (var ticker in testSymbols)
+            {
+                AddEquity(ticker, Resolution.Daily);
+            }
+            Log($"STLN001A: Pre-subscribed {testSymbols.Length} test symbols for backtest validation");
+        }
+        
         // =====================================================================
         // Initialise Alaris Components
         // =====================================================================
@@ -634,8 +649,21 @@ public sealed class STLN001A : QCAlgorithm
         Log($"STLN001A: Evaluating {ticker}...");
         
         // =====================================================================
-        // Phase 1: Market Data Acquisition
+        // Backtest Mode: Use LEAN's native data instead of external APIs
         // =====================================================================
+        
+        if (!LiveMode)
+        {
+            // In backtest mode, we use LEAN's built-in data
+            // This avoids calling external APIs with DateTime.UtcNow
+            return EvaluateSymbolBacktestMode(symbol);
+        }
+        
+        // =====================================================================
+        // Live/Paper Mode: Use external APIs (Polygon, SEC EDGAR, etc.)
+        // =====================================================================
+        
+        // Phase 1: Market Data Acquisition
         
         MarketDataSnapshot snapshot;
         try
@@ -821,6 +849,132 @@ public sealed class STLN001A : QCAlgorithm
             Log($"  {ticker}: Order submission failed - {orderResult.Message}");
         }
         
+        return result;
+    }
+
+    /// <summary>
+    /// Evaluates a symbol in backtest mode using LEAN's native data.
+    /// Does not call external APIs - uses History API and cached SEC EDGAR data.
+    /// </summary>
+    /// <param name="symbol">The symbol to evaluate.</param>
+    /// <returns>Evaluation result.</returns>
+    private EvaluationResult EvaluateSymbolBacktestMode(Symbol symbol)
+    {
+        var result = new EvaluationResult();
+        var ticker = symbol.Value;
+
+        // Use current simulation time from LEAN (not DateTime.UtcNow)
+        var simulationDate = Time;
+
+        // =====================================================================
+        // Step 1: Get historical bars from LEAN (no external API call)
+        // =====================================================================
+        
+        var historyBars = History<QuantConnect.Data.Market.TradeBar>(symbol, 45, Resolution.Daily);
+        var barList = historyBars.ToList();
+        
+        if (barList.Count < 30)
+        {
+            Log($"  {ticker}: Insufficient LEAN history ({barList.Count} bars, need 30+)");
+            return result;
+        }
+
+        // Get current price from LEAN Securities (subscribed via universe)
+        if (!Securities.ContainsKey(symbol) || Securities[symbol].Price == 0)
+        {
+            Log($"  {ticker}: No price data in LEAN Securities");
+            return result;
+        }
+        var spotPrice = Securities[symbol].Price;
+
+        Log($"  {ticker}: LEAN data - {barList.Count} bars, spot=${spotPrice:F2}");
+
+        // =====================================================================
+        // Step 2: Get earnings data from SEC EDGAR (cached, works in backtest)
+        // =====================================================================
+        
+        EarningsEvent? nextEarnings = null;
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            var historicalEarnings = _earningsProvider!.GetHistoricalEarningsAsync(
+                ticker,
+                lookbackDays: 730,
+                cts.Token).GetAwaiter().GetResult();
+
+            // Find the next earnings AFTER current simulation date
+            nextEarnings = historicalEarnings
+                .Where(e => e.Date > simulationDate.Date)
+                .OrderBy(e => e.Date)
+                .FirstOrDefault();
+        }
+        catch (Exception ex)
+        {
+            Log($"  {ticker}: Error fetching earnings: {ex.Message}");
+        }
+
+        if (nextEarnings == null)
+        {
+            Log($"  {ticker}: No upcoming earnings found in SEC EDGAR");
+            return result;
+        }
+
+        var daysToEarnings = (nextEarnings.Date - simulationDate.Date).Days;
+        Log($"  {ticker}: Next earnings {nextEarnings.Date:yyyy-MM-dd} ({daysToEarnings} days away)");
+
+        // =====================================================================
+        // Step 3: Calculate Realised Volatility using LEAN bars
+        // =====================================================================
+        
+        var priceBars = barList.Select(b => new StrategyPriceBar
+        {
+            Date = b.Time,
+            Open = (double)b.Open,
+            High = (double)b.High,
+            Low = (double)b.Low,
+            Close = (double)b.Close,
+            Volume = 0 // Not needed for Yang-Zhang RV
+        }).ToList();
+
+        var rv = _yangZhangEstimator!.Calculate(priceBars, 30, true);
+        Log($"  {ticker}: 30-day RV = {rv:P2}");
+
+        // =====================================================================
+        // Step 4: Signal Generation (simplified for backtest)
+        // =====================================================================
+        
+        // Check if within target window for earnings
+        if (daysToEarnings < 5 || daysToEarnings > 7)
+        {
+            Log($"  {ticker}: Not in target window (5-7 days before earnings)");
+            return result;
+        }
+
+        // Generate signal
+        var signal = _signalGenerator!.Generate(ticker, nextEarnings.Date, simulationDate);
+        Log($"  {ticker}: Signal = {signal.Strength} (IV/RV = {signal.IVRVRatio:F3})");
+        result.SignalGenerated = true;
+
+        if (signal.Strength != STCR004AStrength.Recommended)
+        {
+            Log($"  {ticker}: Signal not recommended, skipping");
+            return result;
+        }
+
+        // =====================================================================
+        // Step 5: Backtest-mode order simulation (no real execution)
+        // =====================================================================
+        
+        // In backtest mode, we record the signal as generated but don't execute
+        // Full execution would require options data which isn't available
+        Log($"  {ticker}: BACKTEST - Signal would trigger calendar spread entry");
+        Log($"    Strike: ${signal.Strike:F2}, Front: {signal.FrontExpiry:yyyy-MM-dd}, Back: {signal.BackExpiry:yyyy-MM-dd}");
+
+        // Note: For full backtest with order execution, we would need
+        // options chain data from LEAN's Options History API
+        // This simplified version validates that earnings detection and
+        // signal generation work correctly
+
         return result;
     }
 
