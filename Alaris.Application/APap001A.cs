@@ -59,8 +59,65 @@ public static class APap001A
 
     /// <summary>
     /// Launch interactive terminal UI for mode selection.
+    /// Runs in a loop until user selects Exit.
     /// </summary>
     private static int RunInteractiveMode()
+    {
+        var running = true;
+        var lastExitCode = 0;
+
+        while (running)
+        {
+            AnsiConsole.Clear();
+            ShowBanner();
+
+            var selection = AnsiConsole.Prompt(
+                new SelectionPrompt<string>()
+                    .Title("[green]Select an option:[/]")
+                    .PageSize(10)
+                    .AddChoices(new[]
+                    {
+                        "1. Backtest - Run historical simulation",
+                        "2. Paper Trading - IBKR paper trading",
+                        "3. Live Trading - IBKR live trading",
+                        "4. Configuration - View/edit settings",
+                        "5. Data Management - Download market data",
+                        "6. Exit"
+                    }));
+
+            var choice = selection.Split('.')[0].Trim();
+
+            switch (choice)
+            {
+                case "1":
+                    lastExitCode = ExecuteMode("backtest");
+                    WaitForKeyPress();
+                    break;
+                case "2":
+                    lastExitCode = ExecuteMode("paper");
+                    WaitForKeyPress();
+                    break;
+                case "3":
+                    lastExitCode = ExecuteMode("live");
+                    WaitForKeyPress();
+                    break;
+                case "4":
+                    lastExitCode = ShowConfigurationMenu();
+                    break;
+                case "5":
+                    lastExitCode = ShowDataManagementMenu();
+                    break;
+                case "6":
+                    running = false;
+                    break;
+            }
+        }
+
+        AnsiConsole.MarkupLine("[grey]Goodbye![/]");
+        return lastExitCode;
+    }
+
+    private static void ShowBanner()
     {
         AnsiConsole.Write(
             new FigletText("Alaris")
@@ -69,73 +126,111 @@ public static class APap001A
 
         AnsiConsole.MarkupLine("[grey]Quantitative Trading System[/]");
         AnsiConsole.WriteLine();
+    }
 
-        var selection = AnsiConsole.Prompt(
-            new SelectionPrompt<string>()
-                .Title("[green]Select execution mode:[/]")
-                .PageSize(10)
-                .AddChoices(new[]
-                {
-                    "Backtest - Run historical simulation",
-                    "Paper - Live paper trading (IBKR)",
-                    "Live - Live trading (IBKR)",
-                    "Configuration - View/edit settings",
-                    "Data Management - Download market data",
-                    "Exit"
-                }));
-
-        return selection switch
-        {
-            "Backtest - Run historical simulation" => ExecuteMode("backtest"),
-            "Paper - Live paper trading (IBKR)" => ExecuteMode("paper"),
-            "Live - Live trading (IBKR)" => ExecuteMode("live"),
-            "Configuration - View/edit settings" => ShowConfiguration(),
-            "Data Management - Download market data" => ManageData(),
-            _ => 0
-        };
+    private static void WaitForKeyPress()
+    {
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine("[grey]Press any key to continue...[/]");
+        Console.ReadKey(true);
     }
 
     private static int ExecuteMode(string mode)
     {
-        AnsiConsole.MarkupLine($"[yellow]Starting {mode} mode...[/]");
+        AnsiConsole.MarkupLine($"[yellow]Starting {Markup.Escape(mode)} mode...[/]");
         return Main(new[] { "run", "--mode", mode });
     }
 
-    private static int ShowConfiguration()
+    private static int ShowConfigurationMenu()
     {
-        return Main(new[] { "config", "show" });
-    }
+        var running = true;
 
-    private static int ManageData()
-    {
-        AnsiConsole.MarkupLine("[bold blue]Data Management[/]");
-        AnsiConsole.WriteLine();
-
-        var action = AnsiConsole.Prompt(
-            new SelectionPrompt<string>()
-                .Title("[green]Select data action:[/]")
-                .AddChoices(new[]
-                {
-                    "Download equity data from Polygon",
-                    "Download option data from Polygon",
-                    "List existing data",
-                    "Check data status",
-                    "Back to main menu"
-                }));
-
-        return action switch
+        while (running)
         {
-            "Download equity data from Polygon" => DownloadData("equity"),
-            "Download option data from Polygon" => DownloadData("option"),
-            "List existing data" => Main(new[] { "data", "list" }),
-            "Check data status" => Main(new[] { "data", "status" }),
-            _ => RunInteractiveMode()
-        };
+            AnsiConsole.Clear();
+            AnsiConsole.MarkupLine("[bold blue]Configuration[/]");
+            AnsiConsole.WriteLine();
+
+            var selection = AnsiConsole.Prompt(
+                new SelectionPrompt<string>()
+                    .Title("[green]Select an option:[/]")
+                    .AddChoices(new[]
+                    {
+                        "1. View current configuration",
+                        "2. Back to main menu"
+                    }));
+
+            var choice = selection.Split('.')[0].Trim();
+
+            switch (choice)
+            {
+                case "1":
+                    Main(new[] { "config", "show" });
+                    WaitForKeyPress();
+                    break;
+                case "2":
+                    running = false;
+                    break;
+            }
+        }
+
+        return 0;
     }
 
-    private static int DownloadData(string dataType)
+    private static int ShowDataManagementMenu()
     {
-        AnsiConsole.MarkupLine($"[yellow]Download {dataType} data[/]");
+        var running = true;
+
+        while (running)
+        {
+            AnsiConsole.Clear();
+            AnsiConsole.MarkupLine("[bold blue]Data Management[/]");
+            AnsiConsole.WriteLine();
+
+            var selection = AnsiConsole.Prompt(
+                new SelectionPrompt<string>()
+                    .Title("[green]Select an option:[/]")
+                    .AddChoices(new[]
+                    {
+                        "1. Download equity data from Polygon",
+                        "2. Download option data from Polygon",
+                        "3. List existing data",
+                        "4. Check data status",
+                        "5. Back to main menu"
+                    }));
+
+            var choice = selection.Split('.')[0].Trim();
+
+            switch (choice)
+            {
+                case "1":
+                    DownloadDataInteractive("equity");
+                    WaitForKeyPress();
+                    break;
+                case "2":
+                    DownloadDataInteractive("option");
+                    WaitForKeyPress();
+                    break;
+                case "3":
+                    Main(new[] { "data", "list" });
+                    WaitForKeyPress();
+                    break;
+                case "4":
+                    Main(new[] { "data", "status" });
+                    WaitForKeyPress();
+                    break;
+                case "5":
+                    running = false;
+                    break;
+            }
+        }
+
+        return 0;
+    }
+
+    private static int DownloadDataInteractive(string dataType)
+    {
+        AnsiConsole.MarkupLine($"[yellow]Download {Markup.Escape(dataType)} data[/]");
         AnsiConsole.WriteLine();
 
         // Prompt for ticker(s)
@@ -145,19 +240,19 @@ public static class APap001A
         // Prompt for date range
         var defaultFrom = DateTime.Now.AddYears(-1).ToString("yyyyMMdd");
         var fromDate = AnsiConsole.Ask(
-            $"[green]Start date[/] [grey](YYYYMMDD)[/]:", 
+            $"[green]Start date[/] [grey](YYYYMMDD)[/]:",
             defaultFrom);
 
         var defaultTo = DateTime.Now.ToString("yyyyMMdd");
         var toDate = AnsiConsole.Ask(
-            $"[green]End date[/] [grey](YYYYMMDD)[/]:", 
+            $"[green]End date[/] [grey](YYYYMMDD)[/]:",
             defaultTo);
 
         // Prompt for resolution
         var resolution = AnsiConsole.Prompt(
             new SelectionPrompt<string>()
                 .Title("[green]Select resolution:[/]")
-                .AddChoices(new[] { "minute", "hour", "daily" }));
+                .AddChoices(new[] { "daily", "hour", "minute" }));
 
         AnsiConsole.WriteLine();
 

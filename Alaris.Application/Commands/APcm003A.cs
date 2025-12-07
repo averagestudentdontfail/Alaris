@@ -140,7 +140,7 @@ public sealed class APcm003A : Command<DataSettings>
         }
 
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine($"[green]Download complete! {totalBars:N0} bars saved to {dataPath}[/]");
+        AnsiConsole.MarkupLine($"[green]Download complete! {totalBars:N0} bars saved to {Markup.Escape(dataPath)}[/]");
         return 0;
     }
 
@@ -148,7 +148,7 @@ public sealed class APcm003A : Command<DataSettings>
     {
         return AnsiConsole.Status()
             .Spinner(Spinner.Known.Dots)
-            .Start($"[yellow]Downloading {ticker}...[/]", ctx =>
+            .Start($"[yellow]Downloading {Markup.Escape(ticker)}...[/]", ctx =>
             {
                 try
                 {
@@ -170,7 +170,7 @@ public sealed class APcm003A : Command<DataSettings>
 
                     if (response?.Results == null || response.Results.Length == 0)
                     {
-                        AnsiConsole.MarkupLine($"  [yellow]{ticker}: No data returned[/]");
+                        AnsiConsole.MarkupLine($"  [yellow]{Markup.Escape(ticker)}: No data returned[/]");
                         return 0;
                     }
 
@@ -230,12 +230,12 @@ public sealed class APcm003A : Command<DataSettings>
                         }
                     }
 
-                    AnsiConsole.MarkupLine($"  [green]{ticker}:[/] {barCount:N0} bars saved");
+                    AnsiConsole.MarkupLine($"  [green]{Markup.Escape(ticker)}:[/] {barCount:N0} bars saved");
                     return barCount;
                 }
                 catch (Exception ex)
                 {
-                    AnsiConsole.MarkupLine($"  [red]{ticker}: Error - {ex.Message}[/]");
+                    AnsiConsole.MarkupLine($"  [red]{Markup.Escape(ticker)}: Error - {Markup.Escape(ex.Message)}[/]");
                     return 0;
                 }
             });
