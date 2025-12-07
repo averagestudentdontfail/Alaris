@@ -112,6 +112,47 @@ public sealed class STUN001A : FundamentalUniverseSelectionModel
     }
 
     /// <summary>
+    /// Selects symbols from the fundamental universe that meet earnings criteria.
+    /// This is the primary selection method for LEAN's universe selection.
+    /// </summary>
+    /// <param name="algorithm">The algorithm instance.</param>
+    /// <param name="fundamental">The fundamental data for all symbols.</param>
+    /// <returns>Symbols meeting the earnings criteria.</returns>
+    public override IEnumerable<Symbol> Select(QCAlgorithm algorithm, IEnumerable<Fundamental> fundamental)
+    {
+        var currentDate = algorithm.Time.Date;
+        
+        // Step 1: Apply fundamental filters (volume, price)
+        var filtered = fundamental
+            .Where(f => f.HasFundamentalData)
+            .Where(f => f.DollarVolume >= (double)_minimumDollarVolume)
+            .Where(f => f.Price >= _minimumPrice)
+            .OrderByDescending(f => f.DollarVolume)
+            .Take(500) // Pre-filter to top 500 by volume
+            .ToList();
+        
+        // Step 2: Query earnings calendar (with caching)
+        var earningsSymbols = GetEarningsSymbolsForWindow(
+            algorithm,
+            currentDate.AddDays(_daysBeforeEarningsMin),
+            currentDate.AddDays(_daysBeforeEarningsMax));
+        
+        // Step 3: Filter to symbols with upcoming earnings
+        var selected = filtered
+            .Where(f => earningsSymbols.Contains(f.Symbol.Value))
+            .Take(_maxSymbols)
+            .Select(f => f.Symbol)
+            .ToList();
+        
+        if (_logger != null)
+        {
+            LogUniverseSelection(_logger, filtered.Count, earningsSymbols.Count, selected.Count, null);
+        }
+        
+        return selected;
+    }
+
+    /// <summary>
     /// Selects symbols from the coarse universe that meet earnings criteria.
     /// </summary>
     [Obsolete("Use Select instead")]
