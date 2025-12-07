@@ -162,6 +162,7 @@ The following table lists the primary components and their academic references.
 | `DTmd003A` | `CorporateAction` | Corporate action data model | - |
 | `DTca001A` | Corporate actions provider interface | Interface for corporate actions data | - |
 | `DTea001A` | `FinancialModelingPrepProvider` | FMP earnings calendar | - |
+| `DTea001B` | `SecEdgarProvider` | SEC EDGAR 8-K filings | SEC.gov |
 | `DTrf001A` | `TreasuryDirectRateProvider` | Treasury rate provider | US Treasury |
 | `DTqc001A` | Data quality validators | Price, IV, Volume/OI, Earnings validators | - |
 | `DTqc002A` | Data quality validator interface | Interface for data quality validators | - |
