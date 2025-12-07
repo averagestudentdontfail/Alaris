@@ -171,7 +171,10 @@ public sealed class APcm001A : Command<RunSettings>
         {
             if (e.Data is not null)
             {
-                AnsiConsole.MarkupLine($"[red]{e.Data}[/]");
+                // Escape markup characters to prevent Spectre.Console parsing errors
+                // LEAN output often contains <TypeName> patterns that break markup
+                var escaped = Markup.Escape(e.Data);
+                AnsiConsole.MarkupLine($"[red]{escaped}[/]");
             }
         };
 
