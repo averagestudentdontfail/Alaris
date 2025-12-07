@@ -172,10 +172,12 @@ public sealed class SecEdgarProvider : DTpr004A, IDisposable
         }
 
         var filings = await GetCompanyFilingsAsync(cik, cancellationToken);
-        var cutoffDate = DateTime.UtcNow.AddDays(-lookbackDays);
 
+        // Return ALL Item 2.02 8-K filings - don't filter by DateTime.UtcNow
+        // This is critical for backtesting where simulation date != current date
+        // The caller (STUN001B) will filter relative to the simulation date
         var earningsFilings = filings
-            .Where(f => f.Form == "8-K" && f.IsItem202Filing && f.FilingDate >= cutoffDate)
+            .Where(f => f.Form == "8-K" && f.IsItem202Filing)
             .OrderByDescending(f => f.FilingDate)
             .ToList();
 
