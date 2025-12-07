@@ -159,11 +159,21 @@ The following table lists the primary components and their academic references.
 | `DTpr005A` | Risk-free rate interface | Interface for risk-free rate providers | - |
 | `DTmd001A` | `MarketDataSnapshot` | Market data model | - |
 | `DTmd002A` | `CalendarSpreadQuote` | Calendar spread model | - |
+| `DTmd003A` | `CorporateAction` | Corporate action data model | - |
+| `DTca001A` | Corporate actions provider interface | Interface for corporate actions data | - |
 | `DTea001A` | `FinancialModelingPrepProvider` | FMP earnings calendar | - |
 | `DTrf001A` | `TreasuryDirectRateProvider` | Treasury rate provider | US Treasury |
 | `DTqc001A` | Data quality validators | Price, IV, Volume/OI, Earnings validators | - |
 | `DTqc002A` | Data quality validator interface | Interface for data quality validators | - |
 | `DTbr001A` | `AlarisDataBridge` | Unified data bridge | - |
+
+### 5.4 Alaris.Application
+| Component Code | Class Name | Description | Reference |
+|----------------|------------|-------------|-----------|
+| `APap001A` | `APap001A` | Application entry point | Spectre.Console |
+| `APcm001A` | `APcm001A` | Run command (alaris run) | - |
+| `APcm002A` | `APcm002A` | Config command (alaris config) | - |
+| `APcm003A` | `APcm003A` | Data command (alaris data) | - |
 
 ## 6. Compliance
 All changes to the codebase must adhere to this standard. Non-compliant components will be rejected during code review.
