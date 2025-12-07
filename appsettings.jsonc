@@ -1,0 +1,71 @@
+{
+    "Alaris": {
+        // Strategy Parameters (Atilgan 2014)
+        "Strategy": {
+            "DaysBeforeEarningsMin": 5,
+            "DaysBeforeEarningsMax": 7,
+            "MinimumDollarVolume": 1500000,
+            "MinimumPrice": 5.00,
+            "PortfolioAllocationLimit": 0.80,
+            "MaxPositionAllocation": 0.06,
+            "MaxConcurrentPositions": 15
+        },
+        // Data Provider Settings
+        "DataProviders": {
+            "Polygon": {
+                "BaseUrl": "https://api.polygon.io",
+                "RateLimitPerMinute": 5,
+                "TimeoutSeconds": 30
+            },
+            "FMP": {
+                "BaseUrl": "https://financialmodelingprep.com/api",
+                "TimeoutSeconds": 30
+            },
+            "Treasury": {
+                "BaseUrl": "https://www.treasurydirect.gov/TA_WS/securities",
+                "FallbackRiskFreeRate": 0.0525
+            }
+        },
+        // Production Validation Thresholds
+        "Validation": {
+            "IvRvRatioThreshold": 1.20,
+            "MinimumOtmPercent": 10,
+            "MaxBidAskSpread": 0.50,
+            "MinimumOpenInterest": 100,
+            "MaxVegaCorrelation": 0.70
+        },
+        // Risk Controls
+        "RiskControls": {
+            "MaxDailyLoss": 15000,
+            "MaxWeeklyLoss": 30000,
+            "MaxPositionLoss": 5000,
+            "CircuitBreakerEnabled": true
+        },
+        // Logging
+        "Logging": {
+            "MinimumLevel": "Information",
+            "EnableStructuredLogging": true,
+            "LogFilePath": "./logs/alaris.log"
+        }
+    },
+    // Interactive Brokers Gateway
+    "InteractiveBrokers": {
+        "Host": "127.0.0.1",
+        "Port": 4002, // Paper trading: 4002, Live: 4001
+        "ClientId": 1,
+        "TradingMode": "paper", // "paper" or "live"
+        "GatewayPath": "/home/sunny/Jts",
+        "AutoReconnect": true,
+        "ReconnectDelaySeconds": 30
+    },
+    // Lean Engine Settings
+    "Lean": {
+        "Environment": "live-interactive",
+        "AlgorithmTypeName": "Alaris.Algorithm.STLN001A",
+        "AlgorithmLanguage": "CSharp",
+        "AlgorithmLocation": "../Alaris.Algorithm/bin/Release/net9.0/Alaris.Algorithm.dll",
+        "DataFolder": "./Data",
+        "StartCash": 100000,
+        "LiveMode": true
+    }
+}

@@ -97,3 +97,15 @@ nunit-*.xml
 
 # Benchmark Results
 BenchmarkDotNet.Artifacts/
+
+# Alaris Local Configuration - Never Commit
+appsettings.local.jsonc
+appsettings.*.local.jsonc
+*.local.jsonc
+secrets.json
+.env
+.env.local
+*.secrets
+logs/
+Data/
+*.log
