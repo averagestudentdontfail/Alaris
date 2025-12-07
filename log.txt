@@ -1,0 +1,21 @@
+2025-12-07T06:01:48.2989717Z TRACE:: Engine.Main(): LEAN ALGORITHMIC TRADING ENGINE v2.5.0.0 Mode: DEBUG (64bit) Host: Sunny
+2025-12-07T06:01:48.3080291Z TRACE:: Engine.Main(): Started 17:01
+2025-12-07T06:01:48.3086230Z TRACE:: Config.Get(): Configuration key not found. Key: algorithm-location - Using default value: QuantConnect.Algorithm.CSharp.dll
+2025-12-07T06:01:48.3105872Z TRACE:: Config.Get(): Configuration key not found. Key: lean-manager-type - Using default value: LocalLeanManager
+2025-12-07T06:01:48.3204618Z TRACE:: Config.Get(): Configuration key not found. Key: algorithm-language - Using default value: 
+2025-12-07T06:01:48.3259026Z TRACE:: JobQueue.NextJob(): Selected QuantConnect.Algorithm.CSharp.dll
+2025-12-07T06:01:48.3259757Z TRACE:: Config.Get(): Configuration key not found. Key: parameters - Using default value: 
+2025-12-07T06:01:48.3264640Z TRACE:: Config.GetValue(): scheduled-event-leaky-bucket-capacity - Using default value: 120
+2025-12-07T06:01:48.3265271Z TRACE:: Config.GetValue(): scheduled-event-leaky-bucket-time-interval-minutes - Using default value: 1440
+2025-12-07T06:01:48.3265677Z TRACE:: Config.GetValue(): scheduled-event-leaky-bucket-refill-amount - Using default value: 18
+2025-12-07T06:01:48.3269327Z TRACE:: Config.GetValue(): symbol-minute-limit - Using default value: 10000
+2025-12-07T06:01:48.3269758Z TRACE:: Config.GetValue(): symbol-second-limit - Using default value: 10000
+2025-12-07T06:01:48.3270113Z TRACE:: Config.GetValue(): symbol-tick-limit - Using default value: 10000
+2025-12-07T06:01:48.3270543Z TRACE:: Config.GetValue(): maximum-data-points-per-chart-series - Using default value: 1000000
+2025-12-07T06:01:48.3271064Z TRACE:: Config.GetValue(): maximum-chart-series - Using default value: 30
+2025-12-07T06:01:48.3275408Z TRACE:: Config.GetValue(): storage-limit - Using default value: 10737418240
+2025-12-07T06:01:48.3275990Z TRACE:: Config.GetValue(): storage-file-count - Using default value: 10000
+2025-12-07T06:01:48.3281730Z TRACE:: Config.GetValue(): storage-permissions - Using default value: Read=True Write=True Delete=True
+2025-12-07T06:01:48.3282341Z TRACE:: Config.Get(): Configuration key not found. Key: algorithm-id - Using default value: Alaris.Algorithm.STLN001A
+2025-12-07T06:01:48.3283101Z TRACE:: Config.Get(): Configuration key not found. Key: optimization-id - Using default value: 
+2025-12-07T06:01:48.3283595Z TRACE:: Config.Get(): Configuration key not found. Key: backtest-name - Using default value: local
