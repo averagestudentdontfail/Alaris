@@ -426,14 +426,43 @@ public sealed class STLN001A : QCAlgorithm
     }
 
     /// <summary>
-    /// Builds configuration from environment and files.
+    /// Builds configuration from appsettings files.
+    /// Loads appsettings.jsonc (base) then appsettings.local.jsonc (secrets).
     /// </summary>
     private IConfiguration BuildConfiguration()
     {
+        // Find the repository root (where appsettings.jsonc lives)
+        var basePath = FindRepositoryRoot();
+        
         return new ConfigurationBuilder()
+            .SetBasePath(basePath)
+            .AddJsonFile("appsettings.jsonc", optional: false, reloadOnChange: false)
+            .AddJsonFile("appsettings.local.jsonc", optional: true, reloadOnChange: false)
             .AddEnvironmentVariables("ALARIS_")
-            .AddJsonFile("config/alaris.json", optional: true)
             .Build();
+    }
+
+    /// <summary>
+    /// Finds the repository root directory containing appsettings.jsonc.
+    /// </summary>
+    private static string FindRepositoryRoot()
+    {
+        // Start from current directory and walk up
+        var dir = System.IO.Directory.GetCurrentDirectory();
+        for (int i = 0; i < 10; i++)
+        {
+            var candidate = System.IO.Path.Combine(dir, "appsettings.jsonc");
+            if (System.IO.File.Exists(candidate))
+            {
+                return dir;
+            }
+            var parent = System.IO.Directory.GetParent(dir);
+            if (parent == null) break;
+            dir = parent.FullName;
+        }
+        
+        // Fallback to current directory
+        return System.IO.Directory.GetCurrentDirectory();
     }
 
     // =========================================================================

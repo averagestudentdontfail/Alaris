@@ -60,6 +60,20 @@
     <ProjectReference Include="..\Queues\QuantConnect.Queues.csproj" />
     <ProjectReference Include="..\ToolBox\QuantConnect.ToolBox.csproj" />
     <ProjectReference Include="..\Brokerages\InteractiveBrokers\QuantConnect.InteractiveBrokersBrokerage\QuantConnect.InteractiveBrokersBrokerage.csproj" />
+    <!-- Alaris core dependencies - ensures assemblies are in Launcher bin for algorithm loading -->
+    <ProjectReference Include="..\..\Alaris.Quantlib\Alaris.Quantlib.csproj" />
+    <ProjectReference Include="..\..\Alaris.Double\Alaris.Double.csproj" />
+    <ProjectReference Include="..\..\Alaris.Events\Alaris.Events.csproj" />
+    <ProjectReference Include="..\..\Alaris.Strategy\Alaris.Strategy.csproj" />
+    <ProjectReference Include="..\..\Alaris.Data\Alaris.Data.csproj" />
+  </ItemGroup>
+  <!-- Microsoft.Extensions packages for Alaris algorithm dependencies -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.*" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.*" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="9.0.*" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.*" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.*" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\LICENSE">

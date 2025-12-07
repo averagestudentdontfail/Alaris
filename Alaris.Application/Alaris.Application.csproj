@@ -14,7 +14,7 @@
       Alaris Trading System CLI and Terminal UI.
       Wraps LEAN engine execution with unified configuration interface.
     </Description>
-    <NoWarn>$(NoWarn);CS1591;IDE0008;CA1308;CA1062;CA2007;CA1515;CA1861</NoWarn>
+    <NoWarn>$(NoWarn);CS1591;IDE0008;IDE0011;CA1305;CA1307;CA1308;CA1031;CA1310;CA1062;CA2007;CA1515;CA1861</NoWarn>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
