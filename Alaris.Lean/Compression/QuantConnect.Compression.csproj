@@ -11,7 +11,7 @@
     <DocumentationFile>bin\$(Configuration)\QuantConnect.Compression.xml</DocumentationFile>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <Description>QuantConnect LEAN Engine: Compression Project - A library with compression tools</Description>
-    <NoWarn>CA1062</NoWarn>
+    <NoWarn>CA1062;NU1903</NoWarn>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">

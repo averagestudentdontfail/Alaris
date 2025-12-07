@@ -159,10 +159,10 @@ namespace QuantConnect.Securities.Option
                 var underlyingQuoteValue = new SimpleQuote(spot);
 
                 var dividendYieldValue = new SimpleQuote(_dividendYieldEstimator.Estimate(security, slice, contract));
-                var dividendYield = new Handle<YieldSTTM001A>(new FlatForward(0, calendar, dividendYieldValue, dayCounter));
+                var dividendYield = new Handle<YieldTermStructure>(new FlatForward(0, calendar, dividendYieldValue, dayCounter));
 
                 var riskFreeRateValue = new SimpleQuote((double)_riskFreeRateEstimator.Estimate(security, slice, contract));
-                var riskFreeRate = new Handle<YieldSTTM001A>(new FlatForward(0, calendar, riskFreeRateValue, dayCounter));
+                var riskFreeRate = new Handle<YieldTermStructure>(new FlatForward(0, calendar, riskFreeRateValue, dayCounter));
 
                 // Get discount factor by dividend and risk free rate using the maturity
                 var dividendDiscount = dividendYield.link.discount(maturity);
@@ -181,7 +181,7 @@ namespace QuantConnect.Securities.Option
                 }
 
                 var underlyingVolValue = new SimpleQuote(underlyingVolEstimate);
-                var underlyingVol = new Handle<BlackVolSTTM001A>(new BlackConstantVol(0, calendar, new Handle<Quote>(underlyingVolValue), dayCounter));
+                var underlyingVol = new Handle<BlackVolTermStructure>(new BlackConstantVol(0, calendar, new Handle<Quote>(underlyingVolValue), dayCounter));
 
                 // preparing stochastic process and payoff functions
                 var stochasticProcess = new BlackScholesMertonProcess(new Handle<Quote>(underlyingQuoteValue), dividendYield, riskFreeRate, underlyingVol);
