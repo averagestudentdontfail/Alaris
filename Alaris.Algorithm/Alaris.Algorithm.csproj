@@ -26,11 +26,11 @@
     <Optimize>true</Optimize>
   </PropertyGroup>
 
-  <!-- QuantConnect LEAN Dependencies -->
+  <!-- QuantConnect LEAN Dependencies - Local Alaris.Lean source -->
   <ItemGroup>
-    <PackageReference Include="QuantConnect.Algorithm" Version="2.5.*" />
-    <PackageReference Include="QuantConnect.Algorithm.Framework" Version="2.5.*" />
-    <PackageReference Include="QuantConnect.Common" Version="2.5.*" />
+    <ProjectReference Include="..\Alaris.Lean\Algorithm\QuantConnect.Algorithm.csproj" />
+    <ProjectReference Include="..\Alaris.Lean\Algorithm.Framework\QuantConnect.Algorithm.Framework.csproj" />
+    <ProjectReference Include="..\Alaris.Lean\Common\QuantConnect.csproj" />
   </ItemGroup>
 
   <!-- Microsoft Extensions -->

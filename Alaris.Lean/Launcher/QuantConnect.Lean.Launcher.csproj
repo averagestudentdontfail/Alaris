@@ -60,8 +60,6 @@
     <ProjectReference Include="..\Queues\QuantConnect.Queues.csproj" />
     <ProjectReference Include="..\ToolBox\QuantConnect.ToolBox.csproj" />
     <ProjectReference Include="..\Brokerages\InteractiveBrokers\QuantConnect.InteractiveBrokersBrokerage\QuantConnect.InteractiveBrokersBrokerage.csproj" />
-    <!-- Alaris Algorithm and dependencies - ensures assemblies are in Launcher bin for loading -->
-    <ProjectReference Include="..\..\Alaris.Algorithm\Alaris.Algorithm.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\LICENSE">
