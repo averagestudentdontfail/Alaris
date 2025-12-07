@@ -1,0 +1,25 @@
+2025-12-07T06:03:40.3092518Z TRACE:: Engine.Main(): LEAN ALGORITHMIC TRADING ENGINE v2.5.0.0 Mode: DEBUG (64bit) Host: Sunny
+2025-12-07T06:03:40.3173658Z TRACE:: Engine.Main(): Started 17:03
+2025-12-07T06:03:40.3209090Z TRACE:: Config.Get(): Configuration key not found. Key: lean-manager-type - Using default value: LocalLeanManager
+2025-12-07T06:03:40.3321309Z TRACE:: JobQueue.NextJob(): Selected ../../Alaris.Algorithm/bin/Debug/net9.0/Alaris.Algorithm.dll
+2025-12-07T06:03:40.3931039Z TRACE:: Config.GetValue(): scheduled-event-leaky-bucket-capacity - Using default value: 120
+2025-12-07T06:03:40.3931597Z TRACE:: Config.GetValue(): scheduled-event-leaky-bucket-time-interval-minutes - Using default value: 1440
+2025-12-07T06:03:40.3931814Z TRACE:: Config.GetValue(): scheduled-event-leaky-bucket-refill-amount - Using default value: 18
+2025-12-07T06:03:40.3937267Z TRACE:: Config.GetValue(): storage-limit - Using default value: 10737418240
+2025-12-07T06:03:40.3937753Z TRACE:: Config.GetValue(): storage-file-count - Using default value: 10000
+2025-12-07T06:03:40.3942438Z TRACE:: Config.GetValue(): storage-permissions - Using default value: Read=True Write=True Delete=True
+2025-12-07T06:03:40.3942930Z TRACE:: Config.Get(): Configuration key not found. Key: algorithm-id - Using default value: Alaris.Algorithm.STLN001A
+2025-12-07T06:03:40.3963838Z TRACE:: Config.Get(): Configuration key not found. Key: data-channel - Using default value: 
+2025-12-07T06:03:40.3965470Z TRACE:: Config.Get(): Configuration key not found. Key: python-venv - Using default value: 
+2025-12-07T06:03:42.3959212Z ERROR:: JobQueue.NextJob(): Error resolving BrokerageData for live job for brokerage InteractiveBrokersBrokerage System.InvalidOperationException: Sequence contains no matching element
+   at System.Linq.ThrowHelper.ThrowNoMatchException()
+   at System.Linq.Enumerable.Single[TSource](IEnumerable`1 source, Func`2 predicate)
+   at QuantConnect.Util.Composer.Single[T](Func`2 predicate) in /home/sunny/.project/Alaris/Alaris.Lean/Common/Util/Composer.cs:line 176
+   at QuantConnect.Queues.JobQueue.NextJob(String& algorithmPath) in /home/sunny/.project/Alaris/Alaris.Lean/Queues/JobQueue.cs:line 185
+2025-12-07T06:03:42.3989195Z TRACE:: JobQueue.NextJob(): Not able to fetch brokerage factory with name: InteractiveBrokersBrokerage
+2025-12-07T06:03:42.4010290Z TRACE:: Config.Get(): Configuration key not found. Key: data-permission-manager - Using default value: DataPermissionManager
+2025-12-07T06:03:42.4010952Z TRACE:: Config.Get(): Configuration key not found. Key: data-monitor - Using default value: QuantConnect.Data.DataMonitor
+2025-12-07T06:03:42.4028564Z TRACE:: Config.GetValue(): streamed-chart-limit - Using default value: 12
+2025-12-07T06:03:42.4029070Z TRACE:: Config.GetValue(): streamed-chart-group-size - Using default value: 3
+2025-12-07T06:03:42.4056921Z TRACE:: Config.GetValue(): downloader-data-update-period - Using default value: 7
+2025-12-07T06:03:42.4067835Z TRACE:: Extensions.IsDirectoryEmpty(): directory '../../../Data/market-hours' not found or empty

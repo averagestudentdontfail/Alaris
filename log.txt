@@ -19,3 +19,137 @@
 2025-12-07T06:01:48.3282341Z TRACE:: Config.Get(): Configuration key not found. Key: algorithm-id - Using default value: Alaris.Algorithm.STLN001A
 2025-12-07T06:01:48.3283101Z TRACE:: Config.Get(): Configuration key not found. Key: optimization-id - Using default value: 
 2025-12-07T06:01:48.3283595Z TRACE:: Config.Get(): Configuration key not found. Key: backtest-name - Using default value: local
+2025-12-07T06:03:01.8107546Z TRACE:: Engine.Main(): LEAN ALGORITHMIC TRADING ENGINE v2.5.0.0 Mode: DEBUG (64bit) Host: Sunny
+2025-12-07T06:03:01.8201984Z TRACE:: Engine.Main(): Started 17:03
+2025-12-07T06:03:01.8205069Z TRACE:: Config.Get(): Configuration key not found. Key: algorithm-location - Using default value: QuantConnect.Algorithm.CSharp.dll
+2025-12-07T06:03:01.8233492Z TRACE:: Config.Get(): Configuration key not found. Key: lean-manager-type - Using default value: LocalLeanManager
+2025-12-07T06:03:01.8317777Z TRACE:: Config.Get(): Configuration key not found. Key: algorithm-language - Using default value: 
+2025-12-07T06:03:01.8369385Z TRACE:: JobQueue.NextJob(): Selected QuantConnect.Algorithm.CSharp.dll
+2025-12-07T06:03:01.8369875Z TRACE:: Config.Get(): Configuration key not found. Key: parameters - Using default value: 
+2025-12-07T06:03:01.8376002Z TRACE:: Config.GetValue(): scheduled-event-leaky-bucket-capacity - Using default value: 120
+2025-12-07T06:03:01.8376657Z TRACE:: Config.GetValue(): scheduled-event-leaky-bucket-time-interval-minutes - Using default value: 1440
+2025-12-07T06:03:01.8377133Z TRACE:: Config.GetValue(): scheduled-event-leaky-bucket-refill-amount - Using default value: 18
+2025-12-07T06:03:01.8379756Z TRACE:: Config.GetValue(): symbol-minute-limit - Using default value: 10000
+2025-12-07T06:03:01.8380378Z TRACE:: Config.GetValue(): symbol-second-limit - Using default value: 10000
+2025-12-07T06:03:01.8380795Z TRACE:: Config.GetValue(): symbol-tick-limit - Using default value: 10000
+2025-12-07T06:03:01.8381038Z TRACE:: Config.GetValue(): maximum-data-points-per-chart-series - Using default value: 1000000
+2025-12-07T06:03:01.8381309Z TRACE:: Config.GetValue(): maximum-chart-series - Using default value: 30
+2025-12-07T06:03:01.8387538Z TRACE:: Config.GetValue(): storage-limit - Using default value: 10737418240
+2025-12-07T06:03:01.8387904Z TRACE:: Config.GetValue(): storage-file-count - Using default value: 10000
+2025-12-07T06:03:01.8392119Z TRACE:: Config.GetValue(): storage-permissions - Using default value: Read=True Write=True Delete=True
+2025-12-07T06:03:01.8392622Z TRACE:: Config.Get(): Configuration key not found. Key: algorithm-id - Using default value: BasicTemplateAlgorithm
+2025-12-07T06:03:01.8393287Z TRACE:: Config.Get(): Configuration key not found. Key: optimization-id - Using default value: 
+2025-12-07T06:03:01.8393773Z TRACE:: Config.Get(): Configuration key not found. Key: backtest-name - Using default value: local
+2025-12-07T06:05:07.3071214Z TRACE:: Engine.Main(): LEAN ALGORITHMIC TRADING ENGINE v2.5.0.0 Mode: DEBUG (64bit) Host: Sunny
+2025-12-07T06:05:07.3242852Z TRACE:: Engine.Main(): Started 17:05
+2025-12-07T06:05:07.3246515Z TRACE:: Config.Get(): Configuration key not found. Key: algorithm-location - Using default value: QuantConnect.Algorithm.CSharp.dll
+2025-12-07T06:05:07.3260645Z TRACE:: Config.Get(): Configuration key not found. Key: lean-manager-type - Using default value: LocalLeanManager
+2025-12-07T06:05:07.3359445Z TRACE:: Config.Get(): Configuration key not found. Key: algorithm-language - Using default value: 
+2025-12-07T06:05:07.3408085Z TRACE:: JobQueue.NextJob(): Selected QuantConnect.Algorithm.CSharp.dll
+2025-12-07T06:05:07.3408640Z TRACE:: Config.Get(): Configuration key not found. Key: parameters - Using default value: 
+2025-12-07T06:05:07.3415318Z TRACE:: Config.GetValue(): scheduled-event-leaky-bucket-capacity - Using default value: 120
+2025-12-07T06:05:07.3415923Z TRACE:: Config.GetValue(): scheduled-event-leaky-bucket-time-interval-minutes - Using default value: 1440
+2025-12-07T06:05:07.3416385Z TRACE:: Config.GetValue(): scheduled-event-leaky-bucket-refill-amount - Using default value: 18
+2025-12-07T06:05:07.3418635Z TRACE:: Config.GetValue(): symbol-minute-limit - Using default value: 10000
+2025-12-07T06:05:07.3419245Z TRACE:: Config.GetValue(): symbol-second-limit - Using default value: 10000
+2025-12-07T06:05:07.3419659Z TRACE:: Config.GetValue(): symbol-tick-limit - Using default value: 10000
+2025-12-07T06:05:07.3420262Z TRACE:: Config.GetValue(): maximum-data-points-per-chart-series - Using default value: 1000000
+2025-12-07T06:05:07.3420833Z TRACE:: Config.GetValue(): maximum-chart-series - Using default value: 30
+2025-12-07T06:05:07.3426906Z TRACE:: Config.GetValue(): storage-limit - Using default value: 10737418240
+2025-12-07T06:05:07.3427459Z TRACE:: Config.GetValue(): storage-file-count - Using default value: 10000
+2025-12-07T06:05:07.3432125Z TRACE:: Config.GetValue(): storage-permissions - Using default value: Read=True Write=True Delete=True
+2025-12-07T06:05:07.3432692Z TRACE:: Config.Get(): Configuration key not found. Key: algorithm-id - Using default value: Alaris.Algorithm.STLN001A
+2025-12-07T06:05:07.3433370Z TRACE:: Config.Get(): Configuration key not found. Key: optimization-id - Using default value: 
+2025-12-07T06:05:07.3433889Z TRACE:: Config.Get(): Configuration key not found. Key: backtest-name - Using default value: local
+2025-12-07T06:05:20.4826266Z TRACE:: Engine.Main(): LEAN ALGORITHMIC TRADING ENGINE v2.5.0.0 Mode: DEBUG (64bit) Host: Sunny
+2025-12-07T06:05:20.4935978Z TRACE:: Engine.Main(): Started 17:05
+2025-12-07T06:05:20.4940336Z TRACE:: Config.Get(): Configuration key not found. Key: algorithm-location - Using default value: QuantConnect.Algorithm.CSharp.dll
+2025-12-07T06:05:20.4967639Z TRACE:: Config.Get(): Configuration key not found. Key: lean-manager-type - Using default value: LocalLeanManager
+2025-12-07T06:05:20.5054465Z TRACE:: Config.Get(): Configuration key not found. Key: algorithm-language - Using default value: 
+2025-12-07T06:05:20.5104557Z TRACE:: JobQueue.NextJob(): Selected QuantConnect.Algorithm.CSharp.dll
+2025-12-07T06:05:20.5105190Z TRACE:: Config.Get(): Configuration key not found. Key: parameters - Using default value: 
+2025-12-07T06:05:20.5110659Z TRACE:: Config.GetValue(): scheduled-event-leaky-bucket-capacity - Using default value: 120
+2025-12-07T06:05:20.5111214Z TRACE:: Config.GetValue(): scheduled-event-leaky-bucket-time-interval-minutes - Using default value: 1440
+2025-12-07T06:05:20.5111569Z TRACE:: Config.GetValue(): scheduled-event-leaky-bucket-refill-amount - Using default value: 18
+2025-12-07T06:05:20.5112853Z TRACE:: Config.GetValue(): symbol-minute-limit - Using default value: 10000
+2025-12-07T06:05:20.5113336Z TRACE:: Config.GetValue(): symbol-second-limit - Using default value: 10000
+2025-12-07T06:05:20.5113657Z TRACE:: Config.GetValue(): symbol-tick-limit - Using default value: 10000
+2025-12-07T06:05:20.5114133Z TRACE:: Config.GetValue(): maximum-data-points-per-chart-series - Using default value: 1000000
+2025-12-07T06:05:20.5114473Z TRACE:: Config.GetValue(): maximum-chart-series - Using default value: 30
+2025-12-07T06:05:20.5119630Z TRACE:: Config.GetValue(): storage-limit - Using default value: 10737418240
+2025-12-07T06:05:20.5120128Z TRACE:: Config.GetValue(): storage-file-count - Using default value: 10000
+2025-12-07T06:05:20.5124673Z TRACE:: Config.GetValue(): storage-permissions - Using default value: Read=True Write=True Delete=True
+2025-12-07T06:05:20.5125167Z TRACE:: Config.Get(): Configuration key not found. Key: algorithm-id - Using default value: BasicTemplateAlgorithm
+2025-12-07T06:05:20.5125806Z TRACE:: Config.Get(): Configuration key not found. Key: optimization-id - Using default value: 
+2025-12-07T06:05:20.5126301Z TRACE:: Config.Get(): Configuration key not found. Key: backtest-name - Using default value: local
+2025-12-07T06:05:27.5454932Z TRACE:: Engine.Main(): LEAN ALGORITHMIC TRADING ENGINE v2.5.0.0 Mode: DEBUG (64bit) Host: Sunny
+2025-12-07T06:05:27.5540851Z TRACE:: Engine.Main(): Started 17:05
+2025-12-07T06:05:27.5544482Z TRACE:: Config.Get(): Configuration key not found. Key: algorithm-location - Using default value: QuantConnect.Algorithm.CSharp.dll
+2025-12-07T06:05:27.5569149Z TRACE:: Config.Get(): Configuration key not found. Key: lean-manager-type - Using default value: LocalLeanManager
+2025-12-07T06:05:27.5650935Z TRACE:: Config.Get(): Configuration key not found. Key: algorithm-language - Using default value: 
+2025-12-07T06:05:27.5700400Z TRACE:: JobQueue.NextJob(): Selected QuantConnect.Algorithm.CSharp.dll
+2025-12-07T06:05:27.5700953Z TRACE:: Config.Get(): Configuration key not found. Key: parameters - Using default value: 
+2025-12-07T06:05:27.5705881Z TRACE:: Config.GetValue(): scheduled-event-leaky-bucket-capacity - Using default value: 120
+2025-12-07T06:05:27.5706420Z TRACE:: Config.GetValue(): scheduled-event-leaky-bucket-time-interval-minutes - Using default value: 1440
+2025-12-07T06:05:27.5706794Z TRACE:: Config.GetValue(): scheduled-event-leaky-bucket-refill-amount - Using default value: 18
+2025-12-07T06:05:27.5707970Z TRACE:: Config.GetValue(): symbol-minute-limit - Using default value: 10000
+2025-12-07T06:05:27.5708528Z TRACE:: Config.GetValue(): symbol-second-limit - Using default value: 10000
+2025-12-07T06:05:27.5708804Z TRACE:: Config.GetValue(): symbol-tick-limit - Using default value: 10000
+2025-12-07T06:05:27.5709155Z TRACE:: Config.GetValue(): maximum-data-points-per-chart-series - Using default value: 1000000
+2025-12-07T06:05:27.5710019Z TRACE:: Config.GetValue(): maximum-chart-series - Using default value: 30
+2025-12-07T06:05:27.5714532Z TRACE:: Config.GetValue(): storage-limit - Using default value: 10737418240
+2025-12-07T06:05:27.5715068Z TRACE:: Config.GetValue(): storage-file-count - Using default value: 10000
+2025-12-07T06:05:27.5719918Z TRACE:: Config.GetValue(): storage-permissions - Using default value: Read=True Write=True Delete=True
+2025-12-07T06:05:27.5720463Z TRACE:: Config.Get(): Configuration key not found. Key: algorithm-id - Using default value: BasicTemplateAlgorithm
+2025-12-07T06:05:27.5721125Z TRACE:: Config.Get(): Configuration key not found. Key: optimization-id - Using default value: 
+2025-12-07T06:05:27.5721708Z TRACE:: Config.Get(): Configuration key not found. Key: backtest-name - Using default value: local
+2025-12-07T06:07:59.3673386Z TRACE:: Engine.Main(): LEAN ALGORITHMIC TRADING ENGINE v2.5.0.0 Mode: DEBUG (64bit) Host: Sunny
+2025-12-07T06:07:59.3773354Z TRACE:: Engine.Main(): Started 17:07
+2025-12-07T06:07:59.3805999Z TRACE:: Config.Get(): Configuration key not found. Key: lean-manager-type - Using default value: LocalLeanManager
+2025-12-07T06:07:59.3907661Z TRACE:: JobQueue.NextJob(): Selected Alaris.Algorithm/bin/Debug/net9.0/Alaris.Algorithm.dll
+2025-12-07T06:07:59.4640819Z TRACE:: Config.GetValue(): scheduled-event-leaky-bucket-capacity - Using default value: 120
+2025-12-07T06:07:59.4641423Z TRACE:: Config.GetValue(): scheduled-event-leaky-bucket-time-interval-minutes - Using default value: 1440
+2025-12-07T06:07:59.4641812Z TRACE:: Config.GetValue(): scheduled-event-leaky-bucket-refill-amount - Using default value: 18
+2025-12-07T06:07:59.4648944Z TRACE:: Config.GetValue(): storage-limit - Using default value: 10737418240
+2025-12-07T06:07:59.4649513Z TRACE:: Config.GetValue(): storage-file-count - Using default value: 10000
+2025-12-07T06:07:59.4653913Z TRACE:: Config.GetValue(): storage-permissions - Using default value: Read=True Write=True Delete=True
+2025-12-07T06:07:59.4654457Z TRACE:: Config.Get(): Configuration key not found. Key: algorithm-id - Using default value: Alaris.Algorithm.STLN001A
+2025-12-07T06:07:59.4659126Z TRACE:: Config.Get(): Configuration key not found. Key: data-channel - Using default value: 
+2025-12-07T06:07:59.4662110Z TRACE:: Config.Get(): Configuration key not found. Key: python-venv - Using default value: 
+2025-12-07T06:08:01.2514655Z ERROR:: JobQueue.NextJob(): Error resolving BrokerageData for live job for brokerage InteractiveBrokersBrokerage System.InvalidOperationException: Sequence contains no matching element
+   at System.Linq.ThrowHelper.ThrowNoMatchException()
+   at System.Linq.Enumerable.Single[TSource](IEnumerable`1 source, Func`2 predicate)
+   at QuantConnect.Util.Composer.Single[T](Func`2 predicate) in /home/sunny/.project/Alaris/Alaris.Lean/Common/Util/Composer.cs:line 176
+   at QuantConnect.Queues.JobQueue.NextJob(String& algorithmPath) in /home/sunny/.project/Alaris/Alaris.Lean/Queues/JobQueue.cs:line 185
+2025-12-07T06:08:01.2543883Z TRACE:: JobQueue.NextJob(): Not able to fetch brokerage factory with name: InteractiveBrokersBrokerage
+2025-12-07T06:08:01.2556906Z TRACE:: Config.Get(): Configuration key not found. Key: data-permission-manager - Using default value: DataPermissionManager
+2025-12-07T06:08:01.2557522Z TRACE:: Config.Get(): Configuration key not found. Key: data-monitor - Using default value: QuantConnect.Data.DataMonitor
+2025-12-07T06:08:01.2577958Z TRACE:: Config.GetValue(): streamed-chart-limit - Using default value: 12
+2025-12-07T06:08:01.2578513Z TRACE:: Config.GetValue(): streamed-chart-group-size - Using default value: 3
+2025-12-07T06:08:01.2606928Z TRACE:: Config.GetValue(): downloader-data-update-period - Using default value: 7
+2025-12-07T06:08:01.2615508Z TRACE:: Extensions.IsDirectoryEmpty(): directory '../../Data/market-hours' not found or empty
+2025-12-07T06:08:18.8573026Z TRACE:: Engine.Main(): LEAN ALGORITHMIC TRADING ENGINE v2.5.0.0 Mode: DEBUG (64bit) Host: Sunny
+2025-12-07T06:08:18.8663642Z TRACE:: Engine.Main(): Started 17:08
+2025-12-07T06:08:18.8694243Z TRACE:: Config.Get(): Configuration key not found. Key: lean-manager-type - Using default value: LocalLeanManager
+2025-12-07T06:08:18.8797916Z TRACE:: JobQueue.NextJob(): Selected Alaris.Algorithm/bin/Debug/net9.0/Alaris.Algorithm.dll
+2025-12-07T06:08:18.9434834Z TRACE:: Config.GetValue(): scheduled-event-leaky-bucket-capacity - Using default value: 120
+2025-12-07T06:08:18.9435444Z TRACE:: Config.GetValue(): scheduled-event-leaky-bucket-time-interval-minutes - Using default value: 1440
+2025-12-07T06:08:18.9435817Z TRACE:: Config.GetValue(): scheduled-event-leaky-bucket-refill-amount - Using default value: 18
+2025-12-07T06:08:18.9441393Z TRACE:: Config.GetValue(): storage-limit - Using default value: 10737418240
+2025-12-07T06:08:18.9441899Z TRACE:: Config.GetValue(): storage-file-count - Using default value: 10000
+2025-12-07T06:08:18.9446769Z TRACE:: Config.GetValue(): storage-permissions - Using default value: Read=True Write=True Delete=True
+2025-12-07T06:08:18.9447317Z TRACE:: Config.Get(): Configuration key not found. Key: algorithm-id - Using default value: Alaris.Algorithm.STLN001A
+2025-12-07T06:08:18.9452125Z TRACE:: Config.Get(): Configuration key not found. Key: data-channel - Using default value: 
+2025-12-07T06:08:18.9454681Z TRACE:: Config.Get(): Configuration key not found. Key: python-venv - Using default value: 
+2025-12-07T06:08:20.8158129Z ERROR:: JobQueue.NextJob(): Error resolving BrokerageData for live job for brokerage InteractiveBrokersBrokerage System.InvalidOperationException: Sequence contains no matching element
+   at System.Linq.ThrowHelper.ThrowNoMatchException()
+   at System.Linq.Enumerable.Single[TSource](IEnumerable`1 source, Func`2 predicate)
+   at QuantConnect.Util.Composer.Single[T](Func`2 predicate) in /home/sunny/.project/Alaris/Alaris.Lean/Common/Util/Composer.cs:line 176
+   at QuantConnect.Queues.JobQueue.NextJob(String& algorithmPath) in /home/sunny/.project/Alaris/Alaris.Lean/Queues/JobQueue.cs:line 185
+2025-12-07T06:08:20.8197114Z TRACE:: JobQueue.NextJob(): Not able to fetch brokerage factory with name: InteractiveBrokersBrokerage
+2025-12-07T06:08:20.8214417Z TRACE:: Config.Get(): Configuration key not found. Key: data-permission-manager - Using default value: DataPermissionManager
+2025-12-07T06:08:20.8215114Z TRACE:: Config.Get(): Configuration key not found. Key: data-monitor - Using default value: QuantConnect.Data.DataMonitor
+2025-12-07T06:08:20.8233315Z TRACE:: Config.GetValue(): streamed-chart-limit - Using default value: 12
+2025-12-07T06:08:20.8233913Z TRACE:: Config.GetValue(): streamed-chart-group-size - Using default value: 3
+2025-12-07T06:08:20.8262193Z TRACE:: Config.GetValue(): downloader-data-update-period - Using default value: 7
+2025-12-07T06:08:20.8270925Z TRACE:: Extensions.IsDirectoryEmpty(): directory '../../Data/market-hours' not found or empty
