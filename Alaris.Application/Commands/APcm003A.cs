@@ -128,15 +128,27 @@ public sealed class APcm003A : Command<DataSettings>
         AnsiConsole.MarkupLine("[green]Polygon API key found[/]");
         AnsiConsole.WriteLine();
 
-        // Download data for each ticker
+        // Download data for each ticker with rate limiting
         var tickerList = tickers.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         var dataPath = FindOrCreateDataPath();
         var totalBars = 0;
+        var tickerCount = 0;
+
+        AnsiConsole.MarkupLine($"[grey]Downloading {tickerList.Length} tickers (with rate limiting)...[/]");
+        AnsiConsole.WriteLine();
 
         foreach (var ticker in tickerList)
         {
+            tickerCount++;
             var bars = DownloadTickerData(ticker.Trim().ToUpperInvariant(), startDate, endDate, settings.Resolution, apiKey, dataPath);
             totalBars += bars;
+
+            // Rate limiting: wait 12 seconds between requests for free Polygon tier (5 calls/min)
+            if (tickerCount < tickerList.Length)
+            {
+                AnsiConsole.MarkupLine("[grey]  Waiting 12s for rate limit...[/]");
+                System.Threading.Thread.Sleep(12000);
+            }
         }
 
         AnsiConsole.WriteLine();
@@ -441,7 +453,7 @@ file sealed class PolygonBar
     public decimal Close { get; init; }
 
     [JsonPropertyName("v")]
-    public long Volume { get; init; }
+    public double Volume { get; init; }
 }
 
 #endregion
