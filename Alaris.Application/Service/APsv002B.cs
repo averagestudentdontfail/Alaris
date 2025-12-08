@@ -12,6 +12,7 @@ using System.Globalization;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Json;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
@@ -75,7 +76,8 @@ public sealed class APsv002B : IDisposable
             
             var url = $"https://api.polygon.io/v2/aggs/grouped/locale/us/market/stocks/{dateStr}?adjusted=true&apiKey={_apiKey}";
             
-            var response = await _httpClient.GetFromJsonAsync<PolygonGroupedResponse>(url, cancellationToken);
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = false };
+            var response = await _httpClient.GetFromJsonAsync<PolygonGroupedResponse>(url, options, cancellationToken);
             
             if (response?.Results == null || response.Results.Length == 0)
             {
@@ -179,6 +181,10 @@ file sealed class PolygonGroupedResult
     [JsonPropertyName("T")]
     public string? Ticker { get; init; }
 
+    // Timestamp in milliseconds - must be included to prevent case-insensitive matching issues
+    [JsonPropertyName("t")]
+    public long Timestamp { get; init; }
+
     [JsonPropertyName("o")]
     public decimal Open { get; init; }
 
@@ -193,6 +199,12 @@ file sealed class PolygonGroupedResult
 
     [JsonPropertyName("v")]
     public double Volume { get; init; }
+    
+    [JsonPropertyName("vw")]
+    public decimal? VolumeWeightedAverage { get; init; }
+    
+    [JsonPropertyName("n")]
+    public int? NumberOfTransactions { get; init; }
 }
 
 #endregion
