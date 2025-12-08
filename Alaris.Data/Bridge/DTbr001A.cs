@@ -94,9 +94,9 @@ public sealed class AlarisDataBridge
             var spotPriceTask = _marketDataProvider.GetSpotPriceAsync(symbol, cancellationToken);
             var historicalBarsTask = GetHistoricalBarsForRvCalculationAsync(symbol, effectiveDate, cancellationToken);
             var optionChainTask = GetOptionChainWithCacheFallbackAsync(symbol, effectiveDate, cancellationToken);
-            var earningsTask = GetEarningsDataAsync(symbol, cancellationToken);
+            var earningsTask = GetEarningsDataAsync(symbol, effectiveDate, cancellationToken);
             var riskFreeRateTask = _riskFreeRateProvider.GetCurrentRateAsync(cancellationToken);
-            var avgVolumeTask = _marketDataProvider.GetAverageVolume30DayAsync(symbol, cancellationToken);
+            var avgVolumeTask = _marketDataProvider.GetAverageVolume30DayAsync(symbol, effectiveDate, cancellationToken);
 
             await Task.WhenAll(
                 spotPriceTask,
@@ -260,8 +260,12 @@ public sealed class AlarisDataBridge
     /// <summary>
     /// Gets earnings data (next event + historical for Leung-Santoli).
     /// </summary>
+    /// <param name="symbol">The symbol to fetch earnings for.</param>
+    /// <param name="evaluationDate">The evaluation date (simulation time for backtests).</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     private async Task<(EarningsEvent? next, IReadOnlyList<EarningsEvent> historical)> GetEarningsDataAsync(
         string symbol,
+        DateTime evaluationDate,
         CancellationToken cancellationToken)
     {
         // Fetch upcoming and historical concurrently
@@ -281,17 +285,39 @@ public sealed class AlarisDataBridge
         var historical = await historicalTask;
 
         // Find next earnings (closest upcoming)
-        var nextEarnings = upcoming
+        EarningsEvent? nextEarnings = upcoming
             .OrderBy(e => e.Date)
             .FirstOrDefault();
+
+        // For backtesting: If upcoming is empty (SEC EDGAR only provides historical),
+        // search historical data for dates AFTER the evaluation date
+        if (nextEarnings == null && historical.Count > 0)
+        {
+            nextEarnings = historical
+                .Where(e => e.Date > evaluationDate.Date)
+                .OrderBy(e => e.Date)
+                .FirstOrDefault();
+                
+            if (nextEarnings != null)
+            {
+                _logger.LogDebug(
+                    "Found 'future' earnings for {Symbol} from historical data: {Date}",
+                    symbol, nextEarnings.Date.ToString("yyyy-MM-dd"));
+            }
+        }
+
+        // Filter historical to only include dates BEFORE evaluation date
+        var historicalBeforeEvaluation = historical
+            .Where(e => e.Date <= evaluationDate.Date)
+            .ToList();
 
         _logger.LogDebug(
             "Earnings data for {Symbol}: Next={NextDate}, Historical={HistoricalCount}",
             symbol,
             nextEarnings?.Date.ToString("yyyy-MM-dd") ?? "None",
-            historical.Count);
+            historicalBeforeEvaluation.Count);
 
-        return (nextEarnings, historical);
+        return (nextEarnings, historicalBeforeEvaluation);
     }
 
     /// <summary>
@@ -381,6 +407,7 @@ public sealed class AlarisDataBridge
             // Check 2: Sufficient average volume (Atilgan threshold: 1.5M)
             var avgVolume = await _marketDataProvider.GetAverageVolume30DayAsync(
                 symbol,
+                null, // Use current date for live pre-filtering
                 cancellationToken);
 
             if (avgVolume < 1_500_000)

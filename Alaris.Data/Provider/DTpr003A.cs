@@ -54,7 +54,11 @@ public interface DTpr003A
     /// <summary>
     /// Gets 30-day average volume for a symbol.
     /// </summary>
+    /// <param name="symbol">The symbol to query.</param>
+    /// <param name="evaluationDate">Optional evaluation date (use LEAN's Time for backtests, null for live trading).</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     Task<decimal> GetAverageVolume30DayAsync(
         string symbol,
+        DateTime? evaluationDate = null,
         CancellationToken cancellationToken = default);
 }

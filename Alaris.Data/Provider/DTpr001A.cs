@@ -72,10 +72,13 @@ public sealed class PolygonApiClient : DTpr003A
 
         // Subscription Limit Validation
         // Stocks Basic / Options Starter: 2 Years Historical Data
-        var minAllowedDate = DateTime.UtcNow.AddYears(-2).Date;
+        // Use endDate as reference point for validation (not wall-clock time)
+        // This allows backtesting to work correctly with simulation dates
+        var referenceDate = endDate > DateTime.UtcNow.Date ? DateTime.UtcNow.Date : endDate;
+        var minAllowedDate = referenceDate.AddYears(-2).Date;
         if (startDate < minAllowedDate)
         {
-            var msg = $"Date range outside subscription limits. Start Date {startDate:yyyy-MM-dd} is older than 2 years (Limit: {minAllowedDate:yyyy-MM-dd}). Upgrade to Stocks Starter for 5 years history.";
+            var msg = $"Date range outside subscription limits. Start Date {startDate:yyyy-MM-dd} is older than 2 years from {referenceDate:yyyy-MM-dd} (Limit: {minAllowedDate:yyyy-MM-dd}). Upgrade to Stocks Starter for 5 years history.";
             _logger.LogError("Date range outside subscription limits. Start Date {StartDate} is older than limit {MinAllowedDate}.", startDate, minAllowedDate);
             throw new ArgumentOutOfRangeException(nameof(startDate), msg);
         }
@@ -151,7 +154,9 @@ public sealed class PolygonApiClient : DTpr003A
             throw new ArgumentException("Symbol cannot be null or whitespace", nameof(symbol));
 
         // Clamp asOfDate to subscription limits (2 years for Options Starter)
-        var twoYearsAgo = DateTime.UtcNow.Date.AddYears(-2).AddDays(1);
+        // Use asOfDate as reference point (allows backtesting with historical dates)
+        var referenceDate = asOfDate > DateTime.UtcNow.Date ? DateTime.UtcNow.Date : asOfDate;
+        var twoYearsAgo = referenceDate.AddYears(-2).AddDays(1);
         var effectiveDate = asOfDate < twoYearsAgo ? twoYearsAgo : asOfDate;
         
         if (asOfDate < twoYearsAgo)
@@ -289,10 +294,12 @@ public sealed class PolygonApiClient : DTpr003A
     /// <inheritdoc/>
     public async Task<decimal> GetAverageVolume30DayAsync(
         string symbol,
+        DateTime? evaluationDate = null,
         CancellationToken cancellationToken = default)
     {
         // Calculate from last 30 days of bars
-        var endDate = DateTime.UtcNow.Date;
+        // Use evaluationDate for backtests, or current date for live trading
+        var endDate = (evaluationDate ?? DateTime.UtcNow).Date;
         var startDate = endDate.AddDays(-30);
 
         var bars = await GetHistoricalBarsAsync(symbol, startDate, endDate, cancellationToken);

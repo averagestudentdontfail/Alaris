@@ -1112,13 +1112,19 @@ public sealed class STLN001A : QCAlgorithm
     /// <summary>
     /// Converts option chain snapshot to term structure points for analysis.
     /// </summary>
+    /// <param name="optionChain">The option chain snapshot.</param>
+    /// <param name="evaluationDate">Optional evaluation date (defaults to snapshot timestamp).</param>
     private IReadOnlyList<STTM001APoint> ConvertToTermStructurePoints(
-        OptionChainSnapshot optionChain)
+        OptionChainSnapshot optionChain,
+        DateTime? evaluationDate = null)
     {
         var points = new List<STTM001APoint>();
         
         if (optionChain?.Contracts == null)
             return points;
+        
+        // Use provided evaluationDate, fallback to snapshot timestamp (already contains simulation time)
+        var referenceDate = (evaluationDate ?? optionChain.Timestamp).Date;
         
         // Group by expiration and calculate average IV at ATM strikes
         var byExpiry = optionChain.Contracts
@@ -1127,7 +1133,7 @@ public sealed class STLN001A : QCAlgorithm
         
         foreach (var group in byExpiry)
         {
-            var daysToExpiry = (group.Key - DateTime.UtcNow.Date).Days;
+            var daysToExpiry = (group.Key - referenceDate).Days;
             if (daysToExpiry <= 0) continue;
             
             // Average IV across ATM options

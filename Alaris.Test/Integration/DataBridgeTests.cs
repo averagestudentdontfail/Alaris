@@ -251,7 +251,7 @@ internal class BridgeTestMarketDataProvider : DTpr003A
         });
     }
 
-    public virtual Task<decimal> GetAverageVolume30DayAsync(string symbol, CancellationToken cancellationToken = default)
+    public virtual Task<decimal> GetAverageVolume30DayAsync(string symbol, DateTime? evaluationDate = null, CancellationToken cancellationToken = default)
         => Task.FromResult(5_000_000m);
 }
 
@@ -279,7 +279,7 @@ internal class BridgeTestMarketDataProviderWithDelay : BridgeTestMarketDataProvi
         return await base.GetOptionChainAsync(symbol, cancellationToken);
     }
 
-    public override async Task<decimal> GetAverageVolume30DayAsync(string symbol, CancellationToken cancellationToken = default)
+    public override async Task<decimal> GetAverageVolume30DayAsync(string symbol, DateTime? evaluationDate = null, CancellationToken cancellationToken = default)
     {
         await Task.Delay(_delay, cancellationToken);
         return 5_000_000m;
