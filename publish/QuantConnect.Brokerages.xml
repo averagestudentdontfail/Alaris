@@ -1,0 +1,2147 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>QuantConnect.Brokerages</name>
+    </assembly>
+    <members>
+        <member name="T:QuantConnect.Brokerages.Authentication.AccessTokenMetaDataRequest">
+            <summary>
+            Represents the base request for obtaining an access token, including brokerage and account information.
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.Authentication.AccessTokenMetaDataRequest.Brokerage">
+            <summary>
+            Gets the name of the brokerage associated with the access token request.
+            The value is normalized to lowercase.
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.Authentication.AccessTokenMetaDataRequest.AccountId">
+            <summary>
+            Gets the account identifier (e.g., account number) associated with the brokerage.
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Authentication.AccessTokenMetaDataRequest.#ctor(System.String,System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:QuantConnect.Brokerages.Authentication.AccessTokenMetaDataRequest"/> class.
+            </summary>
+            <param name="brokerage">The name of the brokerage making the request. Will be normalized to lowercase.</param>
+            <param name="accountId">The account number or identifier associated with the brokerage.</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Authentication.AccessTokenMetaDataRequest.ToJson">
+            <summary>
+            Serializes the request into a compact JSON string with camelCase property naming.
+            </summary>
+            <returns>A JSON string representing the current request.</returns>
+        </member>
+        <member name="T:QuantConnect.Brokerages.Authentication.AccessTokenMetaDataResponse">
+            <summary>
+            Represents a response containing metadata about an access token issued by Lean.
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.Authentication.AccessTokenMetaDataResponse.AccessToken">
+            <summary>
+            Gets the access token provided by Lean.
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.Authentication.AccessTokenMetaDataResponse.TokenType">
+            <summary>
+            Gets the type of the token (e.g., "Bearer").
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.Authentication.AccessTokenMetaDataResponse.Expiration">
+            <summary>
+            Gets the UTC expiration timestamp of the access token, with a 1-minute safety buffer applied.
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Authentication.AccessTokenMetaDataResponse.#ctor(System.String,QuantConnect.Brokerages.Authentication.TokenType,System.DateTime)">
+            <summary>
+            Initializes a new instance of the <see cref="T:QuantConnect.Brokerages.Authentication.AccessTokenMetaDataResponse"/> class.
+            </summary>
+            <param name="accessToken">The access token string provided by the authentication service.</param>
+            <param name="tokenType">The type of the token (e.g., Bearer).</param>
+            <param name="expires">The expiration time of the access token (in UTC), with safety buffer applied.</param>
+        </member>
+        <member name="T:QuantConnect.Brokerages.Authentication.OAuthTokenHandler`2">
+            <summary>
+            Handles OAuth token retrieval and caching by interacting with the Lean platform.
+            Implements retry and expiration logic for secure HTTP communication.
+            </summary>
+            <typeparam name="TRequest">The request type used to acquire the access token.</typeparam>
+            <typeparam name="TResponse">The response type containing access token metadata.</typeparam>
+        </member>
+        <member name="F:QuantConnect.Brokerages.Authentication.OAuthTokenHandler`2._jsonBodyRequest">
+            <summary>
+            The serialized JSON body representing the token request model.
+            </summary>
+        </member>
+        <member name="F:QuantConnect.Brokerages.Authentication.OAuthTokenHandler`2._accessTokenMetaData">
+            <summary>
+            Stores metadata about the Lean access token and its expiration details.
+            </summary>
+        </member>
+        <member name="F:QuantConnect.Brokerages.Authentication.OAuthTokenHandler`2._apiClient">
+            <summary>
+            API client for communicating with the Lean platform.
+            </summary>
+        </member>
+        <member name="F:QuantConnect.Brokerages.Authentication.OAuthTokenHandler`2._tokenCredentials">
+            <summary>
+            Stores the current access token and its type used for authenticating requests to the Lean platform.
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Authentication.OAuthTokenHandler`2.#ctor(QuantConnect.Api.ApiConnection,`0)">
+            <summary>
+            Initializes a new instance of the <see cref="T:QuantConnect.Brokerages.Authentication.OAuthTokenHandler`2"/> class.
+            </summary>
+            <param name="apiClient">The API client used to communicate with the Lean platform.</param>
+            <param name="modelRequest">The request model used to generate the access token.</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Authentication.OAuthTokenHandler`2.GetAccessToken(System.Threading.CancellationToken)">
+            <summary>
+            Retrieves a valid access token from the Lean platform.
+            Caches and reuses tokens until expiration to minimize unnecessary requests.
+            </summary>
+            <param name="cancellationToken">A token used to observe cancellation requests.</param>
+            <returns>A tuple containing the token type and access token string.</returns>
+        </member>
+        <member name="T:QuantConnect.Brokerages.Authentication.TokenCredentials">
+            <summary>
+            Represents credentials required for token-based authentication,
+            including the access token and its type (e.g., Bearer).
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.Authentication.TokenCredentials.TokenType">
+            <summary>
+            Gets the type of the token (e.g., Bearer).
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.Authentication.TokenCredentials.AccessToken">
+            <summary>
+            Gets the token string used for authentication.
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Authentication.TokenCredentials.#ctor(QuantConnect.Brokerages.Authentication.TokenType,System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:QuantConnect.Brokerages.Authentication.TokenCredentials"/> class.
+            </summary>
+            <param name="tokenType">The type of the token.</param>
+            <param name="accessToken">The token string.</param>
+        </member>
+        <member name="T:QuantConnect.Brokerages.Authentication.TokenHandler">
+            <summary>
+            Provides base functionality for token-based HTTP request handling, 
+            including automatic retries and token refresh on unauthorized responses.
+            </summary>
+        </member>
+        <member name="F:QuantConnect.Brokerages.Authentication.TokenHandler._maxRetryCount">
+            <summary>
+            The maximum number of retry attempts for an authenticated request.
+            </summary>
+        </member>
+        <member name="F:QuantConnect.Brokerages.Authentication.TokenHandler._retryInterval">
+            <summary>
+            The time interval to wait between retry attempts for an authenticated request.
+            </summary>
+        </member>
+        <member name="F:QuantConnect.Brokerages.Authentication.TokenHandler._createAuthHeader">
+            <summary>
+            A delegate used to construct an <see cref="T:System.Net.Http.Headers.AuthenticationHeaderValue"/> from a token type and access token string.
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Authentication.TokenHandler.#ctor(System.Func{QuantConnect.Brokerages.Authentication.TokenType,System.String,System.Net.Http.Headers.AuthenticationHeaderValue},System.Nullable{System.TimeSpan})">
+            <summary>
+            Initializes a new instance of the <see cref="T:QuantConnect.Brokerages.Authentication.TokenHandler"/> class.
+            </summary>
+            <param name="createAuthHeader">
+            An optional delegate for creating an <see cref="T:System.Net.Http.Headers.AuthenticationHeaderValue"/> 
+            from the token type and access token. If not provided, a default implementation is used.
+            </param>
+            <param name="retryInterval">
+            An optional time interval to wait between retry attempts when fetching the token or retrying a failed request.
+            If <c>null</c>, the default interval of 5 seconds is used.
+            </param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Authentication.TokenHandler.GetAccessToken(System.Threading.CancellationToken)">
+            <summary>
+            Retrieves a valid access token for authenticating HTTP requests.
+            Must be implemented by derived classes to provide token type and value,
+            with optional support for caching and refresh logic.
+            </summary>
+            <param name="cancellationToken">A cancellation token that can be used to cancel the token retrieval operation.</param>
+            <returns>
+            A <see cref="T:QuantConnect.Brokerages.Authentication.TokenCredentials"/> instance containing the token type and access token string.
+            </returns>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Authentication.TokenHandler.SendAsync(System.Net.Http.HttpRequestMessage,System.Threading.CancellationToken)">
+            <summary>
+            Sends an HTTP request asynchronously by internally invoking the synchronous <see cref="M:QuantConnect.Brokerages.Authentication.TokenHandler.Send(System.Net.Http.HttpRequestMessage,System.Threading.CancellationToken)"/> method.
+            This is useful for compatibility with components that require an asynchronous pipeline, even though the core logic is synchronous.
+            </summary>
+            <param name="request">The HTTP request message to send.</param>
+            <param name="cancellationToken">A cancellation token to cancel the operation.</param>
+            <returns>
+            A task representing the asynchronous operation, containing the HTTP response message.
+            </returns>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Authentication.TokenHandler.Send(System.Net.Http.HttpRequestMessage,System.Threading.CancellationToken)">
+            <summary>
+            Sends an HTTP request synchronously with retry support.
+            This override includes token-based authentication and refresh logic on 401 Unauthorized responses.
+            </summary>
+            <param name="request">The HTTP request message to send.</param>
+            <param name="cancellationToken">A cancellation token to cancel operation.</param>
+            <returns>The HTTP response message.</returns>
+        </member>
+        <member name="T:QuantConnect.Brokerages.Authentication.TokenType">
+            <summary>
+            Defines the supported types of access tokens used for authentication.
+            </summary>
+        </member>
+        <member name="F:QuantConnect.Brokerages.Authentication.TokenType.Bearer">
+            <summary>
+            A Bearer token, typically used for standard HTTP Authorization headers.
+            </summary>
+        </member>
+        <member name="F:QuantConnect.Brokerages.Authentication.TokenType.SessionToken">
+            <summary>
+            A Session token, typically used for username/password authorization headers.
+            </summary>
+        </member>
+        <member name="T:QuantConnect.Brokerages.Backtesting.BacktestingBrokerage">
+            <summary>
+            Represents a brokerage to be used during backtesting. This is intended to be only be used with the BacktestingTransactionHandler
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.Backtesting.BacktestingBrokerage.Algorithm">
+            <summary>
+            This is the algorithm under test
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Backtesting.BacktestingBrokerage.#ctor(QuantConnect.Interfaces.IAlgorithm)">
+            <summary>
+            Creates a new BacktestingBrokerage for the specified algorithm
+            </summary>
+            <param name="algorithm">The algorithm instance</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Backtesting.BacktestingBrokerage.#ctor(QuantConnect.Interfaces.IAlgorithm,System.String)">
+            <summary>
+            Creates a new BacktestingBrokerage for the specified algorithm
+            </summary>
+            <param name="algorithm">The algorithm instance</param>
+            <param name="name">The name of the brokerage</param>
+        </member>
+        <member name="P:QuantConnect.Brokerages.Backtesting.BacktestingBrokerage.IsConnected">
+            <summary>
+            Gets the connection status
+            </summary>
+            <remarks>
+            The BacktestingBrokerage is always connected
+            </remarks>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Backtesting.BacktestingBrokerage.GetOpenOrders">
+            <summary>
+            Gets all open orders on the account
+            </summary>
+            <returns>The open orders returned from IB</returns>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Backtesting.BacktestingBrokerage.GetAccountHoldings">
+            <summary>
+            Gets all holdings for the account
+            </summary>
+            <returns>The current holdings from the account</returns>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Backtesting.BacktestingBrokerage.GetCashBalance">
+            <summary>
+            Gets the current cash balance for each currency held in the brokerage account
+            </summary>
+            <returns>The current cash balance for each currency available for trading</returns>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Backtesting.BacktestingBrokerage.PlaceOrder(QuantConnect.Orders.Order)">
+            <summary>
+            Places a new order and assigns a new broker ID to the order
+            </summary>
+            <param name="order">The order to be placed</param>
+            <returns>True if the request for a new order has been placed, false otherwise</returns>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Backtesting.BacktestingBrokerage.UpdateOrder(QuantConnect.Orders.Order)">
+            <summary>
+            Updates the order with the same ID
+            </summary>
+            <param name="order">The new order information</param>
+            <returns>True if the request was made for the order to be updated, false otherwise</returns>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Backtesting.BacktestingBrokerage.CancelOrder(QuantConnect.Orders.Order)">
+            <summary>
+            Cancels the order with the specified ID
+            </summary>
+            <param name="order">The order to cancel</param>
+            <returns>True if the request was made for the order to be canceled, false otherwise</returns>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Backtesting.BacktestingBrokerage.Scan">
+            <summary>
+            Scans all the outstanding orders and applies the algorithm model fills to generate the order events
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Backtesting.BacktestingBrokerage.OnOrderUpdated(QuantConnect.Orders.Order)">
+            <summary>
+            Invokes the <see cref="M:QuantConnect.Brokerages.Brokerage.OnOrderUpdated(QuantConnect.Orders.OrderUpdateEvent)" /> event with the given order updates.
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Backtesting.BacktestingBrokerage.ProcessAssignmentOrders">
+            <summary>
+            Helper method to drive option assignment models
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Backtesting.BacktestingBrokerage.OnOrderEvents(System.Collections.Generic.List{QuantConnect.Orders.OrderEvent})">
+            <summary>
+            Event invocator for the OrderFilled event
+            </summary>
+            <param name="orderEvents">The list of order events</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Backtesting.BacktestingBrokerage.Connect">
+            <summary>
+            The BacktestingBrokerage is always connected. This is a no-op.
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Backtesting.BacktestingBrokerage.Disconnect">
+            <summary>
+            The BacktestingBrokerage is always connected. This is a no-op.
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Backtesting.BacktestingBrokerage.SetPendingOrder(QuantConnect.Orders.Order)">
+            <summary>
+            Sets the pending order as a clone to prevent object reference nastiness
+            </summary>
+            <param name="order">The order to be added to the pending orders dictionary</param>
+            <returns></returns>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Backtesting.BacktestingBrokerage.ProcessDelistings(QuantConnect.Data.Market.Delistings)">
+            <summary>
+            Process delistings
+            </summary>
+            <param name="delistings">Delistings to process</param>
+        </member>
+        <member name="T:QuantConnect.Brokerages.Backtesting.BacktestingBrokerageFactory">
+            <summary>
+            Factory type for the <see cref="T:QuantConnect.Brokerages.Backtesting.BacktestingBrokerage"/>
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.Backtesting.BacktestingBrokerageFactory.BrokerageData">
+            <summary>
+            Gets the brokerage data required to run the IB brokerage from configuration
+            </summary>
+            <remarks>
+            The implementation of this property will create the brokerage data dictionary required for
+            running live jobs. See <see cref="M:QuantConnect.Interfaces.IJobQueueHandler.NextJob(System.String@)"/>
+            </remarks>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Backtesting.BacktestingBrokerageFactory.GetBrokerageModel(QuantConnect.Securities.IOrderProvider)">
+            <summary>
+            Gets a new instance of the <see cref="T:QuantConnect.Brokerages.InteractiveBrokersBrokerageModel"/>
+            </summary>
+            <param name="orderProvider">The order provider</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Backtesting.BacktestingBrokerageFactory.CreateBrokerage(QuantConnect.Packets.LiveNodePacket,QuantConnect.Interfaces.IAlgorithm)">
+            <summary>
+            Creates a new IBrokerage instance
+            </summary>
+            <param name="job">The job packet to create the brokerage for</param>
+            <param name="algorithm">The algorithm instance</param>
+            <returns>A new brokerage instance</returns>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Backtesting.BacktestingBrokerageFactory.Dispose">
+            <summary>
+            Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.
+            </summary>
+            <filterpriority>2</filterpriority>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Backtesting.BacktestingBrokerageFactory.#ctor">
+             <summary>
+            Initializes a new instance of the <see cref="T:QuantConnect.Brokerages.Backtesting.BacktestingBrokerageFactory"/> class
+             </summary>
+        </member>
+        <member name="T:QuantConnect.Brokerages.BaseWebsocketsBrokerage">
+            <summary>
+            Provides shared brokerage websockets implementation
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.BaseWebsocketsBrokerage.IsInitialized">
+            <summary>
+            True if the current brokerage is already initialized
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.BaseWebsocketsBrokerage.WebSocket">
+            <summary>
+            The websockets client instance
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.BaseWebsocketsBrokerage.RestClient">
+            <summary>
+            The rest client instance
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.BaseWebsocketsBrokerage.JsonSettings">
+            <summary>
+            standard json parsing settings
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.BaseWebsocketsBrokerage.CachedOrderIDs">
+            <summary>
+            A list of currently active orders
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.BaseWebsocketsBrokerage.ApiSecret">
+            <summary>
+            The api secret
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.BaseWebsocketsBrokerage.ApiKey">
+            <summary>
+            The api key
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.BaseWebsocketsBrokerage.SubscriptionManager">
+            <summary>
+            Count subscribers for each (symbol, tickType) combination
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.BaseWebsocketsBrokerage.Initialize(System.String,QuantConnect.Brokerages.IWebSocket,RestSharp.IRestClient,System.String,System.String)">
+            <summary>
+            Initialize the instance of this class
+            </summary>
+            <param name="wssUrl">The web socket base url</param>
+            <param name="websocket">instance of websockets client</param>
+            <param name="restClient">instance of rest client</param>
+            <param name="apiKey">api key</param>
+            <param name="apiSecret">api secret</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.BaseWebsocketsBrokerage.#ctor(System.String)">
+            <summary>
+            Creates an instance of a websockets brokerage
+            </summary>
+            <param name="name">Name of brokerage</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.BaseWebsocketsBrokerage.OnMessage(System.Object,QuantConnect.Brokerages.WebSocketMessage)">
+            <summary>
+            Handles websocket received messages
+            </summary>
+            <param name="sender"></param>
+            <param name="e"></param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.BaseWebsocketsBrokerage.Connect">
+            <summary>
+            Creates wss connection, monitors for disconnection and re-connects when necessary
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.BaseWebsocketsBrokerage.Subscribe(System.Collections.Generic.IEnumerable{QuantConnect.Symbol})">
+            <summary>
+            Handles the creation of websocket subscriptions
+            </summary>
+            <param name="symbols"></param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.BaseWebsocketsBrokerage.GetSubscribed">
+            <summary>
+            Gets a list of current subscriptions
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:QuantConnect.Brokerages.BaseWebsocketsBrokerage.ConnectSync">
+            <summary>
+            Start websocket connect
+            </summary>
+        </member>
+        <member name="T:QuantConnect.Brokerages.BestBidAskUpdatedEventArgs">
+            <summary>
+            Event arguments class for the <see cref="E:QuantConnect.Brokerages.DefaultOrderBook.BestBidAskUpdated"/> event
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.BestBidAskUpdatedEventArgs.Symbol">
+            <summary>
+            Gets the new best bid price
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.BestBidAskUpdatedEventArgs.BestBidPrice">
+            <summary>
+            Gets the new best bid price
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.BestBidAskUpdatedEventArgs.BestBidSize">
+            <summary>
+            Gets the new best bid size
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.BestBidAskUpdatedEventArgs.BestAskPrice">
+            <summary>
+            Gets the new best ask price
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.BestBidAskUpdatedEventArgs.BestAskSize">
+            <summary>
+            Gets the new best ask size
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.BestBidAskUpdatedEventArgs.#ctor(QuantConnect.Symbol,System.Decimal,System.Decimal,System.Decimal,System.Decimal)">
+            <summary>
+            Initializes a new instance of the <see cref="T:QuantConnect.Brokerages.BestBidAskUpdatedEventArgs"/> class
+            </summary>
+            <param name="symbol">The symbol</param>
+            <param name="bestBidPrice">The newly updated best bid price</param>
+            <param name="bestBidSize">>The newly updated best bid size</param>
+            <param name="bestAskPrice">The newly updated best ask price</param>
+            <param name="bestAskSize">The newly updated best ask size</param>
+        </member>
+        <member name="T:QuantConnect.Brokerages.Brokerage">
+            <summary>
+            Represents the base Brokerage implementation. This provides logging on brokerage events.
+            </summary>
+        </member>
+        <member name="E:QuantConnect.Brokerages.Brokerage.OrderIdChanged">
+            <summary>
+            Event that fires each time the brokerage order id changes
+            </summary>
+        </member>
+        <member name="E:QuantConnect.Brokerages.Brokerage.OrdersStatusChanged">
+            <summary>
+            Event that fires each time the status for a list of orders change
+            </summary>
+        </member>
+        <member name="E:QuantConnect.Brokerages.Brokerage.OrderUpdated">
+            <summary>
+            Event that fires each time an order is updated in the brokerage side
+            </summary>
+            <remarks>
+            These are not status changes but mainly price changes, like the stop price of a trailing stop order
+            </remarks>
+        </member>
+        <member name="E:QuantConnect.Brokerages.Brokerage.OptionPositionAssigned">
+            <summary>
+            Event that fires each time a short option position is assigned
+            </summary>
+        </member>
+        <member name="E:QuantConnect.Brokerages.Brokerage.OptionNotification">
+            <summary>
+            Event that fires each time an option position has changed
+            </summary>
+        </member>
+        <member name="E:QuantConnect.Brokerages.Brokerage.NewBrokerageOrderNotification">
+            <summary>
+            Event that fires each time there's a brokerage side generated order
+            </summary>
+        </member>
+        <member name="E:QuantConnect.Brokerages.Brokerage.DelistingNotification">
+            <summary>
+            Event that fires each time a delisting occurs
+            </summary>
+        </member>
+        <member name="E:QuantConnect.Brokerages.Brokerage.AccountChanged">
+            <summary>
+            Event that fires each time a user's brokerage account is changed
+            </summary>
+        </member>
+        <member name="E:QuantConnect.Brokerages.Brokerage.Message">
+            <summary>
+            Event that fires when an error is encountered in the brokerage
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.Brokerage.Name">
+            <summary>
+            Gets the name of the brokerage
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.Brokerage.IsConnected">
+            <summary>
+            Returns true if we're currently connected to the broker
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.Brokerage.ConcurrencyEnabled">
+            <summary>
+            Enables or disables concurrent processing of messages to and from the brokerage.
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Brokerage.#ctor(System.String)">
+            <summary>
+            Creates a new Brokerage instance with the specified name
+            </summary>
+            <param name="name">The name of the brokerage</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Brokerage.PlaceOrder(QuantConnect.Orders.Order)">
+            <summary>
+            Places a new order and assigns a new broker ID to the order
+            </summary>
+            <param name="order">The order to be placed</param>
+            <returns>True if the request for a new order has been placed, false otherwise</returns>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Brokerage.UpdateOrder(QuantConnect.Orders.Order)">
+            <summary>
+            Updates the order with the same id
+            </summary>
+            <param name="order">The new order information</param>
+            <returns>True if the request was made for the order to be updated, false otherwise</returns>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Brokerage.CancelOrder(QuantConnect.Orders.Order)">
+            <summary>
+            Cancels the order with the specified ID
+            </summary>
+            <param name="order">The order to cancel</param>
+            <returns>True if the request was made for the order to be canceled, false otherwise</returns>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Brokerage.Connect">
+            <summary>
+            Connects the client to the broker's remote servers
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Brokerage.Disconnect">
+            <summary>
+            Disconnects the client from the broker's remote servers
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Brokerage.Dispose">
+            <summary>
+            Dispose of the brokerage instance
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Brokerage.OnOrderEvents(System.Collections.Generic.List{QuantConnect.Orders.OrderEvent})">
+            <summary>
+            Event invocator for the OrderFilled event
+            </summary>
+            <param name="orderEvents">The list of order events</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Brokerage.OnOrderEvent(QuantConnect.Orders.OrderEvent)">
+            <summary>
+            Event invocator for the OrderFilled event
+            </summary>
+            <param name="e">The order event</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Brokerage.OnOrderUpdated(QuantConnect.Orders.OrderUpdateEvent)">
+            <summary>
+            Event invocator for the OrderUpdated event
+            </summary>
+            <param name="e">The update event</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Brokerage.OnOrderIdChangedEvent(QuantConnect.Orders.BrokerageOrderIdChangedEvent)">
+            <summary>
+            Event invocator for the OrderIdChanged event
+            </summary>
+            <param name="e">The BrokerageOrderIdChangedEvent</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Brokerage.OnOptionPositionAssigned(QuantConnect.Orders.OrderEvent)">
+            <summary>
+            Event invocator for the OptionPositionAssigned event
+            </summary>
+            <param name="e">The OrderEvent</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Brokerage.OnOptionNotification(QuantConnect.Brokerages.OptionNotificationEventArgs)">
+            <summary>
+            Event invocator for the OptionNotification event
+            </summary>
+            <param name="e">The OptionNotification event arguments</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Brokerage.OnNewBrokerageOrderNotification(QuantConnect.Brokerages.NewBrokerageOrderNotificationEventArgs)">
+            <summary>
+            Event invocator for the NewBrokerageOrderNotification event
+            </summary>
+            <param name="e">The NewBrokerageOrderNotification event arguments</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Brokerage.OnDelistingNotification(QuantConnect.Brokerages.DelistingNotificationEventArgs)">
+            <summary>
+            Event invocator for the DelistingNotification event
+            </summary>
+            <param name="e">The DelistingNotification event arguments</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Brokerage.OnAccountChanged(QuantConnect.Securities.AccountEvent)">
+            <summary>
+            Event invocator for the AccountChanged event
+            </summary>
+            <param name="e">The AccountEvent</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Brokerage.OnMessage(QuantConnect.Brokerages.BrokerageMessageEvent)">
+            <summary>
+            Event invocator for the Message event
+            </summary>
+            <param name="e">The error</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Brokerage.GetAccountHoldings(System.Collections.Generic.Dictionary{System.String,System.String},System.Collections.Generic.IEnumerable{QuantConnect.Securities.Security})">
+            <summary>
+            Helper method that will try to get the live holdings from the provided brokerage data collection else will default to the algorithm state
+            </summary>
+            <remarks>Holdings will removed from the provided collection on the first call, since this method is expected to be called only
+            once on initialize, after which the algorithm should use Lean accounting</remarks>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Brokerage.GetCashBalance(System.Collections.Generic.Dictionary{System.String,System.String},QuantConnect.Securities.CashBook)">
+            <summary>
+            Helper method that will try to get the live cash balance from the provided brokerage data collection else will default to the algorithm state
+            </summary>
+            <remarks>Cash balance will removed from the provided collection on the first call, since this method is expected to be called only
+            once on initialize, after which the algorithm should use Lean accounting</remarks>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Brokerage.GetOpenOrders">
+            <summary>
+            Gets all open orders on the account.
+            NOTE: The order objects returned do not have QC order IDs.
+            </summary>
+            <returns>The open orders returned from IB</returns>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Brokerage.GetAccountHoldings">
+            <summary>
+            Gets all holdings for the account
+            </summary>
+            <returns>The current holdings from the account</returns>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Brokerage.GetCashBalance">
+            <summary>
+            Gets the current cash balance for each currency held in the brokerage account
+            </summary>
+            <returns>The current cash balance for each currency available for trading</returns>
+        </member>
+        <member name="P:QuantConnect.Brokerages.Brokerage.AccountInstantlyUpdated">
+            <summary>
+            Specifies whether the brokerage will instantly update account balances
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.Brokerage.AccountBaseCurrency">
+            <summary>
+            Returns the brokerage account's base currency
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Brokerage.GetHistory(QuantConnect.Data.HistoryRequest)">
+            <summary>
+            Gets the history for the requested security
+            </summary>
+            <param name="request">The historical data request</param>
+            <returns>An enumerable of bars covering the span specified in the request</returns>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Brokerage.GetOrderPosition(QuantConnect.Orders.OrderDirection,System.Decimal)">
+            <summary>
+            Gets the position that might result given the specified order direction and the current holdings quantity.
+            This is useful for brokerages that require more specific direction information than provided by the OrderDirection enum
+            (e.g. Tradier differentiates Buy/Sell and BuyToOpen/BuyToCover/SellShort/SellToClose)
+            </summary>
+            <param name="orderDirection">The order direction</param>
+            <param name="holdingsQuantity">The current holdings quantity</param>
+            <returns>The order position</returns>
+        </member>
+        <member name="P:QuantConnect.Brokerages.Brokerage.LastSyncDate">
+            <summary>
+            Gets the date of the last sync (New York time zone)
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.Brokerage.LastSyncDateTimeUtc">
+            <summary>
+            Gets the datetime of the last sync (UTC)
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Brokerage.ShouldPerformCashSync(System.DateTime)">
+            <summary>
+            Returns whether the brokerage should perform the cash synchronization
+            </summary>
+            <param name="currentTimeUtc">The current time (UTC)</param>
+            <returns>True if the cash sync should be performed</returns>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Brokerage.PerformCashSync(QuantConnect.Interfaces.IAlgorithm,System.DateTime,System.Func{System.TimeSpan})">
+            <summary>
+            Synchronizes the cashbook with the brokerage account
+            </summary>
+            <param name="algorithm">The algorithm instance</param>
+            <param name="currentTimeUtc">The current time (UTC)</param>
+            <param name="getTimeSinceLastFill">A function which returns the time elapsed since the last fill</param>
+            <returns>True if the cash sync was performed successfully</returns>
+        </member>
+        <member name="F:QuantConnect.Brokerages.Brokerage._leanOrderByBrokerageCrossingOrders">
+            <summary>
+            A dictionary to store the relationship between brokerage crossing orders and Lean orer id.
+            </summary>
+        </member>
+        <member name="F:QuantConnect.Brokerages.Brokerage._lockCrossZeroObject">
+            <summary>
+            An object used to lock the critical section in the <see cref="M:QuantConnect.Brokerages.Brokerage.TryGetOrRemoveCrossZeroOrder(System.String,QuantConnect.Orders.OrderStatus,QuantConnect.Orders.Order@)"/> method,
+            ensuring thread safety when accessing the order collection.
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.Brokerage.LeanOrderByZeroCrossBrokerageOrderId">
+            <summary>
+            A thread-safe dictionary that maps brokerage order IDs to their corresponding Order objects.
+            </summary>
+            <remarks>
+            This ConcurrentDictionary is used to maintain a mapping between Zero Cross brokerage order IDs and Lean Order objects. 
+            The dictionary is protected and read-only, ensuring that it can only be modified by the class that declares it and cannot 
+            be assigned a new instance after initialization.
+            </remarks>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Brokerage.PlaceCrossZeroOrder(QuantConnect.Brokerages.CrossZero.CrossZeroFirstOrderRequest,System.Boolean)">
+            <summary>
+            Places an order that crosses zero (transitions from a short position to a long position or vice versa) and returns the response.
+            This method should be overridden in a derived class to implement brokerage-specific logic for placing such orders.
+            </summary>
+            <param name="crossZeroOrderRequest">The request object containing details of the cross zero order to be placed.</param>
+            <param name="isPlaceOrderWithLeanEvent">
+            A boolean indicating whether the order should be placed with triggering a Lean event. 
+            Default is <c>true</c>, meaning Lean events will be triggered.
+            </param>
+            <returns>
+            A <see cref="T:QuantConnect.Brokerages.CrossZero.CrossZeroOrderResponse"/> object indicating the result of the order placement.
+            </returns>
+            <exception cref="T:System.NotImplementedException">
+            Thrown if the method is not overridden in a derived class.
+            </exception>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Brokerage.TryCrossZeroPositionOrder(QuantConnect.Orders.Order,System.Decimal)">
+            <summary>
+            Attempts to place an order that may cross the zero position. 
+            If the order needs to be split into two parts due to crossing zero, 
+            this method handles the split and placement accordingly.
+            </summary>
+            <param name="order">The order to be placed. Must not be <c>null</c>.</param>
+            <param name="holdingQuantity">The current holding quantity of the order's symbol.</param>
+            <returns>
+            <para><c>true</c> if the order crosses zero and the first part was successfully placed;</para>
+            <para><c>false</c> if the first part of the order could not be placed;</para>
+            <para><c>null</c> if the order does not cross zero.</para>
+            </returns>
+            <exception cref="T:System.ArgumentNullException">
+            Thrown if <paramref name="order"/> is <c>null</c>.
+            </exception>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Brokerage.TryGetUpdateCrossZeroOrderQuantity(QuantConnect.Orders.Order,System.Decimal@)">
+            <summary>
+            Determines whether the given Lean order crosses zero quantity based on the initial order quantity.
+            </summary>
+            <param name="leanOrder">The Lean order to check.</param>
+            <param name="quantity">The quantity to be updated based on whether the order crosses zero.</param>
+            <returns>
+            <c>true</c> if the Lean order does not cross zero quantity; otherwise, <c>false</c>.
+            </returns>
+            <exception cref="T:System.ArgumentNullException">Thrown when the <paramref name="leanOrder"/> is null.</exception>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Brokerage.TryGetOrRemoveCrossZeroOrder(System.String,QuantConnect.Orders.OrderStatus,QuantConnect.Orders.Order@)">
+            <summary>
+            Attempts to retrieve or remove a cross-zero order based on the brokerage order ID and its filled status.
+            </summary>
+            <param name="brokerageOrderId">The unique identifier of the brokerage order.</param>
+            <param name="leanOrderStatus">The updated status of the order received from the brokerage</param>
+            <param name="leanOrder">
+            When this method returns, contains the <see cref="T:QuantConnect.Orders.Order"/> object associated with the given brokerage order ID,
+            if the operation was successful; otherwise, null.
+            This parameter is passed uninitialized.
+            </param>
+            <returns>
+            <c>true</c> if the method successfully retrieves or removes the order; otherwise, <c>false</c>.
+            </returns>
+            <remarks>
+            The method locks on a private object to ensure thread safety while accessing the collection of orders.
+            If the order is filled, it is removed from the collection. If the order is partially filled,
+            it is retrieved but not removed. If the order is not found, the method returns <c>false</c>.
+            </remarks>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Brokerage.TryHandleRemainingCrossZeroOrder(QuantConnect.Orders.Order,QuantConnect.Orders.OrderEvent)">
+            <summary>
+            Attempts to handle any remaining orders that cross the zero boundary.
+            </summary>
+            <param name="leanOrder">The order object that needs to be processed.</param>
+            <param name="orderEvent">The event object containing order event details.</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Brokerage.GetQuantityOnCrossPosition(System.Decimal,System.Decimal)">
+            <summary>
+            Calculates the quantities needed to close the current position and establish a new position based on the provided order.
+            </summary>
+            <param name="holdingQuantity">The quantity currently held in the position that needs to be closed.</param>
+            <param name="orderQuantity">The quantity defined in the new order to be established.</param>
+            <returns>
+            A tuple containing:
+            <list type="bullet">
+            <item>
+            <description>The quantity needed to close the current position (negative value).</description>
+            </item>
+            <item>
+            <description>The quantity needed to establish the new position.</description>
+            </item>
+            </list>
+            </returns>
+        </member>
+        <member name="T:QuantConnect.Brokerages.BrokerageConcurrentMessageHandler`1">
+            <summary>
+            Brokerage helper class to lock message stream while executing an action, for example placing an order
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.BrokerageConcurrentMessageHandler`1.#ctor(System.Action{`0})">
+            <summary>
+            Creates a new instance
+            </summary>
+            <param name="processMessages">The action to call for each new message</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.BrokerageConcurrentMessageHandler`1.#ctor(System.Action{`0},System.Boolean)">
+            <summary>
+            Creates a new instance
+            </summary>
+            <param name="processMessages">The action to call for each new message</param>
+            <param name="concurrencyEnabled">Whether to enable concurrent order submission</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.BrokerageConcurrentMessageHandler`1.Dispose">
+            <summary>
+            Disposes of the resources used by this instance
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.BrokerageConcurrentMessageHandler`1.HandleNewMessage(`0)">
+            <summary>
+            Will process or enqueue a message for later processing it
+            </summary>
+            <param name="message">The new message</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.BrokerageConcurrentMessageHandler`1.WithLockedStream(System.Action)">
+            <summary>
+            Lock the streaming processing while we're sending orders as sometimes they fill before the call returns.
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.BrokerageConcurrentMessageHandler`1.ProcessMessages(`0)">
+            <summary>
+            Process any pending message and the provided one if any
+            </summary>
+            <remarks>To be called owing the stream lock</remarks>
+        </member>
+        <member name="T:QuantConnect.Brokerages.BrokerageConcurrentMessageHandler`1.ReaderWriterLockWrapper">
+             <summary>
+             A simple reader/writer lock implementation that allows us to switch the meaning of read and write locks
+             so that it can be used for single reader and multiple writers scenario.
+            
+             We want to allow multiple producers so, for example, a brokerage can be placing multiple orders concurrently,
+             since the transaction handler can have multiple threads processing orders.
+             But, on the other side, we need to ensure that messages are processed only when no producers are writing
+             to the stream (hence only one reader). For example, a brokerage needs the to lock the stream and
+             only handle incoming order event messages after it releases the lock, but we now support multiple streams
+             (so multiple orders) so we wait for all the current producers to release the lock before processing any messages.
+             </summary>
+        </member>
+        <member name="T:QuantConnect.Brokerages.BrokerageException">
+            <summary>
+            Represents an error retuned from a broker's server
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.BrokerageException.#ctor(System.String)">
+            <summary>
+            Creates a new BrokerageException with the specified message.
+            </summary>
+            <param name="message">The error message that explains the reason for the exception.</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.BrokerageException.#ctor(System.String,System.Exception)">
+            <summary>
+            Creates a new BrokerageException with the specified message.
+            </summary>
+            <param name="message">The error message that explains the reason for the exception.</param>
+            <param name="inner">The exception that is the cause of the current exception, or a null reference (Nothing in Visual Basic) if no inner exception is specified.</param>
+        </member>
+        <member name="T:QuantConnect.Brokerages.BrokerageFactory">
+            <summary>
+            Provides a base implementation of IBrokerageFactory that provides a helper for reading data from a job's brokerage data dictionary
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.BrokerageFactory.Dispose">
+            <summary>
+            Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.
+            </summary>
+            <filterpriority>2</filterpriority>
+        </member>
+        <member name="P:QuantConnect.Brokerages.BrokerageFactory.BrokerageType">
+            <summary>
+            Gets the type of brokerage produced by this factory
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.BrokerageFactory.BrokerageData">
+            <summary>
+            Gets the brokerage data required to run the brokerage from configuration/disk
+            </summary>
+            <remarks>
+            The implementation of this property will create the brokerage data dictionary required for
+            running live jobs. See <see cref="M:QuantConnect.Interfaces.IJobQueueHandler.NextJob(System.String@)"/>
+            </remarks>
+        </member>
+        <member name="M:QuantConnect.Brokerages.BrokerageFactory.GetBrokerageModel(QuantConnect.Securities.IOrderProvider)">
+            <summary>
+            Gets a brokerage model that can be used to model this brokerage's unique behaviors
+            </summary>
+            <param name="orderProvider">The order provider</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.BrokerageFactory.CreateBrokerage(QuantConnect.Packets.LiveNodePacket,QuantConnect.Interfaces.IAlgorithm)">
+            <summary>
+            Creates a new IBrokerage instance
+            </summary>
+            <param name="job">The job packet to create the brokerage for</param>
+            <param name="algorithm">The algorithm instance</param>
+            <returns>A new brokerage instance</returns>
+        </member>
+        <member name="M:QuantConnect.Brokerages.BrokerageFactory.CreateBrokerageMessageHandler(QuantConnect.Interfaces.IAlgorithm,QuantConnect.Packets.AlgorithmNodePacket,QuantConnect.Interfaces.IApi)">
+            <summary>
+            Gets a brokerage message handler
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.BrokerageFactory.#ctor(System.Type)">
+            <summary>
+            Initializes a new instance of the <see cref="T:QuantConnect.Brokerages.BrokerageFactory"/> class for the specified <paramref name="brokerageType"/>
+            </summary>
+            <param name="brokerageType">The type of brokerage created by this factory</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.BrokerageFactory.Read``1(System.Collections.Generic.IReadOnlyDictionary{System.String,System.String},System.String,System.Collections.Generic.ICollection{System.String})">
+            <summary>
+            Reads a value from the brokerage data, adding an error if the key is not found
+            </summary>
+        </member>
+        <member name="T:QuantConnect.Brokerages.BrokerageMultiWebSocketEntry">
+            <summary>
+            Helper class for <see cref="T:QuantConnect.Brokerages.BrokerageMultiWebSocketSubscriptionManager"/>
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.BrokerageMultiWebSocketEntry.WebSocket">
+            <summary>
+            Gets the web socket instance
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.BrokerageMultiWebSocketEntry.TotalWeight">
+            <summary>
+            Gets the sum of symbol weights for this web socket
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.BrokerageMultiWebSocketEntry.SymbolCount">
+            <summary>
+            Gets the number of symbols subscribed
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.BrokerageMultiWebSocketEntry.Contains(QuantConnect.Symbol)">
+            <summary>
+            Returns whether the symbol is subscribed
+            </summary>
+            <param name="symbol"></param>
+            <returns></returns>
+        </member>
+        <member name="P:QuantConnect.Brokerages.BrokerageMultiWebSocketEntry.Symbols">
+            <summary>
+            Returns the list of subscribed symbols
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:QuantConnect.Brokerages.BrokerageMultiWebSocketEntry.#ctor(System.Collections.Generic.Dictionary{QuantConnect.Symbol,System.Int32},QuantConnect.Brokerages.IWebSocket)">
+            <summary>
+            Initializes a new instance of the <see cref="T:QuantConnect.Brokerages.BrokerageMultiWebSocketEntry"/> class
+            </summary>
+            <param name="symbolWeights">A dictionary of symbol weights</param>
+            <param name="webSocket">The web socket instance</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.BrokerageMultiWebSocketEntry.#ctor(QuantConnect.Brokerages.IWebSocket)">
+            <summary>
+            Initializes a new instance of the <see cref="T:QuantConnect.Brokerages.BrokerageMultiWebSocketEntry"/> class
+            </summary>
+            <param name="webSocket">The web socket instance</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.BrokerageMultiWebSocketEntry.AddSymbol(QuantConnect.Symbol)">
+            <summary>
+            Adds a symbol to the entry
+            </summary>
+            <param name="symbol">The symbol to add</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.BrokerageMultiWebSocketEntry.RemoveSymbol(QuantConnect.Symbol)">
+            <summary>
+            Removes a symbol from the entry
+            </summary>
+            <param name="symbol">The symbol to remove</param>
+        </member>
+        <member name="T:QuantConnect.Brokerages.BrokerageMultiWebSocketSubscriptionManager">
+            <summary>
+            Handles brokerage data subscriptions with multiple websocket connections, with optional symbol weighting
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.BrokerageMultiWebSocketSubscriptionManager.#ctor(System.String,System.Int32,System.Int32,System.Collections.Generic.Dictionary{QuantConnect.Symbol,System.Int32},System.Func{QuantConnect.Brokerages.WebSocketClientWrapper},System.Func{QuantConnect.Brokerages.IWebSocket,QuantConnect.Symbol,System.Boolean},System.Func{QuantConnect.Brokerages.IWebSocket,QuantConnect.Symbol,System.Boolean},System.Action{QuantConnect.Brokerages.WebSocketMessage},System.TimeSpan,QuantConnect.Util.RateGate)">
+            <summary>
+            Initializes a new instance of the <see cref="T:QuantConnect.Brokerages.BrokerageMultiWebSocketSubscriptionManager"/> class
+            </summary>
+            <param name="webSocketUrl">The URL for websocket connections</param>
+            <param name="maximumSymbolsPerWebSocket">The maximum number of symbols per websocket connection</param>
+            <param name="maximumWebSocketConnections">The maximum number of websocket connections allowed (if zero, symbol weighting is disabled)</param>
+            <param name="symbolWeights">A dictionary for the symbol weights</param>
+            <param name="webSocketFactory">A function which returns a new websocket instance</param>
+            <param name="subscribeFunc">A function which subscribes a symbol</param>
+            <param name="unsubscribeFunc">A function which unsubscribes a symbol</param>
+            <param name="messageHandler">The websocket message handler</param>
+            <param name="webSocketConnectionDuration">The maximum duration of the websocket connection, TimeSpan.Zero for no duration limit</param>
+            <param name="connectionRateLimiter">The rate limiter for creating new websocket connections</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.BrokerageMultiWebSocketSubscriptionManager.Subscribe(System.Collections.Generic.IEnumerable{QuantConnect.Symbol},QuantConnect.TickType)">
+            <summary>
+            Subscribes to the symbols
+            </summary>
+            <param name="symbols">Symbols to subscribe</param>
+            <param name="tickType">Type of tick data</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.BrokerageMultiWebSocketSubscriptionManager.Unsubscribe(System.Collections.Generic.IEnumerable{QuantConnect.Symbol},QuantConnect.TickType)">
+            <summary>
+            Unsubscribes from the symbols
+            </summary>
+            <param name="symbols">Symbols to subscribe</param>
+            <param name="tickType">Type of tick data</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.BrokerageMultiWebSocketSubscriptionManager.Dispose">
+            <summary>
+            Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.BrokerageMultiWebSocketSubscriptionManager.GetWebSocketForSymbol(QuantConnect.Symbol)">
+            <summary>
+            Adds a symbol to an existing or new websocket connection
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.BrokerageMultiWebSocketSubscriptionManager.CreateWebSocket">
+            <summary>
+            When we create a websocket we will subscribe to it's events once and initialize it
+            </summary>
+            <remarks>Note that the websocket is no connected yet <see cref="M:QuantConnect.Brokerages.BrokerageMultiWebSocketSubscriptionManager.Connect(QuantConnect.Brokerages.IWebSocket)"/></remarks>
+        </member>
+        <member name="T:QuantConnect.Brokerages.CrossZero.CrossZeroFirstOrderRequest">
+            <summary>
+            Represents a first request to cross zero order.
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.CrossZero.CrossZeroFirstOrderRequest.LeanOrder">
+            <summary>
+            Gets the original lean order.
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.CrossZero.CrossZeroFirstOrderRequest.OrderType">
+            <summary>
+            Gets the type of the order.
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.CrossZero.CrossZeroFirstOrderRequest.OrderQuantity">
+            <summary>
+            Gets the quantity of the order.
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.CrossZero.CrossZeroFirstOrderRequest.AbsoluteOrderQuantity">
+            <summary>
+            Gets the absolute quantity of the order.
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.CrossZero.CrossZeroFirstOrderRequest.OrderQuantityHolding">
+            <summary>
+            Gets the current holding quantity of the order's symbol.
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.CrossZero.CrossZeroFirstOrderRequest.OrderPosition">
+            <summary>
+            Gets the position of the order.
+            </summary>
+            <value>
+            The position of the order, which depends on the <see cref="P:QuantConnect.Brokerages.CrossZero.CrossZeroFirstOrderRequest.OrderQuantityHolding"/>.
+            </value>
+        </member>
+        <member name="M:QuantConnect.Brokerages.CrossZero.CrossZeroFirstOrderRequest.#ctor(QuantConnect.Orders.Order,QuantConnect.Orders.OrderType,System.Decimal,System.Decimal,QuantConnect.Orders.OrderPosition)">
+            <summary>
+            Initializes a new instance of the <see cref="T:QuantConnect.Brokerages.CrossZero.CrossZeroFirstOrderRequest"/> struct.
+            </summary>
+            <param name="leanOrder">The lean order.</param>
+            <param name="orderType">The type of the order.</param>
+            <param name="orderQuantity">The quantity of the order.</param>
+            <param name="orderQuantityHolding">The current holding quantity of the order's symbol.</param>
+            <param name="orderPosition">The position of the order, which depends on the <paramref name="orderQuantityHolding"/>.</param>
+        </member>
+        <member name="T:QuantConnect.Brokerages.CrossZero.CrossZeroOrderResponse">
+            <summary>
+            Represents a response for a cross zero order request.
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.CrossZero.CrossZeroOrderResponse.BrokerageOrderId">
+            <summary>
+            Gets the brokerage order ID.
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.CrossZero.CrossZeroOrderResponse.IsOrderPlacedSuccessfully">
+            <summary>
+            Gets a value indicating whether the order was placed successfully.
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.CrossZero.CrossZeroOrderResponse.Message">
+            <summary>
+            Gets the message of the order.
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.CrossZero.CrossZeroOrderResponse.#ctor(System.String,System.Boolean,System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:QuantConnect.Brokerages.CrossZero.CrossZeroOrderResponse"/> struct.
+            </summary>
+            <param name="brokerageOrderId">The brokerage order ID.</param>
+            <param name="isOrderPlacedSuccessfully">if set to <c>true</c> [is order placed successfully].</param>
+            <param name="message">The message of the order. This parameter is optional and defaults to <c>null</c>.</param>
+        </member>
+        <member name="T:QuantConnect.Brokerages.CrossZero.CrossZeroSecondOrderRequest">
+            <summary>
+            Represents a second request to cross zero order.
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.CrossZero.CrossZeroSecondOrderRequest.FirstPartCrossZeroOrder">
+            <summary>
+            Gets or sets the first part of CrossZeroOrder.
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.CrossZero.CrossZeroSecondOrderRequest.#ctor(QuantConnect.Orders.Order,QuantConnect.Orders.OrderType,System.Decimal,System.Decimal,QuantConnect.Orders.OrderPosition,QuantConnect.Brokerages.CrossZero.CrossZeroFirstOrderRequest)">
+            <summary>
+            Initializes a new instance of the <see cref="T:QuantConnect.Brokerages.CrossZero.CrossZeroFirstOrderRequest"/> struct.
+            </summary>
+            <param name="leanOrder">The lean order.</param>
+            <param name="orderType">The type of the order.</param>
+            <param name="orderQuantity">The quantity of the order.</param>
+            <param name="orderQuantityHolding">The current holding quantity of the order's symbol.</param>
+            <param name="orderPosition">The position of the order, which depends on the <paramref name="orderQuantityHolding"/>.</param>
+            <param name="crossZeroFirstOrder">The first part of the cross zero order.</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.CrossZero.CrossZeroSecondOrderRequest.ConvertStopCrossingOrderType(QuantConnect.Orders.OrderType)">
+            <summary>
+            Converts a stop order type to its corresponding market or limit order type.
+            </summary>
+            <param name="orderType">The original order type to be converted.</param>
+            <returns>
+            The converted order type. If the original order type is <see cref="F:QuantConnect.Orders.OrderType.StopMarket"/>, 
+            it returns <see cref="F:QuantConnect.Orders.OrderType.Market"/>. If the original order type is <see cref="F:QuantConnect.Orders.OrderType.StopLimit"/>,
+            it returns <see cref="F:QuantConnect.Orders.OrderType.Limit"/>. Otherwise, it returns the original order type.
+            </returns>
+        </member>
+        <member name="T:QuantConnect.Brokerages.DefaultConnectionHandler">
+            <summary>
+            A default implementation of <see cref="T:QuantConnect.Brokerages.IConnectionHandler"/>
+            which signals disconnection if no data is received for a given time span
+            and attempts to reconnect automatically.
+            </summary>
+        </member>
+        <member name="E:QuantConnect.Brokerages.DefaultConnectionHandler.ConnectionLost">
+            <summary>
+            Event that fires when a connection loss is detected
+            </summary>
+        </member>
+        <member name="E:QuantConnect.Brokerages.DefaultConnectionHandler.ConnectionRestored">
+            <summary>
+            Event that fires when a lost connection is restored
+            </summary>
+        </member>
+        <member name="E:QuantConnect.Brokerages.DefaultConnectionHandler.ReconnectRequested">
+            <summary>
+            Event that fires when a reconnection attempt is required
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.DefaultConnectionHandler.MaximumIdleTimeSpan">
+            <summary>
+            The elapsed time with no received data after which a connection loss is reported
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.DefaultConnectionHandler.MinimumSecondsForNextReconnectionAttempt">
+            <summary>
+            The minimum time in seconds to wait before attempting to reconnect
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.DefaultConnectionHandler.MaximumSecondsForNextReconnectionAttempt">
+            <summary>
+            The maximum time in seconds to wait before attempting to reconnect
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.DefaultConnectionHandler.ConnectionId">
+            <summary>
+            The unique Id for the connection
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.DefaultConnectionHandler.IsConnectionLost">
+            <summary>
+            Returns true if the connection has been lost
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.DefaultConnectionHandler.Initialize(System.String)">
+            <summary>
+            Initializes the connection handler
+            </summary>
+            <param name="connectionId">The connection id</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.DefaultConnectionHandler.EnableMonitoring(System.Boolean)">
+            <summary>
+            Enables/disables monitoring of the connection
+            </summary>
+            <param name="isEnabled">True to enable monitoring, false otherwise</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.DefaultConnectionHandler.KeepAlive(System.DateTime)">
+            <summary>
+            Notifies the connection handler that new data was received
+            </summary>
+            <param name="lastDataReceivedTime">The UTC timestamp of the last data point received</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.DefaultConnectionHandler.OnConnectionLost">
+            <summary>
+            Event invocator for the <see cref="E:QuantConnect.Brokerages.DefaultConnectionHandler.ConnectionLost"/> event
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.DefaultConnectionHandler.OnConnectionRestored">
+            <summary>
+            Event invocator for the <see cref="E:QuantConnect.Brokerages.DefaultConnectionHandler.ConnectionRestored"/> event
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.DefaultConnectionHandler.OnReconnectRequested">
+            <summary>
+            Event invocator for the <see cref="E:QuantConnect.Brokerages.DefaultConnectionHandler.ReconnectRequested"/> event
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.DefaultConnectionHandler.Dispose">
+            <summary>
+            Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.
+            </summary>
+        </member>
+        <member name="T:QuantConnect.Brokerages.DefaultOrderBook">
+            <summary>
+            Represents a full order book for a security.
+            It contains prices and order sizes for each bid and ask level.
+            The best bid and ask prices are also kept up to date.
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.DefaultOrderBook.Bids">
+            <summary>
+            Represents bid prices and sizes
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.DefaultOrderBook.Asks">
+            <summary>
+            Represents ask prices and sizes
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.DefaultOrderBook.Symbol">
+            <summary>
+            Represents a unique security identifier of current Order Book
+            </summary>
+        </member>
+        <member name="E:QuantConnect.Brokerages.DefaultOrderBook.BestBidAskUpdated">
+            <summary>
+            Event fired each time <see cref="P:QuantConnect.Brokerages.DefaultOrderBook.BestBidPrice"/> or <see cref="P:QuantConnect.Brokerages.DefaultOrderBook.BestAskPrice"/> are changed
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.DefaultOrderBook.BestBidPrice">
+            <summary>
+            The best bid price
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.DefaultOrderBook.BestBidSize">
+            <summary>
+            The best bid size
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.DefaultOrderBook.BestAskPrice">
+            <summary>
+            The best ask price
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.DefaultOrderBook.BestAskSize">
+            <summary>
+            The best ask size
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.DefaultOrderBook.#ctor(QuantConnect.Symbol)">
+            <summary>
+            Initializes a new instance of the <see cref="T:QuantConnect.Brokerages.DefaultOrderBook"/> class
+            </summary>
+            <param name="symbol">The symbol for the order book</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.DefaultOrderBook.Clear">
+            <summary>
+            Clears all bid/ask levels and prices.
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.DefaultOrderBook.UpdateBidRow(System.Decimal,System.Decimal)">
+            <summary>
+            Updates or inserts a bid price level in the order book
+            </summary>
+            <param name="price">The bid price level to be inserted or updated</param>
+            <param name="size">The new size at the bid price level</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.DefaultOrderBook.UpdateAskRow(System.Decimal,System.Decimal)">
+            <summary>
+            Updates or inserts an ask price level in the order book
+            </summary>
+            <param name="price">The ask price level to be inserted or updated</param>
+            <param name="size">The new size at the ask price level</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.DefaultOrderBook.RemoveBidRow(System.Decimal)">
+            <summary>
+            Removes a bid price level from the order book
+            </summary>
+            <param name="price">The bid price level to be removed</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.DefaultOrderBook.RemoveAskRow(System.Decimal)">
+            <summary>
+            Removes an ask price level from the order book
+            </summary>
+            <param name="price">The ask price level to be removed</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.DefaultOrderBook.RemovePriceLevel(System.Decimal)">
+            <summary>
+            Common price level removal method
+            </summary>
+            <param name="priceLevel"></param>
+        </member>
+        <member name="T:QuantConnect.Brokerages.IConnectionHandler">
+            <summary>
+            Provides handling of a brokerage or data feed connection
+            </summary>
+        </member>
+        <member name="E:QuantConnect.Brokerages.IConnectionHandler.ConnectionLost">
+            <summary>
+            Event that fires when a connection loss is detected
+            </summary>
+        </member>
+        <member name="E:QuantConnect.Brokerages.IConnectionHandler.ConnectionRestored">
+            <summary>
+            Event that fires when a lost connection is restored
+            </summary>
+        </member>
+        <member name="E:QuantConnect.Brokerages.IConnectionHandler.ReconnectRequested">
+            <summary>
+            Event that fires when a reconnection attempt is required
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.IConnectionHandler.IsConnectionLost">
+            <summary>
+            Returns true if the connection has been lost
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.IConnectionHandler.Initialize(System.String)">
+            <summary>
+            Initializes the connection handler
+            </summary>
+            <param name="connectionId">The connection id</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.IConnectionHandler.EnableMonitoring(System.Boolean)">
+            <summary>
+            Enables/disables monitoring of the connection
+            </summary>
+            <param name="isEnabled">True to enable monitoring, false otherwise</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.IConnectionHandler.KeepAlive(System.DateTime)">
+            <summary>
+            Notifies the connection handler that new data was received
+            </summary>
+            <param name="lastDataReceivedTime">The UTC timestamp of the last data point received</param>
+        </member>
+        <member name="T:QuantConnect.Brokerages.IOrderBookUpdater`2">
+            <summary>
+            Represents an orderbook updater interface for a security.
+            Provides the ability to update orderbook price level and to be alerted about updates
+            </summary>
+            <typeparam name="K">Price level identifier</typeparam>
+            <typeparam name="V">Size at the price level</typeparam>
+        </member>
+        <member name="E:QuantConnect.Brokerages.IOrderBookUpdater`2.BestBidAskUpdated">
+            <summary>
+            Event fired each time BestBidPrice or BestAskPrice are changed
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.IOrderBookUpdater`2.UpdateBidRow(`0,`1)">
+            <summary>
+            Updates or inserts a bid price level in the order book
+            </summary>
+            <param name="price">The bid price level to be inserted or updated</param>
+            <param name="size">The new size at the bid price level</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.IOrderBookUpdater`2.UpdateAskRow(`0,`1)">
+            <summary>
+            Updates or inserts an ask price level in the order book
+            </summary>
+            <param name="price">The ask price level to be inserted or updated</param>
+            <param name="size">The new size at the ask price level</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.IOrderBookUpdater`2.RemoveBidRow(`0)">
+            <summary>
+            Removes a bid price level from the order book
+            </summary>
+            <param name="price">The bid price level to be removed</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.IOrderBookUpdater`2.RemoveAskRow(`0)">
+            <summary>
+            Removes an ask price level from the order book
+            </summary>
+            <param name="price">The ask price level to be removed</param>
+        </member>
+        <member name="T:QuantConnect.Brokerages.ISymbolMapper">
+            <summary>
+            Provides the mapping between Lean symbols and brokerage specific symbols.
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.ISymbolMapper.GetBrokerageSymbol(QuantConnect.Symbol)">
+            <summary>
+            Converts a Lean symbol instance to a brokerage symbol
+            </summary>
+            <param name="symbol">A Lean symbol instance</param>
+            <returns>The brokerage symbol</returns>
+        </member>
+        <member name="M:QuantConnect.Brokerages.ISymbolMapper.GetLeanSymbol(System.String,QuantConnect.SecurityType,System.String,System.DateTime,System.Decimal,QuantConnect.OptionRight)">
+            <summary>
+            Converts a brokerage symbol to a Lean symbol instance
+            </summary>
+            <param name="brokerageSymbol">The brokerage symbol</param>
+            <param name="securityType">The security type</param>
+            <param name="market">The market</param>
+            <param name="expirationDate">Expiration date of the security(if applicable)</param>
+            <param name="strike">The strike of the security (if applicable)</param>
+            <param name="optionRight">The option right of the security (if applicable)</param>
+            <returns>A new Lean Symbol instance</returns>
+        </member>
+        <member name="T:QuantConnect.Brokerages.IWebSocket">
+            <summary>
+            Wrapper for WebSocket4Net to enhance testability
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.IWebSocket.Initialize(System.String,System.String)">
+            <summary>
+            Wraps constructor
+            </summary>
+            <param name="url">The target websocket url</param>
+            <param name="sessionToken">The websocket session token</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.IWebSocket.Send(System.String)">
+            <summary>
+            Wraps send method
+            </summary>
+            <param name="data"></param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.IWebSocket.Connect">
+            <summary>
+            Wraps Connect method
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.IWebSocket.Close">
+            <summary>
+            Wraps Close method
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.IWebSocket.IsOpen">
+            <summary>
+            Wraps IsOpen
+            </summary>
+        </member>
+        <member name="E:QuantConnect.Brokerages.IWebSocket.Message">
+            <summary>
+            on message event
+            </summary>
+        </member>
+        <member name="E:QuantConnect.Brokerages.IWebSocket.Error">
+            <summary>
+            On error event
+            </summary>
+        </member>
+        <member name="E:QuantConnect.Brokerages.IWebSocket.Open">
+            <summary>
+            On Open event
+            </summary>
+        </member>
+        <member name="E:QuantConnect.Brokerages.IWebSocket.Closed">
+            <summary>
+            On Close event
+            </summary>
+        </member>
+        <member name="T:QuantConnect.Brokerages.LevelOneOrderBook.BaseDataEventArgs">
+            <summary>
+            Provides data for an event that is triggered when a new <see cref="P:QuantConnect.Brokerages.LevelOneOrderBook.BaseDataEventArgs.BaseData"/> is received.
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.LevelOneOrderBook.BaseDataEventArgs.BaseData">
+            <summary>
+            Gets the <see cref="P:QuantConnect.Brokerages.LevelOneOrderBook.BaseDataEventArgs.BaseData"/> data associated with the event.
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.LevelOneOrderBook.BaseDataEventArgs.#ctor(QuantConnect.Data.BaseData)">
+            <summary>
+            Initializes a new instance of the <see cref="T:QuantConnect.Brokerages.LevelOneOrderBook.BaseDataEventArgs"/> class with the specified <see cref="P:QuantConnect.Brokerages.LevelOneOrderBook.BaseDataEventArgs.BaseData"/>.
+            </summary>
+            <param name="tick">The <see cref="P:QuantConnect.Brokerages.LevelOneOrderBook.BaseDataEventArgs.BaseData"/> data associated with the event.</param>
+        </member>
+        <!-- Badly formed XML comment ignored for member "T:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneMarketData" -->
+        <member name="E:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneMarketData.BaseDataReceived">
+            <summary>
+            Occurs when a new tick is received, such as a last trade update or a change in bid/ask values.
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneMarketData.Symbol">
+            <summary>
+            Gets the symbol this service is tracking.
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneMarketData.SymbolDateTimeZone">
+            <summary>
+            Gets the time zone associated with the symbol's exchange.
+            Used for consistent time stamping.
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneMarketData.LastTradePrice">
+            <summary>
+            Gets the price of the last executed trade.
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneMarketData.LastTradeSize">
+            <summary>
+            Gets the size of the last executed trade.
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneMarketData.BestBidPrice">
+            <summary>
+            Gets the best available bid price.
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneMarketData.BestBidSize">
+            <summary>
+            Gets the size of the best available bid.
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneMarketData.BestAskPrice">
+            <summary>
+            Gets the best available ask price.
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneMarketData.BestAskSize">
+            <summary>
+            Gets the size of the best available ask.
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneMarketData.OpenInterest">
+            <summary>
+            Gets the latest reported open interest value.
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneMarketData.IgnoreZeroSizeUpdates">
+             <summary>
+             Gets or sets a value indicating whether quote updates with a size of zero should be ignored 
+             when updating Level 1 market data.
+            
+             When set to <c>true</c>, incoming bid or ask updates with a size of zero are treated
+             as missing or incomplete and will not overwrite the existing known price or size.
+             This is typically used for real-time (non-delayed) feeds where a zero size may indicate
+             a temporary data gap rather than an actionable market change.
+            
+             When set to <c>false</c> (default), zero-sized updates are applied normally,
+             which is appropriate for delayed feeds or sources where a size of zero has
+             semantic meaning (e.g., clearing out a book level).
+             </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneMarketData.#ctor(QuantConnect.Symbol)">
+            <summary>
+            Initializes a new instance of the <see cref="T:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneMarketData"/> class for a given symbol.
+            </summary>
+            <param name="symbol">The trading symbol to monitor.</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneMarketData.UpdateQuote(System.Nullable{System.DateTime},System.Nullable{System.Decimal},System.Nullable{System.Decimal},System.Nullable{System.Decimal},System.Nullable{System.Decimal})">
+            <summary>
+            Updates the best bid and ask prices and sizes.
+            Constructs and publishes a quote <see cref="T:QuantConnect.Data.Market.Tick"/> to the <see cref="!:IDataAggregator"/>.
+            </summary>
+            <param name="quoteDateTimeUtc">The UTC timestamp when the quote was received.</param>
+            <param name="bidPrice">The best bid price.</param>
+            <param name="bidSize">The size available at the best bid.</param>
+            <param name="askPrice">The best ask price.</param>
+            <param name="askSize">The size available at the best ask.</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneMarketData.UpdateLastTrade(System.Nullable{System.DateTime},System.Nullable{System.Decimal},System.Nullable{System.Decimal},System.String,System.String)">
+            <summary>
+            Updates the last trade price and size.
+            Constructs and publishes a trade <see cref="T:QuantConnect.Data.Market.Tick"/> to the <see cref="T:QuantConnect.Data.IDataAggregator"/>.
+            </summary>
+            <param name="tradeDateTimeUtc">The UTC timestamp when the trade occurred.</param>
+            <param name="lastQuantity">The quantity of the last trade.</param>
+            <param name="lastPrice">The price at which the last trade occurred.</param>
+            <param name="saleCondition">Optional sale condition string.</param>
+            <param name="exchange">Optional exchange identifier.</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneMarketData.UpdateOpenInterest(System.Nullable{System.DateTime},System.Nullable{System.Decimal})">
+            <summary>
+            Updates the open interest value and publishes a corresponding <see cref="T:QuantConnect.Data.Market.Tick"/>.
+            </summary>
+            <param name="openInterestDateTimeUtc">The UTC timestamp of the open interest update.</param>
+            <param name="openInterest">The reported open interest value.</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneMarketData.TryResolvePriceSize(System.Nullable{System.Decimal},System.Nullable{System.Decimal},System.Decimal,System.Decimal,System.Decimal@,System.Decimal@)">
+            <summary>
+            Attempts to resolve the effective price and size values for a Level 1 market data update,
+            using fallback values when current data is missing, zero, or invalid.
+            </summary>
+            <param name="price">The incoming price value, if available.</param>
+            <param name="size">The incoming size value associated with the price, if available.</param>
+            <param name="bestPrice">The last known valid price used as a fallback.</param>
+            <param name="bestSize">The last known valid size used as a fallback.</param>
+            <param name="newPrice">The resolved price value to be used in the update.</param>
+            <param name="newSize">The resolved size value to be used in the update.</param>
+            <returns>
+            <c>true</c> if a valid (resolved) price and size pair was determined; otherwise, <c>false</c>.
+            </returns>
+        </member>
+        <member name="M:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneMarketData.IsValidTimestamp(System.Nullable{System.DateTime})">
+            <summary>
+            Determines whether the provided timestamp is valid,
+            meaning it is non-null and not equal to the default <see cref="T:System.DateTime"/> value.
+            This is typically used to detect and ignore stale or uninitialized timestamps in market data.
+            </summary>
+            <param name="timestamp">The timestamp to validate.</param>
+            <returns>
+            <c>true</c> if the timestamp is not <c>null</c> and not <c>default(DateTime)</c>; otherwise, <c>false</c>.
+            </returns>
+        </member>
+        <member name="T:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneServiceManager">
+            <summary>
+            Manages subscriptions and real-time updates for multiple <see cref="T:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneMarketData"/> instances.
+            Facilitates routing of quote and trade data to a shared <see cref="T:QuantConnect.Data.IDataAggregator"/> in a thread-safe manner.
+            </summary>
+        </member>
+        <member name="F:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneServiceManager._dataAggregator">
+            <summary>
+            The shared data aggregator that receives all tick updates from subscribed symbols.
+            </summary>
+        </member>
+        <member name="F:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneServiceManager._lock">
+            <summary>
+            Synchronization lock used to ensure thread safety during updates.
+            </summary>
+        </member>
+        <member name="F:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneServiceManager._levelOneServiceBySymbol">
+            <summary>
+            Maps subscribed symbols to their corresponding <see cref="T:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneMarketData"/> instances.
+            </summary>
+        </member>
+        <member name="F:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneServiceManager._subscriptionManager">
+            <summary>
+            Internal subscription manager used to delegate low-level subscribe/unsubscribe logic.
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneServiceManager.IsEmpty">
+            <summary>
+            Gets whether there are no active subscriptions.
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneServiceManager.Count">
+            <summary>
+            Gets the number of currently subscribed symbols.
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneServiceManager.#ctor(QuantConnect.Data.IDataAggregator,System.Func{System.Collections.Generic.IEnumerable{QuantConnect.Symbol},QuantConnect.TickType,System.Boolean},System.Func{System.Collections.Generic.IEnumerable{QuantConnect.Symbol},QuantConnect.TickType,System.Boolean})">
+            <summary>
+            Initializes a new instance of the <see cref="T:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneServiceManager"/> class.
+            </summary>
+            <param name="dataAggregator">The aggregator to which all tick data will be published.</param>
+            <param name="subscribeCallback">Delegate used to perform symbol subscription logic.</param>
+            <param name="unsubscribeCallback">Delegate used to perform symbol unsubscription logic.</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneServiceManager.Subscribe(QuantConnect.Data.SubscriptionDataConfig)">
+            <summary>
+            Subscribes to the specified symbol based on the given <see cref="T:QuantConnect.Data.SubscriptionDataConfig"/>.
+            </summary>
+            <param name="dataConfig">The subscription configuration containing symbol and type information.</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneServiceManager.Unsubscribe(QuantConnect.Data.SubscriptionDataConfig)">
+            <summary>
+            Unsubscribes from the specified symbol and removes its associated service instance.
+            </summary>
+            <param name="dataConfig">The subscription configuration used for unsubscription.</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneServiceManager.HandleQuote(QuantConnect.Symbol,System.Nullable{System.DateTime},System.Nullable{System.Decimal},System.Nullable{System.Decimal},System.Nullable{System.Decimal},System.Nullable{System.Decimal})">
+            <summary>
+            Handles incoming quote data for a symbol.
+            Deduplicates updates and routes changes to the relevant <see cref="T:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneMarketData"/> instance.
+            </summary>
+            <param name="symbol">The symbol for which quote data is received.</param>
+            <param name="quoteDateTimeUtc">The UTC timestamp of the quote.</param>
+            <param name="bidPrice">The bid price.</param>
+            <param name="bidSize">The size at the bid price.</param>
+            <param name="askPrice">The ask price.</param>
+            <param name="askSize">The size at the ask price.</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneServiceManager.HandleLastTrade(QuantConnect.Symbol,System.Nullable{System.DateTime},System.Nullable{System.Decimal},System.Nullable{System.Decimal},System.String,System.String)">
+            <summary>
+            Handles incoming last trade data for a symbol and routes it to the corresponding <see cref="T:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneMarketData"/> instance.
+            </summary>
+            <param name="symbol">The symbol for which trade data is received.</param>
+            <param name="tradeDateTimeUtc">The UTC timestamp of the trade.</param>
+            <param name="lastQuantity">The trade size.</param>
+            <param name="lastPrice">The trade price.</param>
+            <param name="saleCondition">Optional sale condition string.</param>
+            <param name="exchange">Optional exchange identifier.</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneServiceManager.HandleOpenInterest(QuantConnect.Symbol,System.Nullable{System.DateTime},System.Nullable{System.Decimal})">
+            <summary>
+            Handles open interest updates for the specified symbol.
+            If the symbol is subscribed, forwards the open interest data to the corresponding
+            <see cref="T:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneMarketData"/> instance for publishing.
+            </summary>
+            <param name="symbol">The trading symbol associated with the open interest update.</param>
+            <param name="openInterestDateTimeUtc">The UTC timestamp when the open interest value was observed.</param>
+            <param name="openInterest">The reported open interest value.</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneServiceManager.SetIgnoreZeroSizeUpdates(QuantConnect.Symbol,System.Boolean)">
+            <summary>
+            Sets the <see cref="P:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneMarketData.IgnoreZeroSizeUpdates"/> flag for the specified symbol,
+            controlling how zero-sized quote updates are handled for that symbol's market data stream.
+            </summary>
+            <param name="symbol">The symbol whose quote update behavior should be configured.</param>
+            <param name="ignoreZeroSizeUpdates">
+            If <c>true</c>, zero-sized bid or ask updates will be ignored for the given symbol,
+            preserving existing book values. If <c>false</c>, zero sizes will be applied as valid updates.
+            </param>
+            <remarks>
+            This is typically used to differentiate between real-time and delayed data feeds, where zero-size
+            updates in real-time may indicate incomplete data, but in delayed feeds may represent actual market states.
+            </remarks>
+        </member>
+        <member name="M:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneServiceManager.GetSubscribedSymbols">
+            <summary>
+            Returns subscribed symbols
+            </summary>
+            <returns>list of <see cref="T:QuantConnect.Symbol"/> currently subscribed</returns>
+        </member>
+        <member name="M:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneServiceManager.BaseDataReceived(System.Object,QuantConnect.Brokerages.LevelOneOrderBook.BaseDataEventArgs)">
+            <summary>
+            Handles BaseData updates emitted by <see cref="T:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneMarketData"/> instances.
+            Forwards the BaseData to the shared data aggregator in a thread-safe manner.
+            </summary>
+            <param name="_">The originator of the BaseData.</param>
+            <param name="eventData">The BaseData event data.</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneServiceManager.SubscribeCallbackWrapper(System.Collections.Generic.IEnumerable{QuantConnect.Symbol},QuantConnect.TickType,System.Func{System.Collections.Generic.IEnumerable{QuantConnect.Symbol},QuantConnect.TickType,System.Boolean})">
+            <summary>
+            Wraps the subscription delegate to attach symbol-specific handlers and track active Level 1 services.
+            </summary>
+            <param name="symbols">The symbols to subscribe.</param>
+            <param name="tickType">The tick type to subscribe for.</param>
+            <param name="subscribeCallback">The original subscription logic delegate.</param>
+            <returns>True if the subscription was successful; otherwise, false.</returns>
+        </member>
+        <member name="M:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneServiceManager.UnsubscribeCallbackWrapper(System.Collections.Generic.IEnumerable{QuantConnect.Symbol},QuantConnect.TickType,System.Func{System.Collections.Generic.IEnumerable{QuantConnect.Symbol},QuantConnect.TickType,System.Boolean})">
+            <summary>
+            Wraps the unsubscription delegate to detach symbol-specific handlers and remove Level 1 service tracking.
+            </summary>
+            <param name="symbols">The symbols to unsubscribe.</param>
+            <param name="tickType">The tick type to unsubscribe from.</param>
+            <param name="unsubscribeCallback">The original unsubscription logic delegate.</param>
+            <returns>True if the unsubscription was successful; otherwise, false.</returns>
+        </member>
+        <member name="M:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneServiceManager.TryGetLevelOneMarketData(QuantConnect.Symbol,QuantConnect.Brokerages.LevelOneOrderBook.LevelOneMarketData@)">
+            <summary>
+            Attempts to retrieve the <see cref="T:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneMarketData"/> instance associated with the specified symbol.
+            </summary>
+            <param name="symbol">The symbol whose market data instance is to be retrieved.</param>
+            <param name="levelOneMarketData">
+            When this method returns, contains the <see cref="T:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneMarketData"/> instance associated with the symbol,
+            if the symbol is found; otherwise, <c>null</c>.
+            </param>
+            <returns>
+            <c>true</c> if the symbol is found and the associated market data instance is returned;
+            otherwise, <c>false</c>. Logs an error if the symbol is not found.
+            </returns>
+        </member>
+        <member name="M:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneServiceManager.Dispose">
+            <summary>
+            Releases all resources used by the <see cref="T:QuantConnect.Brokerages.LevelOneOrderBook.LevelOneServiceManager"/>.
+            </summary>
+        </member>
+        <member name="T:QuantConnect.Brokerages.Paper.PaperBrokerage">
+            <summary>
+            Paper Trading Brokerage
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Paper.PaperBrokerage.#ctor(QuantConnect.Interfaces.IAlgorithm,QuantConnect.Packets.LiveNodePacket)">
+            <summary>
+            Creates a new PaperBrokerage
+            </summary>
+            <param name="algorithm">The algorithm under analysis</param>
+            <param name="job">The job packet</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Paper.PaperBrokerage.GetCashBalance">
+            <summary>
+            Gets the current cash balance for each currency held in the brokerage account
+            </summary>
+            <returns>The current cash balance for each currency available for trading</returns>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Paper.PaperBrokerage.GetAccountHoldings">
+            <summary>
+            Gets all holdings for the account
+            </summary>
+            <returns>The current holdings from the account</returns>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Paper.PaperBrokerage.Scan">
+            <summary>
+            Scans all the outstanding orders and applies the algorithm model fills to generate the order events.
+            This override adds dividend detection and application
+            </summary>
+        </member>
+        <member name="T:QuantConnect.Brokerages.Paper.PaperBrokerageFactory">
+            <summary>
+            The factory type for the <see cref="T:QuantConnect.Brokerages.Paper.PaperBrokerage"/>
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.Paper.PaperBrokerageFactory.BrokerageData">
+            <summary>
+            Gets the brokerage data required to run the IB brokerage from configuration
+            </summary>
+            <remarks>
+            The implementation of this property will create the brokerage data dictionary required for
+            running live jobs. See <see cref="M:QuantConnect.Interfaces.IJobQueueHandler.NextJob(System.String@)"/>
+            </remarks>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Paper.PaperBrokerageFactory.GetBrokerageModel(QuantConnect.Securities.IOrderProvider)">
+            <summary>
+            Gets a new instance of the <see cref="T:QuantConnect.Brokerages.InteractiveBrokersBrokerageModel"/>
+            </summary>
+            <param name="orderProvider">The order provider</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Paper.PaperBrokerageFactory.CreateBrokerage(QuantConnect.Packets.LiveNodePacket,QuantConnect.Interfaces.IAlgorithm)">
+            <summary>
+            Creates a new IBrokerage instance
+            </summary>
+            <param name="job">The job packet to create the brokerage for</param>
+            <param name="algorithm">The algorithm instance</param>
+            <returns>A new brokerage instance</returns>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Paper.PaperBrokerageFactory.Dispose">
+            <summary>
+            Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.
+            </summary>
+            <filterpriority>2</filterpriority>
+        </member>
+        <member name="M:QuantConnect.Brokerages.Paper.PaperBrokerageFactory.#ctor">
+            <summary>
+            Initializes a new instance of the <see cref="T:QuantConnect.Brokerages.Paper.PaperBrokerageFactory"/> class
+            </summary>
+        </member>
+        <member name="T:QuantConnect.Brokerages.SymbolPropertiesDatabaseSymbolMapper">
+            <summary>
+            Provides the mapping between Lean symbols and brokerage symbols using the symbol properties database
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.SymbolPropertiesDatabaseSymbolMapper.#ctor(System.String)">
+            <summary>
+            Creates a new instance of the <see cref="T:QuantConnect.Brokerages.SymbolPropertiesDatabaseSymbolMapper"/> class.
+            </summary>
+            <param name="market">The Lean market</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.SymbolPropertiesDatabaseSymbolMapper.GetBrokerageSymbol(QuantConnect.Symbol)">
+            <summary>
+            Converts a Lean symbol instance to a brokerage symbol
+            </summary>
+            <param name="symbol">A Lean symbol instance</param>
+            <returns>The brokerage symbol</returns>
+        </member>
+        <member name="M:QuantConnect.Brokerages.SymbolPropertiesDatabaseSymbolMapper.GetLeanSymbol(System.String,QuantConnect.SecurityType,System.String,System.DateTime,System.Decimal,QuantConnect.OptionRight)">
+            <summary>
+            Converts a brokerage symbol to a Lean symbol instance
+            </summary>
+            <param name="brokerageSymbol">The brokerage symbol</param>
+            <param name="securityType">The security type</param>
+            <param name="market">The market</param>
+            <param name="expirationDate">Expiration date of the security(if applicable)</param>
+            <param name="strike">The strike of the security (if applicable)</param>
+            <param name="optionRight">The option right of the security (if applicable)</param>
+            <returns>A new Lean Symbol instance</returns>
+        </member>
+        <member name="M:QuantConnect.Brokerages.SymbolPropertiesDatabaseSymbolMapper.IsKnownLeanSymbol(QuantConnect.Symbol)">
+            <summary>
+            Checks if the Lean symbol is supported by the brokerage
+            </summary>
+            <param name="symbol">The Lean symbol</param>
+            <returns>True if the brokerage supports the symbol</returns>
+        </member>
+        <member name="M:QuantConnect.Brokerages.SymbolPropertiesDatabaseSymbolMapper.GetBrokerageSecurityType(System.String)">
+            <summary>
+            Returns the security type for a brokerage symbol
+            </summary>
+            <param name="brokerageSymbol">The brokerage symbol</param>
+            <returns>The security type</returns>
+        </member>
+        <member name="M:QuantConnect.Brokerages.SymbolPropertiesDatabaseSymbolMapper.IsKnownBrokerageSymbol(System.String)">
+            <summary>
+            Checks if the symbol is supported by the brokerage
+            </summary>
+            <param name="brokerageSymbol">The brokerage symbol</param>
+            <returns>True if the brokerage supports the symbol</returns>
+        </member>
+        <member name="T:QuantConnect.Brokerages.WebSocketClientWrapper">
+            <summary>
+            Wrapper for System.Net.Websockets.ClientWebSocket to enhance testability
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.WebSocketClientWrapper.Initialize(System.String,System.String)">
+            <summary>
+            Wraps constructor
+            </summary>
+            <param name="url">The target websocket url</param>
+            <param name="sessionToken">The websocket session token</param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.WebSocketClientWrapper.Send(System.String)">
+            <summary>
+            Wraps send method
+            </summary>
+            <param name="data"></param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.WebSocketClientWrapper.Connect">
+            <summary>
+            Wraps Connect method
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.WebSocketClientWrapper.Close">
+            <summary>
+            Wraps Close method
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.WebSocketClientWrapper.IsOpen">
+            <summary>
+            Wraps IsAlive
+            </summary>
+        </member>
+        <member name="E:QuantConnect.Brokerages.WebSocketClientWrapper.Message">
+            <summary>
+            Wraps message event
+            </summary>
+        </member>
+        <member name="E:QuantConnect.Brokerages.WebSocketClientWrapper.Error">
+            <summary>
+            Wraps error event
+            </summary>
+        </member>
+        <member name="E:QuantConnect.Brokerages.WebSocketClientWrapper.Open">
+            <summary>
+            Wraps open method
+            </summary>
+        </member>
+        <member name="E:QuantConnect.Brokerages.WebSocketClientWrapper.Closed">
+            <summary>
+            Wraps close method
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.WebSocketClientWrapper.OnMessage(QuantConnect.Brokerages.WebSocketMessage)">
+            <summary>
+            Event invocator for the <see cref="E:QuantConnect.Brokerages.WebSocketClientWrapper.Message"/> event
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.WebSocketClientWrapper.OnError(QuantConnect.Brokerages.WebSocketError)">
+            <summary>
+            Event invocator for the <see cref="E:QuantConnect.Brokerages.WebSocketClientWrapper.Error"/> event
+            </summary>
+            <param name="e"></param>
+        </member>
+        <member name="M:QuantConnect.Brokerages.WebSocketClientWrapper.OnOpen">
+            <summary>
+            Event invocator for the <see cref="E:QuantConnect.Brokerages.WebSocketClientWrapper.Open"/> event
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.WebSocketClientWrapper.OnClose(QuantConnect.Brokerages.WebSocketCloseData)">
+            <summary>
+            Event invocator for the <see cref="M:QuantConnect.Brokerages.WebSocketClientWrapper.Close"/> event
+            </summary>
+        </member>
+        <member name="T:QuantConnect.Brokerages.WebSocketClientWrapper.MessageData">
+            <summary>
+            Defines a message of websocket data
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.WebSocketClientWrapper.MessageData.MessageType">
+            <summary>
+            Type of message
+            </summary>
+        </member>
+        <member name="T:QuantConnect.Brokerages.WebSocketClientWrapper.TextMessage">
+            <summary>
+            Defines a text-Type message of websocket data
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.WebSocketClientWrapper.TextMessage.Message">
+            <summary>
+            Data contained in message
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.WebSocketClientWrapper.TextMessage.#ctor">
+            <summary>
+            Constructs default instance of the TextMessage
+            </summary>
+        </member>
+        <member name="T:QuantConnect.Brokerages.WebSocketClientWrapper.BinaryMessage">
+            <summary>
+            Defines a byte-Type message of websocket data
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.WebSocketClientWrapper.BinaryMessage.Data">
+            <summary>
+            Data contained in message
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.WebSocketClientWrapper.BinaryMessage.Count">
+            <summary>
+            Count of message
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.WebSocketClientWrapper.BinaryMessage.#ctor">
+            <summary>
+            Constructs default instance of the BinaryMessage
+            </summary>
+        </member>
+        <member name="T:QuantConnect.Brokerages.WebSocketCloseData">
+            <summary>
+            Defines data returned from a web socket close event
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.WebSocketCloseData.Code">
+            <summary>
+            Gets the status code for the connection close.
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.WebSocketCloseData.Reason">
+            <summary>
+            Gets the reason for the connection close.
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.WebSocketCloseData.WasClean">
+            <summary>
+            Gets a value indicating whether the connection has been closed cleanly.
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.WebSocketCloseData.#ctor(System.UInt16,System.String,System.Boolean)">
+            <summary>
+            Initializes a new instance of the <see cref="T:QuantConnect.Brokerages.WebSocketCloseData"/> class
+            </summary>
+            <param name="code">The status code for the connection close</param>
+            <param name="reason">The reaspn for the connection close</param>
+            <param name="wasClean">True if the connection has been closed cleanly, false otherwise</param>
+        </member>
+        <member name="T:QuantConnect.Brokerages.WebSocketError">
+            <summary>
+            Defines data returned from a web socket error
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.WebSocketError.Message">
+            <summary>
+            Gets the message
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.WebSocketError.Exception">
+            <summary>
+            Gets the exception raised
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.WebSocketError.#ctor(System.String,System.Exception)">
+            <summary>
+            Initializes a new instance of the <see cref="T:QuantConnect.Brokerages.WebSocketError"/> class
+            </summary>
+            <param name="message">The message</param>
+            <param name="exception">The error</param>
+        </member>
+        <member name="T:QuantConnect.Brokerages.WebSocketMessage">
+            <summary>
+            Defines a message received at a web socket
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.WebSocketMessage.WebSocket">
+            <summary>
+            Gets the sender websocket instance
+            </summary>
+        </member>
+        <member name="P:QuantConnect.Brokerages.WebSocketMessage.Data">
+            <summary>
+            Gets the raw message data as text
+            </summary>
+        </member>
+        <member name="M:QuantConnect.Brokerages.WebSocketMessage.#ctor(QuantConnect.Brokerages.IWebSocket,QuantConnect.Brokerages.WebSocketClientWrapper.MessageData)">
+            <summary>
+            Initializes a new instance of the <see cref="T:QuantConnect.Brokerages.WebSocketMessage"/> class
+            </summary>
+            <param name="webSocket">The sender websocket instance</param>
+            <param name="data">The message data</param>
+        </member>
+    </members>
+</doc>

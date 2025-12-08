@@ -133,12 +133,18 @@ public sealed class APsv002A : IDisposable
                     }
 
                     // Options Data - Download historical chain for session start date
+                    // Apply 1-month buffer from 2-year boundary to ensure options aggregates are available
                     try
                     {
                         taskOptions.Description = $"[green]Downloading options for {symbol} ({current}/{total})...[/]";
                         taskOptions.Value = (double)current / total * 100;
                         
-                        var optionChain = await _polygonClient.GetHistoricalOptionChainAsync(symbol, start);
+                        // Polygon's Options Starter plan has a 2-year limit for options aggregates.
+                        // Apply a 1-month buffer to avoid hitting the boundary.
+                        var optionsMinDate = DateTime.UtcNow.AddYears(-2).AddMonths(1).Date;
+                        var effectiveOptionsDate = start < optionsMinDate ? optionsMinDate : start;
+                        
+                        var optionChain = await _polygonClient.GetHistoricalOptionChainAsync(symbol, effectiveOptionsDate);
                         if (optionChain.Contracts.Count > 0)
                         {
                             var jsonPath = System.IO.Path.Combine(optionsPath, $"{symbol.ToLowerInvariant()}.json");

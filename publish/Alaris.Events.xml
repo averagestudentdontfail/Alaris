@@ -1,0 +1,568 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Alaris.Events</name>
+    </assembly>
+    <members>
+        <member name="T:Alaris.Events.Core.EVCR001A">
+            <summary>
+            Base interface for all domain events in the system.
+            Events are immutable records of things that have happened.
+            </summary>
+            <remarks>
+            Rule 17 (Audibility): All events must be immutable and never deleted.
+            Events represent facts that have occurred and cannot be changed.
+            </remarks>
+        </member>
+        <member name="P:Alaris.Events.Core.EVCR001A.EventId">
+            <summary>
+            Gets the unique identifier for this event.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Core.EVCR001A.OccurredAtUtc">
+            <summary>
+            Gets the UTC timestamp when this event occurred.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Core.EVCR001A.EventType">
+            <summary>
+            Gets the type name of this event for serialization/routing.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Core.EVCR001A.CorrelationId">
+            <summary>
+            Gets the correlation ID for tracing related events across boundaries.
+            </summary>
+        </member>
+        <member name="T:Alaris.Events.Core.EVCR002A">
+            <summary>
+            Interface for storing and retrieving events.
+            Implementations must ensure events are never modified or deleted.
+            </summary>
+            <remarks>
+            Rule 17 (Audibility): Event stores must be append-only.
+            Events can only be added, never updated or removed.
+            </remarks>
+        </member>
+        <member name="M:Alaris.Events.Core.EVCR002A.AppendAsync``1(``0,System.String,System.String,System.String,System.Collections.Generic.IReadOnlyDictionary{System.String,System.String},System.Threading.CancellationToken)">
+            <summary>
+            Appends an event to the event store.
+            </summary>
+            <param name="domainEvent">The domain event to store.</param>
+            <param name="aggregateId">Optional aggregate identifier.</param>
+            <param name="aggregateType">Optional aggregate type.</param>
+            <param name="initiatedBy">The user or system that initiated this event.</param>
+            <param name="metadata">Additional metadata for the event.</param>
+            <param name="cancellationToken">Cancellation token.</param>
+            <returns>The stored event envelope with sequence number.</returns>
+        </member>
+        <member name="M:Alaris.Events.Core.EVCR002A.GetEventsForAggregateAsync(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Retrieves all events for a specific aggregate.
+            </summary>
+            <param name="aggregateId">The aggregate identifier.</param>
+            <param name="cancellationToken">Cancellation token.</param>
+            <returns>All events for the aggregate in chronological order.</returns>
+        </member>
+        <member name="M:Alaris.Events.Core.EVCR002A.GetEventsFromSequenceAsync(System.Int64,System.Int32,System.Threading.CancellationToken)">
+            <summary>
+            Retrieves events starting from a specific sequence number.
+            Used for event replay and projections.
+            </summary>
+            <param name="fromSequenceNumber">The sequence number to start from (inclusive).</param>
+            <param name="maxCount">Maximum number of events to retrieve.</param>
+            <param name="cancellationToken">Cancellation token.</param>
+            <returns>Events in chronological order.</returns>
+        </member>
+        <member name="M:Alaris.Events.Core.EVCR002A.GetCurrentSequenceNumberAsync(System.Threading.CancellationToken)">
+            <summary>
+            Gets the current highest sequence number in the event store.
+            </summary>
+        </member>
+        <member name="M:Alaris.Events.Core.EVCR002A.GetEventsByCorrelationIdAsync(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Retrieves events by correlation ID for tracing.
+            </summary>
+            <param name="correlationId">The correlation identifier.</param>
+            <param name="cancellationToken">Cancellation token.</param>
+            <returns>All events with the given correlation ID.</returns>
+        </member>
+        <member name="M:Alaris.Events.Core.EVCR002A.GetEventsByTimeRangeAsync(System.DateTime,System.DateTime,System.Threading.CancellationToken)">
+            <summary>
+            Retrieves events within a time range.
+            </summary>
+            <param name="fromUtc">Start time (inclusive).</param>
+            <param name="toUtc">End time (inclusive).</param>
+            <param name="cancellationToken">Cancellation token.</param>
+            <returns>Events within the time range.</returns>
+        </member>
+        <member name="T:Alaris.Events.Core.EVCR003A">
+            <summary>
+            Immutable envelope that wraps an event with metadata.
+            This ensures events can never be modified after creation.
+            </summary>
+            <remarks>
+            Rule 17 (Audibility): EventEnvelopes are immutable by design.
+            Once created, they represent an unchangeable record of what happened.
+            </remarks>
+        </member>
+        <member name="P:Alaris.Events.Core.EVCR003A.EventId">
+            <summary>
+            Gets the unique identifier for this event envelope.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Core.EVCR003A.SequenceNumber">
+            <summary>
+            Gets the sequence number of this event in the event stream.
+            Monotonically increasing, never reused.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Core.EVCR003A.StoredAtUtc">
+            <summary>
+            Gets the UTC timestamp when this event was stored.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Core.EVCR003A.EventType">
+            <summary>
+            Gets the type name of the event for deserialization.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Core.EVCR003A.EventData">
+            <summary>
+            Gets the serialized event data (JSON).
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Core.EVCR003A.AggregateId">
+            <summary>
+            Gets the aggregate ID this event belongs to (if applicable).
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Core.EVCR003A.AggregateType">
+            <summary>
+            Gets the aggregate type this event belongs to (if applicable).
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Core.EVCR003A.CorrelationId">
+            <summary>
+            Gets the correlation ID for tracing related events.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Core.EVCR003A.CausationId">
+            <summary>
+            Gets the causation ID (the event that caused this event).
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Core.EVCR003A.InitiatedBy">
+            <summary>
+            Gets the user or system that initiated this event.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Core.EVCR003A.Metadata">
+            <summary>
+            Gets additional metadata as key-value pairs.
+            </summary>
+        </member>
+        <member name="M:Alaris.Events.Core.EVCR003A.Create``1(``0,System.Int64,System.String,System.String,System.String,System.Collections.Generic.IReadOnlyDictionary{System.String,System.String})">
+            <summary>
+            Creates an EVCR003A from a domain event.
+            </summary>
+        </member>
+        <member name="T:Alaris.Events.Core.EVCR004A">
+            <summary>
+            Interface for writing immutable audit logs.
+            Audit logs provide a human-readable trail of all system activities.
+            </summary>
+            <remarks>
+            Rule 17 (Audibility): Audit logs are append-only and never modified.
+            They complement the event store with human-readable information.
+            </remarks>
+        </member>
+        <member name="M:Alaris.Events.Core.EVCR004A.LogAsync(Alaris.Events.Core.AuditEntry,System.Threading.CancellationToken)">
+            <summary>
+            Logs an audit entry for a system action.
+            </summary>
+            <param name="entry">The audit entry to log.</param>
+            <param name="cancellationToken">Cancellation token.</param>
+        </member>
+        <member name="M:Alaris.Events.Core.EVCR004A.GetEntriesForEntityAsync(System.String,System.String,System.Threading.CancellationToken)">
+            <summary>
+            Retrieves audit entries for a specific entity.
+            </summary>
+            <param name="entityType">The type of entity.</param>
+            <param name="entityId">The entity identifier.</param>
+            <param name="cancellationToken">Cancellation token.</param>
+            <returns>All audit entries for the entity.</returns>
+        </member>
+        <member name="M:Alaris.Events.Core.EVCR004A.GetEntriesByInitiatorAsync(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Retrieves audit entries initiated by a specific user or system.
+            </summary>
+            <param name="initiatedBy">The user or system identifier.</param>
+            <param name="cancellationToken">Cancellation token.</param>
+            <returns>All audit entries initiated by the specified actor.</returns>
+        </member>
+        <member name="M:Alaris.Events.Core.EVCR004A.GetEntriesByTimeRangeAsync(System.DateTime,System.DateTime,System.Threading.CancellationToken)">
+            <summary>
+            Retrieves audit entries within a time range.
+            </summary>
+            <param name="fromUtc">Start time (inclusive).</param>
+            <param name="toUtc">End time (inclusive).</param>
+            <param name="cancellationToken">Cancellation token.</param>
+            <returns>Audit entries within the time range.</returns>
+        </member>
+        <member name="T:Alaris.Events.Core.AuditEntry">
+            <summary>
+            Immutable audit entry representing a single auditable action.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Core.AuditEntry.AuditId">
+            <summary>
+            Gets the unique identifier for this audit entry.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Core.AuditEntry.OccurredAtUtc">
+            <summary>
+            Gets the UTC timestamp when this action occurred.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Core.AuditEntry.Action">
+            <summary>
+            Gets the type of action that was performed.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Core.AuditEntry.EntityType">
+            <summary>
+            Gets the type of entity this action was performed on.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Core.AuditEntry.EntityId">
+            <summary>
+            Gets the identifier of the entity this action was performed on.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Core.AuditEntry.InitiatedBy">
+            <summary>
+            Gets the user or system that initiated this action.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Core.AuditEntry.Description">
+            <summary>
+            Gets the description of what happened.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Core.AuditEntry.Severity">
+            <summary>
+            Gets the severity level of this audit entry.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Core.AuditEntry.Outcome">
+            <summary>
+            Gets the outcome of the action.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Core.AuditEntry.StateBefore">
+            <summary>
+            Gets the state before the action (if applicable).
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Core.AuditEntry.StateAfter">
+            <summary>
+            Gets the state after the action (if applicable).
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Core.AuditEntry.CorrelationId">
+            <summary>
+            Gets the correlation ID for tracing related actions.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Core.AuditEntry.AdditionalData">
+            <summary>
+            Gets additional contextual data as key-value pairs.
+            </summary>
+        </member>
+        <member name="T:Alaris.Events.Core.AuditSeverity">
+            <summary>
+            Severity level for audit entries.
+            </summary>
+        </member>
+        <member name="F:Alaris.Events.Core.AuditSeverity.Information">
+            <summary>
+            Informational audit entry.
+            </summary>
+        </member>
+        <member name="F:Alaris.Events.Core.AuditSeverity.Warning">
+            <summary>
+            Warning-level audit entry.
+            </summary>
+        </member>
+        <member name="F:Alaris.Events.Core.AuditSeverity.Error">
+            <summary>
+            Error-level audit entry.
+            </summary>
+        </member>
+        <member name="F:Alaris.Events.Core.AuditSeverity.Critical">
+            <summary>
+            Critical audit entry requiring immediate attention.
+            </summary>
+        </member>
+        <member name="T:Alaris.Events.Core.AuditOutcome">
+            <summary>
+            Outcome of an audited action.
+            </summary>
+        </member>
+        <member name="F:Alaris.Events.Core.AuditOutcome.Success">
+            <summary>
+            The action succeeded.
+            </summary>
+        </member>
+        <member name="F:Alaris.Events.Core.AuditOutcome.Failure">
+            <summary>
+            The action failed.
+            </summary>
+        </member>
+        <member name="F:Alaris.Events.Core.AuditOutcome.Partial">
+            <summary>
+            The action was partially successful.
+            </summary>
+        </member>
+        <member name="T:Alaris.Events.Domain.STCR004AGeneratedEvent">
+            <summary>
+            Event raised when a trading signal is generated for a symbol.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Domain.STCR004AGeneratedEvent.Symbol">
+            <summary>
+            Gets the symbol for which the signal was generated.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Domain.STCR004AGeneratedEvent.EarningsDate">
+            <summary>
+            Gets the earnings date for this signal.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Domain.STCR004AGeneratedEvent.STCR004AStrength">
+            <summary>
+            Gets the signal strength (Recommended, Consider, Avoid).
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Domain.STCR004AGeneratedEvent.IVRVRatio">
+            <summary>
+            Gets the IV/RV ratio.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Domain.STCR004AGeneratedEvent.STTM001ASlope">
+            <summary>
+            Gets the term structure slope.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Domain.STCR004AGeneratedEvent.AverageVolume">
+            <summary>
+            Gets the average volume.
+            </summary>
+        </member>
+        <member name="T:Alaris.Events.Domain.OpportunityEvaluatedEvent">
+            <summary>
+            Event raised when a trading opportunity is evaluated.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Domain.OpportunityEvaluatedEvent.Symbol">
+            <summary>
+            Gets the symbol.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Domain.OpportunityEvaluatedEvent.EarningsDate">
+            <summary>
+            Gets the earnings date.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Domain.OpportunityEvaluatedEvent.IsActionable">
+            <summary>
+            Gets whether the opportunity is actionable.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Domain.OpportunityEvaluatedEvent.Contracts">
+            <summary>
+            Gets the recommended number of contracts (if actionable).
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Domain.OpportunityEvaluatedEvent.SpreadCost">
+            <summary>
+            Gets the spread cost.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Domain.OpportunityEvaluatedEvent.AllocationPercent">
+            <summary>
+            Gets the allocation percentage.
+            </summary>
+        </member>
+        <member name="T:Alaris.Events.Domain.OptionPricedEvent">
+            <summary>
+            Event raised when an option is priced.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Domain.OptionPricedEvent.OptionType">
+            <summary>
+            Gets the option type (Call/Put).
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Domain.OptionPricedEvent.UnderlyingPrice">
+            <summary>
+            Gets the underlying price.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Domain.OptionPricedEvent.Strike">
+            <summary>
+            Gets the strike price.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Domain.OptionPricedEvent.TimeToExpiry">
+            <summary>
+            Gets the time to expiry in years.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Domain.OptionPricedEvent.ImpliedVolatility">
+            <summary>
+            Gets the implied volatility.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Domain.OptionPricedEvent.Price">
+            <summary>
+            Gets the option price.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Domain.OptionPricedEvent.Delta">
+            <summary>
+            Gets the delta.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Domain.OptionPricedEvent.Gamma">
+            <summary>
+            Gets the gamma.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Domain.OptionPricedEvent.Vega">
+            <summary>
+            Gets the vega.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Domain.OptionPricedEvent.Theta">
+            <summary>
+            Gets the theta.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Domain.OptionPricedEvent.PricingRegime">
+            <summary>
+            Gets the pricing regime used (PositiveRates, DoubleBoundary, etc.).
+            </summary>
+        </member>
+        <member name="T:Alaris.Events.Domain.STPR001APricedEvent">
+            <summary>
+            Event raised when a calendar spread is priced.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Domain.STPR001APricedEvent.UnderlyingPrice">
+            <summary>
+            Gets the underlying price.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Domain.STPR001APricedEvent.Strike">
+            <summary>
+            Gets the strike price.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Domain.STPR001APricedEvent.FrontExpiry">
+            <summary>
+            Gets the front month expiry.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Domain.STPR001APricedEvent.BackExpiry">
+            <summary>
+            Gets the back month expiry.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Domain.STPR001APricedEvent.SpreadCost">
+            <summary>
+            Gets the spread cost (debit paid).
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Domain.STPR001APricedEvent.MaxProfit">
+            <summary>
+            Gets the maximum profit potential.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Domain.STPR001APricedEvent.MaxLoss">
+            <summary>
+            Gets the maximum loss potential.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Domain.STPR001APricedEvent.BreakEvenPoints">
+            <summary>
+            Gets the breakeven points.
+            </summary>
+        </member>
+        <member name="T:Alaris.Events.Domain.PositionSizeCalculatedEvent">
+            <summary>
+            Event raised when a position size is calculated.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Domain.PositionSizeCalculatedEvent.Symbol">
+            <summary>
+            Gets the symbol.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Domain.PositionSizeCalculatedEvent.PortfolioValue">
+            <summary>
+            Gets the portfolio value used in calculation.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Domain.PositionSizeCalculatedEvent.Contracts">
+            <summary>
+            Gets the number of contracts recommended.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Domain.PositionSizeCalculatedEvent.AllocationPercent">
+            <summary>
+            Gets the allocation percentage.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Domain.PositionSizeCalculatedEvent.DollarAllocation">
+            <summary>
+            Gets the dollar allocation.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Domain.PositionSizeCalculatedEvent.KellyFraction">
+            <summary>
+            Gets the Kelly fraction used.
+            </summary>
+        </member>
+        <member name="P:Alaris.Events.Domain.PositionSizeCalculatedEvent.HistoricalTradesAnalyzed">
+            <summary>
+            Gets the number of historical trades analyzed.
+            </summary>
+        </member>
+        <member name="T:Alaris.Events.Infrastructure.EVIF001A">
+            <summary>
+            In-memory implementation of EVCR002A for development and testing.
+            NOT suitable for production use - events are lost on process restart.
+            </summary>
+            <remarks>
+            For production, implement a persistent store using:
+            - SQL database (PostgreSQL, SQL Server)
+            - Event store database (EventStoreDB)
+            - NoSQL database (MongoDB, CosmosDB)
+            </remarks>
+        </member>
+        <member name="T:Alaris.Events.Infrastructure.EVIF002A">
+            <summary>
+            In-memory implementation of EVCR004A for development and testing.
+            NOT suitable for production use - audit logs are lost on process restart.
+            </summary>
+            <remarks>
+            For production, implement a persistent store using:
+            - SQL database with append-only table
+            - Dedicated audit log service
+            - File-based append-only logs with rotation
+            </remarks>
+        </member>
+    </members>
+</doc>

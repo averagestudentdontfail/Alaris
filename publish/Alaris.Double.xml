@@ -1,0 +1,524 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Alaris.Double</name>
+    </assembly>
+    <members>
+        <member name="T:Alaris.Double.DBAP001A">
+            <summary>
+            QD+ approximation for American option boundaries under negative interest rates.
+            Implements the mathematical framework from Healy (2021).
+            </summary>
+            <remarks>
+            <para>
+            The QD+ algorithm provides fast approximations for early exercise boundaries
+            by solving characteristic equations with Super Halley's method (third-order convergence).
+            </para>
+            <para>
+            Compliance: Alaris High-Integrity Coding Standard v1.2
+            - Rule 9: Guard clauses on all public inputs
+            - Rule 13: Complexity limits observed via helper extraction
+            - Rule 2: Zero warnings / strict typing
+            </para>
+            <para>
+            Reference: Healy, J. (2021). "Pricing American Options Under Negative Rates".
+            </para>
+            </remarks>
+        </member>
+        <member name="M:Alaris.Double.DBAP001A.#ctor(System.Double,System.Double,System.Double,System.Double,System.Double,System.Double,System.Boolean)">
+            <summary>
+            Initializes a new instance of the QD+ approximation engine.
+            </summary>
+            <param name="spot">Current underlying price (must be > 0).</param>
+            <param name="strike">Option strike price (must be > 0).</param>
+            <param name="maturity">Time to maturity in years (must be > 0).</param>
+            <param name="rate">Risk-free interest rate (can be negative).</param>
+            <param name="dividendYield">Dividend yield (can be negative).</param>
+            <param name="volatility">Annualized volatility (must be > 0).</param>
+            <param name="isCall">True for Call options, False for Put options.</param>
+            <exception cref="T:System.ArgumentException">Thrown if positive constraints are violated.</exception>
+        </member>
+        <member name="M:Alaris.Double.DBAP001A.CalculateBoundaries">
+            <summary>
+            Calculates both upper and lower boundaries using QD+ approximation.
+            </summary>
+            <returns>Initial (Upper, Lower) boundary estimates for Kim solver refinement.</returns>
+        </member>
+        <member name="M:Alaris.Double.DBAP001A.SolveBoundaryEquation(System.Double,System.Double,System.Boolean)">
+            <summary>
+            Solves the QD+ boundary equation using Super Halley's method.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DBAP001A.EvaluateBoundaryFunction(System.Double,System.Double,System.Double)">
+            <summary>
+            Evaluates the boundary function f(S) and its first two derivatives.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DBAP001A.CalculateC0(System.Double,System.Double,System.Double,System.Double,System.Double,System.Double,System.ValueTuple{System.Double,System.Double,System.Double})">
+            <summary>
+            Calculates the c0 coefficient (Healy Equation 10).
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DBAP001A.CalculateBsComponents(System.Double)">
+            <summary>
+            Helper to compute Black-Scholes value, Theta, and d1.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DBAP001A.GetGeneralizedInitialGuess(System.Boolean)">
+            <summary>
+            Generates calibrated initial guess using Healy (2021) benchmarks with volatility scaling.
+            Calibrated to Table 2 (r=-0.5%, q=-1%, σ=8%) and scaled for other parameters.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DBAP001A.InterpolateBenchmark(System.Double,System.Boolean)">
+            <summary>
+            Interpolates boundary value from Healy (2021) Table 2 benchmarks.
+            Benchmarks: r=-0.5%, q=-1%, σ=8%, K=100.
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.DBAP002A">
+            <summary>
+            High-level API for American option double boundary approximation under negative rates.
+            Combines QD+ approximation with optional Kim solver refinement.
+            </summary>
+            <remarks>
+            <para>
+            Provides a simple interface to the double boundary pricing methodology:
+            1. DBAP001A - Fast initial boundary estimate
+            2. DBSL002A - Accurate refinement (optional)
+            </para>
+            <para>
+            This class mirrors the QuantLib structure for single boundary options,
+            adapted for the double boundary regime where q &lt; r &lt; 0.
+            </para>
+            </remarks>
+        </member>
+        <member name="M:Alaris.Double.DBAP002A.#ctor(System.Double,System.Double,System.Double,System.Double,System.Double,System.Double,System.Boolean)">
+            <summary>
+            Initializes the double boundary approximation.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DBAP002A.CalculateBoundaries">
+            <summary>
+            Calculates boundaries using QD+ approximation (fast).
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DBAP002A.ApproximateValue">
+            <summary>
+            Approximates option value using QD+ boundaries.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DBAP002A.ShouldExerciseImmediately(Alaris.Double.BoundaryResult)">
+            <summary>
+            Checks if option should be exercised immediately.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DBAP002A.CalculateEarlyExercisePremium(Alaris.Double.BoundaryResult)">
+             <summary>
+             Calculates early exercise premium using QD+ approximation.
+             Uses region-based logic according to Healy (2021) Equation 13.
+             </summary>
+             <remarks>
+             Premium formula: <c>e(S) = a1 * S^lambda1 * 1_{S &gt;= S1*} + a2 * S^lambda2 * 1_{S &lt;= S2*}</c>
+            
+             Three regions (same for both calls and puts):
+             - <c>S &gt;= S1*</c> (upper): Use <c>a1</c> term with <c>lambda1</c>
+             - <c>S &lt;= S2*</c> (lower): Use <c>a2</c> term with <c>lambda2</c>
+             - <c>S2* &lt; S &lt; S1*</c> (between): No early exercise premium
+             </remarks>
+        </member>
+        <member name="M:Alaris.Double.DBAP002A.CalculateLambdas">
+            <summary>
+            Calculates lambda values.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DBAP002A.CalculateBoundaryCoefficient(System.Double,System.Double)">
+            <summary>
+            Calculates boundary coefficient from continuity condition.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DBAP002A.CalculateEuropeanValue(System.Nullable{System.Double})">
+            <summary>
+            Calculates European option value.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DBAP002A.CalculateIntrinsicValue">
+            <summary>
+            Calculates intrinsic value.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DBAP002A.CalculateD1(System.Double)">
+            <summary>
+            Calculates d₁.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DBAP002A.NormalCDF(System.Double)">
+            <summary>
+            Standard normal CDF.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DBAP002A.Erf(System.Double)">
+            <summary>
+            Error function.
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.BoundaryResult">
+            <summary>
+            Result of boundary calculation for double boundary options.
+            </summary>
+        </member>
+        <member name="P:Alaris.Double.BoundaryResult.UpperBoundary">
+            <summary>
+            The upper exercise boundary S*₁.
+            </summary>
+        </member>
+        <member name="P:Alaris.Double.BoundaryResult.LowerBoundary">
+            <summary>
+            The lower exercise boundary S*₂.
+            </summary>
+        </member>
+        <member name="P:Alaris.Double.BoundaryResult.BoundariesCross">
+            <summary>
+            Indicates whether boundaries cross (invalid approximation).
+            </summary>
+        </member>
+        <member name="P:Alaris.Double.BoundaryResult.IsValid">
+            <summary>
+            Indicates whether the boundary calculation is valid.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.BoundaryResult.ToString">
+            <summary>
+            String representation.
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.DBEN001A">
+            <summary>
+            Advanced American option pricing engine using the double boundary method.
+            Supports negative interest rates and provides accurate pricing with Greeks.
+            Based on the Ju-Zhong (1999) quadratic approximation method via QdFpAmericanEngine.
+            Greeks are computed using central finite differences from MathNet.Numerics.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DBEN001A.#ctor(GeneralizedBlackScholesProcess,SimpleQuote,QdFpIterationScheme)">
+            <summary>
+            Initializes a new instance of the DBEN001A.
+            </summary>
+            <param name="process">The Black-Scholes-Merton process for the underlying.</param>
+            <param name="underlyingQuote">Optional SimpleQuote for Greek calculations. If not provided, Greeks will not be calculated.</param>
+            <param name="scheme">Optional iteration scheme for numerical solver.</param>
+        </member>
+        <member name="M:Alaris.Double.DBEN001A.op_Implicit(Alaris.Double.DBEN001A)~PricingEngine">
+            <summary>
+            Implicit conversion to PricingEngine for seamless integration with QuantLib VanillaOption.
+            </summary>
+            <param name="engine">The DBEN001A to convert.</param>
+        </member>
+        <member name="M:Alaris.Double.DBEN001A.ToPricingEngine(Alaris.Double.DBEN001A)">
+            <summary>
+            Converts DBEN001A to PricingEngine (alternate method for implicit operator).
+            </summary>
+            <param name="engine">The DBEN001A to convert.</param>
+            <returns>The underlying QdFpAmericanEngine as PricingEngine.</returns>
+        </member>
+        <member name="M:Alaris.Double.DBEN001A.GetPricingEngine">
+            <summary>
+            Gets the underlying PricingEngine for explicit use with VanillaOption.
+            </summary>
+            <returns>The underlying QdFpAmericanEngine.</returns>
+        </member>
+        <member name="M:Alaris.Double.DBEN001A.Calculate(VanillaOption)">
+            <summary>
+            Calculates the option price and Greeks for an American option using central finite differences.
+            All Greeks are computed using symmetric (central) finite difference schemes for maximum accuracy.
+            </summary>
+            <param name="option">The vanilla option to price.</param>
+            <returns>Complete option pricing results including all Greeks.</returns>
+            <exception cref="T:System.InvalidOperationException">Thrown when required quotes are unavailable.</exception>
+        </member>
+        <member name="M:Alaris.Double.DBEN001A.CalculateVega(VanillaOption)">
+            <summary>
+            Calculates vega using central finite differences by reconstructing the process with bumped volatility.
+            Uses symmetric bumping (up and down) for accurate derivative estimation.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DBEN001A.CalculateTheta(VanillaOption)">
+            <summary>
+            Calculates theta using central finite differences by shifting evaluation date.
+            Uses symmetric time shifts for accurate time decay estimation.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DBEN001A.CalculateRho(VanillaOption)">
+            <summary>
+            Calculates rho using central finite differences by reconstructing the process with bumped rates.
+            Uses symmetric rate bumping for accurate sensitivity estimation.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DBEN001A.CalculateWithTiming(VanillaOption)">
+            <summary>
+            Calculates option price and Greeks with performance timing.
+            </summary>
+            <param name="option">The vanilla option to price.</param>
+            <returns>Tuple containing results and elapsed time in milliseconds.</returns>
+        </member>
+        <member name="M:Alaris.Double.DBEN001A.SensitivityAnalysis(VanillaOption,System.Double,System.Double,System.Int32)">
+            <summary>
+            Performs sensitivity analysis by varying the underlying spot price.
+            Generates a price-Greek profile across a range of spot prices.
+            All Greeks at each point are calculated using central finite differences.
+            </summary>
+            <param name="option">The vanilla option to analyse.</param>
+            <param name="spotMin">Minimum spot price for analysis.</param>
+            <param name="spotMax">Maximum spot price for analysis.</param>
+            <param name="steps">Number of steps in the spot range (minimum 2).</param>
+            <returns>Dictionary mapping spot prices to option results.</returns>
+            <exception cref="T:System.ArgumentException">Thrown when parameters are invalid.</exception>
+            <exception cref="T:System.InvalidOperationException">Thrown when underlying quote is unavailable.</exception>
+        </member>
+        <member name="M:Alaris.Double.DBEN001A.Dispose">
+            <summary>
+            Disposes of the pricing engine resources.
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.OptionResult">
+            <summary>
+            Complete option pricing results including price and all Greeks.
+            All Greeks are computed using central finite differences for maximum accuracy.
+            </summary>
+        </member>
+        <member name="P:Alaris.Double.OptionResult.Price">
+            <summary>Gets or sets the option price (NPV).</summary>
+        </member>
+        <member name="P:Alaris.Double.OptionResult.Delta">
+            <summary>
+            Gets or sets delta: rate of change of option value with respect to underlying price.
+            Computed using central finite differences: (V(S+h) - V(S-h)) / (2h).
+            </summary>
+        </member>
+        <member name="P:Alaris.Double.OptionResult.Gamma">
+            <summary>
+            Gets or sets gamma: rate of change of delta with respect to underlying price (convexity).
+            Represents the second derivative of option value with respect to spot.
+            Computed using central finite differences for maximum accuracy.
+            </summary>
+        </member>
+        <member name="P:Alaris.Double.OptionResult.Vega">
+            <summary>
+            Gets or sets vega: sensitivity to volatility changes.
+            Represents derivative of option value with respect to volatility (in decimal form).
+            Computed using central finite differences with volatility bumps.
+            </summary>
+        </member>
+        <member name="P:Alaris.Double.OptionResult.Theta">
+            <summary>
+            Gets or sets theta: rate of time decay (per day).
+            Conventionally negative, representing value loss as time passes.
+            Computed using central finite differences with symmetric date shifts.
+            </summary>
+        </member>
+        <member name="P:Alaris.Double.OptionResult.Rho">
+            <summary>
+            Gets or sets rho: sensitivity to interest rate changes.
+            Scaled to represent change per 1% (0.01) change in interest rate.
+            Computed using central finite differences with rate bumps.
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.DBSL001A">
+            <summary>
+            Complete solver for American options with double boundaries under negative rates.
+            Combines QD+ approximation with FP-B' stabilized Kim integral equation refinement.
+            </summary>
+            <remarks>
+            <para>
+            Two-stage solving process:
+            1. QD+ approximation with Super Halley's method provides fast initial boundaries
+            2. FP-B' stabilized Kim solver refines using fixed point iteration
+            </para>
+            <para>
+            Architecture mirrors QuantLib's approach:
+            - Single boundary (r ≥ 0): QdPlus → QdFp (Chebyshev)
+            - Double boundary (q &lt; r &lt; 0): QdPlus → FP-B' Kim (collocation + stabilized fixed point)
+            </para>
+            <para>
+            Key improvement: Uses FP-B' (Healy Equations 33-35) instead of basic FP-B to prevent
+            oscillations in longer maturity options.
+            </para>
+            </remarks>
+        </member>
+        <member name="M:Alaris.Double.DBSL001A.#ctor(System.Double,System.Double,System.Double,System.Double,System.Double,System.Double,System.Boolean,System.Int32,System.Boolean)">
+            <summary>
+            Initializes the double boundary solver.
+            </summary>
+            <param name="spot">Current asset price</param>
+            <param name="strike">Strike price</param>
+            <param name="maturity">Time to maturity (years)</param>
+            <param name="rate">Risk-free rate (negative for negative rate regime)</param>
+            <param name="dividendYield">Dividend yield (negative for negative rate regime)</param>
+            <param name="volatility">Volatility</param>
+            <param name="isCall">True for call, false for put</param>
+            <param name="collocationPoints">Number of time points (default 50)</param>
+            <param name="useRefinement">Use FP-B' Kim refinement (default true)</param>
+        </member>
+        <member name="M:Alaris.Double.DBSL001A.Solve">
+            <summary>
+            Solves for both boundaries using QD+ approximation and optional Kim refinement.
+            </summary>
+            <returns>Solution containing boundaries and metadata</returns>
+        </member>
+        <member name="M:Alaris.Double.DBSL001A.CalculateInitialBoundaries">
+            <summary>
+            Calculates initial boundary estimates using QD+ approximation.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DBSL001A.CreateSingleBoundaryResult(System.Double,System.Double)">
+            <summary>
+            Creates result for single boundary regime.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DBSL001A.CreateQdOnlyResult(System.Double,System.Double)">
+            <summary>
+            Creates result using only QD+ approximation without refinement.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DBSL001A.ApplyKimRefinement(System.Double,System.Double)">
+            <summary>
+            Applies Kim refinement to initial QD+ boundaries.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DBSL001A.DetectDoubleBoundaryRegime">
+            <summary>
+            Detects if the option is in a double boundary regime.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DBSL001A.ValidateBoundaries(System.Double,System.Double)">
+            <summary>
+            Validates boundary values for consistency.
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.DoubleBoundaryResult">
+            <summary>
+            Result from double boundary solver.
+            </summary>
+        </member>
+        <member name="P:Alaris.Double.DoubleBoundaryResult.UpperBoundary">
+            <summary>
+            Upper exercise boundary at maturity.
+            </summary>
+        </member>
+        <member name="P:Alaris.Double.DoubleBoundaryResult.LowerBoundary">
+            <summary>
+            Lower exercise boundary at maturity.
+            </summary>
+        </member>
+        <member name="P:Alaris.Double.DoubleBoundaryResult.CrossingTime">
+            <summary>
+            Time when boundaries cross (0 if no crossing).
+            </summary>
+        </member>
+        <member name="P:Alaris.Double.DoubleBoundaryResult.IsRefined">
+            <summary>
+            Indicates if Kim refinement was applied.
+            </summary>
+        </member>
+        <member name="P:Alaris.Double.DoubleBoundaryResult.Method">
+            <summary>
+            Method used for calculation.
+            </summary>
+        </member>
+        <member name="P:Alaris.Double.DoubleBoundaryResult.IsValid">
+            <summary>
+            Indicates if boundaries are valid.
+            </summary>
+        </member>
+        <member name="P:Alaris.Double.DoubleBoundaryResult.Iterations">
+            <summary>
+            Number of iterations or collocation points used.
+            </summary>
+        </member>
+        <member name="P:Alaris.Double.DoubleBoundaryResult.QdUpperBoundary">
+            <summary>
+            QD+ upper boundary (before refinement).
+            </summary>
+        </member>
+        <member name="P:Alaris.Double.DoubleBoundaryResult.QdLowerBoundary">
+            <summary>
+            QD+ lower boundary (before refinement).
+            </summary>
+        </member>
+        <member name="P:Alaris.Double.DoubleBoundaryResult.UpperImprovement">
+            <summary>
+            Improvement from QD+ to refined (upper boundary).
+            </summary>
+        </member>
+        <member name="P:Alaris.Double.DoubleBoundaryResult.LowerImprovement">
+            <summary>
+            Improvement from QD+ to refined (lower boundary).
+            </summary>
+        </member>
+        <member name="P:Alaris.Double.DoubleBoundaryResult.UpperBoundaryPath">
+            <summary>
+            Optional: Full upper boundary path across time points.
+            </summary>
+        </member>
+        <member name="P:Alaris.Double.DoubleBoundaryResult.LowerBoundaryPath">
+            <summary>
+            Optional: Full lower boundary path across time points.
+            </summary>
+        </member>
+        <member name="T:Alaris.Double.DBSL002A">
+            <summary>
+            Refines QD+ boundary approximations using the Kim integral equation with FP-B' stabilized fixed point iteration.
+            Implements Healy (2021) Equations 27-29 with the stabilized FP-B' method (Equations 33-35).
+            </summary>
+            <remarks>
+            <para>
+            Compliance: Alaris High-Integrity Coding Standard v1.2
+            - Rule 9: Guard clauses on inputs
+            - Rule 13: Complexity limits observed via helper extraction
+            - Rule 2: Zero warnings / strict typing
+            </para>
+            </remarks>
+        </member>
+        <member name="P:Alaris.Double.DBSL002A.CollocationPoints">
+            <summary>
+            Number of collocation points used for boundary refinement.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DBSL002A.#ctor(System.Double,System.Double,System.Double,System.Double,System.Double,System.Double,System.Boolean,System.Int32)">
+            <summary>
+            Initializes a new Kim solver for double boundaries.
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DBSL002A.SolveBoundaries(System.Double,System.Double)">
+            <summary>
+            Solves for refined boundaries using Kim's integral equation with FP-B' stabilized iteration.
+            </summary>
+            <param name="upperInitial">Initial upper boundary from QD+.</param>
+            <param name="lowerInitial">Initial lower boundary from QD+.</param>
+            <returns>Refined (upper, lower) boundaries and crossing time.</returns>
+        </member>
+        <member name="M:Alaris.Double.DBSL002A.RefineUsingFpbPrime(System.Double[],System.Double[],System.Double)">
+            <summary>
+            Refines boundaries using FP-B' stabilized fixed point iteration (Healy Equations 33-35).
+            Uses ArrayPool for zero-allocation iteration buffers (Rule 5: Zero-Allocation Hot Paths).
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DBSL002A.CalculateIntegralTerm(System.Double,System.Double,System.Double[],System.Double[],System.Double,System.Boolean)">
+            <summary>
+            Unified integral calculation for N (r-weighted) and D (q-weighted).
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DBSL002A.PoolAdjacentViolators(System.Double[],System.Boolean)">
+            <summary>
+            Pool Adjacent Violators algorithm for isotonic regression.
+            Optimized to use stack-allocated spans for small arrays (Rule 5).
+            </summary>
+        </member>
+        <member name="M:Alaris.Double.DBSL002A.SmoothBoundary(System.Double[])">
+            <summary>
+            Apply Savitzky-Golay-style smoothing to reduce second-order oscillations.
+            Uses weighted 5-point moving average for quadratic smoothing.
+            </summary>
+        </member>
+    </members>
+</doc>

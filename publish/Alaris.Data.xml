@@ -1,0 +1,1186 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Alaris.Data</name>
+    </assembly>
+    <members>
+        <member name="T:Alaris.Data.Bridge.AlarisDataBridge">
+            <summary>
+            Bridges Alaris data providers to Lean engine's data infrastructure.
+            Component ID: DTbr001A
+            </summary>
+            <remarks>
+            Responsibilities:
+            - Aggregates data from multiple providers (Polygon, FMP, IBKR)
+            - Runs data quality validation pipeline
+            - Provides unified MarketDataSnapshot for strategy evaluation
+            - Integrates with Lean's SubscriptionDataSource when needed
+            
+            Usage in Lean algorithm:
+            var bridge = new AlarisDataBridge(providers, validators, logger);
+            var snapshot = await bridge.GetMarketDataSnapshotAsync("AAPL");
+            </remarks>
+        </member>
+        <member name="M:Alaris.Data.Bridge.AlarisDataBridge.#ctor(Alaris.Data.Provider.DTpr003A,Alaris.Data.Provider.DTpr004A,Alaris.Data.Provider.DTpr005A,System.Collections.Generic.IReadOnlyList{Alaris.Data.Quality.DTqc002A},Microsoft.Extensions.Logging.ILogger{Alaris.Data.Bridge.AlarisDataBridge})">
+            <summary>
+            Initializes a new instance of the <see cref="T:Alaris.Data.Bridge.AlarisDataBridge"/> class.
+            </summary>
+            <param name="marketDataProvider">Market data provider (Polygon).</param>
+            <param name="earningsProvider">Earnings calendar provider (FMP).</param>
+            <param name="riskFreeRateProvider">Risk-free rate provider.</param>
+            <param name="validators">Data quality validators.</param>
+            <param name="logger">Logger instance.</param>
+        </member>
+        <member name="M:Alaris.Data.Bridge.AlarisDataBridge.SetSessionDataPath(System.String)">
+            <summary>
+            Sets the session data path for loading cached data (options, historical bars, etc.).
+            Call this before using the bridge in backtest mode.
+            </summary>
+            <param name="sessionDataPath">Path to the session's data folder.</param>
+        </member>
+        <member name="M:Alaris.Data.Bridge.AlarisDataBridge.GetMarketDataSnapshotAsync(System.String,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            Gets complete market data snapshot for strategy evaluation.
+            </summary>
+            <param name="symbol">The symbol to evaluate.</param>
+            <param name="evaluationDate">The date for data evaluation (use LEAN's simulation time for backtests).</param>
+            <param name="cancellationToken">Cancellation token.</param>
+            <returns>Validated market data snapshot.</returns>
+            <exception cref="T:System.InvalidOperationException">If data quality validation fails.</exception>
+        </member>
+        <member name="M:Alaris.Data.Bridge.AlarisDataBridge.GetOptionChainWithCacheFallbackAsync(System.String,System.DateTime,System.Threading.CancellationToken)">
+            <summary>
+            Gets option chain with cache fallback for backtest mode.
+            Loads from session cache if available, otherwise falls back to live API.
+            </summary>
+            <summary>
+            Gets option chain with cache fallback for backtest mode.
+            Loads from session cache if verified strictly against evaluation date, otherwise fetches from provider.
+            </summary>
+        </member>
+        <member name="M:Alaris.Data.Bridge.AlarisDataBridge.GetHistoricalBarsForRvCalculationAsync(System.String,System.DateTime,System.Threading.CancellationToken)">
+            <summary>
+            Gets historical bars for Yang-Zhang RV calculation (minimum 30 days).
+            </summary>
+        </member>
+        <member name="M:Alaris.Data.Bridge.AlarisDataBridge.GetEarningsDataAsync(System.String,System.DateTime,System.Threading.CancellationToken)">
+            <summary>
+            Gets earnings data (next event + historical for Leung-Santoli).
+            </summary>
+            <param name="symbol">The symbol to fetch earnings for.</param>
+            <param name="evaluationDate">The evaluation date (simulation time for backtests).</param>
+            <param name="cancellationToken">Cancellation token.</param>
+        </member>
+        <member name="M:Alaris.Data.Bridge.AlarisDataBridge.RunDataQualityValidation(Alaris.Data.Model.MarketDataSnapshot)">
+            <summary>
+            Runs data quality validation pipeline.
+            </summary>
+        </member>
+        <member name="M:Alaris.Data.Bridge.AlarisDataBridge.GetSymbolsWithUpcomingEarningsAsync(System.DateTime,System.DateTime,System.Threading.CancellationToken)">
+            <summary>
+            Gets all symbols with upcoming earnings in date range.
+            Useful for universe selection in Lean algorithm.
+            </summary>
+        </member>
+        <member name="M:Alaris.Data.Bridge.AlarisDataBridge.MeetsBasicCriteriaAsync(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Validates if a symbol meets basic criteria for strategy evaluation.
+            Used for pre-filtering universe before expensive data fetches.
+            </summary>
+        </member>
+        <member name="T:Alaris.Data.Model.OptionContract">
+            <summary>
+            Represents a single option contract with market data.
+            </summary>
+        </member>
+        <member name="P:Alaris.Data.Model.OptionContract.UnderlyingSymbol">
+            <summary>Gets the underlying symbol.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.OptionContract.OptionSymbol">
+            <summary>Gets the option symbol (OCC format).</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.OptionContract.Strike">
+            <summary>Gets the strike price.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.OptionContract.Expiration">
+            <summary>Gets the expiration date.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.OptionContract.Right">
+            <summary>Gets whether this is a call or put.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.OptionContract.Bid">
+            <summary>Gets the bid price.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.OptionContract.Ask">
+            <summary>Gets the ask price.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.OptionContract.Mid">
+            <summary>Gets the mid price (bid + ask) / 2.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.OptionContract.Spread">
+            <summary>Gets the bid-ask spread.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.OptionContract.Last">
+            <summary>Gets the last traded price.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.OptionContract.Volume">
+            <summary>Gets the volume traded today.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.OptionContract.OpenInterest">
+            <summary>Gets the open interest.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.OptionContract.ImpliedVolatility">
+            <summary>Gets the implied volatility (if available).</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.OptionContract.Delta">
+            <summary>Gets the delta (if available).</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.OptionContract.Gamma">
+            <summary>Gets the gamma (if available).</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.OptionContract.Theta">
+            <summary>Gets the theta (if available).</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.OptionContract.Vega">
+            <summary>Gets the vega (if available).</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.OptionContract.Timestamp">
+            <summary>Gets the timestamp of this quote.</summary>
+        </member>
+        <member name="T:Alaris.Data.Model.OptionRight">
+            <summary>
+            Option right (call or put).
+            </summary>
+        </member>
+        <member name="F:Alaris.Data.Model.OptionRight.Call">
+            <summary>Call option.</summary>
+        </member>
+        <member name="F:Alaris.Data.Model.OptionRight.Put">
+            <summary>Put option.</summary>
+        </member>
+        <member name="T:Alaris.Data.Model.OptionChainSnapshot">
+            <summary>
+            Represents a complete options chain for a given underlying at a point in time.
+            </summary>
+        </member>
+        <member name="P:Alaris.Data.Model.OptionChainSnapshot.Symbol">
+            <summary>Gets the underlying symbol.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.OptionChainSnapshot.SpotPrice">
+            <summary>Gets the underlying spot price.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.OptionChainSnapshot.Timestamp">
+            <summary>Gets the snapshot timestamp.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.OptionChainSnapshot.Contracts">
+            <summary>Gets all option contracts in this chain.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.OptionChainSnapshot.ByExpiration">
+            <summary>Gets contracts by expiration date.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.OptionChainSnapshot.Calls">
+            <summary>Gets only call contracts.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.OptionChainSnapshot.Puts">
+            <summary>Gets only put contracts.</summary>
+        </member>
+        <member name="T:Alaris.Data.Model.PriceBar">
+            <summary>
+            Represents an OHLCV bar for historical price data.
+            </summary>
+        </member>
+        <member name="P:Alaris.Data.Model.PriceBar.Symbol">
+            <summary>Gets the symbol.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.PriceBar.Timestamp">
+            <summary>Gets the bar timestamp.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.PriceBar.Open">
+            <summary>Gets the open price.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.PriceBar.High">
+            <summary>Gets the high price.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.PriceBar.Low">
+            <summary>Gets the low price.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.PriceBar.Close">
+            <summary>Gets the close price.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.PriceBar.Volume">
+            <summary>Gets the volume.</summary>
+        </member>
+        <member name="T:Alaris.Data.Model.EarningsEvent">
+            <summary>
+            Represents an earnings announcement event.
+            </summary>
+        </member>
+        <member name="P:Alaris.Data.Model.EarningsEvent.Symbol">
+            <summary>Gets the symbol.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.EarningsEvent.Date">
+            <summary>Gets the earnings announcement date.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.EarningsEvent.FiscalQuarter">
+            <summary>Gets the fiscal quarter (e.g., "Q1", "Q2").</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.EarningsEvent.FiscalYear">
+            <summary>Gets the fiscal year.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.EarningsEvent.Timing">
+            <summary>Gets whether this is before market open or after close.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.EarningsEvent.EpsEstimate">
+            <summary>Gets the EPS estimate (analyst consensus).</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.EarningsEvent.EpsActual">
+            <summary>Gets the actual EPS reported (null if not yet announced).</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.EarningsEvent.Source">
+            <summary>Gets the data source.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.EarningsEvent.FetchedAt">
+            <summary>Gets when this record was fetched.</summary>
+        </member>
+        <member name="T:Alaris.Data.Model.EarningsTiming">
+            <summary>
+            Timing of earnings announcement relative to market hours.
+            </summary>
+        </member>
+        <member name="F:Alaris.Data.Model.EarningsTiming.BeforeMarketOpen">
+            <summary>Before market open.</summary>
+        </member>
+        <member name="F:Alaris.Data.Model.EarningsTiming.AfterMarketClose">
+            <summary>After market close.</summary>
+        </member>
+        <member name="F:Alaris.Data.Model.EarningsTiming.DuringMarketHours">
+            <summary>During market hours (rare).</summary>
+        </member>
+        <member name="F:Alaris.Data.Model.EarningsTiming.Unknown">
+            <summary>Timing unknown.</summary>
+        </member>
+        <member name="T:Alaris.Data.Model.MarketDataSnapshot">
+            <summary>
+            Complete market data snapshot for strategy evaluation.
+            </summary>
+        </member>
+        <member name="P:Alaris.Data.Model.MarketDataSnapshot.Symbol">
+            <summary>Gets the symbol.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.MarketDataSnapshot.Timestamp">
+            <summary>Gets the evaluation timestamp.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.MarketDataSnapshot.SpotPrice">
+            <summary>Gets the current spot price.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.MarketDataSnapshot.HistoricalBars">
+            <summary>Gets historical price bars for RV calculation.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.MarketDataSnapshot.OptionChain">
+            <summary>Gets the options chain snapshot.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.MarketDataSnapshot.NextEarnings">
+            <summary>Gets the next earnings event (if within evaluation window).</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.MarketDataSnapshot.HistoricalEarnings">
+            <summary>Gets historical earnings events (for Leung-Santoli calibration).</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.MarketDataSnapshot.RiskFreeRate">
+            <summary>Gets the current risk-free rate.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.MarketDataSnapshot.DividendYield">
+            <summary>Gets the dividend yield.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.MarketDataSnapshot.AverageVolume30Day">
+            <summary>Gets 30-day average volume.</summary>
+        </member>
+        <member name="T:Alaris.Data.Model.DataQualityResult">
+            <summary>
+            Result of a data quality validation check.
+            </summary>
+        </member>
+        <member name="P:Alaris.Data.Model.DataQualityResult.ValidatorId">
+            <summary>Gets the validator component ID.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.DataQualityResult.Status">
+            <summary>Gets the validation result.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.DataQualityResult.Message">
+            <summary>Gets the validation message.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.DataQualityResult.Warnings">
+            <summary>Gets any validation warnings (non-fatal).</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.DataQualityResult.DataElement">
+            <summary>Gets the data element that was validated.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.DataQualityResult.Timestamp">
+            <summary>Gets the timestamp of validation.</summary>
+        </member>
+        <member name="T:Alaris.Data.Model.ValidationStatus">
+            <summary>
+            Validation status enumeration.
+            </summary>
+        </member>
+        <member name="F:Alaris.Data.Model.ValidationStatus.Passed">
+            <summary>Validation passed.</summary>
+        </member>
+        <member name="F:Alaris.Data.Model.ValidationStatus.PassedWithWarnings">
+            <summary>Validation passed with warnings.</summary>
+        </member>
+        <member name="F:Alaris.Data.Model.ValidationStatus.Failed">
+            <summary>Validation failed.</summary>
+        </member>
+        <member name="T:Alaris.Data.Model.DTmd002A">
+            <summary>
+            Calendar spread quote (combined front and back month).
+            </summary>
+        </member>
+        <member name="P:Alaris.Data.Model.DTmd002A.UnderlyingSymbol">
+            <summary>Gets the underlying symbol.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.DTmd002A.Strike">
+            <summary>Gets the strike price.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.DTmd002A.FrontLeg">
+            <summary>Gets the front month quote.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.DTmd002A.BackLeg">
+            <summary>Gets the back month quote.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.DTmd002A.SpreadBid">
+            <summary>Gets the spread bid (buy back at ask, sell front at bid).</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.DTmd002A.SpreadAsk">
+            <summary>Gets the spread ask (buy back at ask, sell front at bid).</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.DTmd002A.SpreadMid">
+            <summary>Gets the spread mid price.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.DTmd002A.SpreadWidth">
+            <summary>Gets the spread width.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.DTmd002A.Timestamp">
+            <summary>Gets the quote timestamp.</summary>
+        </member>
+        <member name="T:Alaris.Data.Model.CorporateActionType">
+            <summary>
+            Types of corporate actions that affect price/strike adjustments.
+            </summary>
+        </member>
+        <member name="F:Alaris.Data.Model.CorporateActionType.Split">
+            <summary>Stock split (e.g., 2:1 doubles shares, halves price).</summary>
+        </member>
+        <member name="F:Alaris.Data.Model.CorporateActionType.ReverseSplit">
+            <summary>Reverse split (e.g., 1:5 reduces shares, increases price).</summary>
+        </member>
+        <member name="F:Alaris.Data.Model.CorporateActionType.CashDividend">
+            <summary>Cash dividend (affects option pricing near ex-date).</summary>
+        </member>
+        <member name="F:Alaris.Data.Model.CorporateActionType.StockDividend">
+            <summary>Stock dividend (additional shares issued).</summary>
+        </member>
+        <member name="F:Alaris.Data.Model.CorporateActionType.SpinOff">
+            <summary>Spin-off (new company shares issued).</summary>
+        </member>
+        <member name="F:Alaris.Data.Model.CorporateActionType.Merger">
+            <summary>Merger or acquisition.</summary>
+        </member>
+        <member name="F:Alaris.Data.Model.CorporateActionType.RightsOffering">
+            <summary>Rights offering.</summary>
+        </member>
+        <member name="T:Alaris.Data.Model.DTmd003A">
+            <summary>
+            Corporate Action Data Model.
+            Component ID: DTmd003A
+            </summary>
+            <remarks>
+            <para>
+            Represents a single corporate action event that may require
+            price adjustments in historical backtesting data.
+            </para>
+            <para>
+            <b>Key Fields:</b>
+            </para>
+            <list type="bullet">
+              <item><b>ExDate</b>: The ex-dividend/split date (price adjusts on this date)</item>
+              <item><b>Factor</b>: The adjustment multiplier (e.g., 2.0 for 2:1 split)</item>
+              <item><b>PayDate</b>: When the action is paid/effective</item>
+            </list>
+            </remarks>
+            <param name="Symbol">Ticker symbol affected by this action.</param>
+            <param name="ExDate">Ex-date when the adjustment takes effect.</param>
+            <param name="Type">Type of corporate action.</param>
+            <param name="Factor">
+            Adjustment factor. For splits: new shares per old share.
+            For dividends: cash amount per share.
+            </param>
+            <param name="Description">Human-readable description of the action.</param>
+            <param name="PayDate">Optional payment/effective date.</param>
+            <param name="RecordDate">Optional record date.</param>
+        </member>
+        <member name="M:Alaris.Data.Model.DTmd003A.#ctor(System.String,System.DateTime,Alaris.Data.Model.CorporateActionType,System.Decimal,System.String,System.Nullable{System.DateTime},System.Nullable{System.DateTime})">
+            <summary>
+            Corporate Action Data Model.
+            Component ID: DTmd003A
+            </summary>
+            <remarks>
+            <para>
+            Represents a single corporate action event that may require
+            price adjustments in historical backtesting data.
+            </para>
+            <para>
+            <b>Key Fields:</b>
+            </para>
+            <list type="bullet">
+              <item><b>ExDate</b>: The ex-dividend/split date (price adjusts on this date)</item>
+              <item><b>Factor</b>: The adjustment multiplier (e.g., 2.0 for 2:1 split)</item>
+              <item><b>PayDate</b>: When the action is paid/effective</item>
+            </list>
+            </remarks>
+            <param name="Symbol">Ticker symbol affected by this action.</param>
+            <param name="ExDate">Ex-date when the adjustment takes effect.</param>
+            <param name="Type">Type of corporate action.</param>
+            <param name="Factor">
+            Adjustment factor. For splits: new shares per old share.
+            For dividends: cash amount per share.
+            </param>
+            <param name="Description">Human-readable description of the action.</param>
+            <param name="PayDate">Optional payment/effective date.</param>
+            <param name="RecordDate">Optional record date.</param>
+        </member>
+        <member name="P:Alaris.Data.Model.DTmd003A.Symbol">
+            <summary>Ticker symbol affected by this action.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.DTmd003A.ExDate">
+            <summary>Ex-date when the adjustment takes effect.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.DTmd003A.Type">
+            <summary>Type of corporate action.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.DTmd003A.Factor">
+            <summary>
+            Adjustment factor. For splits: new shares per old share.
+            For dividends: cash amount per share.
+            </summary>
+        </member>
+        <member name="P:Alaris.Data.Model.DTmd003A.Description">
+            <summary>Human-readable description of the action.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.DTmd003A.PayDate">
+            <summary>Optional payment/effective date.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.DTmd003A.RecordDate">
+            <summary>Optional record date.</summary>
+        </member>
+        <member name="P:Alaris.Data.Model.DTmd003A.RequiresPriceAdjustment">
+            <summary>
+            Gets whether this action requires price adjustment.
+            </summary>
+        </member>
+        <member name="P:Alaris.Data.Model.DTmd003A.RequiresStrikeAdjustment">
+            <summary>
+            Gets whether this action requires strike adjustment for options.
+            </summary>
+        </member>
+        <member name="M:Alaris.Data.Model.DTmd003A.GetPriceMultiplier">
+            <summary>
+            Computes the price adjustment multiplier.
+            </summary>
+            <returns>
+            The multiplier to apply to pre-action prices.
+            For a 2:1 split, returns 0.5 (price is halved).
+            </returns>
+        </member>
+        <member name="M:Alaris.Data.Model.DTmd003A.GetStrikeMultiplier">
+            <summary>
+            Computes the strike adjustment multiplier for options.
+            </summary>
+            <returns>
+            The multiplier to apply to pre-action strikes.
+            For a 2:1 split, returns 0.5 (strikes are halved).
+            </returns>
+        </member>
+        <member name="T:Alaris.Data.Provider.DTca001A">
+            <summary>
+            Corporate Actions Provider Interface.
+            Component ID: DTca001A
+            </summary>
+            <remarks>
+            <para>
+            Provides methods for retrieving and applying corporate actions
+            for historical data adjustment in backtesting. This is critical for:
+            </para>
+            <list type="bullet">
+              <item>Maintaining point-in-time data integrity</item>
+              <item>Correctly aligning option strikes with underlying prices</item>
+              <item>Computing accurate IV term structure across events</item>
+            </list>
+            <para>
+            <b>Key Principle</b>: Adjustment is a computation, not stored data.
+            Raw prices are ground truth; adjustments are applied on-demand.
+            </para>
+            <para>
+            <b>Live Trading Note</b>: In live trading, IBKR handles corporate
+            actions automatically (adjusts positions, issues new symbols).
+            This interface is primarily for backtesting use.
+            </para>
+            </remarks>
+        </member>
+        <member name="M:Alaris.Data.Provider.DTca001A.GetActionsAsync(System.String,System.DateTime,System.DateTime,System.Threading.CancellationToken)">
+            <summary>
+            Gets corporate actions for a symbol within a date range.
+            </summary>
+            <param name="symbol">The ticker symbol.</param>
+            <param name="startDate">Start of the date range.</param>
+            <param name="endDate">End of the date range.</param>
+            <param name="cancellationToken">Cancellation token.</param>
+            <returns>List of corporate actions ordered by ex-date.</returns>
+        </member>
+        <member name="M:Alaris.Data.Provider.DTca001A.AdjustPrice(System.Decimal,System.DateTime,System.Collections.Generic.IReadOnlyList{Alaris.Data.Model.DTmd003A})">
+            <summary>
+            Adjusts a raw price for all corporate actions up to a given date.
+            </summary>
+            <param name="rawPrice">The unadjusted historical price.</param>
+            <param name="priceDate">The date of the raw price.</param>
+            <param name="actions">Corporate actions to apply.</param>
+            <returns>The adjusted price as of today's terms.</returns>
+            <remarks>
+            Applies cumulative adjustment factors for all actions with
+            ex-date after priceDate and before today.
+            </remarks>
+        </member>
+        <member name="M:Alaris.Data.Provider.DTca001A.AdjustStrike(System.Decimal,System.DateTime,System.Collections.Generic.IReadOnlyList{Alaris.Data.Model.DTmd003A})">
+            <summary>
+            Adjusts an option strike price for corporate actions.
+            </summary>
+            <param name="strike">The original strike price.</param>
+            <param name="optionTradeDate">The date the option was created/traded.</param>
+            <param name="actions">Corporate actions to apply.</param>
+            <returns>The adjusted strike price.</returns>
+            <remarks>
+            <para>
+            When a stock splits, the OCC adjusts:
+            </para>
+            <list type="bullet">
+              <item>Strike price (divided by split ratio)</item>
+              <item>Contract multiplier (multiplied by split ratio)</item>
+            </list>
+            <para>
+            This method handles the strike adjustment. For proper
+            backtesting, always use this when comparing historical
+            option strikes to adjusted equity prices.
+            </para>
+            </remarks>
+        </member>
+        <member name="M:Alaris.Data.Provider.DTca001A.IsAffectedByAction(System.DateTime,System.Collections.Generic.IReadOnlyList{Alaris.Data.Model.DTmd003A},System.Int32)">
+            <summary>
+            Checks if a date falls within a period affected by a corporate action.
+            </summary>
+            <param name="checkDate">The date to check.</param>
+            <param name="actions">Corporate actions to check against.</param>
+            <param name="bufferDays">Buffer days around ex-date (default 5).</param>
+            <returns>True if the date is near a corporate action.</returns>
+            <remarks>
+            Useful for flagging IV surface data that may be unreliable
+            due to corporate action effects.
+            </remarks>
+        </member>
+        <member name="T:Alaris.Data.Provider.FMP.FinancialModelingPrepProvider">
+            <summary>
+            Financial Modeling Prep earnings calendar provider.
+            Component ID: DTea001A
+            </summary>
+            <remarks>
+            Implements DTpr004A (Earnings Calendar Provider interface) using FMP free tier (250 calls/day).
+            
+            API Documentation: https://financialmodelingprep.com/developer/docs/#Earnings-Calendar
+            Endpoint: /v3/earnings-calendar
+            
+            Free tier provides:
+            - Earnings dates (confirmed and estimated)
+            - EPS estimates and actuals
+            - Fiscal quarter information
+            - Up to 250 API calls per day
+            </remarks>
+        </member>
+        <member name="M:Alaris.Data.Provider.FMP.FinancialModelingPrepProvider.#ctor(System.Net.Http.HttpClient,Microsoft.Extensions.Configuration.IConfiguration,Microsoft.Extensions.Logging.ILogger{Alaris.Data.Provider.FMP.FinancialModelingPrepProvider})">
+            <summary>
+            Initializes a new instance of the <see cref="T:Alaris.Data.Provider.FMP.FinancialModelingPrepProvider"/> class.
+            </summary>
+            <param name="httpClient">HTTP client.</param>
+            <param name="configuration">Configuration containing API key.</param>
+            <param name="logger">Logger instance.</param>
+        </member>
+        <member name="M:Alaris.Data.Provider.FMP.FinancialModelingPrepProvider.GetUpcomingEarningsAsync(System.String,System.Int32,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Alaris.Data.Provider.FMP.FinancialModelingPrepProvider.GetHistoricalEarningsAsync(System.String,System.Int32,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Alaris.Data.Provider.FMP.FinancialModelingPrepProvider.GetSymbolsWithEarningsAsync(System.DateTime,System.DateTime,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Alaris.Data.Provider.FMP.FinancialModelingPrepProvider.GetEarningsInDateRangeAsync(System.DateTime,System.DateTime,System.Threading.CancellationToken)">
+            <summary>
+            Gets all earnings events in a date range.
+            </summary>
+        </member>
+        <member name="M:Alaris.Data.Provider.FMP.FinancialModelingPrepProvider.MapToEarningsEvent(Alaris.Data.Provider.FMP.FmpEarningsEvent,System.String)">
+            <summary>
+            Maps FMP API response to EarningsEvent model.
+            </summary>
+        </member>
+        <member name="T:Alaris.Data.Provider.SEC.SecEdgarProvider">
+            <summary>
+            SEC EDGAR 8-K filings earnings provider.
+            Component ID: DTea001B
+            </summary>
+            <remarks>
+            <para>
+            Implements DTpr004A (Earnings Calendar Provider interface) using SEC EDGAR API.
+            </para>
+            <para>
+            Uses 8-K Form Item 2.02 ("Results of Operations and Financial Condition")
+            filings to detect earnings announcements. These filings are required within
+            4 business days of an earnings release.
+            </para>
+            <para>
+            SEC API Requirements:
+            - User-Agent header with contact info (required)
+            - Rate limit: 10 requests/second
+            - No API key needed
+            </para>
+            </remarks>
+        </member>
+        <member name="M:Alaris.Data.Provider.SEC.SecEdgarProvider.#ctor(System.Net.Http.HttpClient,Microsoft.Extensions.Logging.ILogger{Alaris.Data.Provider.SEC.SecEdgarProvider})">
+            <summary>
+            Initializes a new instance of the <see cref="T:Alaris.Data.Provider.SEC.SecEdgarProvider"/> class.
+            </summary>
+            <param name="httpClient">HTTP client configured with SEC User-Agent.</param>
+            <param name="logger">Logger instance.</param>
+            <exception cref="T:System.ArgumentNullException">Thrown when httpClient or logger is null.</exception>
+        </member>
+        <member name="M:Alaris.Data.Provider.SEC.SecEdgarProvider.GetUpcomingEarningsAsync(System.String,System.Int32,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Alaris.Data.Provider.SEC.SecEdgarProvider.GetHistoricalEarningsAsync(System.String,System.Int32,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Alaris.Data.Provider.SEC.SecEdgarProvider.GetSymbolsWithEarningsAsync(System.DateTime,System.DateTime,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Alaris.Data.Provider.SEC.SecEdgarProvider.GetCikForTickerAsync(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Gets the CIK number for a stock ticker.
+            </summary>
+            <param name="ticker">Stock ticker symbol.</param>
+            <param name="cancellationToken">Cancellation token.</param>
+            <returns>10-digit padded CIK string, or null if not found.</returns>
+        </member>
+        <member name="M:Alaris.Data.Provider.SEC.SecEdgarProvider.GetCompanyFilingsAsync(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Gets company filings from SEC EDGAR.
+            </summary>
+        </member>
+        <member name="M:Alaris.Data.Provider.SEC.SecEdgarProvider.ParseFilings(Alaris.Data.Provider.SEC.SecRecentFilings)">
+            <summary>
+            Parses SEC filing data into structured objects.
+            </summary>
+        </member>
+        <member name="M:Alaris.Data.Provider.SEC.SecEdgarProvider.IsEarningsRelatedFiling(System.String,System.String)">
+            <summary>
+            Determines if a filing is earnings-related (Item 2.02).
+            </summary>
+        </member>
+        <member name="M:Alaris.Data.Provider.SEC.SecEdgarProvider.EnsureCikMappingLoadedAsync(System.Threading.CancellationToken)">
+            <summary>
+            Ensures CIK mapping is loaded from SEC.
+            </summary>
+        </member>
+        <member name="M:Alaris.Data.Provider.SEC.SecEdgarProvider.RateLimitAsync(System.Threading.CancellationToken)">
+            <summary>
+            Enforces SEC rate limit.
+            </summary>
+        </member>
+        <member name="M:Alaris.Data.Provider.SEC.SecEdgarProvider.Dispose">
+            <inheritdoc/>
+        </member>
+        <member name="T:Alaris.Data.Provider.SEC.SecSubmissions">
+            <summary>
+            SEC company submissions response.
+            </summary>
+        </member>
+        <member name="T:Alaris.Data.Provider.SEC.SecFilings">
+            <summary>
+            SEC filings container.
+            </summary>
+        </member>
+        <member name="T:Alaris.Data.Provider.SEC.SecRecentFilings">
+            <summary>
+            SEC recent filings arrays.
+            </summary>
+        </member>
+        <member name="T:Alaris.Data.Provider.SEC.SecFiling">
+            <summary>
+            Parsed SEC filing.
+            </summary>
+        </member>
+        <member name="T:Alaris.Data.Provider.SEC.SecCompanyTicker">
+            <summary>
+            SEC company ticker mapping entry.
+            </summary>
+        </member>
+        <member name="T:Alaris.Data.Provider.InteractiveBrokersSnapshotProvider">
+            <summary>
+            Interactive Brokers implementation of execution quote provider.
+            Component: DTib005A | Category: Data Provider | Variant: A (Primary)
+            </summary>
+            <remarks>
+            <para>
+            This provider supports two modes of operation:
+            <list type="bullet">
+              <item><b>Live/Paper Mode:</b> Connects to IB Gateway for real-time quotes</item>
+              <item><b>Backtest Mode:</b> Uses simulated quotes based on market data</item>
+            </list>
+            </para>
+            <para>
+            Configuration is read from appsettings.jsonc InteractiveBrokers section:
+            <code>
+            "InteractiveBrokers": {
+                "Host": "127.0.0.1",
+                "Port": 4002,      // 4002=paper, 4001=live
+                "ClientId": 1,
+                "TradingMode": "paper"
+            }
+            </code>
+            </para>
+            </remarks>
+        </member>
+        <member name="M:Alaris.Data.Provider.InteractiveBrokersSnapshotProvider.#ctor(Microsoft.Extensions.Configuration.IConfiguration,Microsoft.Extensions.Logging.ILogger{Alaris.Data.Provider.InteractiveBrokersSnapshotProvider})">
+            <summary>
+            Initializes a new instance for live/paper trading with IB Gateway connection.
+            </summary>
+            <param name="configuration">Configuration containing IB settings.</param>
+            <param name="logger">Logger instance.</param>
+        </member>
+        <member name="M:Alaris.Data.Provider.InteractiveBrokersSnapshotProvider.#ctor(Microsoft.Extensions.Logging.ILogger{Alaris.Data.Provider.InteractiveBrokersSnapshotProvider})">
+            <summary>
+            Initializes a new instance for backtesting (no IB connection).
+            </summary>
+            <param name="logger">Logger instance.</param>
+        </member>
+        <member name="P:Alaris.Data.Provider.InteractiveBrokersSnapshotProvider.IsConnected">
+            <summary>
+            Gets whether the provider is currently connected to IB Gateway.
+            </summary>
+        </member>
+        <member name="P:Alaris.Data.Provider.InteractiveBrokersSnapshotProvider.IsBacktestMode">
+            <summary>
+            Gets whether the provider is operating in backtest mode.
+            </summary>
+        </member>
+        <member name="M:Alaris.Data.Provider.InteractiveBrokersSnapshotProvider.GetSnapshotQuoteAsync(System.String,System.Decimal,System.DateTime,Alaris.Data.Model.OptionRight,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Alaris.Data.Provider.InteractiveBrokersSnapshotProvider.GenerateBacktestQuoteAsync(System.Int32,Alaris.Data.Provider.InteractiveBrokersSnapshotProvider.QuoteState)">
+            <summary>
+            Generates a simulated quote for backtesting.
+            Uses realistic bid-ask spreads based on option characteristics.
+            </summary>
+        </member>
+        <member name="M:Alaris.Data.Provider.InteractiveBrokersSnapshotProvider.RequestLiveQuoteAsync(System.Int32,Alaris.Data.Provider.InteractiveBrokersSnapshotProvider.QuoteState)">
+            <summary>
+            Requests a live quote from IB Gateway.
+            </summary>
+        </member>
+        <member name="M:Alaris.Data.Provider.InteractiveBrokersSnapshotProvider.GetDTmd002AAsync(System.String,System.Decimal,System.DateTime,System.DateTime,Alaris.Data.Model.OptionRight,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Alaris.Data.Provider.InteractiveBrokersSnapshotProvider.OnTickPrice(System.Int32,System.Int32,System.Decimal)">
+            <summary>
+            Internal callback handler for tickPrice events from IB Gateway.
+            Called by EWrapper when quote data arrives.
+            </summary>
+        </member>
+        <member name="M:Alaris.Data.Provider.InteractiveBrokersSnapshotProvider.OnTickSize(System.Int32,System.Int32,System.Int32)">
+            <summary>
+            Internal callback handler for tickSize events.
+            </summary>
+        </member>
+        <member name="M:Alaris.Data.Provider.InteractiveBrokersSnapshotProvider.Dispose">
+            <inheritdoc/>
+        </member>
+        <member name="T:Alaris.Data.Provider.Polygon.PolygonApiClient">
+            <summary>
+            Polygon.io REST API client for market data retrieval.
+            Component ID: DTpr001A
+            </summary>
+        </member>
+        <member name="M:Alaris.Data.Provider.Polygon.PolygonApiClient.GetHistoricalBarsAsync(System.String,System.DateTime,System.DateTime,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Alaris.Data.Provider.Polygon.PolygonApiClient.GetOptionChainAsync(System.String,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Alaris.Data.Provider.Polygon.PolygonApiClient.GetHistoricalOptionChainAsync(System.String,System.DateTime,System.Threading.CancellationToken)">
+            <summary>
+            Gets historical option chain for backtesting.
+            NOTE: Polygon does NOT provide historical Greeks/IV via API.
+            This method calculates IV from historical option prices using Black-Scholes,
+            which is the industry-standard approach for backtesting.
+            </summary>
+        </member>
+        <member name="M:Alaris.Data.Provider.Polygon.PolygonApiClient.GetSpotPriceAsync(System.String,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Alaris.Data.Provider.Polygon.PolygonApiClient.GetAverageVolume30DayAsync(System.String,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Alaris.Data.Provider.Polygon.PolygonApiClient.CalculateImpliedVolatility(System.Decimal,System.Decimal,System.Decimal,System.Decimal,System.Decimal,System.Boolean,System.Int32,System.Decimal)">
+            <summary>
+            Calculates implied volatility using Newton-Raphson method on Black-Scholes model.
+            This is necessary because Polygon does NOT provide historical IV via API.
+            </summary>
+        </member>
+        <member name="T:Alaris.Data.Provider.DTpr002A">
+            <summary>
+            Interface for execution quote providers (IBKR snapshots).
+            </summary>
+        </member>
+        <member name="M:Alaris.Data.Provider.DTpr002A.GetSnapshotQuoteAsync(System.String,System.Decimal,System.DateTime,Alaris.Data.Model.OptionRight,System.Threading.CancellationToken)">
+            <summary>
+            Gets a single option quote.
+            </summary>
+        </member>
+        <member name="M:Alaris.Data.Provider.DTpr002A.GetDTmd002AAsync(System.String,System.Decimal,System.DateTime,System.DateTime,Alaris.Data.Model.OptionRight,System.Threading.CancellationToken)">
+            <summary>
+            Gets a calendar spread quote (front and back months).
+            </summary>
+        </member>
+        <member name="T:Alaris.Data.Provider.DTpr003A">
+            <summary>
+            Interface for market data providers (Polygon, IBKR, etc.).
+            </summary>
+            <remarks>
+            <para>
+            Component ID: DTpr003A
+            </para>
+            <para>
+            Implementations provide historical OHLCV bars, options chains,
+            spot prices, and volume data from various market data vendors.
+            </para>
+            </remarks>
+        </member>
+        <member name="M:Alaris.Data.Provider.DTpr003A.GetHistoricalBarsAsync(System.String,System.DateTime,System.DateTime,System.Threading.CancellationToken)">
+            <summary>
+            Gets historical OHLCV bars for a symbol.
+            </summary>
+        </member>
+        <member name="M:Alaris.Data.Provider.DTpr003A.GetOptionChainAsync(System.String,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            Gets the current options chain for a symbol.
+            </summary>
+        </member>
+        <member name="M:Alaris.Data.Provider.DTpr003A.GetSpotPriceAsync(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Gets the current spot price for a symbol.
+            </summary>
+        </member>
+        <member name="M:Alaris.Data.Provider.DTpr003A.GetAverageVolume30DayAsync(System.String,System.Nullable{System.DateTime},System.Threading.CancellationToken)">
+            <summary>
+            Gets 30-day average volume for a symbol.
+            </summary>
+            <param name="symbol">The symbol to query.</param>
+            <param name="evaluationDate">Optional evaluation date (use LEAN's Time for backtests, null for live trading).</param>
+            <param name="cancellationToken">Cancellation token.</param>
+        </member>
+        <member name="T:Alaris.Data.Provider.DTpr004A">
+            <summary>
+            Interface for earnings calendar providers (FMP, etc.).
+            </summary>
+            <remarks>
+            <para>
+            Component ID: DTpr004A
+            </para>
+            <para>
+            Implementations provide upcoming and historical earnings events,
+            including announcement dates, EPS estimates, and fiscal period data.
+            </para>
+            </remarks>
+        </member>
+        <member name="M:Alaris.Data.Provider.DTpr004A.GetUpcomingEarningsAsync(System.String,System.Int32,System.Threading.CancellationToken)">
+            <summary>
+            Gets upcoming earnings events for a symbol.
+            </summary>
+        </member>
+        <member name="M:Alaris.Data.Provider.DTpr004A.GetHistoricalEarningsAsync(System.String,System.Int32,System.Threading.CancellationToken)">
+            <summary>
+            Gets historical earnings events for a symbol.
+            </summary>
+        </member>
+        <member name="M:Alaris.Data.Provider.DTpr004A.GetSymbolsWithEarningsAsync(System.DateTime,System.DateTime,System.Threading.CancellationToken)">
+            <summary>
+            Gets all symbols with earnings in date range.
+            </summary>
+        </member>
+        <member name="T:Alaris.Data.Provider.DTpr005A">
+            <summary>
+            Interface for risk-free rate providers.
+            </summary>
+            <remarks>
+            <para>
+            Component ID: DTpr005A
+            </para>
+            <para>
+            Implementations provide current and historical risk-free rates
+            (e.g., 3-month Treasury bill rates) for option pricing models.
+            </para>
+            </remarks>
+        </member>
+        <member name="M:Alaris.Data.Provider.DTpr005A.GetCurrentRateAsync(System.Threading.CancellationToken)">
+            <summary>
+            Gets the current risk-free rate (e.g., 3-month T-bill).
+            </summary>
+        </member>
+        <member name="M:Alaris.Data.Provider.DTpr005A.GetHistoricalRatesAsync(System.DateTime,System.DateTime,System.Threading.CancellationToken)">
+            <summary>
+            Gets historical risk-free rates.
+            </summary>
+        </member>
+        <member name="T:Alaris.Data.Provider.PolygonUniverseProvider">
+            <summary>
+            Polygon Universe Provider - fetches daily aggregates for all US stocks.
+            Component ID: DTpr006A
+            </summary>
+            <remarks>
+            Uses Polygon's Grouped Daily API to efficiently retrieve OHLCV data
+            for all US equities on a given date. This enables universe selection
+            without requiring QuantConnect's fundamental data subscription.
+            </remarks>
+        </member>
+        <member name="M:Alaris.Data.Provider.PolygonUniverseProvider.#ctor(System.Net.Http.HttpClient,Microsoft.Extensions.Configuration.IConfiguration,Microsoft.Extensions.Logging.ILogger{Alaris.Data.Provider.PolygonUniverseProvider})">
+            <summary>
+            Initializes a new instance of the Polygon Universe Provider.
+            </summary>
+            <param name="httpClient">HTTP client for API calls.</param>
+            <param name="configuration">Configuration containing Polygon API key.</param>
+            <param name="logger">Logger instance.</param>
+        </member>
+        <member name="M:Alaris.Data.Provider.PolygonUniverseProvider.GetUniverseAsync(System.DateTime,System.Threading.CancellationToken)">
+            <summary>
+            Gets all US stocks for a given date with their OHLCV data.
+            </summary>
+            <param name="date">The date to fetch data for.</param>
+            <param name="cancellationToken">Cancellation token.</param>
+            <returns>List of stock aggregates for the date.</returns>
+        </member>
+        <member name="M:Alaris.Data.Provider.PolygonUniverseProvider.GetFilteredUniverseAsync(System.DateTime,System.Decimal,System.Decimal,System.Threading.CancellationToken)">
+            <summary>
+            Gets filtered US stocks meeting volume and price criteria.
+            </summary>
+            <param name="date">The date to fetch data for.</param>
+            <param name="minDollarVolume">Minimum dollar volume threshold.</param>
+            <param name="minPrice">Minimum stock price threshold.</param>
+            <param name="cancellationToken">Cancellation token.</param>
+            <returns>List of stocks meeting the filter criteria.</returns>
+        </member>
+        <member name="M:Alaris.Data.Provider.PolygonUniverseProvider.GetUniverseTickersAsync(System.DateTime,System.Decimal,System.Decimal,System.Int32,System.Threading.CancellationToken)">
+            <summary>
+            Gets the list of tickers meeting universe criteria.
+            </summary>
+            <param name="date">The date to fetch data for.</param>
+            <param name="minDollarVolume">Minimum dollar volume threshold.</param>
+            <param name="minPrice">Minimum stock price threshold.</param>
+            <param name="maxTickers">Maximum number of tickers to return.</param>
+            <param name="cancellationToken">Cancellation token.</param>
+            <returns>List of ticker symbols meeting criteria.</returns>
+        </member>
+        <member name="T:Alaris.Data.Provider.UniverseStock">
+            <summary>
+            Represents a stock in the universe with its daily aggregates.
+            </summary>
+        </member>
+        <member name="P:Alaris.Data.Provider.UniverseStock.Ticker">
+            <summary>Ticker symbol.</summary>
+        </member>
+        <member name="P:Alaris.Data.Provider.UniverseStock.Open">
+            <summary>Opening price.</summary>
+        </member>
+        <member name="P:Alaris.Data.Provider.UniverseStock.High">
+            <summary>High price.</summary>
+        </member>
+        <member name="P:Alaris.Data.Provider.UniverseStock.Low">
+            <summary>Low price.</summary>
+        </member>
+        <member name="P:Alaris.Data.Provider.UniverseStock.Close">
+            <summary>Closing price.</summary>
+        </member>
+        <member name="P:Alaris.Data.Provider.UniverseStock.Volume">
+            <summary>Trading volume.</summary>
+        </member>
+        <member name="P:Alaris.Data.Provider.UniverseStock.DollarVolume">
+            <summary>Dollar volume (Close * Volume).</summary>
+        </member>
+        <member name="P:Alaris.Data.Provider.UniverseStock.Date">
+            <summary>Date of the data.</summary>
+        </member>
+        <member name="T:Alaris.Data.Provider.Treasury.TreasuryDirectRateProvider">
+            <summary>
+            Treasury Direct API risk-free rate provider.
+            Component ID: DTrf001A
+            </summary>
+            <remarks>
+            Provides risk-free rates using official US Treasury data.
+            Implements DTpr005A (Risk-Free Rate Provider interface).
+            
+            API: https://www.treasurydirect.gov/TA_WS/securities
+            Cost: FREE (official US government API)
+            Data: Daily treasury yields (3-month T-bill recommended for options)
+            No authentication required
+            
+            Usage:
+            - 3-month T-bill rate used as risk-free rate (r parameter)
+            - Updated daily
+            - No rate limits on official API
+            </remarks>
+        </member>
+        <member name="M:Alaris.Data.Provider.Treasury.TreasuryDirectRateProvider.#ctor(System.Net.Http.HttpClient,Microsoft.Extensions.Logging.ILogger{Alaris.Data.Provider.Treasury.TreasuryDirectRateProvider})">
+            <summary>
+            Initializes a new instance of the <see cref="T:Alaris.Data.Provider.Treasury.TreasuryDirectRateProvider"/> class.
+            </summary>
+            <param name="httpClient">HTTP client.</param>
+            <param name="logger">Logger instance.</param>
+        </member>
+        <member name="M:Alaris.Data.Provider.Treasury.TreasuryDirectRateProvider.GetCurrentRateAsync(System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Alaris.Data.Provider.Treasury.TreasuryDirectRateProvider.GetHistoricalRatesAsync(System.DateTime,System.DateTime,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Alaris.Data.Provider.Treasury.TreasuryDirectRateProvider.ParseRate(System.String)">
+            <summary>
+            Parses interest rate string to decimal.
+            Treasury rates are typically given as percentages (e.g., "5.25" for 5.25%).
+            </summary>
+        </member>
+        <member name="T:Alaris.Data.Quality.PriceReasonablenessValidator">
+            <summary>
+            Validates price reasonableness and data freshness.
+            Component ID: DTqc001A
+            </summary>
+            <remarks>
+            Validation checks:
+            - Spot price within ±10% of previous close
+            - Option bid > 0 and bid &lt; ask
+            - Option ask &lt; intrinsic value + $10
+            - No stale timestamps (>1 hour old)
+            </remarks>
+        </member>
+        <member name="P:Alaris.Data.Quality.PriceReasonablenessValidator.ComponentId">
+            <inheritdoc/>
+        </member>
+        <member name="M:Alaris.Data.Quality.PriceReasonablenessValidator.#ctor(Microsoft.Extensions.Logging.ILogger{Alaris.Data.Quality.PriceReasonablenessValidator})">
+            <summary>
+            Initializes a new instance of the <see cref="T:Alaris.Data.Quality.PriceReasonablenessValidator"/> class.
+            </summary>
+        </member>
+        <member name="M:Alaris.Data.Quality.PriceReasonablenessValidator.Validate(Alaris.Data.Model.MarketDataSnapshot)">
+            <inheritdoc/>
+        </member>
+        <member name="T:Alaris.Data.Quality.IvArbitrageValidator">
+            <summary>
+            Validates IV arbitrage conditions (put-call parity, calendar spreads).
+            Component ID: DTqc002A
+            </summary>
+            <remarks>
+            Validation checks:
+            - Put-call parity holds within 2%
+            - Calendar spread IV differences reasonable
+            - No butterfly arbitrage opportunities >$0.50
+            </remarks>
+        </member>
+        <member name="P:Alaris.Data.Quality.IvArbitrageValidator.ComponentId">
+            <inheritdoc/>
+        </member>
+        <member name="M:Alaris.Data.Quality.IvArbitrageValidator.#ctor(Microsoft.Extensions.Logging.ILogger{Alaris.Data.Quality.IvArbitrageValidator})">
+            <summary>
+            Initializes a new instance of the <see cref="T:Alaris.Data.Quality.IvArbitrageValidator"/> class.
+            </summary>
+        </member>
+        <member name="M:Alaris.Data.Quality.IvArbitrageValidator.Validate(Alaris.Data.Model.MarketDataSnapshot)">
+            <inheritdoc/>
+        </member>
+        <member name="T:Alaris.Data.Quality.VolumeOpenInterestValidator">
+            <summary>
+            Validates volume and open interest for liquidity requirements.
+            Component ID: DTqc003A
+            </summary>
+            <remarks>
+            Validation checks:
+            - Volume > 0 for liquid options (OI > 100)
+            - Volume within 10× of 30-day average
+            - OI change consistent with volume
+            </remarks>
+        </member>
+        <member name="P:Alaris.Data.Quality.VolumeOpenInterestValidator.ComponentId">
+            <inheritdoc/>
+        </member>
+        <member name="M:Alaris.Data.Quality.VolumeOpenInterestValidator.#ctor(Microsoft.Extensions.Logging.ILogger{Alaris.Data.Quality.VolumeOpenInterestValidator})">
+            <summary>
+            Initializes a new instance of the <see cref="T:Alaris.Data.Quality.VolumeOpenInterestValidator"/> class.
+            </summary>
+        </member>
+        <member name="M:Alaris.Data.Quality.VolumeOpenInterestValidator.Validate(Alaris.Data.Model.MarketDataSnapshot)">
+            <inheritdoc/>
+        </member>
+        <member name="T:Alaris.Data.Quality.EarningsDateValidator">
+            <summary>
+            Validates earnings date accuracy and consistency.
+            Component ID: DTqc004A
+            </summary>
+            <remarks>
+            Validation checks:
+            - Earnings date confirmed from 2+ sources (if possible)
+            - Date within next 90 days
+            - No conflicting dates in recent history
+            </remarks>
+        </member>
+        <member name="P:Alaris.Data.Quality.EarningsDateValidator.ComponentId">
+            <inheritdoc/>
+        </member>
+        <member name="M:Alaris.Data.Quality.EarningsDateValidator.#ctor(Microsoft.Extensions.Logging.ILogger{Alaris.Data.Quality.EarningsDateValidator})">
+            <summary>
+            Initializes a new instance of the <see cref="T:Alaris.Data.Quality.EarningsDateValidator"/> class.
+            </summary>
+        </member>
+        <member name="M:Alaris.Data.Quality.EarningsDateValidator.Validate(Alaris.Data.Model.MarketDataSnapshot)">
+            <inheritdoc/>
+        </member>
+        <member name="T:Alaris.Data.Quality.DTqc002A">
+            <summary>
+            Interface for data quality validators.
+            </summary>
+            <remarks>
+            <para>
+            Component ID: DTqc002A
+            </para>
+            <para>
+            Implementations validate market data snapshots against quality rules
+            such as price reasonableness, IV arbitrage detection, volume/OI checks,
+            and earnings date verification.
+            </para>
+            </remarks>
+        </member>
+        <member name="P:Alaris.Data.Quality.DTqc002A.ComponentId">
+            <summary>Gets the validator component ID (e.g., "DTqc001A").</summary>
+        </member>
+        <member name="M:Alaris.Data.Quality.DTqc002A.Validate(Alaris.Data.Model.MarketDataSnapshot)">
+            <summary>
+            Validates market data snapshot.
+            </summary>
+            <param name="snapshot">The market data to validate.</param>
+            <returns>Validation result.</returns>
+        </member>
+    </members>
+</doc>
