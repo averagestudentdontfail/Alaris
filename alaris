@@ -1,0 +1,7 @@
+#!/bin/bash
+# Alaris CLI Wrapper
+# Usage: ./alaris [command] [options] (e.g. ./alaris backtest create ...)
+# If no arguments are provided, launches TUI mode.
+
+PROJECT_PATH="/home/sunny/.project/Alaris/Alaris.Application"
+dotnet run --project "$PROJECT_PATH" -- "$@"

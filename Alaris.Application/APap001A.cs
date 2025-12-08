@@ -9,6 +9,8 @@
 using Spectre.Console;
 using Spectre.Console.Cli;
 using Alaris.Application.Command;
+using Alaris.Application.Service;
+using Alaris.Application.Model;
 
 namespace Alaris.Application;
 
@@ -107,7 +109,7 @@ public static class APap001A
                     .PageSize(10)
                     .AddChoices(new[]
                     {
-                        "1. Backtest - Run historical simulation",
+                        "1. Backtest Management - Sessions & Simulation",
                         "2. Paper Trading - IBKR paper trading",
                         "3. Live Trading - IBKR live trading",
                         "4. Configuration - View/edit settings",
@@ -120,8 +122,7 @@ public static class APap001A
             switch (choice)
             {
                 case "1":
-                    lastExitCode = ExecuteMode("backtest");
-                    WaitForKeyPress();
+                    lastExitCode = ShowBacktestMenu();
                     break;
                 case "2":
                     lastExitCode = ExecuteMode("paper");
@@ -298,5 +299,126 @@ public static class APap001A
         };
 
         return Main(args.ToArray());
+    }
+
+    private static int ShowBacktestMenu()
+    {
+        var running = true;
+        var exitCode = 0;
+
+        while (running)
+        {
+            AnsiConsole.Clear();
+            AnsiConsole.MarkupLine("[bold blue]Backtest Management[/]");
+            AnsiConsole.WriteLine();
+
+            var selection = AnsiConsole.Prompt(
+                new SelectionPrompt<string>()
+                    .Title("[green]Select an option:[/]")
+                    .AddChoices(new[]
+                    {
+                        "1. Create New Session",
+                        "2. List All Sessions",
+                        "3. Run Backtest Session",
+                        "4. Delete Session",
+                        "5. View Session Details",
+                        "6. Back to Main Menu"
+                    }));
+
+            var choice = selection.Split('.')[0].Trim();
+
+            switch (choice)
+            {
+                case "1":
+                    exitCode = CreateSessionInteractive();
+                    WaitForKeyPress();
+                    break;
+                case "2":
+                    // Use CLI list command
+                    Main(new[] { "backtest", "list" });
+                    WaitForKeyPress();
+                    break;
+                case "3":
+                    exitCode = RunSessionInteractive();
+                    WaitForKeyPress();
+                    break;
+                case "4":
+                    exitCode = DeleteSessionInteractive();
+                    WaitForKeyPress();
+                    break;
+                case "5":
+                    exitCode = ViewSessionInteractive();
+                    WaitForKeyPress();
+                    break;
+                case "6":
+                    running = false;
+                    break;
+            }
+        }
+        return exitCode;
+    }
+
+    private static int CreateSessionInteractive()
+    {
+        AnsiConsole.MarkupLine("[yellow]Create New Backtest Session[/]");
+        
+        var start = AnsiConsole.Ask<string>("[green]Start Date[/] (YYYY-MM-DD):", "2023-01-01");
+        var end = AnsiConsole.Ask<string>("[green]End Date[/] (YYYY-MM-DD):", "2023-06-30");
+        var symbols = AnsiConsole.Ask<string>("[green]Symbols[/] (comma-separated):", "SPY,QQQ");
+
+        var args = new[] { "backtest", "create", "--start", start, "--end", end, "--symbols", symbols };
+        return Main(args);
+    }
+
+    private static int RunSessionInteractive()
+    {
+        var sessionId = SelectSession("Run Session");
+        if (string.IsNullOrEmpty(sessionId)) return 0;
+        
+        return Main(new[] { "backtest", "run", sessionId });
+    }
+
+    private static int DeleteSessionInteractive()
+    {
+        var sessionId = SelectSession("Delete Session");
+        if (string.IsNullOrEmpty(sessionId)) return 0;
+
+        return Main(new[] { "backtest", "delete", sessionId });
+    }
+
+    private static int ViewSessionInteractive()
+    {
+        var sessionId = SelectSession("View Session");
+        if (string.IsNullOrEmpty(sessionId)) return 0;
+
+        return Main(new[] { "backtest", "view", sessionId });
+    }
+
+    private static string? SelectSession(string actionName)
+    {
+        AnsiConsole.MarkupLine($"[yellow]Select Session to {actionName}[/]");
+        
+        // Use Service directly to fetch sessions
+        var service = new APsv001A(); // Default paths
+        var sessions = service.ListAsync().Result; // Sync wait for TUI
+
+        if (sessions.Count == 0)
+        {
+            AnsiConsole.MarkupLine("[red]No sessions found.[/]");
+            return null;
+        }
+
+        var choices = sessions.Select(s => $"{s.SessionId} ({s.StartDate:yyyy-MM-dd} to {s.EndDate:yyyy-MM-dd}) [{s.Status}]").ToList();
+        choices.Add("Cancel");
+
+        var selection = AnsiConsole.Prompt(
+            new SelectionPrompt<string>()
+                .Title("[green]Choose a session:[/]")
+                .PageSize(15)
+                .AddChoices(choices));
+
+        if (selection == "Cancel") return null;
+
+        return selection.Split(' ')[0]; // Return SessionId
     }
 }
