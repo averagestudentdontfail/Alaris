@@ -49,6 +49,9 @@ public sealed class PolygonApiClient : DTpr003A
         
         _apiKey = configuration["Polygon:ApiKey"] 
             ?? throw new InvalidOperationException("Polygon API key not configured");
+            
+        var maskedKey = _apiKey.Length > 4 ? _apiKey[..4] + new string('*', _apiKey.Length - 4) : "INVALID";
+        _logger.LogInformation("Polygon Provider initialized with Key: {MaskedKey}", maskedKey);
 
         _httpClient.BaseAddress = new Uri(BaseUrl);
     }
