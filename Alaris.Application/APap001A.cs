@@ -357,20 +357,56 @@ public static class APap001A
     private static int CreateSessionInteractive()
     {
         AnsiConsole.MarkupLine("[yellow]Create New Backtest Session[/]");
-        AnsiConsole.MarkupLine("[grey]Leave symbols empty to use automated screener[/]");
         AnsiConsole.WriteLine();
         
-        var defaultStart = DateTime.Now.AddMonths(-6).ToString("yyyy-MM-dd");
-        var defaultEnd = DateTime.Now.ToString("yyyy-MM-dd");
-        
-        var start = AnsiConsole.Ask<string>($"[green]Start Date[/] (YYYY-MM-DD):", defaultStart);
-        var end = AnsiConsole.Ask<string>($"[green]End Date[/] (YYYY-MM-DD):", defaultEnd);
-        var symbols = AnsiConsole.Ask<string>("[green]Symbols[/] (comma-separated, or press Enter for auto-screener):", "");
+        // Date range selection
+        var dateOption = AnsiConsole.Prompt(
+            new SelectionPrompt<string>()
+                .Title("[green]Select date range:[/]")
+                .AddChoices(new[]
+                {
+                    "1. Default (last 2 years)",
+                    "2. Specific year(s) (e.g., 2024 or 2023,2024)",
+                    "3. Custom date range"
+                }));
 
-        var args = string.IsNullOrWhiteSpace(symbols)
-            ? new[] { "backtest", "create", "--start", start, "--end", end }
-            : new[] { "backtest", "create", "--start", start, "--end", end, "--symbols", symbols };
-        return Main(args);
+        var dateChoice = dateOption.Split('.')[0].Trim();
+        string[] dateArgs;
+
+        switch (dateChoice)
+        {
+            case "1":
+                // Default 2 years - no date args needed
+                dateArgs = Array.Empty<string>();
+                break;
+            case "2":
+                var years = AnsiConsole.Ask<string>("[green]Enter year(s)[/] (e.g., 2024 or 2023,2024):");
+                dateArgs = new[] { "--years", years };
+                break;
+            case "3":
+                var defaultStart = DateTime.Now.AddYears(-2).ToString("yyyy-MM-dd");
+                var defaultEnd = DateTime.Now.AddDays(-1).ToString("yyyy-MM-dd");
+                var start = AnsiConsole.Ask<string>($"[green]Start Date[/] (YYYY-MM-DD):", defaultStart);
+                var end = AnsiConsole.Ask<string>($"[green]End Date[/] (YYYY-MM-DD):", defaultEnd);
+                dateArgs = new[] { "--start", start, "--end", end };
+                break;
+            default:
+                dateArgs = Array.Empty<string>();
+                break;
+        }
+
+        AnsiConsole.MarkupLine("[grey]Leave symbols empty to use automated screener[/]");
+        var symbols = AnsiConsole.Ask<string>("[green]Symbols[/] (comma-separated, or Enter for auto):", "");
+
+        var args = new List<string> { "backtest", "create" };
+        args.AddRange(dateArgs);
+        if (!string.IsNullOrWhiteSpace(symbols))
+        {
+            args.Add("--symbols");
+            args.Add(symbols);
+        }
+
+        return Main(args.ToArray());
     }
 
     private static int RunSessionInteractive()

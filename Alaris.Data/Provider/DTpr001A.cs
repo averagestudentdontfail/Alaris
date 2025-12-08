@@ -150,13 +150,25 @@ public sealed class PolygonApiClient : DTpr003A
         if (string.IsNullOrWhiteSpace(symbol))
             throw new ArgumentException("Symbol cannot be null or whitespace", nameof(symbol));
 
-        _logger.LogInformation("Fetching historical option chain for {Symbol} as of {Date:yyyy-MM-dd}", symbol, asOfDate);
+        // Clamp asOfDate to subscription limits (2 years for Options Starter)
+        var twoYearsAgo = DateTime.UtcNow.Date.AddYears(-2).AddDays(1);
+        var effectiveDate = asOfDate < twoYearsAgo ? twoYearsAgo : asOfDate;
+        
+        if (asOfDate < twoYearsAgo)
+        {
+            _logger.LogWarning("asOfDate {Date:yyyy-MM-dd} is outside 2-year subscription limit, using {EffectiveDate:yyyy-MM-dd}", 
+                asOfDate, effectiveDate);
+        }
+
+        _logger.LogInformation("Fetching historical option chain for {Symbol} as of {Date:yyyy-MM-dd}", symbol, effectiveDate);
 
         // Get historical spot price (previous day close)
         var spotPrice = 0m;
         try
         {
-            var bars = await GetHistoricalBarsAsync(symbol, asOfDate.AddDays(-5), asOfDate, cancellationToken);
+            var spotStart = effectiveDate.AddDays(-5);
+            if (spotStart < twoYearsAgo) spotStart = twoYearsAgo;
+            var bars = await GetHistoricalBarsAsync(symbol, spotStart, effectiveDate, cancellationToken);
             spotPrice = bars.Count > 0 ? bars[bars.Count - 1].Close : 0m;
         }
         catch (Exception ex)
@@ -165,9 +177,9 @@ public sealed class PolygonApiClient : DTpr003A
         }
 
         // Get options contracts active as_of the date
-        var dateStr = asOfDate.ToString("yyyy-MM-dd");
-        var expirationMin = asOfDate.ToString("yyyy-MM-dd");
-        var expirationMax = asOfDate.AddDays(60).ToString("yyyy-MM-dd"); // Next 60 days of expirations
+        var dateStr = effectiveDate.ToString("yyyy-MM-dd");
+        var expirationMin = effectiveDate.ToString("yyyy-MM-dd");
+        var expirationMax = effectiveDate.AddDays(60).ToString("yyyy-MM-dd"); // Next 60 days of expirations
         
         var url = $"{BaseUrl}/v3/reference/options/contracts?underlying_ticker={symbol}&as_of={dateStr}&expiration_date.gte={expirationMin}&expiration_date.lte={expirationMax}&limit=250&apiKey={_apiKey}";
 
