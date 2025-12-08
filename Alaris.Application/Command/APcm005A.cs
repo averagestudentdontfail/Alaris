@@ -36,12 +36,16 @@ namespace Alaris.Application.Command;
 public sealed class BacktestCreateSettings : CommandSettings
 {
     [CommandOption("-s|--start <DATE>")]
-    [Description("Backtest start date (YYYY-MM-DD)")]
-    public required string StartDate { get; init; }
+    [Description("Backtest start date (YYYY-MM-DD). Default: 2 years ago")]
+    public string? StartDate { get; init; }
 
     [CommandOption("-e|--end <DATE>")]
-    [Description("Backtest end date (YYYY-MM-DD)")]
-    public required string EndDate { get; init; }
+    [Description("Backtest end date (YYYY-MM-DD). Default: yesterday")]
+    public string? EndDate { get; init; }
+
+    [CommandOption("-y|--years <YEARS>")]
+    [Description("Year(s) to backtest (e.g., 2024 or 2023,2024). Overrides start/end")]
+    public string? Years { get; init; }
 
     [CommandOption("--symbols <SYMBOLS>")]
     [Description("Comma-separated list of symbols (optional)")]
@@ -60,16 +64,12 @@ public sealed class BacktestCreateCommand : AsyncCommand<BacktestCreateSettings>
 {
     public override async Task<int> ExecuteAsync(CommandContext context, BacktestCreateSettings settings)
     {
-        if (!DateTime.TryParse(settings.StartDate, out var startDate))
+        // Resolve date range: --years > --start/--end > default (2 years)
+        var (startDate, endDate) = ResolveDateRange(settings);
+        
+        if (startDate == DateTime.MinValue || endDate == DateTime.MinValue)
         {
-            AnsiConsole.MarkupLine("[red]Invalid start date format. Use YYYY-MM-DD[/]");
-            return 1;
-        }
-
-        if (!DateTime.TryParse(settings.EndDate, out var endDate))
-        {
-            AnsiConsole.MarkupLine("[red]Invalid end date format. Use YYYY-MM-DD[/]");
-            return 1;
+            return 1; // Error already printed
         }
 
         var symbols = settings.Symbols?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
@@ -144,6 +144,73 @@ public sealed class BacktestCreateCommand : AsyncCommand<BacktestCreateSettings>
             AnsiConsole.MarkupLine($"[red]Error creating session: {ex.Message}[/]");
             return 1;
         }
+    }
+
+    /// <summary>
+    /// Resolves date range from command settings.
+    /// Priority: --years > --start/--end > default (2 years ending yesterday)
+    /// </summary>
+    private static (DateTime start, DateTime end) ResolveDateRange(BacktestCreateSettings settings)
+    {
+        // Option 1: --years specified (e.g., "2024" or "2023,2024")
+        if (!string.IsNullOrEmpty(settings.Years))
+        {
+            var yearStrings = settings.Years.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            var years = new List<int>();
+            
+            foreach (var yearStr in yearStrings)
+            {
+                if (int.TryParse(yearStr, out var year) && year >= 2000 && year <= 2100)
+                {
+                    years.Add(year);
+                }
+                else
+                {
+                    AnsiConsole.MarkupLine($"[red]Invalid year: {yearStr}. Use format: 2024 or 2023,2024[/]");
+                    return (DateTime.MinValue, DateTime.MinValue);
+                }
+            }
+
+            if (years.Count == 0)
+            {
+                AnsiConsole.MarkupLine("[red]No valid years specified[/]");
+                return (DateTime.MinValue, DateTime.MinValue);
+            }
+
+            var minYear = years.Min();
+            var maxYear = years.Max();
+            var startDate = new DateTime(minYear, 1, 1);
+            var endDate = maxYear == DateTime.Now.Year 
+                ? DateTime.Now.Date.AddDays(-1)  // Current year: end yesterday
+                : new DateTime(maxYear, 12, 31); // Past years: end Dec 31
+            
+            AnsiConsole.MarkupLine($"[cyan]Using year range: {minYear}-{maxYear}[/]");
+            return (startDate, endDate);
+        }
+
+        // Option 2: Explicit --start/--end
+        if (!string.IsNullOrEmpty(settings.StartDate) || !string.IsNullOrEmpty(settings.EndDate))
+        {
+            if (string.IsNullOrEmpty(settings.StartDate) || !DateTime.TryParse(settings.StartDate, out var start))
+            {
+                AnsiConsole.MarkupLine("[red]Invalid or missing start date. Use YYYY-MM-DD format[/]");
+                return (DateTime.MinValue, DateTime.MinValue);
+            }
+
+            if (string.IsNullOrEmpty(settings.EndDate) || !DateTime.TryParse(settings.EndDate, out var end))
+            {
+                AnsiConsole.MarkupLine("[red]Invalid or missing end date. Use YYYY-MM-DD format[/]");
+                return (DateTime.MinValue, DateTime.MinValue);
+            }
+
+            return (start, end);
+        }
+
+        // Option 3: Default - 2 years ending yesterday
+        var yesterday = DateTime.Now.Date.AddDays(-1);
+        var twoYearsAgo = yesterday.AddYears(-2);
+        AnsiConsole.MarkupLine($"[cyan]Using default 2-year range: {twoYearsAgo:yyyy-MM-dd} to {yesterday:yyyy-MM-dd}[/]");
+        return (twoYearsAgo, yesterday);
     }
 }
 
