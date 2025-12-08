@@ -124,6 +124,7 @@ public sealed class STLN001A : QCAlgorithm
     private STCR003AEstimator? _yangZhangEstimator;
     private STTM001AAnalyzer? _termStructureAnalyzer;
     private STCR001A? _signalGenerator;
+    private DataBridgeMarketDataAdapter? _marketDataAdapter;
     private STRK001A? _positionSizer;
     
     // Production Validation
@@ -353,9 +354,9 @@ public sealed class STLN001A : QCAlgorithm
         _termStructureAnalyzer = new STTM001AAnalyzer();
         
         // Signal generator (requires market data adapter)
-        var marketDataAdapter = new DataBridgeMarketDataAdapter(_dataBridge!);
+        _marketDataAdapter = new DataBridgeMarketDataAdapter(_dataBridge!);
         _signalGenerator = new STCR001A(
-            marketDataAdapter,
+            _marketDataAdapter,
             _yangZhangEstimator,
             _termStructureAnalyzer,
             earningsCalibrator: null,  // Use default calibration
@@ -680,7 +681,8 @@ public sealed class STLN001A : QCAlgorithm
         try
         {
             using var cts = new CancellationTokenSource(ApiTimeout);
-            snapshot = _dataBridge!.GetMarketDataSnapshotAsync(ticker, cts.Token)
+            // Pass Time (simulation time) for consistency, even in live mode
+            snapshot = _dataBridge!.GetMarketDataSnapshotAsync(ticker, Time, cts.Token)
                 .GetAwaiter().GetResult();
         }
         catch (OperationCanceledException)
@@ -884,9 +886,9 @@ public sealed class STLN001A : QCAlgorithm
         var historyBars = History<QuantConnect.Data.Market.TradeBar>(symbol, 45, Resolution.Daily);
         var barList = historyBars.ToList();
         
-        if (barList.Count < 30)
+        if (barList.Count < 31)
         {
-            Log($"  {ticker}: Insufficient LEAN history ({barList.Count} bars, need 30+)");
+            Log($"  {ticker}: Insufficient LEAN history ({barList.Count} bars, need 31+)");
             return result;
         }
 
@@ -961,7 +963,8 @@ public sealed class STLN001A : QCAlgorithm
             return result;
         }
 
-        // Generate signal
+        // Generate signal - update adapter with simulation time first
+        _marketDataAdapter?.SetEvaluationDate(simulationDate);
         var signal = _signalGenerator!.Generate(ticker, nextEarnings.Date, simulationDate);
         Log($"  {ticker}: Signal = {signal.Strength} (IV/RV = {signal.IVRVRatio:F3})");
         result.SignalGenerated = true;
@@ -1355,15 +1358,21 @@ internal sealed class LeanLogger : ILogger
 internal sealed class DataBridgeMarketDataAdapter : STDT001A
 {
     private readonly AlarisDataBridge _bridge;
+    private DateTime _evaluationDate = DateTime.UtcNow;
 
     public DataBridgeMarketDataAdapter(AlarisDataBridge bridge)
     {
         _bridge = bridge;
     }
 
+    /// <summary>
+    /// Sets the evaluation date for market data queries (use LEAN's Time for backtests).
+    /// </summary>
+    public void SetEvaluationDate(DateTime date) => _evaluationDate = date;
+
     public StrategyOptionChain GetSTDT002A(string symbol, DateTime expirationDate)
     {
-        var snapshot = _bridge.GetMarketDataSnapshotAsync(symbol).GetAwaiter().GetResult();
+        var snapshot = _bridge.GetMarketDataSnapshotAsync(symbol, _evaluationDate).GetAwaiter().GetResult();
         
         var chain = new StrategyOptionChain
         {
@@ -1417,7 +1426,7 @@ internal sealed class DataBridgeMarketDataAdapter : STDT001A
 
     public IReadOnlyList<StrategyPriceBar> GetHistoricalPrices(string symbol, int days)
     {
-        var snapshot = _bridge.GetMarketDataSnapshotAsync(symbol).GetAwaiter().GetResult();
+        var snapshot = _bridge.GetMarketDataSnapshotAsync(symbol, _evaluationDate).GetAwaiter().GetResult();
         
         return snapshot.HistoricalBars
             .Select(b => new StrategyPriceBar
@@ -1435,13 +1444,13 @@ internal sealed class DataBridgeMarketDataAdapter : STDT001A
 
     public double GetCurrentPrice(string symbol)
     {
-        var snapshot = _bridge.GetMarketDataSnapshotAsync(symbol).GetAwaiter().GetResult();
+        var snapshot = _bridge.GetMarketDataSnapshotAsync(symbol, _evaluationDate).GetAwaiter().GetResult();
         return (double)snapshot.SpotPrice;
     }
 
     public async Task<IReadOnlyList<DateTime>> GetEarningsDates(string symbol)
     {
-        var snapshot = await _bridge.GetMarketDataSnapshotAsync(symbol);
+        var snapshot = await _bridge.GetMarketDataSnapshotAsync(symbol, _evaluationDate);
         var dates = new List<DateTime>();
         if (snapshot.NextEarnings != null)
         {
@@ -1452,7 +1461,7 @@ internal sealed class DataBridgeMarketDataAdapter : STDT001A
 
     public async Task<IReadOnlyList<DateTime>> GetHistoricalEarningsDates(string symbol, int lookbackQuarters = 12)
     {
-        var snapshot = await _bridge.GetMarketDataSnapshotAsync(symbol);
+        var snapshot = await _bridge.GetMarketDataSnapshotAsync(symbol, _evaluationDate);
         return snapshot.HistoricalEarnings
             .Select(e => e.Date)
             .OrderByDescending(d => d)

@@ -58,20 +58,24 @@ public sealed class AlarisDataBridge
     /// Gets complete market data snapshot for strategy evaluation.
     /// </summary>
     /// <param name="symbol">The symbol to evaluate.</param>
+    /// <param name="evaluationDate">The date for data evaluation (use LEAN's simulation time for backtests).</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Validated market data snapshot.</returns>
     /// <exception cref="InvalidOperationException">If data quality validation fails.</exception>
     public async Task<MarketDataSnapshot> GetMarketDataSnapshotAsync(
         string symbol,
+        DateTime? evaluationDate = null,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("Building market data snapshot for {Symbol}", symbol);
+        // Use provided date or fall back to UTC now for live trading
+        var effectiveDate = evaluationDate ?? DateTime.UtcNow;
+        _logger.LogInformation("Building market data snapshot for {Symbol} as of {Date:yyyy-MM-dd}", symbol, effectiveDate);
 
         try
         {
             // Step 1: Fetch all data concurrently
             var spotPriceTask = _marketDataProvider.GetSpotPriceAsync(symbol, cancellationToken);
-            var historicalBarsTask = GetHistoricalBarsForRvCalculationAsync(symbol, cancellationToken);
+            var historicalBarsTask = GetHistoricalBarsForRvCalculationAsync(symbol, effectiveDate, cancellationToken);
             var optionChainTask = _marketDataProvider.GetOptionChainAsync(symbol, cancellationToken);
             var earningsTask = GetEarningsDataAsync(symbol, cancellationToken);
             var riskFreeRateTask = _riskFreeRateProvider.GetCurrentRateAsync(cancellationToken);
@@ -96,7 +100,7 @@ public sealed class AlarisDataBridge
             var snapshot = new MarketDataSnapshot
             {
                 Symbol = symbol,
-                Timestamp = DateTime.UtcNow,
+                Timestamp = effectiveDate,
                 SpotPrice = spotPrice,
                 HistoricalBars = historicalBars,
                 OptionChain = optionChain,
@@ -161,9 +165,11 @@ public sealed class AlarisDataBridge
     /// </summary>
     private async Task<IReadOnlyList<PriceBar>> GetHistoricalBarsForRvCalculationAsync(
         string symbol,
+        DateTime evaluationDate,
         CancellationToken cancellationToken)
     {
-        var endDate = DateTime.UtcNow.Date;
+        // Use evaluation date (from LEAN simulation or live) instead of real-world time
+        var endDate = evaluationDate.Date;
         var startDate = endDate.AddDays(-45); // 45 days to ensure 30 trading days
 
         var bars = await _marketDataProvider.GetHistoricalBarsAsync(

@@ -85,7 +85,6 @@ public sealed class APsv002B : IDisposable
             
             // Filter and sort by dollar volume
             var filteredSymbols = response.Results
-                .Select(r => (Ticker: r.GetTicker(), r.Close, r.Volume))
                 .Where(r => !string.IsNullOrEmpty(r.Ticker))
                 .Where(r => !r.Ticker!.Contains('.'))  // Exclude preferred/class shares
                 .Where(r => r.Ticker!.Length <= 5)     // Exclude warrants/units (usually > 5 chars)
@@ -176,16 +175,9 @@ file sealed class PolygonGroupedResponse
 
 file sealed class PolygonGroupedResult
 {
-    // Polygon uses uppercase "T" for ticker
+    // Polygon stocks API uses uppercase "T" for ticker
     [JsonPropertyName("T")]
     public string? Ticker { get; init; }
-    
-    // Also try lowercase "t" as a fallback (some API versions)
-    [JsonPropertyName("t")]
-    public object? TickerAlt { get; init; }
-    
-    // Combined accessor for ticker
-    public string? GetTicker() => Ticker ?? TickerAlt?.ToString();
 
     [JsonPropertyName("o")]
     public decimal Open { get; init; }
