@@ -100,11 +100,29 @@ public sealed class BacktestCreateCommand : AsyncCommand<BacktestCreateSettings>
             if (!settings.SkipDownload)
             {
                 AnsiConsole.WriteLine();
-                AnsiConsole.MarkupLine("[yellow]Initiating data download...[/]");
                 
+                // Determine symbols: use provided symbols OR run screener
+                string[] targets;
+                if (symbols?.Length > 0)
+                {
+                    targets = symbols;
+                    AnsiConsole.MarkupLine($"[yellow]Using specified symbols: {string.Join(", ", targets)}[/]");
+                }
+                else
+                {
+                    AnsiConsole.MarkupLine("[yellow]Running screener to discover tradeable symbols...[/]");
+                    using var screener = DependencyFactory.CreateScreener();
+                    var screenedSymbols = await screener.ScreenAsync(startDate, maxSymbols: 50);
+                    targets = screenedSymbols.ToArray();
+                    AnsiConsole.MarkupLine($"[green]✓[/] Screened {targets.Length} symbols");
+                    
+                    // Update session with screened symbols
+                    session = session with { Symbols = screenedSymbols };
+                    await service.UpdateAsync(session);
+                }
+                
+                AnsiConsole.MarkupLine("[yellow]Downloading market data...[/]");
                 using var dataService = DependencyFactory.CreateAPsv002A();
-                var targets = symbols?.Length > 0 ? symbols : new string[] { "SPY", "QQQ", "IWM", "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META" }; // Default universe if none specified
-                
                 await dataService.DownloadEquityDataAsync(service.GetDataPath(session.SessionId), targets, startDate, endDate);
                 
                 // Update status to Ready
@@ -153,11 +171,27 @@ public sealed class BacktestPrepareCommand : AsyncCommand<BacktestPrepareSetting
             return 1;
         }
 
-        using var dataService = DependencyFactory.CreateAPsv002A();
-        var targets = session.Symbols.Count > 0 
-            ? session.Symbols 
-            : new List<string> { "SPY", "QQQ", "IWM", "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META" };
+        // Determine symbols: use session symbols OR run screener
+        IEnumerable<string> targets;
+        if (session.Symbols.Count > 0)
+        {
+            targets = session.Symbols;
+            AnsiConsole.MarkupLine($"[yellow]Using session symbols: {string.Join(", ", targets.Take(10))}...[/]");
+        }
+        else
+        {
+            AnsiConsole.MarkupLine("[yellow]Running screener to discover tradeable symbols...[/]");
+            using var screener = DependencyFactory.CreateScreener();
+            var screenedSymbols = await screener.ScreenAsync(session.StartDate, maxSymbols: 50);
+            targets = screenedSymbols;
+            AnsiConsole.MarkupLine($"[green]✓[/] Screened {screenedSymbols.Count} symbols");
+            
+            // Update session with screened symbols
+            session = session with { Symbols = screenedSymbols };
+            await service.UpdateAsync(session);
+        }
 
+        using var dataService = DependencyFactory.CreateAPsv002A();
         AnsiConsole.MarkupLine($"[yellow]Downloading data for session {session.SessionId}...[/]");
         await dataService.DownloadEquityDataAsync(service.GetDataPath(session.SessionId), targets, session.StartDate, session.EndDate);
         
@@ -170,19 +204,32 @@ public sealed class BacktestPrepareCommand : AsyncCommand<BacktestPrepareSetting
 
 internal static class DependencyFactory
 {
-    [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "Services persist for command duration")]
-    public static APsv002A CreateAPsv002A()
+    private static IConfiguration? _config;
+    private static HttpClient? _httpClient;
+    private static ILoggerFactory? _loggerFactory;
+    
+    private static IConfiguration GetConfig()
     {
-        var config = new ConfigurationBuilder()
+        return _config ??= new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.json", optional: true)
             .AddJsonFile("config.json", optional: true)
             .AddJsonFile("appsettings.local.json", optional: true)
             .AddJsonFile("appsettings.local.jsonc", optional: true)
             .Build();
+    }
+    
+    private static HttpClient GetHttpClient() => _httpClient ??= new HttpClient();
+    
+    private static ILoggerFactory GetLoggerFactory() => _loggerFactory ??= 
+        LoggerFactory.Create(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Information));
 
-        var httpClient = new HttpClient();
-        var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Information));
+    [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "Services persist for command duration")]
+    public static APsv002A CreateAPsv002A()
+    {
+        var config = GetConfig();
+        var httpClient = GetHttpClient();
+        var loggerFactory = GetLoggerFactory();
         
         var polygonClient = new PolygonApiClient(
             httpClient, 
@@ -202,6 +249,15 @@ internal static class DependencyFactory
             secClient,
             treasuryClient,
             loggerFactory.CreateLogger<APsv002A>());
+    }
+    
+    [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "Services persist for command duration")]
+    public static APsv002B CreateScreener()
+    {
+        return new APsv002B(
+            GetHttpClient(),
+            GetConfig(),
+            GetLoggerFactory().CreateLogger<APsv002B>());
     }
 }
 
