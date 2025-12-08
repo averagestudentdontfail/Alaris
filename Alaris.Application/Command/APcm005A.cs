@@ -23,6 +23,7 @@ using Alaris.Data.Provider.Treasury;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics.CodeAnalysis;
+using QuantConnect.Configuration;
 
 namespace Alaris.Application.Command;
 
@@ -298,6 +299,10 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
             AnsiConsole.MarkupLine("[red]Could not find config.json or LEAN launcher[/]");
             return 1;
         }
+
+        // CRITICAL: Inject session data path into LEAN config before engine starts
+        // Environment variables (QC_DATA_FOLDER) do NOT work - LEAN reads from config.json only
+        Config.Set("data-folder", service.GetDataPath(session.SessionId));
 
         var psi = new ProcessStartInfo
         {

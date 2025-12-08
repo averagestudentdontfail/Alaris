@@ -207,7 +207,8 @@ public sealed class APsv002A : IDisposable
                 
                 // LEAN Daily resolution expects 'TwelveCharacter' format: "yyyyMMdd HH:mm"
                 // TradeBar.cs ParseEquity uses default scaling (x10000)
-                var dateStr = bar.Timestamp.ToString("yyyyMMdd HH:mm", CultureInfo.InvariantCulture);
+                // CRITICAL: Daily bars must use 00:00 (exchange timezone midnight), not actual UTC timestamp
+                var dateStr = bar.Timestamp.Date.ToString("yyyyMMdd", CultureInfo.InvariantCulture) + " 00:00";
                 
                 // Scale by 10000 to match LEAN default scale factor (1/10000)
                 // When LEAN reads this, it divides by 10000 to get the original price.
