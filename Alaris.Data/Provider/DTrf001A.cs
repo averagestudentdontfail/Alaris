@@ -47,7 +47,7 @@ public sealed class TreasuryDirectRateProvider : DTpr005A
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _httpClient.BaseAddress = new Uri(BaseUrl);
+        // Do not set BaseAddress on shared HttpClient
     }
 
     /// <inheritdoc/>
@@ -63,7 +63,7 @@ public sealed class TreasuryDirectRateProvider : DTpr005A
             // Treasury API endpoint: search?type=Bill&dateFieldName=issueDate&startDate=YYYY-MM-DD
             // Look back up to 7 days to handle weekends/holidays
             var startDate = today.AddDays(-7);
-            var url = $"search?type=Bill&dateFieldName=issueDate&startDate={startDate:yyyy-MM-dd}&endDate={today:yyyy-MM-dd}&format=json";
+            var url = $"{BaseUrl}search?type=Bill&dateFieldName=issueDate&startDate={startDate:yyyy-MM-dd}&endDate={today:yyyy-MM-dd}&format=json";
 
             var securities = await _httpClient.GetFromJsonAsync<TreasurySecurity[]>(
                 url,
@@ -129,7 +129,7 @@ public sealed class TreasuryDirectRateProvider : DTpr005A
 
         try
         {
-            var url = $"search?type=Bill&dateFieldName=issueDate&startDate={startDate:yyyy-MM-dd}&endDate={endDate:yyyy-MM-dd}&format=json";
+            var url = $"{BaseUrl}search?type=Bill&dateFieldName=issueDate&startDate={startDate:yyyy-MM-dd}&endDate={endDate:yyyy-MM-dd}&format=json";
 
             var securities = await _httpClient.GetFromJsonAsync<TreasurySecurity[]>(
                 url,
@@ -143,7 +143,7 @@ public sealed class TreasuryDirectRateProvider : DTpr005A
 
             // Group by issue date, prefer 3-month bills
             var ratesByDate = securities
-                .Where(s => s.InterestRate != null)
+                .Where(s => !string.IsNullOrWhiteSpace(s.InterestRate))
                 .GroupBy(s => s.IssueDate.Date)
                 .ToDictionary(
                     g => g.Key,
@@ -178,13 +178,19 @@ public sealed class TreasuryDirectRateProvider : DTpr005A
     private static decimal ParseRate(string? rateString)
     {
         if (string.IsNullOrWhiteSpace(rateString))
-            throw new ArgumentException("Rate string is null or empty");
+        {
+            // Should be filtered out upstream, but fail safe
+            return 0m;
+        }
 
         // Remove any non-numeric characters except decimal point and minus sign
         var cleaned = new string(rateString.Where(c => char.IsDigit(c) || c == '.' || c == '-').ToArray());
 
         if (!decimal.TryParse(cleaned, out var rate))
-            throw new FormatException($"Cannot parse rate: {rateString}");
+        {
+            // Log or throw? Return 0 to be safe
+            return 0m;
+        }
 
         // Convert from percentage to decimal (5.25 → 0.0525)
         return rate / 100m;

@@ -85,7 +85,7 @@ public sealed class PolygonApiClient : DTpr003A
 
         try
         {
-            using var responseMessage = await _httpClient.GetAsync(new Uri(url, UriKind.Relative), cancellationToken);
+            using var responseMessage = await _httpClient.GetAsync(new Uri(url, UriKind.Absolute), cancellationToken);
             
             if (!responseMessage.IsSuccessStatusCode)
             {
