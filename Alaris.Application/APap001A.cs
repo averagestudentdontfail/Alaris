@@ -113,8 +113,7 @@ public static class APap001A
                         "2. Paper Trading - IBKR paper trading",
                         "3. Live Trading - IBKR live trading",
                         "4. Configuration - View/edit settings",
-                        "5. Data Management - Download market data",
-                        "6. Exit"
+                        "5. Exit"
                     }));
 
             var choice = selection.Split('.')[0].Trim();
@@ -136,9 +135,6 @@ public static class APap001A
                     lastExitCode = ShowConfigurationMenu();
                     break;
                 case "5":
-                    lastExitCode = ShowDataManagementMenu();
-                    break;
-                case "6":
                     running = false;
                     break;
             }
@@ -361,15 +357,19 @@ public static class APap001A
     private static int CreateSessionInteractive()
     {
         AnsiConsole.MarkupLine("[yellow]Create New Backtest Session[/]");
+        AnsiConsole.MarkupLine("[grey]Leave symbols empty to use automated screener[/]");
+        AnsiConsole.WriteLine();
         
         var defaultStart = DateTime.Now.AddMonths(-6).ToString("yyyy-MM-dd");
         var defaultEnd = DateTime.Now.ToString("yyyy-MM-dd");
         
         var start = AnsiConsole.Ask<string>($"[green]Start Date[/] (YYYY-MM-DD):", defaultStart);
         var end = AnsiConsole.Ask<string>($"[green]End Date[/] (YYYY-MM-DD):", defaultEnd);
-        var symbols = AnsiConsole.Ask<string>("[green]Symbols[/] (comma-separated):", "SPY,QQQ");
+        var symbols = AnsiConsole.Ask<string>("[green]Symbols[/] (comma-separated, or press Enter for auto-screener):", "");
 
-        var args = new[] { "backtest", "create", "--start", start, "--end", end, "--symbols", symbols };
+        var args = string.IsNullOrWhiteSpace(symbols)
+            ? new[] { "backtest", "create", "--start", start, "--end", end }
+            : new[] { "backtest", "create", "--start", start, "--end", end, "--symbols", symbols };
         return Main(args);
     }
 
