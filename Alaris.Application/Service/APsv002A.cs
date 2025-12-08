@@ -163,6 +163,9 @@ public sealed class APsv002A : IDisposable
                     }
                 }
             });
+            
+        // Copy system files (should be quick)
+        CopySystemFiles(sessionDataPath);
     }
 
     public void Dispose()
@@ -216,5 +219,74 @@ public sealed class APsv002A : IDisposable
 
         memoryStream.Position = 0;
         await File.WriteAllBytesAsync(zipPath, memoryStream.ToArray());
+    }
+
+    /// <summary>
+    /// Copies system data folders (market-hours, symbol-properties) to the session data folder.
+    /// LEAN requires these to function correctly.
+    /// </summary>
+    private void CopySystemFiles(string sessionDataPath)
+    {
+        // Find source Alaris.Lean/Data
+        var sourcePath = FindLeanDataPath();
+        if (string.IsNullOrEmpty(sourcePath))
+        {
+            _logger?.LogWarning("Could not find Alaris.Lean/Data to copy system files. Backtest may fail.");
+            return;
+        }
+
+        var foldersToCopy = new[] { "market-hours", "symbol-properties" };
+
+        foreach (var folder in foldersToCopy)
+        {
+            var sourceDir = System.IO.Path.Combine(sourcePath, folder);
+            var destDir = System.IO.Path.Combine(sessionDataPath, folder);
+
+            if (Directory.Exists(sourceDir))
+            {
+                CopyDirectory(sourceDir, destDir);
+                _logger?.LogInformation("Copied {Folder} to session data", folder);
+            }
+            else
+            {
+                _logger?.LogWarning("Source folder {Folder} not found at {Path}", folder, sourceDir);
+            }
+        }
+    }
+
+    private static string? FindLeanDataPath()
+    {
+        // Try common locations
+        var candidates = new[]
+        {
+            "Alaris.Lean/Data",
+            "../Alaris.Lean/Data",
+            "../../Alaris.Lean/Data"
+        };
+
+        foreach (var candidate in candidates)
+        {
+            if (Directory.Exists(System.IO.Path.GetFullPath(candidate)))
+                return System.IO.Path.GetFullPath(candidate);
+        }
+
+        return null;
+    }
+
+    private static void CopyDirectory(string sourceDir, string destDir)
+    {
+        Directory.CreateDirectory(destDir);
+
+        foreach (var file in Directory.GetFiles(sourceDir))
+        {
+            var destFile = System.IO.Path.Combine(destDir, System.IO.Path.GetFileName(file));
+            File.Copy(file, destFile, true);
+        }
+
+        foreach (var subDir in Directory.GetDirectories(sourceDir))
+        {
+            var destSubDir = System.IO.Path.Combine(destDir, System.IO.Path.GetFileName(subDir));
+            CopyDirectory(subDir, destSubDir);
+        }
     }
 }
