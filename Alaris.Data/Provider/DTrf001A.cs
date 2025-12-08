@@ -129,6 +129,11 @@ public sealed class TreasuryDirectRateProvider : DTpr005A
 
         try
         {
+            if (!_httpClient.DefaultRequestHeaders.Contains("User-Agent"))
+            {
+                _httpClient.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (compatible; AlarisTradingSystem/1.0)");
+            }
+
             var url = $"{BaseUrl}search?type=Bill&dateFieldName=issueDate&startDate={startDate:yyyy-MM-dd}&endDate={endDate:yyyy-MM-dd}&format=json";
 
             var securities = await _httpClient.GetFromJsonAsync<TreasurySecurity[]>(
@@ -137,8 +142,8 @@ public sealed class TreasuryDirectRateProvider : DTpr005A
 
             if (securities == null || securities.Length == 0)
             {
-                _logger.LogWarning("No T-bill auctions found in date range, generating fallback rates (5.25%)");
-                return GetFallbackRates(startDate, endDate);
+                _logger.LogError("Treasury API returned no data for range {Start} to {End}. Check Date Range or API Status.", startDate, endDate);
+                throw new InvalidOperationException($"No Treasury data found for {startDate:d}-{endDate:d}");
             }
 
             // Group by issue date, prefer 3-month bills
@@ -149,25 +154,25 @@ public sealed class TreasuryDirectRateProvider : DTpr005A
                     g => g.Key,
                     g =>
                     {
-                        // Prefer 3-month bill if available
+                        // Prefer 3-month bill if available (Term usually '13-Week' or similar, strict check '91')
                         var preferred = g.FirstOrDefault(s => s.Term != null && s.Term.Contains("91"))
                             ?? g.First();
                         return ParseRate(preferred.InterestRate!);
                     });
 
-            _logger.LogInformation("Retrieved {Count} historical rate observations", ratesByDate.Count);
+            _logger.LogInformation("Retrieved {Count} historical rate observations from Treasury Direct", ratesByDate.Count);
 
             return ratesByDate;
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogError(ex, "HTTP error fetching historical T-bill rates, using fallback");
-            return GetFallbackRates(startDate, endDate);
+            _logger.LogError(ex, "HTTP error fetching historical T-bill rates from {Url}", $"{BaseUrl}search?...");
+            throw; // Fail fast, do not use fake data
         }
         catch (JsonException ex)
         {
-            _logger.LogError(ex, "JSON parse error fetching historical T-bill rates, using fallback");
-            return GetFallbackRates(startDate, endDate);
+            _logger.LogError(ex, "JSON parse error fetching historical T-bill rates");
+            throw;
         }
     }
 

@@ -67,22 +67,53 @@ public sealed class APsv002B : IDisposable
         
         try
         {
-            // Use the most recent trading day before the specified date
-            var tradingDate = GetMostRecentTradingDay(date);
-            var dateStr = tradingDate.ToString("yyyy-MM-dd");
-            
-            _logger.LogInformation("Screening stocks for {Date} with minPrice={MinPrice}, minVolume={MinVolume}", 
-                dateStr, minPrice, minDollarVolume);
-            
-            var url = $"https://api.polygon.io/v2/aggs/grouped/locale/us/market/stocks/{dateStr}?adjusted=true&apiKey={_apiKey}";
-            
-            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = false };
-            var response = await _httpClient.GetFromJsonAsync<PolygonGroupedResponse>(url, options, cancellationToken);
+            // Use the most recent trading day considering holidays
+            // Retry up to 5 days back if market is closed (Polygon returns 0 results)
+            var currentParamsDate = GetMostRecentTradingDay(date);
+            PolygonGroupedResponse? response = null;
+            var attempts = 0;
+            const int MaxAttempts = 5;
+
+            while (attempts < MaxAttempts)
+            {
+                var dateStr = currentParamsDate.ToString("yyyy-MM-dd");
+                
+                _logger.LogInformation("Screening stocks for {Date} (Attempt {Attempt}/{Max})", dateStr, attempts + 1, MaxAttempts);
+                
+                var url = $"https://api.polygon.io/v2/aggs/grouped/locale/us/market/stocks/{dateStr}?adjusted=true&apiKey={_apiKey}";
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = false };
+                
+                try 
+                {
+                    response = await _httpClient.GetFromJsonAsync<PolygonGroupedResponse>(url, options, cancellationToken);
+                }
+                catch (HttpRequestException) 
+                {
+                    // Ignore transient HTTP errors in loop? Or count as attempt?
+                    // For now, assume empty response if 404, etc.
+                }
+
+                if (response?.Results != null && response.Results.Length > 0)
+                {
+                    break; // Found data!
+                }
+
+                _logger.LogWarning("No results from Polygon for {Date} (Holiday/Weekend?), trying previous day...", dateStr);
+                
+                // Move back one day
+                currentParamsDate = currentParamsDate.AddDays(-1);
+                // Skip weekends again just in case
+                while (currentParamsDate.DayOfWeek == DayOfWeek.Saturday || currentParamsDate.DayOfWeek == DayOfWeek.Sunday)
+                {
+                    currentParamsDate = currentParamsDate.AddDays(-1);
+                }
+                attempts++;
+            }
             
             if (response?.Results == null || response.Results.Length == 0)
             {
-                _logger.LogWarning("No results from Polygon for {Date}, using fallback symbols", dateStr);
-                return GetFallbackSymbols();
+                _logger.LogError("Failed to find any screening data after {Max} attempts. Aborting screening.", MaxAttempts);
+                return new List<string>(); // Return empty, caller decides fallback or fail.
             }
             
             // Filter and sort by dollar volume
@@ -102,8 +133,8 @@ public sealed class APsv002B : IDisposable
             
             if (filteredSymbols.Count == 0)
             {
-                _logger.LogWarning("No symbols passed screening, using fallback");
-                return GetFallbackSymbols();
+                _logger.LogWarning("No symbols passed screening criteria.");
+                return new List<string>();
             }
             
             return filteredSymbols;

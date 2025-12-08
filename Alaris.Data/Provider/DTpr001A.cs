@@ -155,7 +155,6 @@ public sealed class PolygonApiClient : DTpr003A
             throw new ArgumentException("Symbol cannot be null or whitespace", nameof(symbol));
 
         // Clamp asOfDate to subscription limits (2 years for Options Starter)
-        // Use asOfDate as reference point (allows backtesting with historical dates)
         var referenceDate = asOfDate > DateTime.UtcNow.Date ? DateTime.UtcNow.Date : asOfDate;
         var twoYearsAgo = referenceDate.AddYears(-2).AddDays(1);
         var effectiveDate = asOfDate < twoYearsAgo ? twoYearsAgo : asOfDate;
@@ -166,9 +165,9 @@ public sealed class PolygonApiClient : DTpr003A
                 asOfDate, effectiveDate);
         }
 
-        _logger.LogInformation("Fetching historical option chain for {Symbol} as of {Date:yyyy-MM-dd}", symbol, effectiveDate);
+        _logger.LogInformation("Fetching historical option chain for {Symbol} as of {Date:yyyy-MM-dd} (Grouped Daily)", symbol, effectiveDate);
 
-        // Get historical spot price (previous day close)
+        // 1. Get historical spot price (needed for IV calc)
         var spotPrice = 0m;
         try
         {
@@ -182,81 +181,172 @@ public sealed class PolygonApiClient : DTpr003A
             _logger.LogWarning(ex, "Failed to get historical spot price for {Symbol}", symbol);
         }
 
-        // Get options contracts active as_of the date
-        var dateStr = effectiveDate.ToString("yyyy-MM-dd");
-        var expirationMin = effectiveDate.ToString("yyyy-MM-dd");
-        var expirationMax = effectiveDate.AddDays(60).ToString("yyyy-MM-dd"); // Next 60 days of expirations
-        
-        var url = $"{BaseUrl}/v3/reference/options/contracts?underlying_ticker={symbol}&as_of={dateStr}&expiration_date.gte={expirationMin}&expiration_date.lte={expirationMax}&limit=250&apiKey={_apiKey}";
+        if (spotPrice == 0)
+        {
+            _logger.LogWarning("Spot price is 0, cannot calculate IV or filter effectively.");
+        }
 
+        // 2. Fetch Grouped Daily Bars for ALL Options on this date
+        // API: /v2/aggs/grouped/locale/us/market/options/{date}
+        var dateStr = effectiveDate.ToString("yyyy-MM-dd");
+        var url = $"{BaseUrl}v2/aggs/grouped/locale/us/market/options/{dateStr}?adjusted=true&apiKey={_apiKey}";
+        
+        var contracts = new List<OptionContract>();
+        
         try
         {
-            var response = await _httpClient.GetFromJsonAsync<PolygonOptionsContractsResponse>(
-                url,
-                cancellationToken: cancellationToken);
-
-            if (response == null || response.Results == null || response.Results.Length == 0)
+            // Note: This response can be large (100MB+ for whole market). 
+            // Polygon doesn't support server-side filtering by underlying for Grouped Daily Options yet?
+            // Actually, checking docs: Grouped Daily is for "Entire Market".
+            // Optimization: If response is too huge, we might need a different approach.
+            // But user claims "Unlimited API". Maybe we iterate contracts?
+            // "Reference" gives us ~250 contracts. 250 calls to /v2/aggs/ticker/{ticker}/... is safer.
+            // Let's stick to the Reference + Individual Query approach to avoid downloading 1GB of JSON daily.
+            // The user has "Unlimited API Calls". Grouped Daily is bandwidth heavy.
+            
+            // Revert: Use Reference to get tickers, then fetch Bars parallel.
+        
+            // 2a. Fetch Reference Contracts (to get the list of symbols for this Underlying)
+            var expirationMin = effectiveDate.ToString("yyyy-MM-dd");
+            var expirationMax = effectiveDate.AddDays(60).ToString("yyyy-MM-dd");
+            var refUrl = $"{BaseUrl}v3/reference/options/contracts?underlying_ticker={symbol}&as_of={dateStr}&expiration_date.gte={expirationMin}&expiration_date.lte={expirationMax}&limit=250&apiKey={_apiKey}";
+            
+            var refResponse = await _httpClient.GetFromJsonAsync<PolygonOptionsContractsResponse>(refUrl, cancellationToken);
+            
+            if (refResponse?.Results == null || refResponse.Results.Length == 0)
             {
-                _logger.LogWarning("No historical options contracts found for {Symbol} as of {Date:yyyy-MM-dd}", symbol, asOfDate);
-                return new OptionChainSnapshot
-                {
-                    Symbol = symbol,
-                    SpotPrice = spotPrice,
-                    Timestamp = asOfDate,
-                    Contracts = Array.Empty<OptionContract>()
-                };
+                 _logger.LogWarning("No reference options found for {Symbol}", symbol);
+                 return new OptionChainSnapshot { Symbol = symbol, SpotPrice = spotPrice, Timestamp = effectiveDate, Contracts = contracts };
             }
+            
+            _logger.LogInformation("Found {Count} reference contracts, fetching daily stats...", refResponse.Results.Length);
 
-            _logger.LogInformation("Found {Count} contracts for {Symbol} as of {Date:yyyy-MM-dd}", 
-                response.Results.Length, symbol, asOfDate);
-
-            // Parse contracts from reference data (no live quotes for historical)
-            var contracts = new List<OptionContract>();
-            foreach (var contract in response.Results)
+            // 2b. Fetch Daily Bar for each contract (Parallel)
+            // Limit concurrency to avoid client saturation
+            var parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = 20, CancellationToken = cancellationToken };
+            
+            await Parallel.ForEachAsync(refResponse.Results, parallelOptions, async (refContract, token) =>
             {
-                try
-                {
-                    var (underlying, strike, expiration, right) = ParseOptionTicker(contract.Ticker);
-                    
-                    // For backtesting, we create the contract structure from reference data
-                    // Actual historical OHLCV would require additional API calls per contract
-                    contracts.Add(new OptionContract
-                    {
-                        UnderlyingSymbol = underlying,
-                        OptionSymbol = contract.Ticker,
-                        Strike = strike,
-                        Expiration = expiration,
-                        Right = right,
-                        Bid = 0, // Historical quotes not available in reference
-                        Ask = 0,
-                        Volume = 0,
-                        OpenInterest = 0,
-                        Timestamp = asOfDate
-                    });
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to parse contract {Ticker}", contract.Ticker);
-                }
-            }
+                 try
+                 {
+                     // Fetch Daily Bar
+                     // /v2/aggs/ticker/{ticker}/range/1/day/{date}/{date}
+                     var barUrl = $"{BaseUrl}v2/aggs/ticker/{refContract.Ticker}/range/1/day/{dateStr}/{dateStr}?adjusted=true&apiKey={_apiKey}";
+                     var barResponse = await _httpClient.GetFromJsonAsync<PolygonAggregatesResponse>(barUrl, token);
+                     
+                     if (barResponse?.Results != null && barResponse.Results.Length > 0)
+                     {
+                         var bar = barResponse.Results[0]; // Day bar
+                         
+                         var (underlying, strike, expiration, right) = ParseOptionTicker(refContract.Ticker);
+                         
+                         // Calculate IV (Newton Raphson)
+                         decimal iv = 0m;
+                         if (spotPrice > 0)
+                         {
+                             iv = CalculateImpliedVolatility(
+                                 (double)bar.Close, 
+                                 (double)spotPrice, 
+                                 (double)strike, 
+                                 (expiration - effectiveDate).TotalDays / 365.0, 
+                                 0.05, // Risk free 5% approx necessary for IV
+                                 right);
+                         }
 
-            _logger.LogInformation(
-                "Retrieved historical chain with {Count} contracts for {Symbol} as of {Date:yyyy-MM-dd}",
-                contracts.Count, symbol, asOfDate);
-
-            return new OptionChainSnapshot
-            {
-                Symbol = symbol,
-                SpotPrice = spotPrice,
-                Timestamp = asOfDate,
-                Contracts = contracts
-            };
+                         lock (contracts)
+                         {
+                             contracts.Add(new OptionContract
+                             {
+                                 UnderlyingSymbol = underlying,
+                                 OptionSymbol = refContract.Ticker,
+                                 Strike = strike,
+                                 Expiration = expiration,
+                                 Right = right,
+                                 Bid = bar.Close, // Close as proxy for Bid/Ask
+                                 Ask = bar.Close,
+                                 Volume = (long)bar.Volume,
+                                 OpenInterest = (long)bar.Volume, // Proxied from Volume (Aggrs only have Vol). Vol > 0 implies activity.
+                                 ImpliedVolatility = iv,
+                                 Timestamp = effectiveDate
+                             });
+                         }
+                     }
+                 }
+                 catch (Exception) { /* Ignore individual failures */ }
+            });
+            
+            _logger.LogInformation("Successfully hydrated {Count} contracts with price/volume/IV", contracts.Count);
         }
-        catch (HttpRequestException ex)
+        catch (Exception ex)
         {
-            _logger.LogError(ex, "HTTP error fetching historical option chain for {Symbol}", symbol);
-            throw new InvalidOperationException($"Failed to fetch historical option chain for {symbol}", ex);
+            _logger.LogError(ex, "Failed to fetch historical option chain details");
         }
+
+        return new OptionChainSnapshot
+        {
+            Symbol = symbol,
+            SpotPrice = spotPrice,
+            Timestamp = asOfDate,
+            Contracts = contracts
+        };
+    }
+
+    // --- Helper for IV ---
+    private static decimal CalculateImpliedVolatility(double price, double S, double K, double T, double r, OptionRight type)
+    {
+        if (T <= 0 || price <= 0) return 0m;
+        
+        // Simple Newton-Raphson
+        double sigma = 0.5; // Initial guess
+        for (int i = 0; i < 10; i++)
+        {
+             double volSquared = sigma * sigma;
+             double numerator = Math.Log(S / K) + ((r + (volSquared / 2.0)) * T);
+             double denominator = sigma * Math.Sqrt(T);
+             
+             double d1 = numerator / denominator;
+             double d2 = d1 - denominator;
+             
+             double nd1 = NormalCdf(d1);
+             double nd2 = NormalCdf(d2);
+             
+             double bsPrice;
+             if (type == OptionRight.Call)
+             {
+                 double term1 = S * nd1;
+                 double term2 = K * Math.Exp(-r * T) * nd2;
+                 bsPrice = term1 - term2;
+             }
+             else
+             {
+                 double term1 = K * Math.Exp(-r * T) * (1 - nd2);
+                 double term2 = S * (1 - nd1);
+                 bsPrice = term1 - term2;
+             }
+                 
+             double pdf = Math.Exp(-0.5 * d1 * d1) / Math.Sqrt(2 * Math.PI);
+             double sqrtT = Math.Sqrt(T);
+             double vega = S * sqrtT * pdf;
+             
+             if (Math.Abs(vega) < 1e-6) break;
+             
+             double diff = price - bsPrice;
+             if (Math.Abs(diff) < 1e-4) return (decimal)sigma;
+             
+             sigma = sigma + (diff / vega);
+             if (sigma <= 0) sigma = 0.01;
+        }
+        return (decimal)sigma;
+    }
+    
+    private static double NormalCdf(double x)
+    {
+        // Approximation
+        const double k = 0.044715;
+        double sqrt2pi = Math.Sqrt(2 / Math.PI);
+        double term = k * Math.Pow(x, 3);
+        double argument = x * sqrt2pi * (1 + term);
+        return 0.5 * (1 + Math.Tanh(argument)); 
     }
 
 
