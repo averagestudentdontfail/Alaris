@@ -446,16 +446,38 @@ public sealed class PolygonApiClient : DTpr003A
     private static (string underlying, decimal strike, DateTime expiration, OptionRight right) 
         ParseOptionTicker(string ticker)
     {
+        // Remove "O:" prefix if present
         if (ticker.StartsWith("O:", StringComparison.OrdinalIgnoreCase))
             ticker = ticker[2..];
         
-        var underlying = new string(ticker.TakeWhile(char.IsLetter).ToArray());
-        var remaining = ticker[underlying.Length..];
-
-        var dateStr = remaining[..6];
-        var rightChar = remaining[6];
-        var strikeStr = remaining[7..];
-
+        // OCC format: UNDERLYING + YYMMDD + C/P + STRIKE(8 digits)
+        // But some tickers have digits in the underlying (e.g., AMD1, BRK.A -> BRKA)
+        // Strategy: Find C or P that's followed by exactly 8 digits (the strike)
+        
+        int cpIndex = -1;
+        for (int i = ticker.Length - 9; i >= 6; i--) // Need at least 6 chars before (date)
+        {
+            var c = ticker[i];
+            if ((c == 'C' || c == 'P') && 
+                i + 9 == ticker.Length && // C/P + 8 strike digits = end of string
+                ticker[(i + 1)..].All(char.IsDigit))
+            {
+                cpIndex = i;
+                break;
+            }
+        }
+        
+        if (cpIndex < 6)
+        {
+            throw new FormatException($"Unable to parse option ticker: {ticker}");
+        }
+        
+        var rightChar = ticker[cpIndex];
+        var strikeStr = ticker[(cpIndex + 1)..];
+        var dateStr = ticker[(cpIndex - 6)..cpIndex];
+        var underlying = ticker[..(cpIndex - 6)];
+        
+        // Parse with 2-digit year prefix
         var expiration = DateTime.ParseExact($"20{dateStr}", "yyyyMMdd", null);
         var right = rightChar == 'C' ? OptionRight.Call : OptionRight.Put;
         var strike = decimal.Parse(strikeStr) / 1000m;
