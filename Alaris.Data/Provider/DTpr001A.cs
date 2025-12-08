@@ -339,10 +339,17 @@ public sealed class PolygonApiClient : DTpr003A
     /// <summary>
     /// Parses OCC format option ticker.
     /// Format: AAPL250117C00150000 = AAPL 2025-01-17 Call $150
+    /// Polygon returns with O: prefix: O:AAPL250117C00150000
     /// </summary>
     private static (string underlying, decimal strike, DateTime expiration, OptionRight right) 
         ParseOptionTicker(string ticker)
     {
+        // Strip Polygon's O: prefix if present
+        if (ticker.StartsWith("O:", StringComparison.OrdinalIgnoreCase))
+        {
+            ticker = ticker[2..];
+        }
+        
         // OCC format: SYMBOL + YYMMDD + C/P + 00000000 (strike * 1000)
         // Example: AAPL250117C00150000
         
