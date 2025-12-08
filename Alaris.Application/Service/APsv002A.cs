@@ -205,15 +205,17 @@ public sealed class APsv002A : IDisposable
                 // Using dynamic to avoid circular dependency if Model is in another project, 
                 // but ideally should verify type.
                 
-                var dateStr = bar.Timestamp.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
+                // LEAN Daily resolution expects 'TwelveCharacter' format: "yyyyMMdd HH:mm"
+                // TradeBar.cs ParseEquity uses default scaling (x10000)
+                var dateStr = bar.Timestamp.ToString("yyyyMMdd HH:mm", CultureInfo.InvariantCulture);
                 
-                // Use raw decimals (no scaling) as symbol-properties-database might rely on default (PriceMagnifier=1)
-                // Ensure InvariantCulture to avoid commas in numbers
-                var open = bar.Open;
-                var high = bar.High;
-                var low = bar.Low;
-                var close = bar.Close;
-                var volume = bar.Volume;
+                // Scale by 10000 to match LEAN default scale factor (1/10000)
+                // When LEAN reads this, it divides by 10000 to get the original price.
+                var open = (long)(bar.Open * 10000);
+                var high = (long)(bar.High * 10000);
+                var low = (long)(bar.Low * 10000);
+                var close = (long)(bar.Close * 10000);
+                var volume = (long)bar.Volume;
 
                 await writer.WriteLineAsync(string.Format(CultureInfo.InvariantCulture, 
                     "{0},{1},{2},{3},{4},{5}", 
