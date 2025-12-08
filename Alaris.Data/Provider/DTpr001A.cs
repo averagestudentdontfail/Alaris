@@ -202,55 +202,53 @@ public sealed class PolygonApiClient : DTpr003A
                 return new OptionChainSnapshot { Symbol = symbol, SpotPrice = spotPrice, Timestamp = effectiveDate, Contracts = new List<OptionContract>() };
             }
             
-            _logger.LogInformation("Found {Count} reference contracts for {Symbol}, fetching daily bars...", refResponse.Results.Length, symbol);
+            _logger.LogInformation("Found {Count} reference contracts for {Symbol}, fetching daily bars (max 50)...", refResponse.Results.Length, symbol);
 
-            // 3. Fetch daily bars for each contract
-            var contracts = new List<OptionContract>();
-            
+            // 3. Fetch daily bars for each contract - WITH PARALLELISM and LIMITS
+            // Limit to 50 contracts to avoid excessive API calls (250 contracts * 50 symbols = 12,500 calls!)
+            var contractsToFetch = refResponse.Results.Take(50).ToArray();
+            var contracts = new System.Collections.Concurrent.ConcurrentBag<OptionContract>();
             var subscriptionLimitHit = false;
             
-            foreach (var refContract in refResponse.Results)
+            // Use semaphore to limit concurrent requests (Polygon rate limits apply)
+            using var semaphore = new SemaphoreSlim(5); // 5 concurrent requests
+            var tasks = contractsToFetch.Select(async refContract =>
             {
-                // Skip remaining contracts if we've hit the subscription limit
                 if (subscriptionLimitHit)
-                {
-                    _logger.LogDebug("Skipping {Ticker} due to subscription limit", refContract.Ticker);
-                    continue;
-                }
-                
+                    return;
+                    
+                await semaphore.WaitAsync(cancellationToken);
                 try
                 {
-                    // FIX: Added "/" after BaseUrl
                     var aggUrl = $"{BaseUrl}/v2/aggs/ticker/{refContract.Ticker}/range/1/day/{dateStr}/{dateStr}?adjusted=true&apiKey={_apiKey}";
                     
-                    // Use GetAsync to properly handle 403/NOT_AUTHORIZED responses
-                    using var response = await _httpClient.GetAsync(new Uri(aggUrl, UriKind.Absolute), cancellationToken);
+                    // Add timeout to prevent hanging
+                    using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                    timeoutCts.CancelAfter(TimeSpan.FromSeconds(10));
+                    
+                    using var response = await _httpClient.GetAsync(new Uri(aggUrl, UriKind.Absolute), timeoutCts.Token);
                     
                     if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
                     {
-                        var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+                        var errorBody = await response.Content.ReadAsStringAsync(timeoutCts.Token);
                         if (errorBody.Contains("NOT_AUTHORIZED") || errorBody.Contains("plan doesn't include"))
                         {
-                        _logger.LogWarning(
-                            "Options data for {Date} is outside the 2-year historical data window. Skipping remaining contracts.",
-                            dateStr);
+                            _logger.LogWarning(
+                                "Options data for {Date} is outside the 2-year historical data window. Skipping remaining contracts.",
+                                dateStr);
                             subscriptionLimitHit = true;
-                            continue;
+                            return;
                         }
-                        
-                        _logger.LogWarning("403 Forbidden for contract {Ticker}: {Error}", refContract.Ticker, errorBody);
-                        continue;
+                        return; // Skip 403 errors silently
                     }
                     
-                    response.EnsureSuccessStatusCode();
+                    if (!response.IsSuccessStatusCode)
+                        return;
                     
-                    var aggResponse = await response.Content.ReadFromJsonAsync<PolygonAggregatesResponse>(cancellationToken: cancellationToken);
+                    var aggResponse = await response.Content.ReadFromJsonAsync<PolygonAggregatesResponse>(cancellationToken: timeoutCts.Token);
                     
                     if (aggResponse?.Results == null || aggResponse.Results.Length == 0)
-                    {
-                        _logger.LogDebug("No pricing data for contract {Ticker}", refContract.Ticker);
-                        continue;
-                    }
+                        return;
 
                     var bar = aggResponse.Results[0];
                     
@@ -258,8 +256,7 @@ public sealed class PolygonApiClient : DTpr003A
                     var (underlying, strike, expiration, right) = ParseOptionTicker(refContract.Ticker);
                     
                     // Calculate IV using Black-Scholes (industry standard for backtesting)
-                    // Note: Polygon does NOT provide historical IV via API
-                    var riskFreeRate = 0.05m; // TODO: Fetch from Treasury provider
+                    var riskFreeRate = 0.05m;
                     var timeToExpiry = (decimal)(expiration - effectiveDate).TotalDays / 365.25m;
                     var impliedVol = CalculateImpliedVolatility(
                         spotPrice, strike, timeToExpiry, riskFreeRate, 
@@ -272,20 +269,30 @@ public sealed class PolygonApiClient : DTpr003A
                         Strike = strike,
                         Expiration = expiration,
                         Right = right,
-                        Bid = Math.Max(0, bar.Close - 0.10m), // Approximate bid/ask from close
+                        Bid = Math.Max(0, bar.Close - 0.10m),
                         Ask = bar.Close + 0.10m,
                         Last = bar.Close,
                         Volume = (long)bar.Volume,
-                        OpenInterest = (long)bar.Volume, // Proxy: if it traded, assume OI exists
+                        OpenInterest = (long)bar.Volume,
                         ImpliedVolatility = impliedVol > 0 ? impliedVol : null,
                         Timestamp = DateTimeOffset.FromUnixTimeMilliseconds(bar.Timestamp).DateTime
                     });
                 }
+                catch (OperationCanceledException)
+                {
+                    // Timeout - skip this contract
+                }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to fetch pricing for contract {Ticker}", refContract.Ticker);
+                    _logger.LogDebug(ex, "Failed to fetch pricing for contract {Ticker}", refContract.Ticker);
                 }
-            }
+                finally
+                {
+                    semaphore.Release();
+                }
+            });
+            
+            await Task.WhenAll(tasks);
 
             _logger.LogInformation("Retrieved {Count} contracts with pricing for {Symbol}", contracts.Count, symbol);
 
@@ -294,7 +301,7 @@ public sealed class PolygonApiClient : DTpr003A
                 Symbol = symbol,
                 SpotPrice = spotPrice,
                 Timestamp = effectiveDate,
-                Contracts = contracts
+                Contracts = contracts.ToList()
             };
         }
         catch (Exception ex)
