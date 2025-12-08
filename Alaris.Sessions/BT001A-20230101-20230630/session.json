@@ -1,0 +1,17 @@
+{
+  "sessionId": "BT001A-20230101-20230630",
+  "startDate": "2023-01-01T00:00:00",
+  "endDate": "2023-06-30T00:00:00",
+  "createdAt": "2025-12-08T00:09:31.6577664Z",
+  "updatedAt": "2025-12-08T00:09:31.6577754Z",
+  "status": "Created",
+  "sessionPath": "/home/sunny/.project/Alaris/Alaris.Sessions/BT001A-20230101-20230630",
+  "symbols": [
+    "SPY",
+    "QQQ",
+    "AAPL"
+  ],
+  "exitCode": null,
+  "statistics": null,
+  "errorMessage": null
+}
