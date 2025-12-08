@@ -42,6 +42,7 @@ public interface DTpr003A
     /// </summary>
     Task<OptionChainSnapshot> GetOptionChainAsync(
         string symbol,
+        DateTime? asOfDate = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>

@@ -129,12 +129,13 @@ public sealed class PolygonApiClient : DTpr003A
     }
 
     /// <inheritdoc/>
-    public async Task<OptionChainSnapshot> GetOptionChainAsync(
+    /// <inheritdoc/>
+    public Task<OptionChainSnapshot> GetOptionChainAsync(
         string symbol,
+        DateTime? asOfDate = null,
         CancellationToken cancellationToken = default)
     {
-        // Delegate to historical version with current date
-        return await GetHistoricalOptionChainAsync(symbol, DateTime.UtcNow.Date, cancellationToken);
+        return GetHistoricalOptionChainAsync(symbol, asOfDate ?? DateTime.UtcNow.Date, cancellationToken);
     }
 
     /// <summary>

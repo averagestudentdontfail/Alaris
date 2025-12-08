@@ -181,6 +181,10 @@ public sealed class AlarisDataBridge
     /// Gets option chain with cache fallback for backtest mode.
     /// Loads from session cache if available, otherwise falls back to live API.
     /// </summary>
+    /// <summary>
+    /// Gets option chain with cache fallback for backtest mode.
+    /// Loads from session cache if verified strictly against evaluation date, otherwise fetches from provider.
+    /// </summary>
     private async Task<OptionChainSnapshot> GetOptionChainWithCacheFallbackAsync(
         string symbol,
         DateTime evaluationDate,
@@ -200,17 +204,17 @@ public sealed class AlarisDataBridge
                     
                     if (cached != null && cached.Contracts.Count > 0)
                     {
-                        _logger.LogDebug("Loaded {Count} options contracts from cache for {Symbol}", 
-                            cached.Contracts.Count, symbol);
-                        
-                        // Update timestamp to evaluation date
-                        return new OptionChainSnapshot
+                        // STRICT CHECK: Only return cache if it matches the evaluation date.
+                        // For backtesting, we cannot use stale option chains (e.g. from 6 months ago).
+                        if (cached.Timestamp.Date == evaluationDate.Date)
                         {
-                            Symbol = cached.Symbol,
-                            SpotPrice = cached.SpotPrice,
-                            Timestamp = evaluationDate,
-                            Contracts = cached.Contracts
-                        };
+                            _logger.LogDebug("Loaded {Count} options contracts from cache for {Symbol} (Hit)", 
+                                cached.Contracts.Count, symbol);
+                            return cached;
+                        }
+                        
+                        _logger.LogDebug("Cache mismatch for {Symbol}: Cached={CachedDate:yyyy-MM-dd}, Requested={ReqDate:yyyy-MM-dd}. Fetching fresh.",
+                            symbol, cached.Timestamp, evaluationDate);
                     }
                 }
                 catch (JsonException ex)
@@ -220,13 +224,13 @@ public sealed class AlarisDataBridge
             }
             else
             {
-                _logger.LogDebug("No options cache file found for {Symbol} at {Path}", symbol, cacheFilePath);
+                _logger.LogDebug("No options cache file found for {Symbol}", symbol);
             }
         }
 
-        // Fall back to live API (for live trading or if cache not available)
-        _logger.LogDebug("Fetching live option chain for {Symbol}", symbol);
-        return await _marketDataProvider.GetOptionChainAsync(symbol, cancellationToken);
+        // Fetch from provider (Live or Historical On-Demand)
+        _logger.LogDebug("Fetching option chain for {Symbol} as of {Date}", symbol, evaluationDate);
+        return await _marketDataProvider.GetOptionChainAsync(symbol, evaluationDate, cancellationToken);
     }
 
     /// <summary>

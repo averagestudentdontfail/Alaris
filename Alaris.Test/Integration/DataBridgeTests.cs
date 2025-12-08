@@ -224,13 +224,14 @@ internal class BridgeTestMarketDataProvider : DTpr003A
         return Task.FromResult<IReadOnlyList<PriceBar>>(bars);
     }
 
-    public virtual Task<OptionChainSnapshot> GetOptionChainAsync(string symbol, CancellationToken cancellationToken = default)
+    public virtual Task<OptionChainSnapshot> GetOptionChainAsync(string symbol, DateTime? asOfDate = null, CancellationToken cancellationToken = default)
     {
+        var timestamp = asOfDate ?? DateTime.UtcNow;
         return Task.FromResult(new OptionChainSnapshot
         {
             Symbol = symbol,
             SpotPrice = 150.00m,
-            Timestamp = DateTime.UtcNow,
+            Timestamp = timestamp,
             Contracts = new List<OptionContract>
             {
                 new()
@@ -238,14 +239,14 @@ internal class BridgeTestMarketDataProvider : DTpr003A
                     UnderlyingSymbol = symbol,
                     OptionSymbol = $"{symbol}250117C00150000",
                     Strike = 150m,
-                    Expiration = DateTime.UtcNow.AddDays(30),
+                    Expiration = timestamp.AddDays(30),
                     Right = OptionRight.Call,
                     Bid = 5.00m,
                     Ask = 5.20m,
                     Volume = 1000,
                     OpenInterest = 5000,
                     ImpliedVolatility = 0.25m,
-                    Timestamp = DateTime.UtcNow
+                    Timestamp = timestamp
                 }
             }
         });
@@ -273,10 +274,10 @@ internal class BridgeTestMarketDataProviderWithDelay : BridgeTestMarketDataProvi
         return await base.GetHistoricalBarsAsync(symbol, startDate, endDate, cancellationToken);
     }
 
-    public override async Task<OptionChainSnapshot> GetOptionChainAsync(string symbol, CancellationToken cancellationToken = default)
+    public override async Task<OptionChainSnapshot> GetOptionChainAsync(string symbol, DateTime? asOfDate = null, CancellationToken cancellationToken = default)
     {
         await Task.Delay(_delay, cancellationToken);
-        return await base.GetOptionChainAsync(symbol, cancellationToken);
+        return await base.GetOptionChainAsync(symbol, asOfDate, cancellationToken);
     }
 
     public override async Task<decimal> GetAverageVolume30DayAsync(string symbol, DateTime? evaluationDate = null, CancellationToken cancellationToken = default)
