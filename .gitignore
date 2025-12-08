@@ -112,4 +112,5 @@ Data/
 
 # Alaris Output Directory (LEAN runtime artifacts)
 Alaris.Output/
+Alaris.Sessions/
 storage/

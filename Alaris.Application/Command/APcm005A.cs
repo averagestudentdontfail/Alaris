@@ -181,7 +181,7 @@ internal static class DependencyFactory
             .Build();
 
         var httpClient = new HttpClient();
-        var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Warning));
+        var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Information));
         
         var polygonClient = new PolygonApiClient(
             httpClient, 
