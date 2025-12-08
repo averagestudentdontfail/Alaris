@@ -408,7 +408,7 @@ public static class APap001A
             return null;
         }
 
-        var choices = sessions.Select(s => $"{s.SessionId} ({s.StartDate:yyyy-MM-dd} to {s.EndDate:yyyy-MM-dd}) [{s.Status}]").ToList();
+        var choices = sessions.Select(s => $"{s.SessionId} ({s.StartDate:yyyy-MM-dd} to {s.EndDate:yyyy-MM-dd}) [[{Markup.Escape(s.Status.ToString())}]]").ToList();
         choices.Add("Cancel");
 
         var selection = AnsiConsole.Prompt(
