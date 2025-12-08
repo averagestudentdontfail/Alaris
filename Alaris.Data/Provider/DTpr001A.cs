@@ -111,7 +111,7 @@ public sealed class PolygonApiClient : DTpr003A
                 High = r.High,
                 Low = r.Low,
                 Close = r.Close,
-                Volume = r.Volume
+                Volume = (long)r.Volume
             }).ToList();
 
             _logger.LogInformation("Retrieved {Count} bars for {Symbol}", bars.Count, symbol);
@@ -337,7 +337,7 @@ file sealed class PolygonBar
     public decimal Close { get; init; }
 
     [JsonPropertyName("v")]
-    public long Volume { get; init; }
+    public double Volume { get; init; }
 }
 
 file sealed class PolygonOptionsContractsResponse
