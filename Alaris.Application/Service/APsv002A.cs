@@ -235,7 +235,13 @@ public sealed class APsv002A : IDisposable
             return;
         }
 
-        var foldersToCopy = new[] { "market-hours", "symbol-properties" };
+        var foldersToCopy = new[] 
+        { 
+            "market-hours", 
+            "symbol-properties",
+            "equity/usa/map_files",
+            "equity/usa/factor_files"
+        };
 
         foreach (var folder in foldersToCopy)
         {
