@@ -384,7 +384,8 @@ public static class APap001A
                 dateArgs = new[] { "--years", years };
                 break;
             case "3":
-                var defaultStart = DateTime.Now.AddYears(-2).ToString("yyyy-MM-dd");
+                // 23 months buffer to ensure options data stays within Polygon's 2-year window
+                var defaultStart = DateTime.Now.AddYears(-2).AddMonths(1).ToString("yyyy-MM-dd");
                 var defaultEnd = DateTime.Now.AddDays(-1).ToString("yyyy-MM-dd");
                 var start = AnsiConsole.Ask<string>($"[green]Start Date[/] (YYYY-MM-DD):", defaultStart);
                 var end = AnsiConsole.Ask<string>($"[green]End Date[/] (YYYY-MM-DD):", defaultEnd);

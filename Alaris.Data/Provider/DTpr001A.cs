@@ -207,14 +207,44 @@ public sealed class PolygonApiClient : DTpr003A
             // 3. Fetch daily bars for each contract
             var contracts = new List<OptionContract>();
             
+            var subscriptionLimitHit = false;
+            
             foreach (var refContract in refResponse.Results)
             {
+                // Skip remaining contracts if we've hit the subscription limit
+                if (subscriptionLimitHit)
+                {
+                    _logger.LogDebug("Skipping {Ticker} due to subscription limit", refContract.Ticker);
+                    continue;
+                }
+                
                 try
                 {
                     // FIX: Added "/" after BaseUrl
                     var aggUrl = $"{BaseUrl}/v2/aggs/ticker/{refContract.Ticker}/range/1/day/{dateStr}/{dateStr}?adjusted=true&apiKey={_apiKey}";
                     
-                    var aggResponse = await _httpClient.GetFromJsonAsync<PolygonAggregatesResponse>(aggUrl, cancellationToken);
+                    // Use GetAsync to properly handle 403/NOT_AUTHORIZED responses
+                    using var response = await _httpClient.GetAsync(new Uri(aggUrl, UriKind.Absolute), cancellationToken);
+                    
+                    if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                    {
+                        var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+                        if (errorBody.Contains("NOT_AUTHORIZED") || errorBody.Contains("plan doesn't include"))
+                        {
+                        _logger.LogWarning(
+                            "Options data for {Date} is outside the 2-year historical data window. Skipping remaining contracts.",
+                            dateStr);
+                            subscriptionLimitHit = true;
+                            continue;
+                        }
+                        
+                        _logger.LogWarning("403 Forbidden for contract {Ticker}: {Error}", refContract.Ticker, errorBody);
+                        continue;
+                    }
+                    
+                    response.EnsureSuccessStatusCode();
+                    
+                    var aggResponse = await response.Content.ReadFromJsonAsync<PolygonAggregatesResponse>(cancellationToken: cancellationToken);
                     
                     if (aggResponse?.Results == null || aggResponse.Results.Length == 0)
                     {

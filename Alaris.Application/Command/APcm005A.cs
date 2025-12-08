@@ -206,9 +206,11 @@ public sealed class BacktestCreateCommand : AsyncCommand<BacktestCreateSettings>
             return (start, end);
         }
 
-        // Option 3: Default - 2 years ending yesterday
+        // Option 3: Default - 2 years ending yesterday (with 1-month buffer for options data)
+        // Polygon's Options Starter plan has a 2-year limit, but options aggregate data
+        // at the boundary often returns 403. Using 23 months ensures reliable data access.
         var yesterday = DateTime.Now.Date.AddDays(-1);
-        var twoYearsAgo = yesterday.AddYears(-2);
+        var twoYearsAgo = yesterday.AddYears(-2).AddMonths(1); // 23 months instead of 24
         AnsiConsole.MarkupLine($"[cyan]Using default 2-year range: {twoYearsAgo:yyyy-MM-dd} to {yesterday:yyyy-MM-dd}[/]");
         return (twoYearsAgo, yesterday);
     }
