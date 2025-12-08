@@ -23,7 +23,6 @@ using Alaris.Data.Provider.Treasury;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics.CodeAnalysis;
-using QuantConnect.Configuration;
 
 namespace Alaris.Application.Command;
 
@@ -302,12 +301,14 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
 
         // CRITICAL: Inject session data path into LEAN config before engine starts
         // Environment variables (QC_DATA_FOLDER) do NOT work - LEAN reads from config.json only
-        Config.Set("data-folder", service.GetDataPath(session.SessionId));
+        // Config.Set() also doesn't work because it only affects THIS process, not the subprocess
+        // Solution: Pass --data-folder as a command-line argument to the LEAN subprocess
+        var sessionDataPath = service.GetDataPath(session.SessionId);
 
         var psi = new ProcessStartInfo
         {
             FileName = "dotnet",
-            Arguments = $"run --project \"{launcherPath}\"",
+            Arguments = $"run --project \"{launcherPath}\" -- --data-folder \"{sessionDataPath}\" --close-automatically true",
             WorkingDirectory = System.IO.Path.GetDirectoryName(configPath),
             UseShellExecute = false,
             RedirectStandardOutput = true,
