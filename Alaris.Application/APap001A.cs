@@ -362,8 +362,11 @@ public static class APap001A
     {
         AnsiConsole.MarkupLine("[yellow]Create New Backtest Session[/]");
         
-        var start = AnsiConsole.Ask<string>("[green]Start Date[/] (YYYY-MM-DD):", "2023-01-01");
-        var end = AnsiConsole.Ask<string>("[green]End Date[/] (YYYY-MM-DD):", "2023-06-30");
+        var defaultStart = DateTime.Now.AddMonths(-6).ToString("yyyy-MM-dd");
+        var defaultEnd = DateTime.Now.ToString("yyyy-MM-dd");
+        
+        var start = AnsiConsole.Ask<string>($"[green]Start Date[/] (YYYY-MM-DD):", defaultStart);
+        var end = AnsiConsole.Ask<string>($"[green]End Date[/] (YYYY-MM-DD):", defaultEnd);
         var symbols = AnsiConsole.Ask<string>("[green]Symbols[/] (comma-separated):", "SPY,QQQ");
 
         var args = new[] { "backtest", "create", "--start", start, "--end", end, "--symbols", symbols };

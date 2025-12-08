@@ -70,14 +70,32 @@ public sealed class PolygonApiClient : DTpr003A
             "Fetching historical bars for {Symbol} from {StartDate:yyyy-MM-dd} to {EndDate:yyyy-MM-dd}",
             symbol, startDate, endDate);
 
+        // Subscription Limit Validation
+        // Stocks Basic / Options Starter: 2 Years Historical Data
+        var minAllowedDate = DateTime.UtcNow.AddYears(-2).Date;
+        if (startDate < minAllowedDate)
+        {
+            var msg = $"Date range outside subscription limits. Start Date {startDate:yyyy-MM-dd} is older than 2 years (Limit: {minAllowedDate:yyyy-MM-dd}). Upgrade to Stocks Starter for 5 years history.";
+            _logger.LogError("Date range outside subscription limits. Start Date {StartDate} is older than limit {MinAllowedDate}.", startDate, minAllowedDate);
+            throw new ArgumentOutOfRangeException(nameof(startDate), msg);
+        }
+
         // Polygon aggregates endpoint: /v2/aggs/ticker/{ticker}/range/{multiplier}/{timespan}/{from}/{to}
         var url = $"/v2/aggs/ticker/{symbol}/range/1/day/{startDate:yyyy-MM-dd}/{endDate:yyyy-MM-dd}?adjusted=true&sort=asc&apiKey={_apiKey}";
 
         try
         {
-            var response = await _httpClient.GetFromJsonAsync<PolygonAggregatesResponse>(
-                url, 
-                cancellationToken: cancellationToken);
+            using var responseMessage = await _httpClient.GetAsync(new Uri(url, UriKind.Relative), cancellationToken);
+            
+            if (!responseMessage.IsSuccessStatusCode)
+            {
+                var errorContent = await responseMessage.Content.ReadAsStringAsync(cancellationToken);
+                _logger.LogError("Polygon API request failed: {StatusCode} {ReasonPhrase}. Content: {Content}", 
+                    responseMessage.StatusCode, responseMessage.ReasonPhrase, errorContent);
+                throw new InvalidOperationException($"Polygon API failed: {responseMessage.StatusCode} - {errorContent}");
+            }
+
+            var response = await responseMessage.Content.ReadFromJsonAsync<PolygonAggregatesResponse>(cancellationToken: cancellationToken);
 
             if (response == null || response.Results == null || response.Results.Length == 0)
             {
@@ -99,10 +117,10 @@ public sealed class PolygonApiClient : DTpr003A
             _logger.LogInformation("Retrieved {Count} bars for {Symbol}", bars.Count, symbol);
             return bars;
         }
-        catch (HttpRequestException ex)
+        catch (Exception ex)
         {
-            _logger.LogError(ex, "HTTP error fetching bars for {Symbol}", symbol);
-            throw new InvalidOperationException($"Failed to fetch historical bars for {symbol}", ex);
+            _logger.LogError(ex, "Error fetching bars for {Symbol}", symbol);
+            throw;
         }
     }
 
