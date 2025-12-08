@@ -53,7 +53,7 @@ public sealed class PolygonApiClient : DTpr003A
         var maskedKey = _apiKey.Length > 4 ? _apiKey[..4] + new string('*', _apiKey.Length - 4) : "INVALID";
         _logger.LogInformation("Polygon Provider initialized with Key: {MaskedKey}", maskedKey);
 
-        _httpClient.BaseAddress = new Uri(BaseUrl);
+        // Do not set BaseAddress on shared HttpClient
     }
 
     /// <inheritdoc/>
@@ -81,7 +81,8 @@ public sealed class PolygonApiClient : DTpr003A
         }
 
         // Polygon aggregates endpoint: /v2/aggs/ticker/{ticker}/range/{multiplier}/{timespan}/{from}/{to}
-        var url = $"/v2/aggs/ticker/{symbol}/range/1/day/{startDate:yyyy-MM-dd}/{endDate:yyyy-MM-dd}?adjusted=true&sort=asc&apiKey={_apiKey}";
+        // Polygon aggregates endpoint: /v2/aggs/ticker/{ticker}/range/{multiplier}/{timespan}/{from}/{to}
+        var url = $"{BaseUrl}/v2/aggs/ticker/{symbol}/range/1/day/{startDate:yyyy-MM-dd}/{endDate:yyyy-MM-dd}?adjusted=true&sort=asc&apiKey={_apiKey}";
 
         try
         {
@@ -138,7 +139,7 @@ public sealed class PolygonApiClient : DTpr003A
         var spotPrice = await GetSpotPriceAsync(symbol, cancellationToken);
 
         // Get options contracts: /v3/reference/options/contracts
-        var url = $"/v3/reference/options/contracts?underlying_ticker={symbol}&limit=1000&apiKey={_apiKey}";
+        var url = $"{BaseUrl}/v3/reference/options/contracts?underlying_ticker={symbol}&limit=1000&apiKey={_apiKey}";
 
         try
         {
@@ -201,7 +202,7 @@ public sealed class PolygonApiClient : DTpr003A
             throw new ArgumentException("Symbol cannot be null or whitespace", nameof(symbol));
 
         // Get previous close: /v2/aggs/ticker/{ticker}/prev
-        var url = $"/v2/aggs/ticker/{symbol}/prev?adjusted=true&apiKey={_apiKey}";
+        var url = $"{BaseUrl}/v2/aggs/ticker/{symbol}/prev?adjusted=true&apiKey={_apiKey}";
 
         try
         {
@@ -253,7 +254,7 @@ public sealed class PolygonApiClient : DTpr003A
         var (underlying, strike, expiration, right) = ParseOptionTicker(optionTicker);
 
         // Get snapshot quote: /v3/snapshot/options/{ticker}
-        var url = $"/v3/snapshot/options/{underlying}/{optionTicker}?apiKey={_apiKey}";
+        var url = $"{BaseUrl}/v3/snapshot/options/{underlying}/{optionTicker}?apiKey={_apiKey}";
 
         var response = await _httpClient.GetFromJsonAsync<PolygonOptionSnapshotResponse>(
             url,
