@@ -91,9 +91,9 @@ public sealed class APsv002A : IDisposable
                     // Price Data
                     try
                     {
-                        // Add buffer for warmup (60 days) but respect 2-year limit
+                        // Add buffer for warmup (120 days) to ensure sufficient history
                         var minAllowedDate = DateTime.UtcNow.AddYears(-2).Date;
-                        var lookbackStart = start.AddDays(-60);
+                        var lookbackStart = start.AddDays(-120);
                         var requestStart = lookbackStart < minAllowedDate ? minAllowedDate : lookbackStart;
                         
                         var bars = await _polygonClient.GetHistoricalBarsAsync(symbol, requestStart, end);
@@ -204,7 +204,7 @@ public sealed class APsv002A : IDisposable
                 // Using dynamic to avoid circular dependency if Model is in another project, 
                 // but ideally should verify type.
                 
-                var dateStr = bar.Timestamp.ToString("yyyyMMdd 00:00");
+                var dateStr = bar.Timestamp.ToString("yyyyMMdd");
                 
                 // Scale by 10000 to match existing LEAN data format (aapl.csv example)
                 var open = (long)(bar.Open * 10000);
