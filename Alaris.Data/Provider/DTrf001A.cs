@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Json;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
@@ -64,18 +65,18 @@ public sealed class TreasuryDirectRateProvider : DTpr005A
             var startDate = today.AddDays(-7);
             var url = $"search?type=Bill&dateFieldName=issueDate&startDate={startDate:yyyy-MM-dd}&endDate={today:yyyy-MM-dd}&format=json";
 
-            var response = await _httpClient.GetFromJsonAsync<TreasurySecuritiesResponse>(
+            var securities = await _httpClient.GetFromJsonAsync<TreasurySecurity[]>(
                 url,
                 cancellationToken: cancellationToken);
 
-            if (response?.Securities == null || response.Securities.Length == 0)
+            if (securities == null || securities.Length == 0)
             {
                 _logger.LogWarning("No recent T-bill auctions found, using fallback rate");
                 return 0.0525m; // Fallback: 5.25% (typical 2025 rate)
             }
 
             // Find most recent 3-month T-bill (91-day maturity)
-            var threeMonthBill = response.Securities
+            var threeMonthBill = securities
                 .Where(s => s.Term != null && s.Term.Contains("91"))
                 .OrderByDescending(s => s.IssueDate)
                 .FirstOrDefault();
@@ -85,7 +86,7 @@ public sealed class TreasuryDirectRateProvider : DTpr005A
                 _logger.LogWarning("No 3-month T-bills found in recent auctions");
                 
                 // Use any bill as fallback
-                var anyBill = response.Securities
+                var anyBill = securities
                     .OrderByDescending(s => s.IssueDate)
                     .First();
                 
@@ -109,6 +110,11 @@ public sealed class TreasuryDirectRateProvider : DTpr005A
             _logger.LogWarning("Using fallback rate: 5.25%");
             return 0.0525m; // Fallback rate
         }
+        catch (JsonException ex)
+        {
+             _logger.LogError(ex, "JSON parse error fetching T-bill rates");
+             return 0.0525m;
+        }
     }
 
     /// <inheritdoc/>
@@ -125,18 +131,18 @@ public sealed class TreasuryDirectRateProvider : DTpr005A
         {
             var url = $"search?type=Bill&dateFieldName=issueDate&startDate={startDate:yyyy-MM-dd}&endDate={endDate:yyyy-MM-dd}&format=json";
 
-            var response = await _httpClient.GetFromJsonAsync<TreasurySecuritiesResponse>(
+            var securities = await _httpClient.GetFromJsonAsync<TreasurySecurity[]>(
                 url,
                 cancellationToken: cancellationToken);
 
-            if (response?.Securities == null || response.Securities.Length == 0)
+            if (securities == null || securities.Length == 0)
             {
                 _logger.LogWarning("No T-bill auctions found in date range");
                 return new Dictionary<DateTime, decimal>();
             }
 
             // Group by issue date, prefer 3-month bills
-            var ratesByDate = response.Securities
+            var ratesByDate = securities
                 .Where(s => s.InterestRate != null)
                 .GroupBy(s => s.IssueDate.Date)
                 .ToDictionary(
@@ -156,6 +162,11 @@ public sealed class TreasuryDirectRateProvider : DTpr005A
         catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "HTTP error fetching historical T-bill rates");
+            return new Dictionary<DateTime, decimal>();
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "JSON parse error fetching historical T-bill rates");
             return new Dictionary<DateTime, decimal>();
         }
     }
@@ -181,12 +192,6 @@ public sealed class TreasuryDirectRateProvider : DTpr005A
 }
 
 #region Treasury Direct API Response Models
-
-file sealed class TreasurySecuritiesResponse
-{
-    [JsonPropertyName("securities")]
-    public TreasurySecurity[]? Securities { get; init; }
-}
 
 file sealed class TreasurySecurity
 {
