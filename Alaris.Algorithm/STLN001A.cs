@@ -201,16 +201,20 @@ public sealed class STLN001A : QCAlgorithm
         // Set warmup period for historical data preloading (required for History() to work)
         SetWarmUp(TimeSpan.FromDays(45), Resolution.Daily);
         
-        // Pre-subscribe to test symbols with available LEAN data for backtest validation
-        // These symbols have confirmed historical data in the LEAN data folder
+        // Pre-subscribe to session symbols for backtest validation
+        // Use symbols from the session (set via ALARIS_SESSION_SYMBOLS env var)
         if (!LiveMode)
         {
-            var testSymbols = new[] { "AAPL", "GOOG", "GOOGL", "IBM", "BAC", "AIG" };
+            var envSymbols = Environment.GetEnvironmentVariable("ALARIS_SESSION_SYMBOLS");
+            var testSymbols = string.IsNullOrEmpty(envSymbols)
+                ? new[] { "SPY" }  // Default fallback
+                : envSymbols.Split(',', StringSplitOptions.RemoveEmptyEntries);
+            
             foreach (var ticker in testSymbols)
             {
-                AddEquity(ticker, Resolution.Daily);
+                AddEquity(ticker.Trim(), Resolution.Daily);
             }
-            Log($"STLN001A: Pre-subscribed {testSymbols.Length} test symbols for backtest validation");
+            Log($"STLN001A: Pre-subscribed {testSymbols.Length} session symbols for backtest validation");
         }
         
         // =====================================================================
