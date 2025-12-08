@@ -33,7 +33,7 @@ public sealed class TreasuryDirectRateProvider : DTpr005A
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<TreasuryDirectRateProvider> _logger;
-    private const string BaseUrl = "https://www.treasurydirect.gov/TA_WS/securities";
+    private const string BaseUrl = "https://www.treasurydirect.gov/TA_WS/securities/";
 
     /// <summary>
     /// Initializes a new instance of the <see cref="TreasuryDirectRateProvider"/> class.
@@ -59,10 +59,10 @@ public sealed class TreasuryDirectRateProvider : DTpr005A
             // Get today's date
             var today = DateTime.UtcNow.Date;
             
-            // Treasury API endpoint: /search?type=Bill&dateFieldName=issueDate&startDate=YYYY-MM-DD
+            // Treasury API endpoint: search?type=Bill&dateFieldName=issueDate&startDate=YYYY-MM-DD
             // Look back up to 7 days to handle weekends/holidays
             var startDate = today.AddDays(-7);
-            var url = $"/search?type=Bill&dateFieldName=issueDate&startDate={startDate:yyyy-MM-dd}&endDate={today:yyyy-MM-dd}&format=json";
+            var url = $"search?type=Bill&dateFieldName=issueDate&startDate={startDate:yyyy-MM-dd}&endDate={today:yyyy-MM-dd}&format=json";
 
             var response = await _httpClient.GetFromJsonAsync<TreasurySecuritiesResponse>(
                 url,
@@ -123,7 +123,7 @@ public sealed class TreasuryDirectRateProvider : DTpr005A
 
         try
         {
-            var url = $"/search?type=Bill&dateFieldName=issueDate&startDate={startDate:yyyy-MM-dd}&endDate={endDate:yyyy-MM-dd}&format=json";
+            var url = $"search?type=Bill&dateFieldName=issueDate&startDate={startDate:yyyy-MM-dd}&endDate={endDate:yyyy-MM-dd}&format=json";
 
             var response = await _httpClient.GetFromJsonAsync<TreasurySecuritiesResponse>(
                 url,
