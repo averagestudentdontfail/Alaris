@@ -130,16 +130,46 @@ public sealed class PolygonApiClient : DTpr003A
         string symbol,
         CancellationToken cancellationToken = default)
     {
+        // Delegate to historical version with current date
+        return await GetHistoricalOptionChainAsync(symbol, DateTime.UtcNow.Date, cancellationToken);
+    }
+
+    /// <summary>
+    /// Gets historical option chain for backtesting (as of a specific date).
+    /// Uses Polygon's as_of parameter for contract listing and daily bars for pricing.
+    /// </summary>
+    /// <param name="symbol">Underlying symbol.</param>
+    /// <param name="asOfDate">The historical date to fetch option chain for.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Option chain snapshot as of the specified date.</returns>
+    public async Task<OptionChainSnapshot> GetHistoricalOptionChainAsync(
+        string symbol,
+        DateTime asOfDate,
+        CancellationToken cancellationToken = default)
+    {
         if (string.IsNullOrWhiteSpace(symbol))
             throw new ArgumentException("Symbol cannot be null or whitespace", nameof(symbol));
 
-        _logger.LogInformation("Fetching option chain for {Symbol}", symbol);
+        _logger.LogInformation("Fetching historical option chain for {Symbol} as of {Date:yyyy-MM-dd}", symbol, asOfDate);
 
-        // First get current spot price
-        var spotPrice = await GetSpotPriceAsync(symbol, cancellationToken);
+        // Get historical spot price (previous day close)
+        var spotPrice = 0m;
+        try
+        {
+            var bars = await GetHistoricalBarsAsync(symbol, asOfDate.AddDays(-5), asOfDate, cancellationToken);
+            spotPrice = bars.Count > 0 ? bars[bars.Count - 1].Close : 0m;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to get historical spot price for {Symbol}", symbol);
+        }
 
-        // Get options contracts: /v3/reference/options/contracts
-        var url = $"{BaseUrl}/v3/reference/options/contracts?underlying_ticker={symbol}&limit=1000&apiKey={_apiKey}";
+        // Get options contracts active as_of the date
+        var dateStr = asOfDate.ToString("yyyy-MM-dd");
+        var expirationMin = asOfDate.ToString("yyyy-MM-dd");
+        var expirationMax = asOfDate.AddDays(60).ToString("yyyy-MM-dd"); // Next 60 days of expirations
+        
+        var url = $"{BaseUrl}/v3/reference/options/contracts?underlying_ticker={symbol}&as_of={dateStr}&expiration_date.gte={expirationMin}&expiration_date.lte={expirationMax}&limit=250&apiKey={_apiKey}";
 
         try
         {
@@ -149,49 +179,68 @@ public sealed class PolygonApiClient : DTpr003A
 
             if (response == null || response.Results == null || response.Results.Length == 0)
             {
-                _logger.LogWarning("No options contracts found for {Symbol}", symbol);
+                _logger.LogWarning("No historical options contracts found for {Symbol} as of {Date:yyyy-MM-dd}", symbol, asOfDate);
                 return new OptionChainSnapshot
                 {
                     Symbol = symbol,
                     SpotPrice = spotPrice,
-                    Timestamp = DateTime.UtcNow,
+                    Timestamp = asOfDate,
                     Contracts = Array.Empty<OptionContract>()
                 };
             }
 
-            // For each contract, get current quote
+            _logger.LogInformation("Found {Count} contracts for {Symbol} as of {Date:yyyy-MM-dd}", 
+                response.Results.Length, symbol, asOfDate);
+
+            // Parse contracts from reference data (no live quotes for historical)
             var contracts = new List<OptionContract>();
-            foreach (var contract in response.Results.Take(100)) // Limit for initial implementation
+            foreach (var contract in response.Results)
             {
                 try
                 {
-                    var quote = await GetOptionQuoteAsync(contract.Ticker, cancellationToken);
-                    contracts.Add(quote);
+                    var (underlying, strike, expiration, right) = ParseOptionTicker(contract.Ticker);
+                    
+                    // For backtesting, we create the contract structure from reference data
+                    // Actual historical OHLCV would require additional API calls per contract
+                    contracts.Add(new OptionContract
+                    {
+                        UnderlyingSymbol = underlying,
+                        OptionSymbol = contract.Ticker,
+                        Strike = strike,
+                        Expiration = expiration,
+                        Right = right,
+                        Bid = 0, // Historical quotes not available in reference
+                        Ask = 0,
+                        Volume = 0,
+                        OpenInterest = 0,
+                        Timestamp = asOfDate
+                    });
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to get quote for {Ticker}", contract.Ticker);
+                    _logger.LogWarning(ex, "Failed to parse contract {Ticker}", contract.Ticker);
                 }
             }
 
             _logger.LogInformation(
-                "Retrieved chain with {Count} contracts for {Symbol}",
-                contracts.Count, symbol);
+                "Retrieved historical chain with {Count} contracts for {Symbol} as of {Date:yyyy-MM-dd}",
+                contracts.Count, symbol, asOfDate);
 
             return new OptionChainSnapshot
             {
                 Symbol = symbol,
                 SpotPrice = spotPrice,
-                Timestamp = DateTime.UtcNow,
+                Timestamp = asOfDate,
                 Contracts = contracts
             };
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogError(ex, "HTTP error fetching option chain for {Symbol}", symbol);
-            throw new InvalidOperationException($"Failed to fetch option chain for {symbol}", ex);
+            _logger.LogError(ex, "HTTP error fetching historical option chain for {Symbol}", symbol);
+            throw new InvalidOperationException($"Failed to fetch historical option chain for {symbol}", ex);
         }
     }
+
 
     /// <inheritdoc/>
     public async Task<decimal> GetSpotPriceAsync(

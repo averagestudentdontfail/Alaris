@@ -339,6 +339,14 @@ public sealed class STLN001A : QCAlgorithm
             validators,
             _loggerFactory!.CreateLogger<AlarisDataBridge>());
         
+        // Set session data path for cached data access (options, etc.)
+        var sessionDataPath = Environment.GetEnvironmentVariable("ALARIS_SESSION_DATA");
+        if (!string.IsNullOrEmpty(sessionDataPath))
+        {
+            _dataBridge.SetSessionDataPath(sessionDataPath);
+            Log($"STLN001A: Session data path set for cache: {sessionDataPath}");
+        }
+        
         Log("STLN001A: Data providers initialised");
     }
 

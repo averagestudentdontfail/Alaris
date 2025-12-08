@@ -70,11 +70,16 @@ public sealed class APsv002A : IDisposable
             Directory.CreateDirectory(earningsPath);
         }
 
+        // Path: session/data/options
+        var optionsPath = System.IO.Path.Combine(sessionDataPath, "options");
+        Directory.CreateDirectory(optionsPath);
+
         await AnsiConsole.Progress()
             .StartAsync(async ctx =>
             {
                 var taskData = ctx.AddTask($"[green]Downloading Price Data ({total} symbols)...[/]");
                 var taskEarnings = _secClient != null ? ctx.AddTask($"[green]Downloading Earnings Data...[/]") : null;
+                var taskOptions = ctx.AddTask($"[green]Downloading Options Data...[/]");
                 var taskRates = _treasuryClient != null ? ctx.AddTask($"[green]Downloading Interest Rates...[/]") : null;
                 
                 foreach (var symbol in symbolList)
@@ -125,6 +130,25 @@ public sealed class APsv002A : IDisposable
                         {
                             _logger?.LogError(ex, "Failed to download earnings for {Symbol}", symbol);
                         }
+                    }
+
+                    // Options Data - Download historical chain for session start date
+                    try
+                    {
+                        taskOptions.Description = $"[green]Downloading options for {symbol} ({current}/{total})...[/]";
+                        taskOptions.Value = (double)current / total * 100;
+                        
+                        var optionChain = await _polygonClient.GetHistoricalOptionChainAsync(symbol, start);
+                        if (optionChain.Contracts.Count > 0)
+                        {
+                            var jsonPath = System.IO.Path.Combine(optionsPath, $"{symbol.ToLowerInvariant()}.json");
+                            var json = JsonSerializer.Serialize(optionChain, JsonOptions);
+                            await File.WriteAllTextAsync(jsonPath, json);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogWarning(ex, "Failed to download options for {Symbol} (may not have options)", symbol);
                     }
                 }
 

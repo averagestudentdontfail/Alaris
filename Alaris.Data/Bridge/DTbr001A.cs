@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -31,6 +33,10 @@ public sealed class AlarisDataBridge
     private readonly DTpr005A _riskFreeRateProvider;
     private readonly IReadOnlyList<DTqc002A> _validators;
     private readonly ILogger<AlarisDataBridge> _logger;
+    
+    // Session data path for loading cached data (options, etc.)
+    private string? _sessionDataPath;
+    private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AlarisDataBridge"/> class.
@@ -55,6 +61,17 @@ public sealed class AlarisDataBridge
     }
 
     /// <summary>
+    /// Sets the session data path for loading cached data (options, historical bars, etc.).
+    /// Call this before using the bridge in backtest mode.
+    /// </summary>
+    /// <param name="sessionDataPath">Path to the session's data folder.</param>
+    public void SetSessionDataPath(string sessionDataPath)
+    {
+        _sessionDataPath = sessionDataPath;
+        _logger.LogInformation("Session data path set to: {Path}", sessionDataPath);
+    }
+
+    /// <summary>
     /// Gets complete market data snapshot for strategy evaluation.
     /// </summary>
     /// <param name="symbol">The symbol to evaluate.</param>
@@ -76,7 +93,7 @@ public sealed class AlarisDataBridge
             // Step 1: Fetch all data concurrently
             var spotPriceTask = _marketDataProvider.GetSpotPriceAsync(symbol, cancellationToken);
             var historicalBarsTask = GetHistoricalBarsForRvCalculationAsync(symbol, effectiveDate, cancellationToken);
-            var optionChainTask = _marketDataProvider.GetOptionChainAsync(symbol, cancellationToken);
+            var optionChainTask = GetOptionChainWithCacheFallbackAsync(symbol, effectiveDate, cancellationToken);
             var earningsTask = GetEarningsDataAsync(symbol, cancellationToken);
             var riskFreeRateTask = _riskFreeRateProvider.GetCurrentRateAsync(cancellationToken);
             var avgVolumeTask = _marketDataProvider.GetAverageVolume30DayAsync(symbol, cancellationToken);
@@ -158,6 +175,58 @@ public sealed class AlarisDataBridge
             _logger.LogError(ex, "Failed to build market data snapshot for {Symbol}", symbol);
             throw new InvalidOperationException($"Failed to build market data snapshot for {symbol}", ex);
         }
+    }
+
+    /// <summary>
+    /// Gets option chain with cache fallback for backtest mode.
+    /// Loads from session cache if available, otherwise falls back to live API.
+    /// </summary>
+    private async Task<OptionChainSnapshot> GetOptionChainWithCacheFallbackAsync(
+        string symbol,
+        DateTime evaluationDate,
+        CancellationToken cancellationToken)
+    {
+        // Try to load from session cache first (backtest mode)
+        if (!string.IsNullOrEmpty(_sessionDataPath))
+        {
+            var cacheFilePath = System.IO.Path.Combine(_sessionDataPath, "options", $"{symbol.ToLowerInvariant()}.json");
+            
+            if (File.Exists(cacheFilePath))
+            {
+                try
+                {
+                    var json = await File.ReadAllTextAsync(cacheFilePath, cancellationToken);
+                    var cached = JsonSerializer.Deserialize<OptionChainSnapshot>(json, JsonOptions);
+                    
+                    if (cached != null && cached.Contracts.Count > 0)
+                    {
+                        _logger.LogDebug("Loaded {Count} options contracts from cache for {Symbol}", 
+                            cached.Contracts.Count, symbol);
+                        
+                        // Update timestamp to evaluation date
+                        return new OptionChainSnapshot
+                        {
+                            Symbol = cached.Symbol,
+                            SpotPrice = cached.SpotPrice,
+                            Timestamp = evaluationDate,
+                            Contracts = cached.Contracts
+                        };
+                    }
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogWarning(ex, "Failed to deserialize options cache for {Symbol}", symbol);
+                }
+            }
+            else
+            {
+                _logger.LogDebug("No options cache file found for {Symbol} at {Path}", symbol, cacheFilePath);
+            }
+        }
+
+        // Fall back to live API (for live trading or if cache not available)
+        _logger.LogDebug("Fetching live option chain for {Symbol}", symbol);
+        return await _marketDataProvider.GetOptionChainAsync(symbol, cancellationToken);
     }
 
     /// <summary>
