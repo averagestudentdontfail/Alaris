@@ -2,9 +2,9 @@
   "sessionId": "BT001A-20230101-20230630",
   "startDate": "2023-01-01T00:00:00",
   "endDate": "2023-06-30T00:00:00",
-  "createdAt": "2025-12-08T00:09:31.6577664Z",
-  "updatedAt": "2025-12-08T00:09:31.6577754Z",
-  "status": "Created",
+  "createdAt": "2025-12-08T00:21:13.7736135Z",
+  "updatedAt": "2025-12-08T00:21:18.9734048Z",
+  "status": "Ready",
   "sessionPath": "/home/sunny/.project/Alaris/Alaris.Sessions/BT001A-20230101-20230630",
   "symbols": [
     "SPY",
