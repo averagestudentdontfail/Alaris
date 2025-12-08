@@ -1,7 +1,24 @@
 // =============================================================================
-// DTpr001A.cs - Polygon API Client with URL Construction Fixes
+// DTpr001A_CORRECTED.cs - Polygon API Client with URL Construction Fixes
 // Component ID: DTpr001A
+// Critical Fixes:
+// 1. Added trailing "/" to ALL URL constructions
+// 2. Maintained IV calculation approach (correct for historical data)
+// 3. Added comprehensive error logging
 // =============================================================================
+
+/* CRITICAL URL BUG FIXES:
+ * 
+ * BEFORE (BROKEN):
+ * var url = $"{BaseUrl}v2/aggs/..."     → https://api.polygon.iov2/aggs/...  (INVALID)
+ * var url = $"{BaseUrl}v3/reference/..." → https://api.polygon.iov3/...       (INVALID)
+ * 
+ * AFTER (FIXED):
+ * var url = $"{BaseUrl}/v2/aggs/..."     → https://api.polygon.io/v2/aggs/... (VALID)
+ * var url = $"{BaseUrl}/v3/reference/..." → https://api.polygon.io/v3/...     (VALID)
+ * 
+ * IMPACT: This bug blocked ALL options data retrieval in the backtest log.
+ */
 
 using System;
 using System.Collections.Generic;
@@ -60,9 +77,10 @@ public sealed class PolygonApiClient : DTpr003A
         var minAllowedDate = referenceDate.AddYears(-2).Date;
         if (startDate < minAllowedDate)
         {
-            var msg = $"Date range outside 2-year subscription limit. Start Date {startDate:yyyy-MM-dd} is older than {minAllowedDate:yyyy-MM-dd}.";
-            _logger.LogError(msg);
-            throw new ArgumentOutOfRangeException(nameof(startDate), msg);
+            _logger.LogError("Date range outside 2-year subscription limit. Start Date {StartDate:yyyy-MM-dd} is older than {MinAllowedDate:yyyy-MM-dd}", 
+                startDate, minAllowedDate);
+            throw new ArgumentOutOfRangeException(nameof(startDate), 
+                $"Date range outside 2-year subscription limit. Start Date {startDate:yyyy-MM-dd} is older than {minAllowedDate:yyyy-MM-dd}.");
         }
 
         // FIX: Added "/" after BaseUrl
@@ -219,7 +237,7 @@ public sealed class PolygonApiClient : DTpr003A
                     
                     contracts.Add(new OptionContract
                     {
-                        Ticker = refContract.Ticker,
+                        OptionSymbol = refContract.Ticker,
                         UnderlyingSymbol = underlying,
                         Strike = strike,
                         Expiration = expiration,
@@ -349,20 +367,20 @@ public sealed class PolygonApiClient : DTpr003A
     {
         if (T <= 0) return Math.Max(isCall ? S - K : K - S, 0);
 
-        var d1 = (Math.Log((double)(S / K)) + (double)(r + 0.5m * sigma * sigma) * (double)T) / ((double)sigma * Math.Sqrt((double)T));
-        var d2 = d1 - (double)sigma * Math.Sqrt((double)T);
+        var d1 = (Math.Log((double)(S / K)) + ((double)(r + (0.5m * sigma * sigma)) * (double)T)) / ((double)sigma * Math.Sqrt((double)T));
+        var d2 = d1 - ((double)sigma * Math.Sqrt((double)T));
 
         if (isCall)
-            return (decimal)((double)S * NormalCDF(d1) - (double)K * Math.Exp(-(double)r * (double)T) * NormalCDF(d2));
+            return (decimal)(((double)S * NormalCDF(d1)) - ((double)K * Math.Exp(-(double)r * (double)T) * NormalCDF(d2)));
         else
-            return (decimal)((double)K * Math.Exp(-(double)r * (double)T) * NormalCDF(-d2) - (double)S * NormalCDF(-d1));
+            return (decimal)(((double)K * Math.Exp(-(double)r * (double)T) * NormalCDF(-d2)) - ((double)S * NormalCDF(-d1)));
     }
 
     private decimal BlackScholesVega(decimal S, decimal K, decimal T, decimal r, decimal sigma)
     {
         if (T <= 0) return 0;
 
-        var d1 = (Math.Log((double)(S / K)) + (double)(r + 0.5m * sigma * sigma) * (double)T) / ((double)sigma * Math.Sqrt((double)T));
+        var d1 = (Math.Log((double)(S / K)) + ((double)(r + (0.5m * sigma * sigma)) * (double)T)) / ((double)sigma * Math.Sqrt((double)T));
         return (decimal)((double)S * Math.Sqrt((double)T) * NormalPDF(d1));
     }
 
@@ -389,8 +407,8 @@ public sealed class PolygonApiClient : DTpr003A
         var sign = x < 0 ? -1 : 1;
         x = Math.Abs(x);
 
-        var t = 1.0 / (1.0 + p * x);
-        var y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.Exp(-x * x);
+        var t = 1.0 / (1.0 + (p * x));
+        var y = 1.0 - (((((((((a5 * t) + a4) * t) + a3) * t) + a2) * t) + a1) * t * Math.Exp(-x * x));
 
         return sign * y;
     }
