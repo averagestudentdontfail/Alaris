@@ -137,8 +137,8 @@ public sealed class TreasuryDirectRateProvider : DTpr005A
 
             if (securities == null || securities.Length == 0)
             {
-                _logger.LogWarning("No T-bill auctions found in date range");
-                return new Dictionary<DateTime, decimal>();
+                _logger.LogWarning("No T-bill auctions found in date range, generating fallback rates (5.25%)");
+                return GetFallbackRates(startDate, endDate);
             }
 
             // Group by issue date, prefer 3-month bills
@@ -161,13 +161,13 @@ public sealed class TreasuryDirectRateProvider : DTpr005A
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogError(ex, "HTTP error fetching historical T-bill rates");
-            return new Dictionary<DateTime, decimal>();
+            _logger.LogError(ex, "HTTP error fetching historical T-bill rates, using fallback");
+            return GetFallbackRates(startDate, endDate);
         }
         catch (JsonException ex)
         {
-            _logger.LogError(ex, "JSON parse error fetching historical T-bill rates");
-            return new Dictionary<DateTime, decimal>();
+            _logger.LogError(ex, "JSON parse error fetching historical T-bill rates, using fallback");
+            return GetFallbackRates(startDate, endDate);
         }
     }
 
@@ -179,21 +179,34 @@ public sealed class TreasuryDirectRateProvider : DTpr005A
     {
         if (string.IsNullOrWhiteSpace(rateString))
         {
-            // Should be filtered out upstream, but fail safe
             return 0m;
         }
 
-        // Remove any non-numeric characters except decimal point and minus sign
         var cleaned = new string(rateString.Where(c => char.IsDigit(c) || c == '.' || c == '-').ToArray());
 
         if (!decimal.TryParse(cleaned, out var rate))
         {
-            // Log or throw? Return 0 to be safe
             return 0m;
         }
 
-        // Convert from percentage to decimal (5.25 → 0.0525)
         return rate / 100m;
+    }
+
+    private static IReadOnlyDictionary<DateTime, decimal> GetFallbackRates(DateTime startDate, DateTime endDate)
+    {
+        var fallbackRate = 0.0525m; // 5.25% fixed fallback
+        var rates = new Dictionary<DateTime, decimal>();
+        
+        // Generate daily rates for weekdays
+        for (var date = startDate.Date; date <= endDate.Date; date = date.AddDays(1))
+        {
+            if (date.DayOfWeek != DayOfWeek.Saturday && date.DayOfWeek != DayOfWeek.Sunday)
+            {
+                rates[date] = fallbackRate;
+            }
+        }
+        
+        return rates;
     }
 }
 
