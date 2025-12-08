@@ -19,6 +19,7 @@ using Spectre.Console.Cli;
 
 using Alaris.Data.Provider.Polygon;
 using Alaris.Data.Provider.SEC;
+using Alaris.Data.Provider.Treasury;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics.CodeAnalysis;
@@ -192,9 +193,14 @@ internal static class DependencyFactory
             httpClient,
             loggerFactory.CreateLogger<SecEdgarProvider>());
 
+        var treasuryClient = new TreasuryDirectRateProvider(
+            httpClient,
+            loggerFactory.CreateLogger<TreasuryDirectRateProvider>());
+
         return new APsv002A(
             polygonClient, 
             secClient,
+            treasuryClient,
             loggerFactory.CreateLogger<APsv002A>());
     }
 }

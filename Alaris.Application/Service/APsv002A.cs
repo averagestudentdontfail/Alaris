@@ -15,6 +15,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Alaris.Data.Provider.SEC; // For SecEdgarProvider
 using Alaris.Data.Provider.Polygon; // For PolygonApiClient
+using Alaris.Data.Provider.Treasury; // For TreasuryDirectRateProvider
 using Alaris.Data.Model; // For PriceBar
 using System.Text.Json; // For JSON serialization
 using Microsoft.Extensions.Configuration;
@@ -31,16 +32,19 @@ public sealed class APsv002A : IDisposable
 {
     private readonly PolygonApiClient _polygonClient;
     private readonly SecEdgarProvider? _secClient;
+    private readonly TreasuryDirectRateProvider? _treasuryClient;
     private readonly ILogger<APsv002A>? _logger;
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
     public APsv002A(
         PolygonApiClient polygonClient, 
         SecEdgarProvider? secClient, 
+        TreasuryDirectRateProvider? treasuryClient,
         ILogger<APsv002A>? logger = null)
     {
         _polygonClient = polygonClient ?? throw new ArgumentNullException(nameof(polygonClient));
         _secClient = secClient;
+        _treasuryClient = treasuryClient;
         _logger = logger;
     }
 
@@ -70,6 +74,7 @@ public sealed class APsv002A : IDisposable
             {
                 var taskData = ctx.AddTask($"[green]Downloading Price Data ({total} symbols)...[/]");
                 var taskEarnings = _secClient != null ? ctx.AddTask($"[green]Downloading Earnings Data...[/]") : null;
+                var taskRates = _treasuryClient != null ? ctx.AddTask($"[green]Downloading Interest Rates...[/]") : null;
                 
                 foreach (var symbol in symbolList)
                 {
@@ -86,7 +91,12 @@ public sealed class APsv002A : IDisposable
                     // Price Data
                     try
                     {
-                        var bars = await _polygonClient.GetHistoricalBarsAsync(symbol, start, end);
+                        // Add buffer for warmup (60 days) but respect 2-year limit
+                        var minAllowedDate = DateTime.UtcNow.AddYears(-2).Date;
+                        var lookbackStart = start.AddDays(-60);
+                        var requestStart = lookbackStart < minAllowedDate ? minAllowedDate : lookbackStart;
+                        
+                        var bars = await _polygonClient.GetHistoricalBarsAsync(symbol, requestStart, end);
                         if (bars.Count > 0)
                         {
                             await SaveAsLeanZipAsync(symbol, bars, dailyPath);
@@ -114,6 +124,42 @@ public sealed class APsv002A : IDisposable
                         {
                             _logger?.LogError(ex, "Failed to download earnings for {Symbol}", symbol);
                         }
+                    }
+                }
+
+
+                // Interest Rate Data (One-time fetch)
+                if (_treasuryClient != null && taskRates != null)
+                {
+                    try
+                    {
+                        taskRates.IsIndeterminate = true;
+                        var ratePath = System.IO.Path.Combine(sessionDataPath, "alternative", "interest-rate", "usa");
+                        Directory.CreateDirectory(ratePath);
+                        var csvPath = System.IO.Path.Combine(ratePath, "interest-rate.csv");
+
+                        // Look back 2 years + buffer from Start Date, or just fetch large history
+                        // Rates are global, not per-symbol.
+                        var rates = await _treasuryClient.GetHistoricalRatesAsync(start.AddYears(-2), end);
+                        
+                        if (rates.Count > 0)
+                        {
+                            // Write CSV: Date(yyyyMMdd),Rate(decimal)
+                            // Sort by date
+                            var sb = new StringBuilder();
+                            foreach (var kvp in rates.OrderBy(x => x.Key))
+                            {
+                                sb.AppendLine($"{kvp.Key:yyyyMMdd},{kvp.Value}");
+                            }
+                            await File.WriteAllTextAsync(csvPath, sb.ToString());
+                        }
+                        taskRates.Description = "[green]Interest Rates Downloaded[/]";
+                        taskRates.Value = 100;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogError(ex, "Failed to download interest rates");
+                        taskRates.Description = "[red]Interest Rates Failed[/]";
                     }
                 }
             });
