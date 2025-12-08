@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Globalization;
 using System.Text;
 using System.Threading.Tasks;
 using Alaris.Data.Provider.SEC; // For SecEdgarProvider
@@ -204,16 +205,19 @@ public sealed class APsv002A : IDisposable
                 // Using dynamic to avoid circular dependency if Model is in another project, 
                 // but ideally should verify type.
                 
-                var dateStr = bar.Timestamp.ToString("yyyyMMdd");
+                var dateStr = bar.Timestamp.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
                 
-                // Scale by 10000 to match existing LEAN data format (aapl.csv example)
-                var open = (long)(bar.Open * 10000);
-                var high = (long)(bar.High * 10000);
-                var low = (long)(bar.Low * 10000);
-                var close = (long)(bar.Close * 10000);
-                var volume = (long)bar.Volume;
+                // Use raw decimals (no scaling) as symbol-properties-database might rely on default (PriceMagnifier=1)
+                // Ensure InvariantCulture to avoid commas in numbers
+                var open = bar.Open;
+                var high = bar.High;
+                var low = bar.Low;
+                var close = bar.Close;
+                var volume = bar.Volume;
 
-                await writer.WriteLineAsync($"{dateStr},{open},{high},{low},{close},{volume}");
+                await writer.WriteLineAsync(string.Format(CultureInfo.InvariantCulture, 
+                    "{0},{1},{2},{3},{4},{5}", 
+                    dateStr, open, high, low, close, volume));
             }
         }
 
