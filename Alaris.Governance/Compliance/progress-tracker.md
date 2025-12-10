@@ -180,11 +180,27 @@
 
 ---
 
-*Updated: 2025-11-22 | All phases complete | 135 tests passing*
+*Updated: 2025-12-10 | All phases complete | 200+ tests passing*
 
 ---
 
-## Phase 5: Continuous Compliance (COMPLETE)
+## Change Log
+
+### 2025-12-10 - Phase 2 Robustness Enhancements
+
+- **8 Mathematical Gaps Addressed** with first-principles implementations:
+  - `DBEX001A`: Near-expiry stability (T→0 blending model↔intrinsic)
+  - `STIV006A`: Volatility surface interpolator (sticky-delta convention)
+  - `STEJ001A`: Earnings jump calibrator (Normal-Laplace mixture)
+  - `STDD001A`: Dividend ex-date detector (Merton 1973 early exercise)
+  - `STHD009A`: Pin risk monitor (gamma explosion detection)
+  - `STCR005A`: Signal freshness monitor (exponential decay)
+  - `STHD001A` + VIX-conditional correlation threshold (regime-dependent)
+  - `STRK001A` + Net-of-cost Kelly calculation (transaction cost adjustment)
+- **56 new unit tests** added across 6 test files
+- All new code compliant with high-integrity coding standard
+
+### 2025-11-22 - IV Model Framework Addition
 
 ### Implementation Summary
 

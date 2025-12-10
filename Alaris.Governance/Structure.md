@@ -114,6 +114,7 @@ The following table lists the primary components and their academic references.
 | `DBSL001A` | `DoubleBoundarySolver` | Boundary Solver | Healy (2021) § 5.3 |
 | `DBSL002A` | `DoubleBoundaryKimSolver` | Integral Solver | Kim (1990) |
 | `DBEN001A` | `DoubleBoundaryEngine` | Pricing Engine | Healy (2021) |
+| `DBEX001A` | `NearExpiryStabilityHandler` | T→0 Numerical Stability | Blending model/intrinsic |
 
 ### 5.2 Alaris.Strategy
 
@@ -124,7 +125,11 @@ The following table lists the primary components and their academic references.
 | `STIV001A` | `HestonModel` | Stochastic Volatility | Heston (1993) |
 | `STIV002A` | `KouModel` | Jump Diffusion | Kou (2002) |
 | `STPR004A` | `LevenbergMarquardtOptimizer` | Optimization | MathNet.Numerics |
-| `STRK001A` | `KellyPositionSizer` | Position Sizing | Kelly Criterion |
+| `STRK001A` | `KellyPositionSizer` | Position Sizing (+ net-of-cost) | Kelly Criterion |
+| `STIV006A` | `VolSurfaceInterpolator` | Sticky-delta skew interpolation | Gatheral (2006) |
+| `STEJ001A` | `EarningsJumpCalibrator` | Normal-Laplace mixture | Dubinsky & Johannes (2006) |
+| `STDD001A` | `DividendExDateDetector` | Early exercise risk | Merton (1973) |
+| `STCR005A` | `SignalFreshnessMonitor` | Exponential decay freshness | Signal staleness detection |
 
 #### 5.2.2 Cost Subdirectory (Alaris.Strategy/Cost/)
 | Component Code | Class Name | Description | Reference |
@@ -142,12 +147,13 @@ The following table lists the primary components and their academic references.
 #### 5.2.3 Hedging Subdirectory (Alaris.Strategy/Hedging/)
 | Component Code | Class Name | Description | Reference |
 |----------------|------------|-------------|-----------|
-| `STHD001A` | `VegaCorrelationAnalyser` | Front/back IV correlation analysis | MathNet.Numerics |
+| `STHD001A` | `VegaCorrelationAnalyser` | Front/back IV correlation (+ VIX threshold) | MathNet.Numerics |
 | `STHD002A` | `VegaCorrelationResult` | Vega correlation result | - |
 | `STHD003A` | `GammaRiskManager` | Gamma/delta monitoring & rehedge | Options Risk Management |
 | `STHD004A` | `GammaRiskAssessment` | Gamma risk assessment result | - |
 | `STHD005A` | `ProductionValidator` | Orchestrates all pre-trade checks | - |
 | `STHD006A` | `ProductionResult` | Complete production validation | - |
+| `STHD009A` | `PinRiskMonitor` | Near-expiry pin risk detection | Gamma explosion at strike |
 
 ### 5.3 Alaris.Data
 | Component Code | Class Name | Description | Reference |

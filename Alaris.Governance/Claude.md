@@ -9,7 +9,8 @@ Alaris/
 │   ├── DBAP002A.cs         (Double Boundary Approximation)
 │   ├── DBEN001A.cs         (Double Boundary Engine)
 │   ├── DBSL001A.cs         (Double Boundary Solver)
-│   └── DBSL002A.cs         (Kim Integral Solver)
+│   ├── DBSL002A.cs         (Kim Integral Solver)
+│   └── DBEX001A.cs         (Near-Expiry Stability Handler) [NEW]
 │
 ├── Alaris.Strategy/        Trading Strategy Implementation
 │   ├── Core/
@@ -20,8 +21,12 @@ Alaris/
 │   │   ├── STIV001A.cs         (Heston Model)
 │   │   ├── STIV002A.cs         (Kou Jump-Diffusion Model)
 │   │   ├── STIV004A.cs         (Leung-Santoli Model)
+│   │   ├── STIV006A.cs         (Vol Surface Interpolator) [NEW]
 │   │   ├── STTM002A.cs         (Earnings Regime)
 │   │   ├── STIV005A.cs         (Earnings Jump Calibrator)
+│   │   ├── STEJ001A.cs         (Earnings Jump Risk Calibrator) [NEW]
+│   │   ├── STDD001A.cs         (Dividend Ex-Date Detector) [NEW]
+│   │   ├── STCR005A.cs         (Signal Freshness Monitor) [NEW]
 │   │   ├── STTM001A.cs         (Term Structure)
 │   │   ├── STTM004A.cs         (Time Parameters)
 │   │   ├── STCR003A.cs         (Yang-Zhang Estimator)
@@ -42,16 +47,17 @@ Alaris/
 │   │   ├── STCS008A.cs         (LiquidityValidator)
 │   │   └── STCS009A.cs         (LiquidityResult)
 │   ├── Hedging/            (Hedging & Production Safety)
-│   │   ├── STHD001A.cs         (VegaCorrelationAnalyser)
+│   │   ├── STHD001A.cs         (VegaCorrelationAnalyser + VIX threshold)
 │   │   ├── STHD002A.cs         (VegaCorrelationResult)
 │   │   ├── STHD003A.cs         (GammaRiskManager)
 │   │   ├── STHD004A.cs         (GammaRiskAssessment)
 │   │   ├── STHD005A.cs         (ProductionValidator)
-│   │   └── STHD006A.cs         (ProductionResult)
+│   │   ├── STHD006A.cs         (ProductionResult)
+│   │   └── STHD009A.cs         (PinRiskMonitor) [NEW]
 │   ├── Pricing/
 │   │   └── STPR001A.cs         (Calendar Spread Valuation)
 │   ├── Risk/
-│   │   ├── STRK001A.cs         (Kelly Position Sizer)
+│   │   ├── STRK001A.cs         (Kelly Position Sizer + Net-of-Cost)
 │   │   └── STRK002A.cs         (Position Size)
 │   ├── Bridge/
 │   │   ├── STBR001A.cs         (Unified Pricing Engine)
@@ -82,7 +88,7 @@ Alaris/
 │   └── Claude.md           (This File)
 │
 ├── Alaris.Quantlib/        Standard American option pricing (positive rates)
-└── Alaris.Test/            Test suite (173 tests)
+└── Alaris.Test/            Test suite (229+ tests)
 ```
 
 ---
@@ -345,4 +351,4 @@ git push -u origin <branch>
 
 ---
 
-*Last validated: 2025-11-26 | 173/173 tests passing*
+*Last validated: 2025-12-10 | 229+/229+ tests passing*
