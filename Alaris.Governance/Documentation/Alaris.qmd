@@ -1,7 +1,7 @@
 ---
 title: "Alaris: A Rigorous Mathematical Specification"
 subtitle: "Formal Derivation of the Earnings Volatility Calendar Spread System with Complete Fault Monitoring"
-author: "Kiran Nath"
+author: "Kiran K. Nath"
 date: "December 2025"
 abstract: |
   This document provides a complete mathematical specification of the Alaris quantitative trading system. Beginning from first principles, we derive the option pricing methodology for American-style securities under both positive and negative interest rate regimes, formalise the earnings-based volatility trading strategy with mathematically precise entry criteria, and specify the complete fault monitoring framework as a system of inequalities and logical predicates. Every decision rule in the system corresponds to a mathematically specified condition, ensuring deterministic behaviour. Where stochasticity is inherent to the underlying processes, we explicitly characterise the probabilistic assumptions and derive appropriate estimators with known statistical properties.
@@ -43,44 +43,30 @@ format:
         \usepackage{booktabs}
         \usepackage{amsmath}
         \usepackage{amssymb}
-        \usepackage{amsthm}
         \usepackage{mathtools}
-        \usepackage{algorithm}
-        \usepackage{algpseudocode}
         \usepackage{tikz}
         \usepackage{pgfplots}
         \pgfplotsset{compat=1.18}
         
-        % Theorem environments
-        \newtheorem{theorem}{Theorem}[section]
-        \newtheorem{lemma}[theorem]{Lemma}
-        \newtheorem{proposition}[theorem]{Proposition}
-        \newtheorem{corollary}[theorem]{Corollary}
-        \newtheorem{definition}[theorem]{Definition}
-        \newtheorem{assumption}[theorem]{Assumption}
-        \newtheorem{remark}[theorem]{Remark}
-        
-        % Mathematical operators
-        \DeclareMathOperator{\E}{\mathbb{E}}
-        \DeclareMathOperator{\Var}{Var}
-        \DeclareMathOperator{\Cov}{Cov}
-        \DeclareMathOperator{\Corr}{Corr}
-        \DeclareMathOperator{\sgn}{sgn}
-        \DeclareMathOperator*{\argmin}{arg\,min}
-        \DeclareMathOperator*{\argmax}{arg\,max}
+        % Mathematical operators (only if not already defined)
+        \providecommand{\E}{\mathbb{E}}
+        \providecommand{\Var}{\operatorname{Var}}
+        \providecommand{\Cov}{\operatorname{Cov}}
+        \providecommand{\Corr}{\operatorname{Corr}}
+        \providecommand{\sgn}{\operatorname{sgn}}
         
         % Indicator function
-        \newcommand{\ind}[1]{\mathbf{1}_{#1}}
+        \providecommand{\ind}[1]{\mathbf{1}_{#1}}
         
         % Common sets
-        \newcommand{\R}{\mathbb{R}}
-        \newcommand{\N}{\mathbb{N}}
-        \newcommand{\Z}{\mathbb{Z}}
+        \providecommand{\R}{\mathbb{R}}
+        \providecommand{\N}{\mathbb{N}}
+        \providecommand{\Z}{\mathbb{Z}}
         
         % Probability spaces
-        \newcommand{\F}{\mathcal{F}}
-        \newcommand{\Q}{\mathbb{Q}}
-        \newcommand{\Prob}{\mathbb{P}}
+        \providecommand{\F}{\mathcal{F}}
+        \providecommand{\Q}{\mathbb{Q}}
+        \providecommand{\Prob}{\mathbb{P}}
 
 # Execution options
 execute:
@@ -717,13 +703,13 @@ where $V_{\text{position}}$ is the position value.
 The calendar spread strategy requires that front-month and back-month implied volatilities exhibit low correlation, ensuring that the spread provides genuine vega hedging.
 
 ::: {#def-vega-independence}
-## Vega Correlation Fault Predicate
-Let $\{\sigma_I^{(F)}_i\}_{i=1}^{N}$ and $\{\sigma_I^{(B)}_i\}_{i=1}^{N}$ be historical IV observations for front and back months.
+## Vega Independence Predicate
+Let $\{\sigma_I^{(F)}_{i}\}_{i=1}^{N}$ and $\{\sigma_I^{(B)}_{i}\}_{i=1}^{N}$ be historical IV observations for front and back months.
 
 The Pearson correlation coefficient is:
 
 $$
-\rho_{FB} = \frac{\sum_{i=1}^{N}(\sigma_I^{(F)}_i - \bar{\sigma}^{(F)})(\sigma_I^{(B)}_i - \bar{\sigma}^{(B)})}{\sqrt{\sum_{i=1}^{N}(\sigma_I^{(F)}_i - \bar{\sigma}^{(F)})^2} \cdot \sqrt{\sum_{i=1}^{N}(\sigma_I^{(B)}_i - \bar{\sigma}^{(B)})^2}}
+\rho_{FB} = \frac{\sum_{i=1}^{N} \left(\sigma_I^{(F)}_{i} - \overline{\sigma_I^{(F)}}\right)\left(\sigma_I^{(B)}_{i} - \overline{\sigma_I^{(B)}}\right)}{\sqrt{\sum_{i=1}^{N} \left(\sigma_I^{(F)}_{i} - \overline{\sigma_I^{(F)}}\right)^2} \cdot \sqrt{\sum_{i=1}^{N} \left(\sigma_I^{(B)}_{i} - \overline{\sigma_I^{(B)}}\right)^2}}
 $$ {#eq-correlation}
 
 The vega independence fault predicate is:

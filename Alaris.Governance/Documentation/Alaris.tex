@@ -1,0 +1,1634 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+\PassOptionsToPackage{dvipsnames,svgnames,x11names}{xcolor}
+%
+\documentclass[
+  11pt,
+  a4paper]{article}
+
+\usepackage{amsmath,amssymb}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math}
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else  
+    % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage[margin=2.5cm]{geometry}
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+% Make \paragraph and \subparagraph free-standing
+\makeatletter
+\ifx\paragraph\undefined\else
+  \let\oldparagraph\paragraph
+  \renewcommand{\paragraph}{
+    \@ifstar
+      \xxxParagraphStar
+      \xxxParagraphNoStar
+  }
+  \newcommand{\xxxParagraphStar}[1]{\oldparagraph*{#1}\mbox{}}
+  \newcommand{\xxxParagraphNoStar}[1]{\oldparagraph{#1}\mbox{}}
+\fi
+\ifx\subparagraph\undefined\else
+  \let\oldsubparagraph\subparagraph
+  \renewcommand{\subparagraph}{
+    \@ifstar
+      \xxxSubParagraphStar
+      \xxxSubParagraphNoStar
+  }
+  \newcommand{\xxxSubParagraphStar}[1]{\oldsubparagraph*{#1}\mbox{}}
+  \newcommand{\xxxSubParagraphNoStar}[1]{\oldsubparagraph{#1}\mbox{}}
+\fi
+\makeatother
+
+
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}\usepackage{longtable,booktabs,array}
+\usepackage{calc} % for calculating minipage widths
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+\usepackage{graphicx}
+\makeatletter
+\newsavebox\pandoc@box
+\newcommand*\pandocbounded[1]{% scales image to fit in text height/width
+  \sbox\pandoc@box{#1}%
+  \Gscale@div\@tempa{\textheight}{\dimexpr\ht\pandoc@box+\dp\pandoc@box\relax}%
+  \Gscale@div\@tempb{\linewidth}{\wd\pandoc@box}%
+  \ifdim\@tempb\p@<\@tempa\p@\let\@tempa\@tempb\fi% select the smaller of both
+  \ifdim\@tempa\p@<\p@\scalebox{\@tempa}{\usebox\pandoc@box}%
+  \else\usebox{\pandoc@box}%
+  \fi%
+}
+% Set default figure placement to htbp
+\def\fps@figure{htbp}
+\makeatother
+% definitions for citeproc citations
+\NewDocumentCommand\citeproctext{}{}
+\NewDocumentCommand\citeproc{mm}{%
+  \begingroup\def\citeproctext{#2}\cite{#1}\endgroup}
+\makeatletter
+ % allow citations to break across lines
+ \let\@cite@ofmt\@firstofone
+ % avoid brackets around text for \cite:
+ \def\@biblabel#1{}
+ \def\@cite#1#2{{#1\if@tempswa , #2\fi}}
+\makeatother
+\newlength{\cslhangindent}
+\setlength{\cslhangindent}{1.5em}
+\newlength{\csllabelwidth}
+\setlength{\csllabelwidth}{3em}
+\newenvironment{CSLReferences}[2] % #1 hanging-indent, #2 entry-spacing
+ {\begin{list}{}{%
+  \setlength{\itemindent}{0pt}
+  \setlength{\leftmargin}{0pt}
+  \setlength{\parsep}{0pt}
+  % turn on hanging indent if param 1 is 1
+  \ifodd #1
+   \setlength{\leftmargin}{\cslhangindent}
+   \setlength{\itemindent}{-1\cslhangindent}
+  \fi
+  % set entry spacing
+  \setlength{\itemsep}{#2\baselineskip}}}
+ {\end{list}}
+\usepackage{calc}
+\newcommand{\CSLBlock}[1]{\hfill\break\parbox[t]{\linewidth}{\strut\ignorespaces#1\strut}}
+\newcommand{\CSLLeftMargin}[1]{\parbox[t]{\csllabelwidth}{\strut#1\strut}}
+\newcommand{\CSLRightInline}[1]{\parbox[t]{\linewidth - \csllabelwidth}{\strut#1\strut}}
+\newcommand{\CSLIndent}[1]{\hspace{\cslhangindent}#1}
+
+\usepackage{microtype}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{mathtools}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+
+% Mathematical operators (only if not already defined)
+\providecommand{\E}{\mathbb{E}}
+\providecommand{\Var}{\operatorname{Var}}
+\providecommand{\Cov}{\operatorname{Cov}}
+\providecommand{\Corr}{\operatorname{Corr}}
+\providecommand{\sgn}{\operatorname{sgn}}
+
+% Indicator function
+\providecommand{\ind}[1]{\mathbf{1}_{#1}}
+
+% Common sets
+\providecommand{\R}{\mathbb{R}}
+\providecommand{\N}{\mathbb{N}}
+\providecommand{\Z}{\mathbb{Z}}
+
+% Probability spaces
+\providecommand{\F}{\mathcal{F}}
+\providecommand{\Q}{\mathbb{Q}}
+\providecommand{\Prob}{\mathbb{P}}
+\makeatletter
+\@ifpackageloaded{tcolorbox}{}{\usepackage[skins,breakable]{tcolorbox}}
+\@ifpackageloaded{fontawesome5}{}{\usepackage{fontawesome5}}
+\definecolor{quarto-callout-color}{HTML}{909090}
+\definecolor{quarto-callout-note-color}{HTML}{0758E5}
+\definecolor{quarto-callout-important-color}{HTML}{CC1914}
+\definecolor{quarto-callout-warning-color}{HTML}{EB9113}
+\definecolor{quarto-callout-tip-color}{HTML}{00A047}
+\definecolor{quarto-callout-caution-color}{HTML}{FC5300}
+\definecolor{quarto-callout-color-frame}{HTML}{acacac}
+\definecolor{quarto-callout-note-color-frame}{HTML}{4582ec}
+\definecolor{quarto-callout-important-color-frame}{HTML}{d9534f}
+\definecolor{quarto-callout-warning-color-frame}{HTML}{f0ad4e}
+\definecolor{quarto-callout-tip-color-frame}{HTML}{02b875}
+\definecolor{quarto-callout-caution-color-frame}{HTML}{fd7e14}
+\makeatother
+\makeatletter
+\@ifpackageloaded{caption}{}{\usepackage{caption}}
+\AtBeginDocument{%
+\ifdefined\contentsname
+  \renewcommand*\contentsname{Table of contents}
+\else
+  \newcommand\contentsname{Table of contents}
+\fi
+\ifdefined\listfigurename
+  \renewcommand*\listfigurename{List of Figures}
+\else
+  \newcommand\listfigurename{List of Figures}
+\fi
+\ifdefined\listtablename
+  \renewcommand*\listtablename{List of Tables}
+\else
+  \newcommand\listtablename{List of Tables}
+\fi
+\ifdefined\figurename
+  \renewcommand*\figurename{Figure}
+\else
+  \newcommand\figurename{Figure}
+\fi
+\ifdefined\tablename
+  \renewcommand*\tablename{Table}
+\else
+  \newcommand\tablename{Table}
+\fi
+}
+\@ifpackageloaded{float}{}{\usepackage{float}}
+\floatstyle{ruled}
+\@ifundefined{c@chapter}{\newfloat{codelisting}{h}{lop}}{\newfloat{codelisting}{h}{lop}[chapter]}
+\floatname{codelisting}{Listing}
+\newcommand*\listoflistings{\listof{codelisting}{List of Listings}}
+\usepackage{amsthm}
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+\theoremstyle{remark}
+\AtBeginDocument{\renewcommand*{\proofname}{Proof}}
+\newtheorem*{remark}{Remark}
+\newtheorem*{solution}{Solution}
+\newtheorem{refremark}{Remark}[section]
+\newtheorem{refsolution}{Solution}[section]
+\makeatother
+\makeatletter
+\makeatother
+\makeatletter
+\@ifpackageloaded{caption}{}{\usepackage{caption}}
+\@ifpackageloaded{subcaption}{}{\usepackage{subcaption}}
+\makeatother
+
+\ifLuaTeX
+\usepackage[bidi=basic]{babel}
+\else
+\usepackage[bidi=default]{babel}
+\fi
+\babelprovide[main,import]{australian}
+% get rid of language-specific shorthands (see #6817):
+\let\LanguageShortHands\languageshorthands
+\def\languageshorthands#1{}
+\ifLuaTeX
+  \usepackage[english]{selnolig} % disable illegal ligatures
+\fi
+\usepackage{bookmark}
+
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same} % disable monospaced font for URLs
+\hypersetup{
+  pdftitle={Alaris: A Rigorous Mathematical Specification},
+  pdfauthor={Kiran K. Nath},
+  pdflang={en-AU},
+  pdfkeywords={American Options, Spectral Methods, Free Boundary
+Problems, Negative Interest Rates, Optimal Stopping, Earnings
+Volatility, Calendar Spreads, Fault Detection},
+  colorlinks=true,
+  linkcolor={blue},
+  filecolor={Maroon},
+  citecolor={Blue},
+  urlcolor={Blue},
+  pdfcreator={LaTeX via pandoc}}
+
+
+\title{Alaris: A Rigorous Mathematical Specification}
+\usepackage{etoolbox}
+\makeatletter
+\providecommand{\subtitle}[1]{% add subtitle to \maketitle
+  \apptocmd{\@title}{\par {\large #1 \par}}{}{}
+}
+\makeatother
+\subtitle{Formal Derivation of the Earnings Volatility Calendar Spread
+System with Complete Fault Monitoring}
+\author{Kiran K. Nath}
+\date{2025-12-01}
+
+\begin{document}
+\maketitle
+\begin{abstract}
+This document provides a complete mathematical specification of the
+Alaris quantitative trading system. Beginning from first principles, we
+derive the option pricing methodology for American-style securities
+under both positive and negative interest rate regimes, formalise the
+earnings-based volatility trading strategy with mathematically precise
+entry criteria, and specify the complete fault monitoring framework as a
+system of inequalities and logical predicates. Every decision rule in
+the system corresponds to a mathematically specified condition, ensuring
+deterministic behaviour. Where stochasticity is inherent to the
+underlying processes, we explicitly characterise the probabilistic
+assumptions and derive appropriate estimators with known statistical
+properties.
+\end{abstract}
+
+
+\section{Introduction}\label{introduction}
+
+\subsection{Purpose and Scope}\label{purpose-and-scope}
+
+The Alaris system implements a systematic approach to capturing the
+implied volatility premium that manifests around corporate earnings
+announcements. This document serves three purposes: to provide a
+rigorous mathematical foundation for all computational methods employed,
+to specify formally the decision rules governing strategy execution, and
+to derive the complete set of fault conditions that the system monitors.
+
+A distinguishing characteristic of this specification is its emphasis on
+mathematical completeness. Every algorithmic decision in Alaris
+corresponds to an evaluable predicate derived from the mathematical
+framework. Where the underlying phenomena are inherently stochastic, we
+explicitly state the probabilistic model assumptions and derive
+estimators with known convergence properties.
+
+\subsection{Document Organisation}\label{document-organisation}
+
+The document proceeds as follows. Section 2 establishes the mathematical
+framework for option pricing, deriving the free boundary formulation and
+its integral equation transformation. Section 3 extends this framework
+to the double boundary regime arising under negative interest rates.
+Section 4 develops the volatility trading strategy, specifying the
+signal generation predicates with their academic provenance. Section 5
+formalises the complete fault detection and monitoring system as a set
+of mathematical inequalities. Section 6 addresses the inherent
+stochasticity in certain components and specifies how this is accounted
+for.
+
+\section{The Option Pricing
+Framework}\label{the-option-pricing-framework}
+
+\subsection{Stochastic Foundation}\label{stochastic-foundation}
+
+\subsubsection{The Risk-Neutral Measure}\label{the-risk-neutral-measure}
+
+The Alaris pricing methodology operates under the risk-neutral
+probability measure \(\mathbb{Q}\). Under this measure, the asset price
+process \(S(t)\) satisfies the stochastic differential equation:
+
+\begin{equation}\phantomsection\label{eq-sde}{
+\frac{dS(t)}{S(t)} = (r - q) \, dt + \sigma \, dW^{\mathbb{Q}}(t)
+}\end{equation}
+
+where:
+
+\begin{itemize}
+\tightlist
+\item
+  \(r \in \mathbb{R}\) denotes the continuously compounded risk-free
+  interest rate
+\item
+  \(q \in \mathbb{R}\) denotes the continuous dividend yield\\
+\item
+  \(\sigma > 0\) denotes the instantaneous volatility
+\item
+  \(W^{\mathbb{Q}}(t)\) is a standard Brownian motion under
+  \(\mathbb{Q}\)
+\end{itemize}
+
+\begin{tcolorbox}[enhanced jigsaw, opacityback=0, toprule=.15mm, breakable, colbacktitle=quarto-callout-note-color!10!white, colback=white, colframe=quarto-callout-note-color-frame, titlerule=0mm, leftrule=.75mm, rightrule=.15mm, title=\textcolor{quarto-callout-note-color}{\faInfo}\hspace{0.5em}{Parameter Domain Extension}, toptitle=1mm, bottomrule=.15mm, arc=.35mm, bottomtitle=1mm, left=2mm, opacitybacktitle=0.6, coltitle=black]
+
+Unlike classical treatments that assume \(r \geq 0\), Alaris explicitly
+permits \(r < 0\) to accommodate negative interest rate environments.
+This extension requires careful treatment of the exercise region
+topology, addressed in Section 3.
+
+\end{tcolorbox}
+
+The solution to Equation~\ref{eq-sde} is the geometric Brownian motion:
+
+\begin{equation}\phantomsection\label{eq-gbm-solution}{
+S(t) = S(0) \exp\left[\left(r - q - \frac{\sigma^2}{2}\right)t + \sigma W^{\mathbb{Q}}(t)\right]
+}\end{equation}
+
+\subsubsection{Filtration and Information
+Structure}\label{filtration-and-information-structure}
+
+Let \((\Omega, \mathcal{F}, \mathbb{Q})\) be a complete probability
+space equipped with the natural filtration
+\(\{\mathcal{F}_t\}_{t \geq 0}\) generated by the Brownian motion
+\(W^{\mathbb{Q}}(t)\), augmented by null sets. All stopping times
+referenced in this document are with respect to this filtration.
+
+\subsection{The Free Boundary Problem}\label{the-free-boundary-problem}
+
+\subsubsection{Value Function
+Characterisation}\label{value-function-characterisation}
+
+For an American put option with strike \(K\) and maturity \(T\), define
+the value function
+\(V: [0,T] \times \mathbb{R}_{>0} \to \mathbb{R}_{\geq 0}\) as:
+
+\begin{equation}\phantomsection\label{eq-value-function}{
+V(t, s) = \sup_{\tau \in \mathcal{T}_{t,T}} \mathbb{E}^{\mathbb{Q}}\left[e^{-r(\tau - t)}(K - S(\tau))^+ \,\Big|\, S(t) = s\right]
+}\end{equation}
+
+where \(\mathcal{T}_{t,T}\) denotes the set of stopping times taking
+values in \([t, T]\).
+
+The supremum in Equation~\ref{eq-value-function} is attained by the
+optimal stopping time:
+
+\begin{equation}\phantomsection\label{eq-optimal-stopping}{
+\tau^* = \inf\{u \in [t, T] : S(u) \leq B(T - u)\}
+}\end{equation}
+
+where \(B(\cdot)\) is the optimal exercise boundary function.
+
+\subsubsection{The Free Boundary}\label{the-free-boundary}
+
+\begin{definition}[Exercise
+Boundary]\protect\hypertarget{def-exercise-boundary}{}\label{def-exercise-boundary}
+
+The optimal exercise boundary \(B: [0, T] \to \mathbb{R}_{>0}\) is the
+unique continuous function satisfying:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Value Matching}: \(V(t, B(T-t)) = K - B(T-t)\) for all
+  \(t \in [0, T]\)
+\item
+  \textbf{Smooth Pasting}:
+  \(\frac{\partial V}{\partial s}(t, B(T-t)) = -1\) for all
+  \(t \in (0, T)\)
+\end{enumerate}
+
+\end{definition}
+
+The value function satisfies the variational inequality:
+
+\begin{equation}\phantomsection\label{eq-variational}{
+\max\left\{\mathcal{L}V - rV, \; (K - s) - V\right\} = 0
+}\end{equation}
+
+where the infinitesimal generator is:
+
+\[
+\mathcal{L}V = \frac{\partial V}{\partial t} + (r-q)s\frac{\partial V}{\partial s} + \frac{1}{2}\sigma^2 s^2 \frac{\partial^2 V}{\partial s^2}
+\]
+
+\subsection{The Integral Equation
+Formulation}\label{the-integral-equation-formulation}
+
+\subsubsection{Early Exercise Premium
+Decomposition}\label{early-exercise-premium-decomposition}
+
+The American option value decomposes into European option value plus
+early exercise premium:
+
+\begin{equation}\phantomsection\label{eq-eep-decomposition}{
+V(\tau, s) = v(\tau, s) + \mathcal{P}(\tau, s)
+}\end{equation}
+
+where \(\tau = T - t\) denotes time to maturity, \(v(\tau, s)\) is the
+European put price, and \(\mathcal{P}(\tau, s)\) is the early exercise
+premium.
+
+\begin{theorem}[Kim Integral
+Representation]\protect\hypertarget{thm-kim-integral}{}\label{thm-kim-integral}
+
+The early exercise premium satisfies:
+
+\begin{equation}\phantomsection\label{eq-kim-integral}{
+\mathcal{P}(\tau, s) = \int_0^{\tau} e^{-ru} \left[rK \Phi(-d_-(u, s/B(u))) - qse^{(r-q)u}\Phi(-d_+(u, s/B(u)))\right] du
+}\end{equation}
+
+where:
+
+\[
+d_{\pm}(u, z) = \frac{\ln(z) + (r-q)u \pm \frac{1}{2}\sigma^2 u}{\sigma\sqrt{u}}
+\]
+
+and \(\Phi(\cdot)\) denotes the cumulative standard normal distribution
+function.
+
+\end{theorem}
+
+\subsubsection{The Boundary Integral
+Equation}\label{the-boundary-integral-equation}
+
+Applying the value-matching condition at the boundary yields the
+nonlinear integral equation for \(B(\tau)\):
+
+\begin{equation}\phantomsection\label{eq-boundary-integral}{
+K - B(\tau) = v(\tau, B(\tau)) + \int_0^{\tau} \mathcal{K}(\tau, u, B(\tau), B(u)) \, du
+}\end{equation}
+
+where the kernel \(\mathcal{K}\) is:
+
+\[
+\mathcal{K}(\tau, u, b, b') = e^{-ru}\left[rK\Phi(-d_-(u, b/b')) - qb \cdot e^{(r-q)u}\Phi(-d_+(u, b/b'))\right]
+\]
+
+\subsubsection{Asymptotic Behaviour}\label{asymptotic-behaviour}
+
+The boundary function exhibits the following asymptotic behaviour:
+
+\textbf{Near Expiration} (\(\tau \to 0^+\)):
+\begin{equation}\phantomsection\label{eq-near-expiry}{
+\lim_{\tau \to 0^+} B(\tau) = \begin{cases}
+K & \text{if } r \geq q \\
+K \cdot \frac{r}{q} & \text{if } r < q \text{ and } r > 0
+\end{cases}
+}\end{equation}
+
+\textbf{Long Maturity} (\(\tau \to \infty\)):
+\begin{equation}\phantomsection\label{eq-perpetual-boundary}{
+\lim_{\tau \to \infty} B(\tau) = B_{\infty} = K \cdot \frac{\lambda_-}{\lambda_- - 1}
+}\end{equation}
+
+where \(\lambda_-\) is the negative root of the characteristic equation:
+
+\begin{equation}\phantomsection\label{eq-characteristic}{
+\frac{1}{2}\sigma^2\lambda^2 + \left(r - q - \frac{\sigma^2}{2}\right)\lambda - r = 0
+}\end{equation}
+
+\subsection{The QD+ Approximation
+Method}\label{the-qd-approximation-method}
+
+\subsubsection{Quasi-Analytic Framework}\label{quasi-analytic-framework}
+
+The Alaris system employs the QD+ approximation method of Andersen,
+Lake, and Offengenden (2016) as the first stage of boundary estimation.
+This method provides an accurate quasi-analytic approximation that
+serves as initialisation for subsequent refinement.
+
+\begin{definition}[QD+ Boundary
+Approximation]\protect\hypertarget{def-qd-approximation}{}\label{def-qd-approximation}
+
+The QD+ approximation expresses the boundary as:
+
+\begin{equation}\phantomsection\label{eq-qd-boundary}{
+B^{\text{QD}}(\tau) = K \cdot \frac{\lambda(\tau)}{\lambda(\tau) - 1}
+}\end{equation}
+
+where \(\lambda(\tau)\) is obtained from a modified characteristic
+equation with time-dependent correction:
+
+\[
+\frac{1}{2}\sigma^2\lambda^2 + \left(r - q - \frac{\sigma^2}{2}\right)\lambda - r \cdot h(\tau) = 0
+\]
+
+with \(h(\tau) = 1 - e^{-r\tau}\).
+
+\end{definition}
+
+\subsubsection{Super Halley's Method}\label{super-halleys-method}
+
+The QD+ boundary equation is solved using Super Halley's method, a
+third-order root-finding algorithm:
+
+\begin{equation}\phantomsection\label{eq-super-halley}{
+S_{n+1} = S_n - \frac{f(S_n)}{f'(S_n)} \cdot \frac{1}{1 - \frac{f(S_n) \cdot f''(S_n)}{2[f'(S_n)]^2}}
+}\end{equation}
+
+\begin{theorem}[Super Halley
+Convergence]\protect\hypertarget{thm-halley-convergence}{}\label{thm-halley-convergence}
+
+For a function \(f\) with simple root \(S^*\) and continuous third
+derivative in a neighbourhood of \(S^*\), Super Halley's method
+converges cubically:
+
+\[
+|S_{n+1} - S^*| = O(|S_n - S^*|^3)
+\]
+
+\end{theorem}
+
+The implementation specifies convergence tolerance
+\(\epsilon = 10^{-10}\) and maximum iterations \(N_{\max} = 50\).
+
+\section{Double Boundary Regime Under Negative
+Rates}\label{double-boundary-regime-under-negative-rates}
+
+\subsection{Regime Characterisation}\label{regime-characterisation}
+
+\subsubsection{Mathematical Conditions for Double
+Boundaries}\label{mathematical-conditions-for-double-boundaries}
+
+The emergence of double boundaries occurs under specific parameter
+configurations involving negative interest rates.
+
+\begin{definition}[Double Boundary
+Regime]\protect\hypertarget{def-double-boundary-regime}{}\label{def-double-boundary-regime}
+
+The double boundary regime is characterised by the predicate:
+
+\begin{equation}\phantomsection\label{eq-double-regime}{
+\mathcal{R}_{\text{double}} \equiv (q < r < 0)
+}\end{equation}
+
+When \(\mathcal{R}_{\text{double}}\) holds, the optimal exercise region
+for an American put is the set:
+
+\[
+\mathcal{E}(\tau) = \{s > 0 : Y(\tau) \leq s \leq B(\tau)\}
+\]
+
+where \(B(\tau)\) is the upper boundary and \(Y(\tau)\) is the lower
+boundary.
+
+\end{definition}
+
+\subsubsection{Physical Interpretation}\label{physical-interpretation}
+
+In the double boundary regime, immediate exercise is optimal only when
+the asset price falls within a bounded interval. This arises because:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  When \(s > B(\tau)\): Continuation is optimal due to potential for
+  deeper in-the-money scenarios
+\item
+  When \(Y(\tau) \leq s \leq B(\tau)\): Immediate exercise is optimal
+\item
+  When \(s < Y(\tau)\): Continuation is optimal because the negative
+  dividend yield implies expected price appreciation
+\end{enumerate}
+
+\subsubsection{Critical Volatility
+Threshold}\label{critical-volatility-threshold}
+
+The behaviour of the double boundary system depends on whether
+volatility exceeds a critical threshold.
+
+\begin{definition}[Critical
+Volatility]\protect\hypertarget{def-critical-volatility}{}\label{def-critical-volatility}
+
+Define the critical volatility as:
+
+\begin{equation}\phantomsection\label{eq-critical-vol}{
+\sigma^* = \sqrt{\frac{2|r|(r-q)}{q}}
+}\end{equation}
+
+When \(\sigma > \sigma^*\), the boundaries intersect at finite time
+\(\tau^*\).
+
+\end{definition}
+
+\subsection{Modified Integral Equation
+System}\label{modified-integral-equation-system}
+
+\subsubsection{Two-Boundary Integral
+Representation}\label{two-boundary-integral-representation}
+
+Under the double boundary regime, the American put value satisfies:
+
+\begin{equation}\phantomsection\label{eq-double-eep}{
+V(\tau, s) = v(\tau, s) + \mathcal{P}_B(\tau, s) - \mathcal{P}_Y(\tau, s)
+}\end{equation}
+
+where:
+
+\[
+\mathcal{P}_B(\tau, s) = \int_0^{\tau} e^{-ru}\left[rK\Phi(-d_-(u, s/B)) - qse^{(r-q)u}\Phi(-d_+(u, s/B))\right]du
+\]
+
+\[
+\mathcal{P}_Y(\tau, s) = \int_0^{\tau} e^{-ru}\left[rK\Phi(-d_-(u, s/Y)) - qse^{(r-q)u}\Phi(-d_+(u, s/Y))\right]du
+\]
+
+\subsubsection{Decoupled Fixed-Point
+Systems}\label{decoupled-fixed-point-systems}
+
+A key mathematical result enabling efficient computation is the
+decoupling of the boundary equations.
+
+\begin{theorem}[Boundary
+Decoupling]\protect\hypertarget{thm-decoupling}{}\label{thm-decoupling}
+
+The upper boundary \(B(\tau)\) can be computed independently of
+\(Y(\tau)\) using:
+
+\begin{equation}\phantomsection\label{eq-upper-fixed}{
+K - B(\tau) = v(\tau, B(\tau)) + \int_0^{\tau} \mathcal{K}_B(\tau, u, B(\tau), B(u)) \, du
+}\end{equation}
+
+Given \(B(\tau)\), the lower boundary \(Y(\tau)\) is then determined by:
+
+\begin{equation}\phantomsection\label{eq-lower-fixed}{
+K - Y(\tau) = v(\tau, Y(\tau)) + \int_0^{\tau} \mathcal{K}_B(\tau, u, Y(\tau), B(u)) - \mathcal{K}_Y(\tau, u, Y(\tau), Y(u)) \, du
+}\end{equation}
+
+\end{theorem}
+
+\subsubsection{FP-B' Stabilisation}\label{fp-b-stabilisation}
+
+The Alaris system employs the FP-B' stabilised iteration scheme from
+Healy (2021) to prevent oscillatory behaviour in long-maturity options.
+
+\begin{definition}[FP-B'
+Iteration]\protect\hypertarget{def-fpb-prime}{}\label{def-fpb-prime}
+
+At iteration \(n\), the stabilised update for the lower boundary is:
+
+\[
+Y^{(n+1)}(\tau) = \mathcal{T}_Y\left[Y^{(n)}; B^{(n+1)}\right]
+\]
+
+where the operator \(\mathcal{T}_Y\) incorporates the just-computed
+upper boundary \(B^{(n+1)}\) rather than the previous iteration
+\(B^{(n)}\).
+
+\end{definition}
+
+This stabilisation ensures convergence for maturities up to \(T = 15\)
+years under the Healy benchmark parameters.
+
+\subsection{Boundary Validation
+Predicates}\label{boundary-validation-predicates}
+
+The computed boundaries must satisfy mathematical constraints from the
+free boundary theory.
+
+\begin{definition}[Boundary Validity
+Conditions]\protect\hypertarget{def-boundary-validation}{}\label{def-boundary-validation}
+
+A computed boundary pair \((B(\tau), Y(\tau))\) is valid if and only if:
+
+\begin{align}
+\mathcal{V}_1 &\equiv B(\tau) > 0 \quad \forall \tau \in [0, T] \tag{Positivity - Upper} \\
+\mathcal{V}_2 &\equiv Y(\tau) > 0 \quad \forall \tau \in [0, T] \tag{Positivity - Lower} \\
+\mathcal{V}_3 &\equiv B(\tau) > Y(\tau) \quad \forall \tau \in [0, T] \tag{Ordering} \\
+\mathcal{V}_4 &\equiv B(\tau) < K \quad \forall \tau \in [0, T] \tag{Put Constraint - Upper} \\
+\mathcal{V}_5 &\equiv Y(\tau) < K \quad \forall \tau \in [0, T] \tag{Put Constraint - Lower}
+\end{align}
+
+The aggregate validity predicate is:
+
+\[
+\mathcal{V}_{\text{boundary}} \equiv \bigwedge_{i=1}^{5} \mathcal{V}_i
+\]
+
+\end{definition}
+
+\section{The Earnings Volatility Trading
+Strategy}\label{the-earnings-volatility-trading-strategy}
+
+\subsection{Theoretical Foundation}\label{theoretical-foundation}
+
+\subsubsection{The Volatility Risk
+Premium}\label{the-volatility-risk-premium}
+
+The earnings volatility strategy exploits the documented phenomenon that
+implied volatility systematically exceeds realised volatility around
+corporate earnings announcements. Let:
+
+\begin{itemize}
+\tightlist
+\item
+  \(\sigma_I(t)\) denote the market-implied volatility at time \(t\)
+\item
+  \(\sigma_R(t)\) denote the realised volatility over the same horizon
+\end{itemize}
+
+The volatility risk premium is:
+
+\begin{equation}\phantomsection\label{eq-vrp}{
+\text{VRP}(t) = \sigma_I(t) - \sigma_R(t)
+}\end{equation}
+
+\phantomsection\label{assumption-vrp}
+\subsection{Earnings VRP Assumption}\label{earnings-vrp-assumption}
+
+For securities with scheduled earnings announcements at time \(T_E\),
+the volatility risk premium exhibits the pattern:
+
+\[
+\mathbb{E}[\text{VRP}(t)] > 0 \quad \text{for } t \in [T_E - \Delta, T_E)
+\]
+
+where \(\Delta \approx 5\text{-}7\) trading days, with mean reversion
+following the announcement.
+
+\subsection{Signal Generation
+Predicates}\label{signal-generation-predicates}
+
+\subsubsection{The Atilgan Criteria}\label{the-atilgan-criteria}
+
+The signal generation system implements the criteria from Atilgan et
+al.~(2014), expressed as formal predicates.
+
+\begin{definition}[Trading Signal
+Predicates]\protect\hypertarget{def-signal-predicates}{}\label{def-signal-predicates}
+
+For a security with symbol \(\xi\) evaluated at time \(t\) with earnings
+date \(T_E\), define:
+
+\textbf{IV/RV Ratio Criterion}:
+\begin{equation}\phantomsection\label{eq-ivrv-criterion}{
+\mathcal{S}_1(\xi, t) \equiv \frac{\sigma_I^{30}(\xi, t)}{\sigma_R^{30}(\xi, t)} \geq 1.25
+}\end{equation}
+
+\textbf{Term Structure Criterion}:
+\begin{equation}\phantomsection\label{eq-term-criterion}{
+\mathcal{S}_2(\xi, t) \equiv \nabla_\tau \sigma_I(\xi, t) \leq -0.00406
+}\end{equation}
+
+where \(\nabla_\tau \sigma_I\) denotes the slope of the implied
+volatility term structure.
+
+\textbf{Liquidity Criterion}:
+\begin{equation}\phantomsection\label{eq-volume-criterion}{
+\mathcal{S}_3(\xi, t) \equiv \bar{V}^{30}(\xi, t) \geq 1{,}500{,}000
+}\end{equation}
+
+where \(\bar{V}^{30}\) is the 30-day average daily trading volume.
+
+\end{definition}
+
+\subsubsection{Signal Strength
+Classification}\label{signal-strength-classification}
+
+\begin{definition}[Signal Strength
+Function]\protect\hypertarget{def-signal-strength}{}\label{def-signal-strength}
+
+The signal strength function
+\(\Sigma: \{\text{true}, \text{false}\}^3 \to \{\text{Recommended}, \text{Consider}, \text{Avoid}\}\)
+is:
+
+\begin{equation}\phantomsection\label{eq-signal-strength}{
+\Sigma(\mathcal{S}_1, \mathcal{S}_2, \mathcal{S}_3) = \begin{cases}
+\text{Recommended} & \text{if } \mathcal{S}_1 \land \mathcal{S}_2 \land \mathcal{S}_3 \\
+\text{Consider} & \text{if exactly two of } \{\mathcal{S}_1, \mathcal{S}_2, \mathcal{S}_3\} \text{ hold} \\
+\text{Avoid} & \text{otherwise}
+\end{cases}
+}\end{equation}
+
+\end{definition}
+
+\subsection{Realised Volatility
+Estimation}\label{realised-volatility-estimation}
+
+\subsubsection{The Yang-Zhang Estimator}\label{the-yang-zhang-estimator}
+
+The Alaris system employs the Yang-Zhang (2000) estimator for realised
+volatility, which is efficient for OHLC (open-high-low-close) data and
+robust to opening gaps.
+
+\begin{definition}[Yang-Zhang
+Estimator]\protect\hypertarget{def-yang-zhang}{}\label{def-yang-zhang}
+
+Given \(n\) trading days with price data \((O_i, H_i, L_i, C_i)\),
+define:
+
+\textbf{Overnight Variance}: \[
+\sigma_o^2 = \frac{1}{n-1} \sum_{i=1}^{n} \left(\ln\frac{O_i}{C_{i-1}} - \bar{o}\right)^2
+\]
+
+\textbf{Open-to-Close Variance}: \[
+\sigma_c^2 = \frac{1}{n-1} \sum_{i=1}^{n} \left(\ln\frac{C_i}{O_i} - \bar{c}\right)^2
+\]
+
+\textbf{Rogers-Satchell Variance}: \[
+\sigma_{RS}^2 = \frac{1}{n} \sum_{i=1}^{n} \left[\ln\frac{H_i}{C_i} \cdot \ln\frac{H_i}{O_i} + \ln\frac{L_i}{C_i} \cdot \ln\frac{L_i}{O_i}\right]
+\]
+
+\textbf{Combined Estimator}:
+\begin{equation}\phantomsection\label{eq-yang-zhang}{
+\sigma_{YZ}^2 = \sigma_o^2 + k\sigma_c^2 + (1-k)\sigma_{RS}^2
+}\end{equation}
+
+where \(k = 0.34 / (1.34 + \frac{n+1}{n-1})\).
+
+\end{definition}
+
+\begin{theorem}[Yang-Zhang
+Efficiency]\protect\hypertarget{thm-yz-efficiency}{}\label{thm-yz-efficiency}
+
+The Yang-Zhang estimator achieves efficiency factor \(\eta \approx 8\)
+relative to close-to-close volatility estimation, meaning it requires
+approximately \(1/8\) as many observations for equivalent precision.
+
+\end{theorem}
+
+\subsection{Term Structure Analysis}\label{term-structure-analysis}
+
+\subsubsection{Linear Term Structure
+Model}\label{linear-term-structure-model}
+
+The implied volatility term structure is modelled as:
+
+\begin{equation}\phantomsection\label{eq-term-structure}{
+\sigma_I(\tau) = \alpha + \beta \cdot \tau + \epsilon(\tau)
+}\end{equation}
+
+where \(\tau\) is days to expiration.
+
+The slope parameter \(\beta\) is estimated via ordinary least squares:
+
+\begin{equation}\phantomsection\label{eq-ols-slope}{
+\hat{\beta} = \frac{\sum_{i=1}^{m}(\tau_i - \bar{\tau})(\sigma_i - \bar{\sigma})}{\sum_{i=1}^{m}(\tau_i - \bar{\tau})^2}
+}\end{equation}
+
+\begin{definition}[Term Structure Trading
+Signal]\protect\hypertarget{def-term-structure-signal}{}\label{def-term-structure-signal}
+
+A negative slope \(\hat{\beta} < \beta^* = -0.00406\) indicates elevated
+short-dated implied volatility relative to longer tenors, consistent
+with the pre-earnings IV premium.
+
+\end{definition}
+
+\subsection{Position Sizing: The Kelly
+Criterion}\label{position-sizing-the-kelly-criterion}
+
+\subsubsection{Optimal Growth Framework}\label{optimal-growth-framework}
+
+Position sizing employs the Kelly criterion to maximise long-run
+geometric growth rate.
+
+\begin{theorem}[Kelly
+Criterion]\protect\hypertarget{thm-kelly}{}\label{thm-kelly}
+
+For a bet with probability \(p\) of winning return \(b\) and probability
+\((1-p)\) of losing stake, the growth-optimal fraction is:
+
+\begin{equation}\phantomsection\label{eq-kelly-full}{
+f^* = \frac{p(b+1) - 1}{b} = \frac{pb - (1-p)}{b}
+}\end{equation}
+
+For small expected returns, this simplifies to:
+
+\[
+f^* \approx \frac{\mu}{\sigma^2}
+\]
+
+where \(\mu\) is expected return and \(\sigma^2\) is variance.
+
+\end{theorem}
+
+\subsubsection{Fractional Kelly
+Implementation}\label{fractional-kelly-implementation}
+
+The Alaris system employs fractional Kelly sizing to reduce variance:
+
+\begin{equation}\phantomsection\label{eq-fractional-kelly}{
+f_{\text{actual}} = \kappa \cdot f^* \quad \text{with } \kappa \in \{0.01, 0.02\}
+}\end{equation}
+
+The fraction \(\kappa\) depends on signal strength:
+
+\[
+\kappa = \begin{cases}
+0.02 & \text{if } \Sigma = \text{Recommended} \\
+0.01 & \text{if } \Sigma = \text{Consider} \\
+0 & \text{if } \Sigma = \text{Avoid}
+\end{cases}
+\]
+
+\section{Fault Detection and Monitoring
+System}\label{fault-detection-and-monitoring-system}
+
+\subsection{Overview of the Fault
+Framework}\label{overview-of-the-fault-framework}
+
+The Alaris fault detection system is designed to identify conditions
+where model assumptions may be violated or execution may be compromised.
+Each fault condition is specified as a mathematically precise inequality
+or predicate.
+
+\subsubsection{Fault Classification}\label{fault-classification}
+
+Faults are classified into four categories:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Data Quality Faults}: Violations of input data validity
+  assumptions
+\item
+  \textbf{Model Validity Faults}: Conditions where pricing models may be
+  unreliable\\
+\item
+  \textbf{Execution Risk Faults}: Conditions threatening profitable
+  execution
+\item
+  \textbf{Position Risk Faults}: Conditions requiring position
+  adjustment or exit
+\end{enumerate}
+
+\subsection{Data Quality Validation}\label{data-quality-validation}
+
+\subsubsection{Price Data Validation}\label{price-data-validation}
+
+\begin{definition}[Price Data Validity
+Predicates]\protect\hypertarget{def-price-validation}{}\label{def-price-validation}
+
+For price data point \(P_i = (O_i, H_i, L_i, C_i, V_i)\):
+
+\begin{align}
+\mathcal{D}_1(P_i) &\equiv O_i > 0 \land H_i > 0 \land L_i > 0 \land C_i > 0 \tag{Positivity} \\
+\mathcal{D}_2(P_i) &\equiv L_i \leq O_i \leq H_i \land L_i \leq C_i \leq H_i \tag{OHLC Consistency} \\
+\mathcal{D}_3(P_i) &\equiv V_i \geq 0 \tag{Volume Non-negativity} \\
+\mathcal{D}_4(P_i, P_{i-1}) &\equiv \left|\frac{O_i - C_{i-1}}{C_{i-1}}\right| < 0.50 \tag{Gap Reasonableness}
+\end{align}
+
+Aggregate price validity: \[
+\mathcal{D}_{\text{price}}(P_i) \equiv \bigwedge_{j=1}^{4} \mathcal{D}_j
+\]
+
+\end{definition}
+
+\subsubsection{Implied Volatility
+Validation}\label{implied-volatility-validation}
+
+\begin{definition}[IV Data Validity
+Predicates]\protect\hypertarget{def-iv-validation}{}\label{def-iv-validation}
+
+For implied volatility observation \(\sigma_I\):
+
+\begin{align}
+\mathcal{D}_5(\sigma_I) &\equiv 0.01 \leq \sigma_I \leq 5.00 \tag{Range Constraint} \\
+\mathcal{D}_6(\sigma_I, \sigma_I') &\equiv \left|\sigma_I - \sigma_I'\right| < 0.50 \tag{Temporal Continuity}
+\end{align}
+
+\end{definition}
+
+\subsubsection{Volume and Open Interest
+Validation}\label{volume-and-open-interest-validation}
+
+\begin{definition}[Liquidity Data
+Validity]\protect\hypertarget{def-liquidity-validation}{}\label{def-liquidity-validation}
+
+For option contract with volume \(V\) and open interest \(OI\):
+
+\begin{align}
+\mathcal{D}_7(V, OI) &\equiv V \geq 0 \land OI \geq 0 \tag{Non-negativity} \\
+\mathcal{D}_8(V, OI) &\equiv V \leq 10 \cdot OI \tag{Volume/OI Ratio}
+\end{align}
+
+\end{definition}
+
+\subsection{Execution Cost Validation}\label{execution-cost-validation}
+
+\subsubsection{Cost Model Specification}\label{cost-model-specification}
+
+The execution cost model computes total transaction cost as:
+
+\begin{equation}\phantomsection\label{eq-exec-cost}{
+C_{\text{exec}}(n) = C_{\text{spread}}(n) + C_{\text{commission}}(n) + C_{\text{slippage}}(n)
+}\end{equation}
+
+where \(n\) is the number of contracts.
+
+\textbf{Spread Cost}: \[
+C_{\text{spread}}(n) = \frac{(A - B)}{2} \cdot n \cdot 100
+\]
+
+where \(A\) is the ask price and \(B\) is the bid price.
+
+\textbf{Commission Cost}: \[
+C_{\text{commission}}(n) = (\phi_{\text{broker}} + \phi_{\text{exchange}} + \phi_{\text{regulatory}}) \cdot n
+\]
+
+with \(\phi_{\text{broker}} = 0.65\), \(\phi_{\text{exchange}} = 0.30\),
+\(\phi_{\text{regulatory}} = 0.02\).
+
+\subsubsection{Cost Survival Predicate}\label{cost-survival-predicate}
+
+\begin{definition}[Execution Cost
+Survival]\protect\hypertarget{def-cost-survival}{}\label{def-cost-survival}
+
+The post-cost IV/RV ratio must remain above threshold:
+
+\begin{equation}\phantomsection\label{eq-cost-survival}{
+\mathcal{F}_{\text{cost}}(\xi) \equiv \frac{\sigma_I^{30}(\xi)}{\sigma_R^{30}(\xi)} \cdot \left(1 - \frac{C_{\text{exec}}}{V_{\text{position}}}\right) \geq 1.20
+}\end{equation}
+
+where \(V_{\text{position}}\) is the position value.
+
+\end{definition}
+
+\subsection{Vega Correlation Analysis}\label{vega-correlation-analysis}
+
+\subsubsection{Independence Criterion}\label{independence-criterion}
+
+The calendar spread strategy requires that front-month and back-month
+implied volatilities exhibit low correlation, ensuring that the spread
+provides genuine vega hedging.
+
+\begin{definition}[Vega Independence
+Predicate]\protect\hypertarget{def-vega-independence}{}\label{def-vega-independence}
+
+Let \(\{\sigma_I^{(F)}_{i}\}_{i=1}^{N}\) and
+\(\{\sigma_I^{(B)}_{i}\}_{i=1}^{N}\) be historical IV observations for
+front and back months.
+
+The Pearson correlation coefficient is:
+
+\begin{equation}\phantomsection\label{eq-correlation}{
+\rho_{FB} = \frac{\sum_{i=1}^{N} \left(\sigma_I^{(F)}_{i} - \overline{\sigma_I^{(F)}}\right)\left(\sigma_I^{(B)}_{i} - \overline{\sigma_I^{(B)}}\right)}{\sqrt{\sum_{i=1}^{N} \left(\sigma_I^{(F)}_{i} - \overline{\sigma_I^{(F)}}\right)^2} \cdot \sqrt{\sum_{i=1}^{N} \left(\sigma_I^{(B)}_{i} - \overline{\sigma_I^{(B)}}\right)^2}}
+}\end{equation}
+
+The vega independence fault predicate is:
+
+\begin{equation}\phantomsection\label{eq-vega-fault}{
+\mathcal{F}_{\text{vega}}(\xi) \equiv |\rho_{FB}(\xi)| > 0.70
+}\end{equation}
+
+If \(\mathcal{F}_{\text{vega}}\) is true, the trade should not proceed
+due to elevated sympathetic collapse risk.
+
+\end{definition}
+
+\subsection{Liquidity Assurance}\label{liquidity-assurance}
+
+\subsubsection{Position-to-Liquidity
+Constraints}\label{position-to-liquidity-constraints}
+
+\begin{definition}[Liquidity Fault
+Predicates]\protect\hypertarget{def-liquidity-constraints}{}\label{def-liquidity-constraints}
+
+For position size \(n\) contracts with daily volume \(V\) and open
+interest \(OI\):
+
+\begin{align}
+\mathcal{F}_{\text{vol}}(n) &\equiv \frac{n}{V} > 0.05 \tag{Volume Ratio Fault} \\
+\mathcal{F}_{\text{OI}}(n) &\equiv \frac{n}{OI} > 0.02 \tag{Open Interest Ratio Fault}
+\end{align}
+
+Aggregate liquidity fault:
+\begin{equation}\phantomsection\label{eq-liquidity-fault}{
+\mathcal{F}_{\text{liq}}(n) \equiv \mathcal{F}_{\text{vol}}(n) \lor \mathcal{F}_{\text{OI}}(n)
+}\end{equation}
+
+\end{definition}
+
+\subsection{Gamma Risk Monitoring}\label{gamma-risk-monitoring}
+
+\subsubsection{Delta-Neutral
+Maintenance}\label{delta-neutral-maintenance}
+
+The calendar spread strategy aims to maintain delta-neutrality.
+Monitoring detects when delta exceeds acceptable bounds.
+
+\begin{definition}[Delta Drift
+Fault]\protect\hypertarget{def-delta-monitoring}{}\label{def-delta-monitoring}
+
+For position with net delta \(\Delta_{\text{net}}\):
+
+\begin{equation}\phantomsection\label{eq-delta-fault}{
+\mathcal{F}_{\text{delta}}(\Delta_{\text{net}}) \equiv |\Delta_{\text{net}}| > 0.10
+}\end{equation}
+
+\end{definition}
+
+\subsubsection{Gamma Warning Threshold}\label{gamma-warning-threshold}
+
+\begin{definition}[Gamma Risk
+Fault]\protect\hypertarget{def-gamma-monitoring}{}\label{def-gamma-monitoring}
+
+For position with net gamma \(\Gamma_{\text{net}}\):
+
+\begin{equation}\phantomsection\label{eq-gamma-fault}{
+\mathcal{F}_{\text{gamma}}(\Gamma_{\text{net}}) \equiv \Gamma_{\text{net}} < -0.05
+}\end{equation}
+
+Negative gamma indicates the position loses value as the underlying
+moves in either direction, requiring heightened monitoring.
+
+\end{definition}
+
+\subsubsection{Moneyness Alert}\label{moneyness-alert}
+
+\begin{definition}[Moneyness
+Fault]\protect\hypertarget{def-moneyness-alert}{}\label{def-moneyness-alert}
+
+For underlying price \(S\) and strike \(K\):
+
+\begin{equation}\phantomsection\label{eq-moneyness-fault}{
+\mathcal{F}_{\text{moneyness}}(S, K) \equiv \left|\frac{S - K}{K}\right| > 0.03
+}\end{equation}
+
+Calendar spreads function optimally near the money; significant drift
+requires re-evaluation.
+
+\end{definition}
+
+\subsection{Circuit Breaker
+Conditions}\label{circuit-breaker-conditions}
+
+\subsubsection{System-Level Halts}\label{system-level-halts}
+
+\begin{definition}[Circuit Breaker
+Predicates]\protect\hypertarget{def-circuit-breakers}{}\label{def-circuit-breakers}
+
+\textbf{Position Loss Circuit Breaker}:
+\begin{equation}\phantomsection\label{eq-loss-breaker}{
+\mathcal{C}_{\text{loss}}(\xi) \equiv \frac{P\&L_{\text{daily}}(\xi)}{\text{Capital}} < -0.05
+}\end{equation}
+
+\textbf{Data Feed Circuit Breaker}:
+\begin{equation}\phantomsection\label{eq-data-breaker}{
+\mathcal{C}_{\text{data}} \equiv t_{\text{current}} - t_{\text{last update}} > 15 \text{ minutes}
+}\end{equation}
+
+\textbf{Validation Failure Circuit Breaker}:
+\begin{equation}\phantomsection\label{eq-valid-breaker}{
+\mathcal{C}_{\text{valid}} \equiv \frac{\#\text{validation failures}}{\#\text{total checks}} > 0.10
+}\end{equation}
+
+\textbf{Volatility Spike Circuit Breaker}:
+\begin{equation}\phantomsection\label{eq-vix-breaker}{
+\mathcal{C}_{\text{VIX}} \equiv \text{VIX} > 40 \lor \sigma_R(\xi) > 2 \cdot \bar{\sigma}_R(\xi)
+}\end{equation}
+
+\end{definition}
+
+\subsection{Production Validation
+Aggregation}\label{production-validation-aggregation}
+
+\subsubsection{Composite Production
+Readiness}\label{composite-production-readiness}
+
+\begin{definition}[Production Readiness
+Predicate]\protect\hypertarget{def-production-ready}{}\label{def-production-ready}
+
+A signal is production-ready if and only if:
+
+\begin{equation}\phantomsection\label{eq-production-ready}{
+\mathcal{P}_{\text{ready}}(\xi) \equiv \Sigma(\xi) = \text{Recommended} \land \bigwedge_{i \in \mathcal{I}} \neg\mathcal{F}_i(\xi)
+}\end{equation}
+
+where
+\(\mathcal{I} = \{\text{cost}, \text{vega}, \text{liq}, \text{delta}, \text{gamma}, \text{moneyness}\}\)
+is the index set of all fault predicates.
+
+\end{definition}
+
+The production validator (Component STHD005A) implements this predicate
+composition, returning a structured result indicating which conditions
+passed and which failed.
+
+\section{Stochasticity and
+Non-Determinism}\label{stochasticity-and-non-determinism}
+
+\subsection{Inherently Stochastic
+Components}\label{inherently-stochastic-components}
+
+Certain components of the Alaris system involve quantities that are
+fundamentally stochastic. This section explicitly characterises these
+components and the statistical methods used to handle them.
+
+\subsubsection{Asset Price Evolution}\label{asset-price-evolution}
+
+The underlying asset price follows a continuous-time stochastic process
+(Equation~\ref{eq-sde}). \textbf{This is not a fault}---it is the
+defining characteristic of the problem domain. The system handles this
+through:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Risk-neutral pricing}: Option values are computed as
+  expectations under \(\mathbb{Q}\), eliminating the need to forecast
+  price direction
+\item
+  \textbf{Delta hedging}: The strategy is approximately delta-neutral,
+  reducing sensitivity to price movements
+\end{enumerate}
+
+\subsubsection{Volatility Estimation}\label{volatility-estimation}
+
+Realised volatility estimation from finite samples is inherently subject
+to statistical uncertainty.
+
+\phantomsection\label{prop-yz-distribution}
+\subsection{Yang-Zhang Estimator
+Distribution}\label{yang-zhang-estimator-distribution}
+
+Under the assumption of geometric Brownian motion, the Yang-Zhang
+variance estimator \(\hat{\sigma}_{YZ}^2\) satisfies:
+
+\[
+\frac{(n-1)\hat{\sigma}_{YZ}^2}{\sigma^2} \sim \chi^2_{n-1 + \eta(n-1)}
+\]
+
+approximately, where \(\eta \approx 7\) is the efficiency factor.
+
+The \((1-\alpha)\) confidence interval for \(\sigma^2\) is:
+
+\[
+\left[\frac{(n-1)\hat{\sigma}_{YZ}^2}{\chi^2_{n-1, 1-\alpha/2}}, \frac{(n-1)\hat{\sigma}_{YZ}^2}{\chi^2_{n-1, \alpha/2}}\right]
+\]
+
+\textbf{Accounting for this uncertainty}: The IV/RV ratio threshold
+(1.25) incorporates a buffer above 1.0 to account for estimation error
+in the denominator.
+
+\subsubsection{Implied Volatility
+Surface}\label{implied-volatility-surface}
+
+Implied volatility observations are subject to:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Bid-ask spread noise}: Mid-prices may not reflect true market
+  clearing levels
+\item
+  \textbf{Temporal asynchrony}: Options may have traded at different
+  times
+\item
+  \textbf{Model error}: Black-Scholes implied volatility assumes
+  constant volatility
+\end{enumerate}
+
+\textbf{Accounting for these}: The term structure analysis uses robust
+regression on multiple strike/expiry points, and the slope threshold
+(-0.00406) is calibrated from empirical studies.
+
+\subsection{Deterministic Components}\label{deterministic-components}
+
+The following components are fully deterministic given their inputs:
+
+\subsubsection{Boundary Computation}\label{boundary-computation}
+
+Given parameters \((S, K, T, r, q, \sigma)\), the computed boundaries
+\(B(\tau)\) and \(Y(\tau)\) are deterministic. The only source of
+variation is:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Numerical precision}: Controlled by specified tolerances
+  (\(\epsilon = 10^{-10}\))
+\item
+  \textbf{Iteration limits}: Maximum iterations prevent infinite loops
+\end{enumerate}
+
+\subsubsection{Signal Generation}\label{signal-generation}
+
+Given input data, the signal strength \(\Sigma\) is deterministic:
+
+\[
+\Sigma = \Sigma(\mathcal{S}_1, \mathcal{S}_2, \mathcal{S}_3)
+\]
+
+Each \(\mathcal{S}_i\) is a deterministic function of the input data.
+
+\subsubsection{Fault Detection}\label{fault-detection}
+
+All fault predicates \(\mathcal{F}_i\) are deterministic Boolean
+functions of system state.
+
+\subsection{Accounting Summary}\label{accounting-summary}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2558}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3023}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.4419}}@{}}
+\caption{Component Stochasticity
+Summary}\label{tbl-stochasticity}\tabularnewline
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Component
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Stochastic?
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Accounting Method
+\end{minipage} \\
+\midrule\noalign{}
+\endfirsthead
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Component
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Stochastic?
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Accounting Method
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Asset price & Yes & Risk-neutral pricing, delta hedging \\
+Realised volatility & Yes (estimation) & Yang-Zhang estimator, ratio
+buffer \\
+Implied volatility & Yes (measurement) & Multiple observations, robust
+fitting \\
+Boundary computation & No & Tolerance specification \\
+Signal generation & No & Deterministic predicate evaluation \\
+Fault detection & No & Deterministic inequality evaluation \\
+Position sizing & No & Deterministic Kelly formula \\
+\end{longtable}
+
+\section{Numerical Methods and
+Implementation}\label{numerical-methods-and-implementation}
+
+\subsection{Collocation Method for Boundary
+Refinement}\label{collocation-method-for-boundary-refinement}
+
+\subsubsection{Chebyshev Node
+Distribution}\label{chebyshev-node-distribution}
+
+The Kim integral equation is discretised using Chebyshev collocation
+points for optimal polynomial interpolation:
+
+\begin{equation}\phantomsection\label{eq-chebyshev}{
+\xi_j = \cos\left(\frac{(2j-1)\pi}{2N}\right), \quad j = 1, \ldots, N
+}\end{equation}
+
+These nodes are mapped to the time domain \([0, T]\) via:
+
+\[
+\tau_j = \frac{T}{2}(1 + \xi_j)
+\]
+
+\subsubsection{Spectral Convergence}\label{spectral-convergence}
+
+\begin{theorem}[Spectral
+Convergence]\protect\hypertarget{thm-spectral}{}\label{thm-spectral}
+
+For analytic integrands, the collocation method achieves exponential
+convergence:
+
+\[
+\|B_N - B_{\text{exact}}\|_{\infty} = O(e^{-cN})
+\]
+
+for some constant \(c > 0\) depending on the analyticity domain.
+
+\end{theorem}
+
+The Alaris system uses \(N = 50\) collocation points, providing accuracy
+exceeding the Healy (2021) benchmark values.
+
+\subsection{Convergence Criteria}\label{convergence-criteria}
+
+\subsubsection{Iteration Termination}\label{iteration-termination}
+
+The FP-B' iteration terminates when:
+
+\begin{equation}\phantomsection\label{eq-convergence}{
+\max_{j=1,\ldots,N} |B_j^{(n+1)} - B_j^{(n)}| < \epsilon_{\text{tol}}
+}\end{equation}
+
+with \(\epsilon_{\text{tol}} = 10^{-6}\) and maximum iterations
+\(N_{\max} = 100\).
+
+\subsection{Benchmark Validation}\label{benchmark-validation}
+
+The implementation is validated against Healy (2021) Table 2 benchmark
+values:
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.1275}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.1961}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.1961}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.2059}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.2059}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.0686}}@{}}
+\caption{Healy Benchmark
+Validation}\label{tbl-healy-benchmark}\tabularnewline
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+\(T\) (years)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\(B_{\text{Healy}}\)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\(Y_{\text{Healy}}\)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\(B_{\text{Alaris}}\)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\(Y_{\text{Alaris}}\)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Error
+\end{minipage} \\
+\midrule\noalign{}
+\endfirsthead
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+\(T\) (years)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\(B_{\text{Healy}}\)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\(Y_{\text{Healy}}\)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\(B_{\text{Alaris}}\)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+\(Y_{\text{Alaris}}\)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Error
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+5 & 71.60 & 61.60 & 71.60 & 61.60 & \textless0.01\% \\
+10 & 69.62 & 58.72 & 69.62 & 58.72 & \textless0.01\% \\
+15 & 68.00 & 57.00 & 68.00 & 57.00 & \textless0.01\% \\
+\end{longtable}
+
+Parameters: \(S = K = 100\), \(r = -0.005\), \(q = -0.01\),
+\(\sigma = 0.08\).
+
+\section{Conclusion}\label{conclusion}
+
+This document has provided a complete mathematical specification of the
+Alaris quantitative trading system. The key contributions are:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\item
+  \textbf{Rigorous option pricing framework} extending classical methods
+  to negative interest rate environments with double boundary topologies
+\item
+  \textbf{Formal specification of trading signals} with each criterion
+  expressed as an evaluable mathematical predicate
+\item
+  \textbf{Complete fault detection system} specified as a collection of
+  inequalities and logical predicates, ensuring deterministic monitoring
+  behaviour
+\item
+  \textbf{Explicit treatment of stochasticity} distinguishing between
+  inherently random quantities and measurement/estimation uncertainty,
+  with appropriate statistical methods for each
+\end{enumerate}
+
+The mathematical framework ensures that every algorithmic decision in
+the Alaris system corresponds to the evaluation of a well-defined
+mathematical expression. Where randomness is inherent to the underlying
+phenomena, we have specified the probabilistic models and derived
+estimators with known statistical properties. Where measurements are
+subject to uncertainty, we have incorporated appropriate buffers and
+validation checks.
+
+This specification serves as the authoritative reference for the Alaris
+implementation and provides the foundation for formal verification of
+system behaviour.
+
+\section{References}\label{references}
+
+\phantomsection\label{refs}
+\begin{CSLReferences}{0}{1}
+\end{CSLReferences}
+
+\section{Appendix: Symbol Reference}\label{appendix-symbol-reference}
+
+\subsection{Greek Letters}\label{greek-letters}
+
+\begin{longtable}[]{@{}ll@{}}
+\caption{Greek Letter Notation}\label{tbl-greek}\tabularnewline
+\toprule\noalign{}
+Symbol & Description \\
+\midrule\noalign{}
+\endfirsthead
+\toprule\noalign{}
+Symbol & Description \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\(\alpha\) & Term structure intercept \\
+\(\beta\) & Term structure slope \\
+\(\gamma, \Gamma\) & Option gamma (second derivative w.r.t. spot) \\
+\(\delta, \Delta\) & Option delta (first derivative w.r.t. spot) \\
+\(\epsilon\) & Error term / tolerance \\
+\(\eta\) & Efficiency factor \\
+\(\theta, \Theta\) & Option theta (time decay) \\
+\(\kappa\) & Kelly fraction multiplier \\
+\(\lambda\) & Characteristic equation roots \\
+\(\mu\) & Expected return \\
+\(\rho\) & Correlation coefficient \\
+\(\sigma\) & Volatility \\
+\(\tau\) & Time to maturity \\
+\(\phi\) & Commission component \\
+\(\Phi\) & Standard normal CDF \\
+\(\Sigma\) & Signal strength function \\
+\end{longtable}
+
+\subsection{Roman Letters}\label{roman-letters}
+
+\begin{longtable}[]{@{}ll@{}}
+\caption{Roman Letter Notation}\label{tbl-roman}\tabularnewline
+\toprule\noalign{}
+Symbol & Description \\
+\midrule\noalign{}
+\endfirsthead
+\toprule\noalign{}
+Symbol & Description \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\(B(\tau)\) & Upper exercise boundary \\
+\(Y(\tau)\) & Lower exercise boundary \\
+\(C\) & Cost component \\
+\(K\) & Strike price \\
+\(N\) & Number of collocation points \\
+\(O, H, L, C\) & Open, High, Low, Close prices \\
+\(r\) & Risk-free interest rate \\
+\(q\) & Dividend yield \\
+\(S\) & Spot price \\
+\(T\) & Maturity \\
+\(V\) & Option value / Volume \\
+\(v\) & European option value \\
+\end{longtable}
+
+\subsection{Calligraphic and Blackboard
+Bold}\label{calligraphic-and-blackboard-bold}
+
+\begin{longtable}[]{@{}ll@{}}
+\caption{Special Notation}\label{tbl-special}\tabularnewline
+\toprule\noalign{}
+Symbol & Description \\
+\midrule\noalign{}
+\endfirsthead
+\toprule\noalign{}
+Symbol & Description \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\(\mathcal{C}\) & Circuit breaker predicate \\
+\(\mathcal{D}\) & Data validation predicate \\
+\(\mathcal{E}\) & Exercise region \\
+\(\mathcal{F}\) & Fault predicate / Filtration \\
+\(\mathcal{K}\) & Integral kernel \\
+\(\mathcal{L}\) & Infinitesimal generator \\
+\(\mathcal{P}\) & Early exercise premium / Production predicate \\
+\(\mathcal{R}\) & Regime indicator \\
+\(\mathcal{S}\) & Signal criterion predicate \\
+\(\mathcal{T}\) & Set of stopping times \\
+\(\mathcal{V}\) & Validity predicate \\
+\(\mathbb{E}\) & Expectation operator \\
+\(\mathbb{P}\) & Physical probability measure \\
+\(\mathbb{Q}\) & Risk-neutral probability measure \\
+\(\mathbb{R}\) & Real numbers \\
+\end{longtable}
+
+
+
+
+\end{document}
