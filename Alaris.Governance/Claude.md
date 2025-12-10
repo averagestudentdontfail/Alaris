@@ -30,6 +30,7 @@ Alaris/
 │   │   ├── STTM001A.cs         (Term Structure)
 │   │   ├── STTM004A.cs         (Time Parameters)
 │   │   ├── STCR003A.cs         (Yang-Zhang Estimator)
+│   │   ├── STKF001A.cs         (Kalman-Filtered Volatility) [Phase 3]
 │   │   ├── STIV003A.cs         (IV Model Selector)
 │   │   ├── STCR004A.cs         (Signal)
 │   │   ├── STCR001A.cs         (Signal Generator)
@@ -54,11 +55,15 @@ Alaris/
 │   │   ├── STHD005A.cs         (ProductionValidator)
 │   │   ├── STHD006A.cs         (ProductionResult)
 │   │   └── STHD009A.cs         (PinRiskMonitor) [NEW]
+│   │   └── STHD007B.cs         (Rule-Based Exit Monitor) [Phase 3]
+│   ├── Detection/         (Signal Detection)
+│   │   └── STSD001A.cs         (Neyman-Pearson Signal Detection) [Phase 3]
 │   ├── Pricing/
 │   │   └── STPR001A.cs         (Calendar Spread Valuation)
 │   ├── Risk/
 │   │   ├── STRK001A.cs         (Kelly Position Sizer + Net-of-Cost)
-│   │   └── STRK002A.cs         (Position Size)
+│   │   ├── STRK002A.cs         (Position Size)
+│   │   └── STQT001A.cs         (Queue-Theoretic Position Manager) [Phase 3]
 │   ├── Bridge/
 │   │   ├── STBR001A.cs         (Unified Pricing Engine)
 │   │   ├── STBR002A.cs         (Option Pricing Engine Interface)
@@ -303,6 +308,13 @@ dotnet build && dotnet test
 - Integration of Slippage/Liquidity validators
 - Vega Decoupling analysis
 
+### Phase 3: Signal Processing Enhancements (Completed 2025-12)
+- **STSD001A**: Neyman-Pearson signal detection framework
+- **STKF001A**: Kalman-filtered Yang-Zhang volatility estimation
+- **STQT001A**: Queue-theoretic position management (M/G/1, Gittins index)
+- **STHD007B**: Rule-based exit monitor with stall detection
+- 19 unit tests, all passing
+
 ---
 
 ## Academic References
@@ -323,6 +335,12 @@ dotnet build && dotnet test
 - **Leung & Santoli (2016)**: "Option Pricing and Hedging with Ex-dividend Dates, Earnings Announcements and Regulatory Approvals"
 - **Heston (1993)**: "A Closed-Form Solution for Options with Stochastic Volatility"
 - **Kou (2002)**: "A Jump-Diffusion Model for Option Pricing"
+
+**Signal Processing (Phase 3)**:
+- **Neyman-Pearson (1933)**: "On the Problem of the Most Efficient Tests of Statistical Hypotheses"
+- **Kalman (1960)**: "A New Approach to Linear Filtering and Prediction Problems"
+- **Little (1961)**: "A Proof for the Queuing Formula L = λW"
+- **Yang & Zhang (2000)**: "Drift-Independent Volatility Estimation"
 
 ---
 

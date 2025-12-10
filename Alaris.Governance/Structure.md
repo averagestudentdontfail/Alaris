@@ -77,6 +77,8 @@ The naming format consists of four segments:
 | `CT` | Control | Strategy control and orchestration. |
 | `CS` | Cost | Transaction cost models, execution cost validation, liquidity analysis. |
 | `HD` | Hedging | Hedging analysis, vega correlation, gamma risk management. |
+| `SD` | Signal Detection | Statistical signal detection and hypothesis testing. |
+| `QT` | Queue Theory | Queue-theoretic position and capacity management. |
 | `UN` | Universe | Universe selection models. |
 
 #### 4.3.3 Data (DT)
@@ -130,6 +132,7 @@ The following table lists the primary components and their academic references.
 | `STEJ001A` | `EarningsJumpCalibrator` | Normal-Laplace mixture | Dubinsky & Johannes (2006) |
 | `STDD001A` | `DividendExDateDetector` | Early exercise risk | Merton (1973) |
 | `STCR005A` | `SignalFreshnessMonitor` | Exponential decay freshness | Signal staleness detection |
+| `STKF001A` | `STKF001A` | Kalman-filtered volatility estimation | Kalman (1960), Yang-Zhang (2000) |
 
 #### 5.2.2 Cost Subdirectory (Alaris.Strategy/Cost/)
 | Component Code | Class Name | Description | Reference |
@@ -144,6 +147,17 @@ The following table lists the primary components and their academic references.
 | `STCS008A` | `LiquidityValidator` | Position size vs liquidity | Institutional Practice |
 | `STCS009A` | `LiquidityResult` | Liquidity validation result | - |
 
+#### 5.2.4 Detection Subdirectory (Alaris.Strategy/Detection/)
+| Component Code | Class Name | Description | Reference |
+|----------------|------------|-------------|-----------|
+| `STSD001A` | `STSD001A` | Neyman-Pearson signal detection | Neyman-Pearson (1933) |
+
+#### 5.2.5 Risk Subdirectory (Alaris.Strategy/Risk/)
+| Component Code | Class Name | Description | Reference |
+|----------------|------------|-------------|-----------|
+| `STRK001A` | `KellyPositionSizer` | Position sizing (Kelly) | Kelly Criterion |
+| `STQT001A` | `STQT001A` | Queue-theoretic position management | Little (1961), M/G/1 Queue |
+
 #### 5.2.3 Hedging Subdirectory (Alaris.Strategy/Hedging/)
 | Component Code | Class Name | Description | Reference |
 |----------------|------------|-------------|-----------|
@@ -154,6 +168,7 @@ The following table lists the primary components and their academic references.
 | `STHD005A` | `ProductionValidator` | Orchestrates all pre-trade checks | - |
 | `STHD006A` | `ProductionResult` | Complete production validation | - |
 | `STHD009A` | `PinRiskMonitor` | Near-expiry pin risk detection | Gamma explosion at strike |
+| `STHD007B` | `STHD007B` | Rule-based exit monitor with stall detection | Alaris Phase 3 Specification |
 
 ### 5.3 Alaris.Data
 | Component Code | Class Name | Description | Reference |
