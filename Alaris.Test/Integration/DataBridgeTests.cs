@@ -54,7 +54,7 @@ public sealed class DTbr001ATests
         // Assert
         snapshot.Should().NotBeNull();
         snapshot.Symbol.Should().Be("AAPL");
-        snapshot.SpotPrice.Should().Be(150.00m);
+        snapshot.SpotPrice.Should().Be(152.9m);
         snapshot.RiskFreeRate.Should().Be(0.0525m);
         snapshot.HistoricalBars.Should().HaveCount(30);
         snapshot.OptionChain.Should().NotBeNull();

@@ -295,14 +295,11 @@ public sealed class DTrf001ATests : IDisposable
     [Fact]
     public async Task GetHistoricalRatesAsync_ValidResponse_ReturnsRatesByDate()
     {
-        // Arrange
-        var response = new
+        // Arrange - Treasury API returns array directly without wrapper
+        var response = new[]
         {
-            securities = new[]
-            {
-                new { cusip = "912796XY0", issueDate = "2025-01-02", term = "91 Day", interestRate = "5.20" },
-                new { cusip = "912796XZ0", issueDate = "2025-01-09", term = "91 Day", interestRate = "5.25" }
-            }
+            new { cusip = "912796XY0", issueDate = "2025-01-02", term = "91 Day", interestRate = "5.20" },
+            new { cusip = "912796XZ0", issueDate = "2025-01-09", term = "91 Day", interestRate = "5.25" }
         };
         _mockHandler.SetResponse(HttpStatusCode.OK, JsonSerializer.Serialize(response));
 
