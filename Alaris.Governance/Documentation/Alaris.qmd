@@ -1,168 +1,19 @@
 ---
-title: "The Alaris Mathematical Framework"
-subtitle: "A Spectral Collocation Methodology for American Option Pricing Under General Interest Rate Conditions"
-author: "Kiran K. Nath"
-date: "June 28, 2025"
+title: "Alaris: A Rigorous Mathematical Specification"
+subtitle: "Formal Derivation of the Earnings Volatility Calendar Spread System with Complete Fault Monitoring"
+author: "Kiran Nath"
+date: "December 2025"
 abstract: |
-  This paper presents a comprehensive mathematical framework for the valuation of American-style derivative securities that unifies the treatment of traditional single-boundary configurations with the complex double-boundary topologies emerging under negative interest rate environments. The Alaris methodology transforms the classical free-boundary problem into a system of non-linear integral equations through sophisticated boundary function transformations and spectral collocation techniques. By employing Chebyshev polynomial interpolation on carefully regularized boundary representations, the framework achieves exponential convergence rates while maintaining mathematical rigor across all interest rate regimes. The key mathematical innovation lies in the development of decoupled iteration schemes for the double-boundary case, enabling independent computation of multiple exercise boundaries through separate fixed-point systems. This methodology provides both theoretical foundation and practical computational framework for derivatives pricing under the full spectrum of modern market conditions, with particular emphasis on the mathematical elegance of the spectral approach and its convergence properties.
-
-keywords: [American Options, Spectral Methods, Free Boundary Problems, Negative Interest Rates, Optimal Stopping]
-jel: [G13, C61, C63]
-
-# Document formatting
-format:
-  html:
-    theme: 
-      - cosmo
-      - Styling.scss
-    mainfont: "Source Serif Pro"
-    sansfont: "Source Sans Pro" 
-    monofont: "Source Code Pro"
-    fontsize: 12pt
-    linestretch: 1.6
-    toc: true
-    toc-depth: 4
-    toc-location: left
-    toc-title: "Contents"
-    number-sections: true
-    number-depth: 3
-    code-fold: false
-    code-tools: false
-    code-copy: false
-    html-math-method: katex
-    fig-cap-location: bottom
-    tbl-cap-location: top
-    citations-hover: true
-    footnotes-hover: true
-    smooth-scroll: true
-    anchor-sections: true
-    link-external-newwindow: true
-    highlight-style: github
-    grid:
-      sidebar-width: 300px
-      body-width: 900px
-      margin-width: 300px
-    page-layout: article
-    
-  pdf:
-    documentclass: article
-    classoption: [11pt, letterpaper, onecolumn]
-    geometry: 
-      - top=1.2in
-      - bottom=1.2in
-      - left=1.25in
-      - right=1.25in
-    fontsize: 11pt
-    linestretch: 1.5
-    number-sections: true
-    colorlinks: true
-    linkcolor: NavyBlue
-    urlcolor: NavyBlue
-    citecolor: NavyBlue
-    toccolor: black
-    fig-pos: "H"
-    tbl-pos: "H"
-    lot: false
-    lof: false
-    keep-tex: true
-    pdf-engine: xelatex
-    cite-method: biblatex
-    biblio-style: apa
-    biblatexoptions: [backend=biber, style=apa, natbib=true]
-    include-in-header:
-      - text: |
-          % Font and encoding setup for XeLaTeX
-          \usepackage{fontspec}
-          \usepackage{unicode-math}
-          
-          % Math packages (order matters for XeLaTeX)
-          \usepackage{amsmath}
-          \usepackage{mathtools}
-          
-          % Define mathbbm for indicator functions
-          \newcommand{\mathbbm}[1]{\mathbb{#1}}
-          
-          % Bold math symbols
-          \let\boldsymbol\symbf
-          
-          % Table and layout packages
-          \usepackage{booktabs}
-          \usepackage{longtable}
-          \usepackage{array}
-          \usepackage{multirow}
-          \usepackage{wrapfig}
-          \usepackage{float}
-          \usepackage{colortbl}
-          \usepackage{pdflscape}
-          \usepackage{tabu}
-          \usepackage{threeparttable}
-          \usepackage{threeparttablex}
-          \usepackage[normalem]{ulem}
-          \usepackage{makecell}
-          \usepackage{xcolor}
-          
-          % Typography and formatting
-          \usepackage{microtype}
-          \usepackage{setspace}
-          \usepackage{fancyhdr}
-          \usepackage{titlesec}
-          \usepackage{caption}
-          
-          % Set main font
-          \setmainfont{Times New Roman}[
-            Ligatures=TeX,
-            Numbers=OldStyle
-          ]
-          
-          % Set math font
-          \setmathfont{Latin Modern Math}
-          
-          % Table and figure captions
-          \captionsetup[table]{skip=12pt, font=small, labelfont=bf}
-          \captionsetup[figure]{skip=12pt, font=small, labelfont=bf}
-          
-          % Professional section formatting
-          \titleformat{\section}{\large\bfseries\sffamily\color{NavyBlue}}{\thesection}{1em}{}
-          \titlespacing*{\section}{0pt}{24pt}{12pt}
-          
-          \titleformat{\subsection}{\normalsize\bfseries\sffamily\color{NavyBlue}}{\thesubsection}{1em}{}
-          \titlespacing*{\subsection}{0pt}{18pt}{9pt}
-          
-          \titleformat{\subsubsection}{\normalsize\bfseries\sffamily\color{NavyBlue}}{\thesubsubsection}{1em}{}
-          \titlespacing*{\subsubsection}{0pt}{12pt}{6pt}
-          
-          % Custom colors matching your theme
-          \definecolor{sunnyyellow}{RGB}{255, 223, 0}
-          \definecolor{sunnyblue}{RGB}{30, 144, 255}
-          \definecolor{sunnygray}{RGB}{248, 249, 250}
-          
-          % Professional header and footer
-          \pagestyle{fancy}
-          \fancyhf{}
-          \rhead{\small\thepage}
-          \lhead{\small\textit{The Alaris Mathematical Framework}}
-          \renewcommand{\headrulewidth}{0.5pt}
-          \renewcommand{\headrule}{\hbox to\headwidth{\color{NavyBlue}\leaders\hrule height \headrulewidth\hfill}}
-          \setlength{\headheight}{14pt}
-          
-          % Better typography and spacing
-          \setlength{\emergencystretch}{3em}
-          \tolerance=9999
-          \hbadness=10000
-          \raggedbottom
-          
-          % Paragraph spacing
-          \setlength{\parskip}{8pt}
-          \setlength{\parindent}{0pt}
-          
-          % Better table spacing
-          \renewcommand{\arraystretch}{1.2}
-          
-          % Abstract formatting
-          \renewenvironment{abstract}
-            {\small\quotation\noindent\rule{\linewidth}{.5pt}\par\smallskip
-             \noindent\textbf{Abstract.}\space}
-            {\par\smallskip\noindent\rule{\linewidth}{.5pt}\endquotation}
+  This document provides a complete mathematical specification of the Alaris quantitative trading system. Beginning from first principles, we derive the option pricing methodology for American-style securities under both positive and negative interest rate regimes, formalise the earnings-based volatility trading strategy with mathematically precise entry criteria, and specify the complete fault monitoring framework as a system of inequalities and logical predicates. Every decision rule in the system corresponds to a mathematically specified condition, ensuring deterministic behaviour. Where stochasticity is inherent to the underlying processes, we explicitly characterise the probabilistic assumptions and derive appropriate estimators with known statistical properties.
+keywords: 
+  - American Options
+  - Spectral Methods
+  - Free Boundary Problems
+  - Negative Interest Rates
+  - Optimal Stopping
+  - Earnings Volatility
+  - Calendar Spreads
+  - Fault Detection
 
 # Bibliography and references  
 bibliography: References.bib
@@ -170,599 +21,1067 @@ csl: Finance.csl
 link-citations: true
 reference-section-title: "References"
 
-# Execution and render options
+# Quarto format specification
+format:
+  html:
+    theme: [cosmo, Styling.scss]
+    toc: true
+    toc-depth: 4
+    number-sections: true
+    code-fold: true
+    
+  pdf:
+    pdf-engine: xelatex
+    keep-tex: true
+    documentclass: article
+    classoption: [11pt, a4paper]
+    geometry:
+      - margin=2.5cm
+    include-in-header:
+      text: |
+        \usepackage{microtype}
+        \usepackage{booktabs}
+        \usepackage{amsmath}
+        \usepackage{amssymb}
+        \usepackage{amsthm}
+        \usepackage{mathtools}
+        \usepackage{algorithm}
+        \usepackage{algpseudocode}
+        \usepackage{tikz}
+        \usepackage{pgfplots}
+        \pgfplotsset{compat=1.18}
+        
+        % Theorem environments
+        \newtheorem{theorem}{Theorem}[section]
+        \newtheorem{lemma}[theorem]{Lemma}
+        \newtheorem{proposition}[theorem]{Proposition}
+        \newtheorem{corollary}[theorem]{Corollary}
+        \newtheorem{definition}[theorem]{Definition}
+        \newtheorem{assumption}[theorem]{Assumption}
+        \newtheorem{remark}[theorem]{Remark}
+        
+        % Mathematical operators
+        \DeclareMathOperator{\E}{\mathbb{E}}
+        \DeclareMathOperator{\Var}{Var}
+        \DeclareMathOperator{\Cov}{Cov}
+        \DeclareMathOperator{\Corr}{Corr}
+        \DeclareMathOperator{\sgn}{sgn}
+        \DeclareMathOperator*{\argmin}{arg\,min}
+        \DeclareMathOperator*{\argmax}{arg\,max}
+        
+        % Indicator function
+        \newcommand{\ind}[1]{\mathbf{1}_{#1}}
+        
+        % Common sets
+        \newcommand{\R}{\mathbb{R}}
+        \newcommand{\N}{\mathbb{N}}
+        \newcommand{\Z}{\mathbb{Z}}
+        
+        % Probability spaces
+        \newcommand{\F}{\mathcal{F}}
+        \newcommand{\Q}{\mathbb{Q}}
+        \newcommand{\Prob}{\mathbb{P}}
+
+# Execution options
 execute:
   echo: false
   warning: false
   message: false
-  cache: true
-  freeze: auto
 
 # Cross-referencing
 crossref:
   fig-title: "Figure"
   tbl-title: "Table"
   eq-title: "Equation"
-  title-delim: ":"
-  fig-prefix: "Figure"
-  tbl-prefix: "Table"
-  eq-prefix: "Equation"
 
-# Language and locale
-lang: en-US
+lang: en-AU
 ---
 
-## Introduction
+# Introduction
 
-The mathematical valuation of American-style derivative securities represents one of the most challenging problems in quantitative finance, fundamentally distinguished from its European counterpart by the embedded optimal stopping feature that creates a coupled optimization and valuation problem of considerable analytical complexity. The essential mathematical difficulty arises from the necessity to simultaneously determine both the option value function and the optimal exercise strategy, manifested as a free boundary that separates the continuation region from the exercise region in the underlying asset price space.
+## Purpose and Scope
 
-Traditional numerical approaches to this problem, including binomial and trinomial lattice methods, finite difference schemes, and Monte Carlo techniques, typically exhibit algebraic convergence rates that demand substantial computational resources to achieve precision suitable for practical applications. The fundamental limitation of these methods stems from their discrete approximation of continuous processes and their inability to exploit the inherent smoothness properties of the value function away from the exercise boundary.
+The Alaris system implements a systematic approach to capturing the implied volatility premium that manifests around corporate earnings announcements. This document serves three purposes: to provide a rigorous mathematical foundation for all computational methods employed, to specify formally the decision rules governing strategy execution, and to derive the complete set of fault conditions that the system monitors.
 
-The emergence of negative interest rate regimes in major global financial markets has introduced additional mathematical complexities that challenge the foundational assumptions of classical option pricing theory. Under certain configurations of negative interest rates and dividend yields, the optimal exercise region can exhibit a qualitatively different topology characterized by two distinct boundaries rather than the single boundary assumed in traditional models. This phenomenon, rigorously analyzed in recent mathematical finance literature, creates what is termed a "double continuation region" where the optimal exercise strategy involves exercising the option only when the underlying asset price falls within a specific interval bounded by two time-dependent functions.
+A distinguishing characteristic of this specification is its emphasis on mathematical completeness. Every algorithmic decision in Alaris corresponds to an evaluable predicate derived from the mathematical framework. Where the underlying phenomena are inherently stochastic, we explicitly state the probabilistic model assumptions and derive estimators with known convergence properties.
 
-The Alaris mathematical framework addresses these challenges through a unified analytical architecture that extends spectral collocation methods to encompass both traditional single-boundary configurations and the more complex double-boundary topologies. The methodology transforms the free boundary problem into a system of non-linear integral equations and employs sophisticated mathematical techniques including Chebyshev polynomial interpolation, high-order quadrature rules, and accelerated fixed-point iterations to achieve spectral convergence rates.
+## Document Organisation
 
-A particularly significant mathematical contribution of this work lies in the development of decoupled iteration schemes for the double-boundary case. Rather than solving a coupled system of equations for both boundaries simultaneously, the mathematical structure of the problem allows for the independent computation of each boundary through separate fixed-point systems. This decoupling not only preserves the computational efficiency of the single-boundary case but also enhances numerical stability and provides deeper mathematical insight into the structure of the optimal stopping problem.
+The document proceeds as follows. Section 2 establishes the mathematical framework for option pricing, deriving the free boundary formulation and its integral equation transformation. Section 3 extends this framework to the double boundary regime arising under negative interest rates. Section 4 develops the volatility trading strategy, specifying the signal generation predicates with their academic provenance. Section 5 formalises the complete fault detection and monitoring system as a set of mathematical inequalities. Section 6 addresses the inherent stochasticity in certain components and specifies how this is accounted for.
 
-The framework incorporates advanced mathematical transformations at multiple levels of the analytical hierarchy. The temporal domain undergoes a square-root transformation that concentrates analytical effort near the option expiration date where boundary behavior exhibits the greatest mathematical complexity. The boundary functions themselves are subjected to logarithmic and power transformations that convert highly non-linear functions with unbounded derivatives into nearly linear functions amenable to low-order polynomial approximation. The integral operators are transformed to eliminate weak singularities that would otherwise degrade the convergence properties of the spectral method.
 
-This comprehensive mathematical methodology enables the construction of a rigorous analytical framework that maintains exceptional accuracy across the full range of market conditions while providing mathematical guarantees on convergence behavior and error bounds. The mathematical rigor of the approach ensures robust performance across extreme parameter ranges while the spectral convergence properties enable applications requiring the highest levels of precision.
+# The Option Pricing Framework
 
-## Mathematical Framework and Problem Formulation
+## Stochastic Foundation
 
-### Stochastic Process Foundation
+### The Risk-Neutral Measure
 
-The mathematical foundation of the Alaris framework rests upon the assumption that the underlying asset price follows a geometric Brownian motion under the risk-neutral probability measure $\mathbb{Q}$. This fundamental modeling choice, while representing a considerable idealization of actual market dynamics, provides the mathematical tractability necessary for developing rigorous analytical methods while maintaining sufficient economic realism for practical applications.
+The Alaris pricing methodology operates under the risk-neutral probability measure $\mathbb{Q}$. Under this measure, the asset price process $S(t)$ satisfies the stochastic differential equation:
 
-Under the risk-neutral measure, the asset price process $\{S(t)\}_{t \geq 0}$ satisfies the stochastic differential equation:
+$$
+\frac{dS(t)}{S(t)} = (r - q) \, dt + \sigma \, dW^{\mathbb{Q}}(t)
+$$ {#eq-sde}
 
-$$\frac{dS(t)}{S(t)} = (r-q)dt + \sigma dW(t) \tag{2.1}$$
+where:
 
-where $r \in \mathbb{R}$ represents the risk-free interest rate, $q \in \mathbb{R}$ denotes the continuous dividend yield, $\sigma > 0$ characterizes the volatility parameter, and $\{W(t)\}_{t \geq 0}$ denotes a standard Wiener process under $\mathbb{Q}$. The drift coefficient $(r-q)$ emerges naturally from the risk-neutralization process and represents the excess return of the asset over its dividend yield, appropriately adjusted through the change of measure.
+- $r \in \mathbb{R}$ denotes the continuously compounded risk-free interest rate
+- $q \in \mathbb{R}$ denotes the continuous dividend yield  
+- $\sigma > 0$ denotes the instantaneous volatility
+- $W^{\mathbb{Q}}(t)$ is a standard Brownian motion under $\mathbb{Q}$
 
-The explicit solution to the stochastic differential equation (2.1) takes the form:
+::: {.callout-note}
+## Parameter Domain Extension
+Unlike classical treatments that assume $r \geq 0$, Alaris explicitly permits $r < 0$ to accommodate negative interest rate environments. This extension requires careful treatment of the exercise region topology, addressed in Section 3.
+:::
 
-$$S(t) = S(0) \exp\left(\left(r-q-\frac{1}{2}\sigma^2\right)t + \sigma W(t)\right) \tag{2.2}$$
+The solution to @eq-sde is the geometric Brownian motion:
 
-This representation reveals that the logarithm of the asset price follows a Brownian motion with drift, leading to the lognormal distribution for future asset prices. Specifically, for any $t > 0$, the conditional distribution of $S(t)$ given $S(0) = s$ satisfies:
+$$
+S(t) = S(0) \exp\left[\left(r - q - \frac{\sigma^2}{2}\right)t + \sigma W^{\mathbb{Q}}(t)\right]
+$$ {#eq-gbm-solution}
 
-$$\ln S(t) \mid S(0) = s \sim \mathcal{N}\left(\ln s + \left(r-q-\frac{1}{2}\sigma^2\right)t, \sigma^2 t\right) \tag{2.3}$$
+### Filtration and Information Structure
 
-The assumption of constant parameters throughout the option's lifetime enables the exploitation of time-homogeneity in the underlying process. This property allows the option value at any time $t$ for a contract maturing at time $T$ to be expressed as a function of the time to maturity $\tau \triangleq T-t$ and the current asset price $S$, independent of the absolute time $t$. This dimensional reduction from a two-dimensional space-time problem to a one-dimensional time-to-maturity problem significantly simplifies both the mathematical analysis and the development of numerical algorithms.
+Let $(\Omega, \mathcal{F}, \mathbb{Q})$ be a complete probability space equipped with the natural filtration $\{\mathcal{F}_t\}_{t \geq 0}$ generated by the Brownian motion $W^{\mathbb{Q}}(t)$, augmented by null sets. All stopping times referenced in this document are with respect to this filtration.
 
-### The Optimal Stopping Formulation
 
-The mathematical characterization of American option pricing leads naturally to an optimal stopping problem. For an American put option with strike price $K > 0$ and maturity $T$, the value function at time $t$ with underlying asset price $S(t) = s$ is given by:
+## The Free Boundary Problem
 
-$$V(\tau,s) = \sup_{\nu \in \mathcal{T}_{0,\tau}} \mathbb{E}^{\mathbb{Q}}\left[e^{-r\nu}(K-S(\nu))^+ \mid S(0) = s\right] \tag{2.4}$$
+### Value Function Characterisation
 
-where $\tau = T-t$ represents the time to maturity, $\mathcal{T}_{0,\tau}$ denotes the set of all stopping times taking values in $[0,\tau]$, and the supremum is taken over all admissible exercise strategies.
+For an American put option with strike $K$ and maturity $T$, define the value function $V: [0,T] \times \mathbb{R}_{>0} \to \mathbb{R}_{\geq 0}$ as:
 
-The mathematical theory of optimal stopping for Markov processes guarantees the existence of an optimal stopping time $\nu^*$ that achieves the supremum in equation (2.4). Furthermore, this optimal stopping time can be characterized through a time-dependent exercise boundary function $B: [0,\tau] \to \mathbb{R}_+$ such that:
+$$
+V(t, s) = \sup_{\tau \in \mathcal{T}_{t,T}} \mathbb{E}^{\mathbb{Q}}\left[e^{-r(\tau - t)}(K - S(\tau))^+ \,\Big|\, S(t) = s\right]
+$$ {#eq-value-function}
 
-$$\nu^* = \inf\{t \in [0,\tau] : S(t) \leq B(\tau-t)\} \tag{2.5}$$
+where $\mathcal{T}_{t,T}$ denotes the set of stopping times taking values in $[t, T]$.
 
-The exercise boundary $B(\tau)$ divides the state space into two regions: the exercise region $\mathcal{E}(\tau) = \{s : s \leq B(\tau)\}$ and the continuation region $\mathcal{C}(\tau) = \{s : s > B(\tau)\}$.
+The supremum in @eq-value-function is attained by the optimal stopping time:
 
-### Variational Inequality Characterization
+$$
+\tau^* = \inf\{u \in [t, T] : S(u) \leq B(T - u)\}
+$$ {#eq-optimal-stopping}
 
-The value function $V(\tau,s)$ satisfies a variational inequality that captures the mathematical essence of the optimal stopping problem. In the continuation region, the value function must satisfy the Black-Scholes partial differential equation, while in the exercise region, the option value equals the intrinsic value. This leads to the variational inequality:
+where $B(\cdot)$ is the optimal exercise boundary function.
 
-$$\max\left\{(K-s)^+, \frac{\partial V}{\partial \tau} + \mathcal{L}V\right\} = 0 \tag{2.6}$$
+### The Free Boundary
 
-where $\mathcal{L}$ denotes the infinitesimal generator of the asset price process:
+::: {#def-exercise-boundary}
+## Exercise Boundary
+The optimal exercise boundary $B: [0, T] \to \mathbb{R}_{>0}$ is the unique continuous function satisfying:
 
-$$\mathcal{L}V = \frac{1}{2}\sigma^2 s^2 \frac{\partial^2 V}{\partial s^2} + (r-q)s\frac{\partial V}{\partial s} - rV \tag{2.7}$$
+1. **Value Matching**: $V(t, B(T-t)) = K - B(T-t)$ for all $t \in [0, T]$
+2. **Smooth Pasting**: $\frac{\partial V}{\partial s}(t, B(T-t)) = -1$ for all $t \in (0, T)$
+:::
 
-The variational inequality (2.6) can be equivalently expressed as the complementarity system:
+The value function satisfies the variational inequality:
 
-$$\begin{aligned}
-\frac{\partial V}{\partial \tau} + \mathcal{L}V &\geq 0 \\
-V(\tau,s) - (K-s)^+ &\geq 0 \\
-\left(\frac{\partial V}{\partial \tau} + \mathcal{L}V\right)(V(\tau,s) - (K-s)^+) &= 0
-\end{aligned} \tag{2.8}$$
+$$
+\max\left\{\mathcal{L}V - rV, \; (K - s) - V\right\} = 0
+$$ {#eq-variational}
 
-### Boundary Conditions and Regularity
+where the infinitesimal generator is:
 
-The exercise boundary $B(\tau)$ must satisfy fundamental conditions that ensure the optimality of the stopping strategy. The value-matching condition requires continuity of the value function across the exercise boundary:
+$$
+\mathcal{L}V = \frac{\partial V}{\partial t} + (r-q)s\frac{\partial V}{\partial s} + \frac{1}{2}\sigma^2 s^2 \frac{\partial^2 V}{\partial s^2}
+$$
 
-$$V(\tau, B(\tau)) = K - B(\tau) \tag{2.9}$$
 
-The smooth-pasting condition, also known as the high-contact condition, ensures that the first derivative of the value function is continuous across the boundary:
+## The Integral Equation Formulation
 
-$$\frac{\partial V}{\partial s}(\tau, B(\tau)) = -1 \tag{2.10}$$
+### Early Exercise Premium Decomposition
 
-These conditions, when combined with the variational inequality (2.6), uniquely determine both the value function $V(\tau,s)$ and the exercise boundary $B(\tau)$.
+The American option value decomposes into European option value plus early exercise premium:
 
-The mathematical analysis of the boundary function reveals several important regularity properties. For $\tau > 0$, the boundary function $B(\tau)$ is infinitely differentiable, though all derivatives become unbounded as $\tau \to 0^+$. The asymptotic behavior near expiration depends critically on the relationship between $r$ and $q$:
+$$
+V(\tau, s) = v(\tau, s) + \mathcal{P}(\tau, s)
+$$ {#eq-eep-decomposition}
 
-$$\lim_{\tau \to 0^+} B(\tau) = \begin{cases}
+where $\tau = T - t$ denotes time to maturity, $v(\tau, s)$ is the European put price, and $\mathcal{P}(\tau, s)$ is the early exercise premium.
+
+::: {#thm-kim-integral}
+## Kim Integral Representation
+The early exercise premium satisfies:
+
+$$
+\mathcal{P}(\tau, s) = \int_0^{\tau} e^{-ru} \left[rK \Phi(-d_-(u, s/B(u))) - qse^{(r-q)u}\Phi(-d_+(u, s/B(u)))\right] du
+$$ {#eq-kim-integral}
+
+where:
+
+$$
+d_{\pm}(u, z) = \frac{\ln(z) + (r-q)u \pm \frac{1}{2}\sigma^2 u}{\sigma\sqrt{u}}
+$$
+
+and $\Phi(\cdot)$ denotes the cumulative standard normal distribution function.
+:::
+
+### The Boundary Integral Equation
+
+Applying the value-matching condition at the boundary yields the nonlinear integral equation for $B(\tau)$:
+
+$$
+K - B(\tau) = v(\tau, B(\tau)) + \int_0^{\tau} \mathcal{K}(\tau, u, B(\tau), B(u)) \, du
+$$ {#eq-boundary-integral}
+
+where the kernel $\mathcal{K}$ is:
+
+$$
+\mathcal{K}(\tau, u, b, b') = e^{-ru}\left[rK\Phi(-d_-(u, b/b')) - qb \cdot e^{(r-q)u}\Phi(-d_+(u, b/b'))\right]
+$$
+
+### Asymptotic Behaviour
+
+The boundary function exhibits the following asymptotic behaviour:
+
+**Near Expiration** ($\tau \to 0^+$):
+$$
+\lim_{\tau \to 0^+} B(\tau) = \begin{cases}
 K & \text{if } r \geq q \\
-K \cdot \frac{r}{q} & \text{if } r < q
-\end{cases} \tag{2.11}$$
+K \cdot \frac{r}{q} & \text{if } r < q \text{ and } r > 0
+\end{cases}
+$$ {#eq-near-expiry}
 
-For large values of $\tau$, the boundary function converges to the perpetual American option boundary:
+**Long Maturity** ($\tau \to \infty$):
+$$
+\lim_{\tau \to \infty} B(\tau) = B_{\infty} = K \cdot \frac{\lambda_-}{\lambda_- - 1}
+$$ {#eq-perpetual-boundary}
 
-$$\lim_{\tau \to \infty} B(\tau) = K \frac{\lambda_-}{\lambda_- - 1} \tag{2.12}$$
+where $\lambda_-$ is the negative root of the characteristic equation:
 
-where $\lambda_-$ represents the negative root of the characteristic equation:
+$$
+\frac{1}{2}\sigma^2\lambda^2 + \left(r - q - \frac{\sigma^2}{2}\right)\lambda - r = 0
+$$ {#eq-characteristic}
 
-$$\frac{1}{2}\sigma^2 \lambda^2 + \left(r-q-\frac{1}{2}\sigma^2\right)\lambda - r = 0 \tag{2.13}$$
 
-## The Integral Equation Methodology
+## The QD+ Approximation Method
 
-### Derivation of the Fundamental Integral Representation
+### Quasi-Analytic Framework
 
-The transformation of the American option pricing problem from a partial differential equation with free boundaries to an integral equation represents a profound mathematical advancement that forms the cornerstone of the Alaris methodology. This transformation, originally conceived by Kim and subsequently refined through extensive mathematical development, provides both computational advantages and deeper analytical insight into the structure of the early exercise premium.
+The Alaris system employs the QD+ approximation method of Andersen, Lake, and Offengenden (2016) as the first stage of boundary estimation. This method provides an accurate quasi-analytic approximation that serves as initialisation for subsequent refinement.
 
-The derivation begins with the fundamental observation that the American option value can be decomposed as:
+::: {#def-qd-approximation}
+## QD+ Boundary Approximation
+The QD+ approximation expresses the boundary as:
 
-$$V(\tau,s) = v(\tau,s) + \mathcal{P}(\tau,s) \tag{3.1}$$
+$$
+B^{\text{QD}}(\tau) = K \cdot \frac{\lambda(\tau)}{\lambda(\tau) - 1}
+$$ {#eq-qd-boundary}
 
-where $v(\tau,s)$ represents the corresponding European option price and $\mathcal{P}(\tau,s)$ denotes the early exercise premium that quantifies the additional value provided by the flexibility to exercise before expiration.
+where $\lambda(\tau)$ is obtained from a modified characteristic equation with time-dependent correction:
 
-The European put option price is given by the Black-Scholes formula:
+$$
+\frac{1}{2}\sigma^2\lambda^2 + \left(r - q - \frac{\sigma^2}{2}\right)\lambda - r \cdot h(\tau) = 0
+$$
 
-$$v(\tau,s) = K e^{-r\tau}\Phi(-d_-(\tau,s/K)) - s e^{-q\tau}\Phi(-d_+(\tau,s/K)) \tag{3.2}$$
+with $h(\tau) = 1 - e^{-r\tau}$.
+:::
 
-where $\Phi(\cdot)$ denotes the cumulative standard normal distribution function and the auxiliary functions are defined as:
+### Super Halley's Method
 
-$$d_{\pm}(\tau,z) \triangleq \frac{\ln(z) + (r-q)\tau \pm \frac{1}{2}\sigma^2\tau}{\sigma\sqrt{\tau}} \tag{3.3}$$
+The QD+ boundary equation is solved using Super Halley's method, a third-order root-finding algorithm:
 
-The rigorous derivation of the integral representation employs Itô's lemma applied to the discounted option value process. Consider the process $H(t) = e^{-rt}V(T-t, S(t))$ where $V$ denotes the American option value function. Through careful application of the stochastic calculus, this process can be shown to satisfy:
+$$
+S_{n+1} = S_n - \frac{f(S_n)}{f'(S_n)} \cdot \frac{1}{1 - \frac{f(S_n) \cdot f''(S_n)}{2[f'(S_n)]^2}}
+$$ {#eq-super-halley}
 
-$$H(\tau) - H(0) = \int_0^\tau e^{-ru} \sigma S(u) \frac{\partial V}{\partial s}(T-u, S(u)) dW(u) + \int_0^\tau e^{-ru} \mathcal{I}(u) du \tag{3.4}$$
+::: {#thm-halley-convergence}
+## Super Halley Convergence
+For a function $f$ with simple root $S^*$ and continuous third derivative in a neighbourhood of $S^*$, Super Halley's method converges cubically:
 
-where $\mathcal{I}(u)$ represents the integrand that captures the early exercise contribution.
+$$
+|S_{n+1} - S^*| = O(|S_n - S^*|^3)
+$$
+:::
 
-Taking expectations and utilizing the martingale property of the stochastic integral, the early exercise premium can be expressed as:
+The implementation specifies convergence tolerance $\epsilon = 10^{-10}$ and maximum iterations $N_{\max} = 50$.
 
-$$\mathcal{P}(\tau,s) = \int_0^\tau \mathbb{E}^{\mathbb{Q}}\left[e^{-ru} \mathbbm{1}_{\{S(u) \leq B(\tau-u)\}} (rK - qS(u)) \mid S(0) = s\right] du \tag{3.5}$$
 
-The indicator function $\mathbbm{1}_{\{S(u) \leq B(\tau-u)\}}$ restricts the integration to periods when early exercise is optimal, while the term $(rK - qS(u))$ represents the instantaneous net cash flow benefit from early exercise.
+# Double Boundary Regime Under Negative Rates
 
-### Complete Integral Equation Formulation
+## Regime Characterisation
 
-Utilizing the lognormal distribution properties of the underlying asset price process, the expectation in equation (3.5) can be evaluated explicitly, yielding the complete integral representation:
+### Mathematical Conditions for Double Boundaries
 
-$$V(\tau,s) = v(\tau,s) + \int_0^\tau rK e^{-r(\tau-u)}\Phi(-d_-(\tau-u,s/B(u))) du - \int_0^\tau qs e^{-q(\tau-u)}\Phi(-d_+(\tau-u,s/B(u))) du \tag{3.6}$$
+The emergence of double boundaries occurs under specific parameter configurations involving negative interest rates.
 
-The mathematical elegance of this formulation lies in its economic interpretation. The first integral term represents the present value of the interest earned on the strike price $K$ during periods when early exercise is optimal, weighted by the risk-neutral probability that the asset price falls below the exercise boundary. The second integral term captures the present value of the dividend yield foregone on the underlying asset position, similarly weighted by the exercise probability.
+::: {#def-double-boundary-regime}
+## Double Boundary Regime
+The double boundary regime is characterised by the predicate:
 
-The cumulative normal distribution functions $\Phi(-d_{\pm}(\tau-u,s/B(u)))$ arise naturally from the lognormal distribution of future asset prices and represent the risk-neutral probabilities of early exercise at future times, conditional on the current asset price $s$.
+$$
+\mathcal{R}_{\text{double}} \equiv (q < r < 0)
+$$ {#eq-double-regime}
 
-### Boundary Integral Equations
+When $\mathcal{R}_{\text{double}}$ holds, the optimal exercise region for an American put is the set:
 
-To determine the exercise boundary $B(\tau)$, the integral equation (3.6) must be combined with the boundary conditions derived from the optimal stopping theory. Applying the value-matching condition (2.9) yields:
+$$
+\mathcal{E}(\tau) = \{s > 0 : Y(\tau) \leq s \leq B(\tau)\}
+$$
 
-$$K - B(\tau) = v(\tau, B(\tau)) + \int_0^\tau rK e^{-r(\tau-u)}\Phi(-d_-(\tau-u,B(\tau)/B(u))) du - \int_0^\tau qB(\tau) e^{-q(\tau-u)}\Phi(-d_+(\tau-u,B(\tau)/B(u))) du \tag{3.7}$$
+where $B(\tau)$ is the upper boundary and $Y(\tau)$ is the lower boundary.
+:::
 
-This nonlinear Volterra-type integral equation for $B(\tau)$ forms the foundation of the numerical algorithm. The equation can be rearranged into the fixed-point form:
+### Physical Interpretation
 
-$$B(\tau) = K e^{(r-q)\tau} \frac{N(\tau,B)}{D(\tau,B)} \tag{3.8}$$
+In the double boundary regime, immediate exercise is optimal only when the asset price falls within a bounded interval. This arises because:
 
-where the functionals $N(\tau,B)$ and $D(\tau,B)$ are defined through the integral terms and capture the economic forces driving the exercise decision.
+1. When $s > B(\tau)$: Continuation is optimal due to potential for deeper in-the-money scenarios
+2. When $Y(\tau) \leq s \leq B(\tau)$: Immediate exercise is optimal
+3. When $s < Y(\tau)$: Continuation is optimal because the negative dividend yield implies expected price appreciation
 
-Alternatively, applying the smooth-pasting condition (2.10) and differentiating the integral equation (3.6) with respect to $s$ yields a different but mathematically equivalent boundary equation:
+### Critical Volatility Threshold
 
-$$-1 = -e^{-q\tau}\Phi(-d_+(τ,B(\tau)/K)) + \int_0^\tau \frac{rK}{B(\tau)} e^{-r(\tau-u)} \frac{\phi(-d_-(\tau-u,B(\tau)/B(u)))}{\sigma\sqrt{\tau-u}} du - \int_0^\tau q e^{-q(\tau-u)} \left[\frac{\phi(-d_+(\tau-u,B(\tau)/B(u)))}{\sigma\sqrt{\tau-u}} + \Phi(-d_+(\tau-u,B(\tau)/B(u)))\right] du \tag{3.9}$$
+The behaviour of the double boundary system depends on whether volatility exceeds a critical threshold.
 
-where $\phi(\cdot)$ denotes the standard normal probability density function.
+::: {#def-critical-volatility}
+## Critical Volatility
+Define the critical volatility as:
 
-The smooth-pasting formulation (3.9) often exhibits superior numerical properties due to the symmetry that can be restored between the integral and non-integral terms through the mathematical identity:
+$$
+\sigma^* = \sqrt{\frac{2|r|(r-q)}{q}}
+$$ {#eq-critical-vol}
 
-$$\frac{K e^{-r\tau} \phi(-d_-(\tau,B(\tau)/K))}{\sigma\sqrt{\tau}} = \frac{B(\tau) e^{-q\tau} \phi(-d_+(\tau,B(\tau)/K))}{\sigma\sqrt{\tau}} \tag{3.10}$$
+When $\sigma > \sigma^*$, the boundaries intersect at finite time $\tau^*$.
+:::
 
-This symmetry property proves crucial for the stability and convergence of the numerical algorithms developed in subsequent sections.
 
-## Double Boundary Phenomena Under Negative Interest Rates
+## Modified Integral Equation System
 
-### Mathematical Characterization of the Double Boundary Regime
+### Two-Boundary Integral Representation
 
-The emergence of negative interest rate environments has revealed a mathematically fascinating phenomenon that fundamentally challenges classical option pricing assumptions. Under specific combinations of negative interest rates and dividend yields, the optimal exercise region for American options assumes a qualitatively different topology characterized by two distinct boundaries rather than the single boundary traditionally assumed.
+Under the double boundary regime, the American put value satisfies:
 
-For American put options, the double-boundary configuration arises precisely when the parameters satisfy $q < r < 0$. The mathematical foundation for this phenomenon can be understood through the short-maturity analysis of the exercise premium. In the limit as $\tau \to 0^+$, the decision to exercise depends on the sign of the net carry $(rK - qs)$ for asset prices near the strike.
+$$
+V(\tau, s) = v(\tau, s) + \mathcal{P}_B(\tau, s) - \mathcal{P}_Y(\tau, s)
+$$ {#eq-double-eep}
 
-**Theorem 4.1** (Double Boundary Existence): *Consider an American put option with parameters satisfying $q < r < 0$. There exists a critical volatility $\sigma^* = |\sqrt{-2r} - \sqrt{-2q}|$ such that for $\sigma \leq \sigma^*$, the optimal exercise region consists of the interval $[Y(\tau), B(\tau)]$ where both boundaries are well-defined for all $\tau \geq 0$.*
+where:
 
-The proof of this theorem relies on the asymptotic analysis of the characteristic equation roots and the behavior of the perpetual option boundaries. The mathematical conditions ensure that both boundaries exist and remain finite throughout the option's lifetime.
+$$
+\mathcal{P}_B(\tau, s) = \int_0^{\tau} e^{-ru}\left[rK\Phi(-d_-(u, s/B)) - qse^{(r-q)u}\Phi(-d_+(u, s/B))\right]du
+$$
 
-As $\tau \to 0^+$, the boundaries approach the limiting values:
+$$
+\mathcal{P}_Y(\tau, s) = \int_0^{\tau} e^{-ru}\left[rK\Phi(-d_-(u, s/Y)) - qse^{(r-q)u}\Phi(-d_+(u, s/Y))\right]du
+$$
 
-$$\lim_{\tau \to 0^+} B(\tau) = K \text{ and } \lim_{\tau \to 0^+} Y(\tau) = K \frac{r}{q} \tag{4.1}$$
+### Decoupled Fixed-Point Systems
 
-Since $q < r < 0$, the ratio $r/q$ satisfies $0 < r/q < 1$, establishing that $Y(0^+) < B(0^+) = K$, confirming the existence of a non-trivial exercise interval near expiration.
+A key mathematical result enabling efficient computation is the decoupling of the boundary equations.
 
-### Long-Term Asymptotic Analysis
+::: {#thm-decoupling}
+## Boundary Decoupling
+The upper boundary $B(\tau)$ can be computed independently of $Y(\tau)$ using:
 
-The long-term behavior of the double boundaries depends critically on the volatility relative to the critical threshold $\sigma^*$. When $\sigma < \sigma^*$, both boundaries converge to finite limits as $\tau \to \infty$:
+$$
+K - B(\tau) = v(\tau, B(\tau)) + \int_0^{\tau} \mathcal{K}_B(\tau, u, B(\tau), B(u)) \, du
+$$ {#eq-upper-fixed}
 
-$$\lim_{\tau \to \infty} B(\tau) = K \frac{\lambda_+}{\lambda_+ - 1} \text{ and } \lim_{\tau \to \infty} Y(\tau) = K \frac{\lambda_-}{\lambda_- - 1} \tag{4.2}$$
+Given $B(\tau)$, the lower boundary $Y(\tau)$ is then determined by:
 
-where $\lambda_{\pm}$ represent the roots of the modified characteristic equation:
+$$
+K - Y(\tau) = v(\tau, Y(\tau)) + \int_0^{\tau} \mathcal{K}_B(\tau, u, Y(\tau), B(u)) - \mathcal{K}_Y(\tau, u, Y(\tau), Y(u)) \, du
+$$ {#eq-lower-fixed}
+:::
 
-$$\lambda_{\pm} = \frac{-\mu \pm \sqrt{\mu^2 + 2r\sigma^2}}{\sigma^2} \text{ with } \mu = r - q - \frac{\sigma^2}{2} \tag{4.3}$$
+### FP-B' Stabilisation
 
-When $\sigma > \sigma^*$, the boundaries intersect at a finite time $\tau^*$, and for $\tau > \tau^*$, the exercise region disappears entirely, rendering the American option equivalent to its European counterpart.
+The Alaris system employs the FP-B' stabilised iteration scheme from Healy (2021) to prevent oscillatory behaviour in long-maturity options.
 
-**Proposition 4.1** (Boundary Intersection): *For parameters satisfying $q < r < 0$ and $\sigma > \sigma^*$, there exists a unique time $\tau^* < \infty$ such that $B(\tau^*) = Y(\tau^*)$ and the exercise region is empty for all $\tau > \tau^*$.*
+::: {#def-fpb-prime}
+## FP-B' Iteration
+At iteration $n$, the stabilised update for the lower boundary is:
 
-The intersection time $\tau^*$ cannot be determined analytically in general but can be computed numerically through root-finding algorithms applied to the equation $B(\tau^*) = Y(\tau^*)$.
+$$
+Y^{(n+1)}(\tau) = \mathcal{T}_Y\left[Y^{(n)}; B^{(n+1)}\right]
+$$
 
-### Modified Integral Equation Formulation
+where the operator $\mathcal{T}_Y$ incorporates the just-computed upper boundary $B^{(n+1)}$ rather than the previous iteration $B^{(n)}$.
+:::
 
-The presence of two exercise boundaries necessitates a fundamental modification of the integral equation formulation. The early exercise premium must now account for the finite exercise region rather than the semi-infinite region of the single-boundary case.
+This stabilisation ensures convergence for maturities up to $T = 15$ years under the Healy benchmark parameters.
 
-The modified integral representation takes the form:
 
-$$V(\tau,s) = v(\tau,s) + \int_0^{\min(\tau,\tau^*)} \mathbb{E}^{\mathbb{Q}}\left[e^{-ru} \mathbbm{1}_{\{Y(\tau-u) \leq S(u) \leq B(\tau-u)\}} (rK - qS(u)) \mid S(0) = s\right] du \tag{4.4}$$
+## Boundary Validation Predicates
 
-The indicator function now restricts the integration to the finite interval $[Y(\tau-u), B(\tau-u)]$, reflecting the bounded nature of the exercise region.
+The computed boundaries must satisfy mathematical constraints from the free boundary theory.
 
-Evaluating the expectation yields the complete double-boundary integral equation:
+::: {#def-boundary-validation}
+## Boundary Validity Conditions
+A computed boundary pair $(B(\tau), Y(\tau))$ is valid if and only if:
 
-$$V(\tau,s) = v(\tau,s) + \int_0^{\min(\tau,\tau^*)} rK e^{-r(\tau-u)}[\Phi(-d_-(\tau-u,s/B(u))) - \Phi(-d_-(\tau-u,s/Y(u)))] du - \int_0^{\min(\tau,\tau^*)} qs e^{-q(\tau-u)}[\Phi(-d_+(\tau-u,s/B(u))) - \Phi(-d_+(\tau-u,s/Y(u)))] du \tag{4.5}$$
+\begin{align}
+\mathcal{V}_1 &\equiv B(\tau) > 0 \quad \forall \tau \in [0, T] \tag{Positivity - Upper} \\
+\mathcal{V}_2 &\equiv Y(\tau) > 0 \quad \forall \tau \in [0, T] \tag{Positivity - Lower} \\
+\mathcal{V}_3 &\equiv B(\tau) > Y(\tau) \quad \forall \tau \in [0, T] \tag{Ordering} \\
+\mathcal{V}_4 &\equiv B(\tau) < K \quad \forall \tau \in [0, T] \tag{Put Constraint - Upper} \\
+\mathcal{V}_5 &\equiv Y(\tau) < K \quad \forall \tau \in [0, T] \tag{Put Constraint - Lower}
+\end{align}
 
-### Decoupling of the Boundary Systems
+The aggregate validity predicate is:
 
-A remarkable mathematical property of the double-boundary problem is that the two boundaries can be computed independently despite their apparent coupling in the integral equation (4.5). This decoupling arises from the fundamental principle that for asset prices outside the exercise interval, the option value depends only on the boundary that would be encountered first by the diffusion process.
+$$
+\mathcal{V}_{\text{boundary}} \equiv \bigwedge_{i=1}^{5} \mathcal{V}_i
+$$
+:::
 
-**Theorem 4.2** (Boundary Decoupling): *The upper boundary $B(\tau)$ satisfies the single-boundary integral equation for all asset prices $s \geq B(\tau)$, while the lower boundary $Y(\tau)$ satisfies a modified integral equation for all asset prices $s \leq Y(\tau)$.*
 
-For the upper boundary $B(\tau)$, applying the value-matching condition at $s = B(\tau)$ yields:
+# The Earnings Volatility Trading Strategy
 
-$$K - B(\tau) = v(\tau, B(\tau)) + \int_0^{\min(\tau,\tau^*)} rK e^{-r(\tau-u)}\Phi(-d_-(\tau-u,B(\tau)/B(u))) du - \int_0^{\min(\tau,\tau^*)} qB(\tau) e^{-q(\tau-u)}\Phi(-d_+(\tau-u,B(\tau)/B(u))) du \tag{4.6}$$
+## Theoretical Foundation
 
-For the lower boundary $Y(\tau)$, applying the smooth-pasting condition at $s = Y(\tau)$ and utilizing the mathematical structure of the problem yields:
+### The Volatility Risk Premium
 
-$$-1 = -e^{-q\tau}\Phi(-d_+(τ,Y(\tau)/K)) + \int_0^{\min(\tau,\tau^*)} \frac{rK}{Y(\tau)} e^{-r(\tau-u)} \frac{\phi(-d_-(\tau-u,Y(\tau)/Y(u)))}{\sigma\sqrt{\tau-u}} du - \int_0^{\min(\tau,\tau^*)} q e^{-q(\tau-u)} \left[\frac{\phi(-d_+(\tau-u,Y(\tau)/Y(u)))}{\sigma\sqrt{\tau-u}} + \Phi(-d_+(\tau-u,Y(\tau)/Y(u)))\right] du \tag{4.7}$$
+The earnings volatility strategy exploits the documented phenomenon that implied volatility systematically exceeds realised volatility around corporate earnings announcements. Let:
 
-This decoupling enables the development of separate fixed-point iteration schemes for each boundary, dramatically simplifying the computational problem while maintaining mathematical rigor.
+- $\sigma_I(t)$ denote the market-implied volatility at time $t$
+- $\sigma_R(t)$ denote the realised volatility over the same horizon
 
-## The Spectral Collocation Methodology
+The volatility risk premium is:
 
-### Mathematical Foundation of Spectral Approximation
+$$
+\text{VRP}(t) = \sigma_I(t) - \sigma_R(t)
+$$ {#eq-vrp}
 
-The spectral collocation methodology employed in the Alaris framework represents a sophisticated application of global polynomial approximation theory to the solution of nonlinear integral equations arising in American option pricing. The mathematical foundation rests upon the exceptional approximation properties of orthogonal polynomials and their ability to achieve exponential convergence rates for sufficiently smooth functions.
+::: {#assumption-vrp}
+## Earnings VRP Assumption
+For securities with scheduled earnings announcements at time $T_E$, the volatility risk premium exhibits the pattern:
 
-The fundamental principle of spectral methods lies in the representation of the unknown function through global basis functions that possess optimal approximation properties. For the exercise boundary function $B(\tau)$, the spectral approximation takes the form:
+$$
+\mathbb{E}[\text{VRP}(t)] > 0 \quad \text{for } t \in [T_E - \Delta, T_E)
+$$
 
-$$B_N(\tau) = \sum_{k=0}^{N} c_k \mathcal{B}_k(\tau) \tag{5.1}$$
+where $\Delta \approx 5\text{-}7$ trading days, with mean reversion following the announcement.
+:::
 
-where $\{\mathcal{B}_k(\tau)\}_{k=0}^{N}$ represents a system of orthogonal basis functions and $\{c_k\}_{k=0}^{N}$ denotes the expansion coefficients to be determined.
 
-The choice of basis functions proves crucial for the success of the spectral method. Chebyshev polynomials of the first kind provide optimal approximation properties for functions defined on bounded intervals and are characterized by the three-term recurrence relation:
+## Signal Generation Predicates
 
-$$T_0(x) = 1, \quad T_1(x) = x, \quad T_{k+1}(x) = 2xT_k(x) - T_{k-1}(x) \tag{5.2}$$
+### The Atilgan Criteria
 
-with the orthogonality relation:
+The signal generation system implements the criteria from Atilgan et al. (2014), expressed as formal predicates.
 
-$$\int_{-1}^{1} T_j(x) T_k(x) \frac{dx}{\sqrt{1-x^2}} = \begin{cases}
-\pi & \text{if } j = k = 0 \\
-\pi/2 & \text{if } j = k \neq 0 \\
-0 & \text{if } j \neq k
-\end{cases} \tag{5.3}$$
+::: {#def-signal-predicates}
+## Trading Signal Predicates
+For a security with symbol $\xi$ evaluated at time $t$ with earnings date $T_E$, define:
 
-### Domain Transformation and Regularization
+**IV/RV Ratio Criterion**:
+$$
+\mathcal{S}_1(\xi, t) \equiv \frac{\sigma_I^{30}(\xi, t)}{\sigma_R^{30}(\xi, t)} \geq 1.25
+$$ {#eq-ivrv-criterion}
 
-The raw exercise boundary function $B(\tau)$ exhibits singular behavior near $\tau = 0$ that precludes direct polynomial approximation. The boundary possesses unbounded derivatives of all orders at the origin, making standard polynomial approximation inefficient and potentially unstable.
+**Term Structure Criterion**:
+$$
+\mathcal{S}_2(\xi, t) \equiv \nabla_\tau \sigma_I(\xi, t) \leq -0.00406
+$$ {#eq-term-criterion}
 
-The Alaris methodology addresses this challenge through a sophisticated sequence of mathematical transformations designed to regularize the boundary function and render it amenable to spectral approximation. The transformation proceeds in several carefully designed stages.
+where $\nabla_\tau \sigma_I$ denotes the slope of the implied volatility term structure.
 
-**Stage 1: Temporal Domain Transformation**
+**Liquidity Criterion**:
+$$
+\mathcal{S}_3(\xi, t) \equiv \bar{V}^{30}(\xi, t) \geq 1{,}500{,}000
+$$ {#eq-volume-criterion}
 
-The temporal domain $[0, \tau_{\max}]$ is first transformed to concentrate computational effort near the critical region around expiration. The square-root transformation:
+where $\bar{V}^{30}$ is the 30-day average daily trading volume.
+:::
 
-$$\xi = \sqrt{\tau/\tau_{\max}} \tag{5.4}$$
+### Signal Strength Classification
 
-maps the time-to-maturity variable to the interval $[0,1]$ while providing increased resolution near $\tau = 0$ where the boundary exhibits the most complex behavior.
+::: {#def-signal-strength}
+## Signal Strength Function
+The signal strength function $\Sigma: \{\text{true}, \text{false}\}^3 \to \{\text{Recommended}, \text{Consider}, \text{Avoid}\}$ is:
 
-**Stage 2: Boundary Normalization**
+$$
+\Sigma(\mathcal{S}_1, \mathcal{S}_2, \mathcal{S}_3) = \begin{cases}
+\text{Recommended} & \text{if } \mathcal{S}_1 \land \mathcal{S}_2 \land \mathcal{S}_3 \\
+\text{Consider} & \text{if exactly two of } \{\mathcal{S}_1, \mathcal{S}_2, \mathcal{S}_3\} \text{ hold} \\
+\text{Avoid} & \text{otherwise}
+\end{cases}
+$$ {#eq-signal-strength}
+:::
 
-The boundary function is normalized by its short-maturity limiting value to remove dependence on the strike price and account for the discontinuity that occurs when $r < q$:
 
-$$\widetilde{B}(\tau) = \frac{B(\tau)}{X} \text{ where } X = K \min(1, r/q) \tag{5.5}$$
+## Realised Volatility Estimation
 
-**Stage 3: Logarithmic Transformation**
+### The Yang-Zhang Estimator
 
-A logarithmic transformation is applied to linearize the exponential decay behavior and compress the range of the function:
+The Alaris system employs the Yang-Zhang (2000) estimator for realised volatility, which is efficient for OHLC (open-high-low-close) data and robust to opening gaps.
 
-$$G(\xi) = \ln(\widetilde{B}(\xi^2)) \tag{5.6}$$
+::: {#def-yang-zhang}
+## Yang-Zhang Estimator
+Given $n$ trading days with price data $(O_i, H_i, L_i, C_i)$, define:
 
-**Stage 4: Variance-Stabilizing Transformation**
+**Overnight Variance**:
+$$
+\sigma_o^2 = \frac{1}{n-1} \sum_{i=1}^{n} \left(\ln\frac{O_i}{C_{i-1}} - \bar{o}\right)^2
+$$
 
-The final transformation employs a variance-stabilizing technique that converts the function to a nearly linear form:
+**Open-to-Close Variance**:
+$$
+\sigma_c^2 = \frac{1}{n-1} \sum_{i=1}^{n} \left(\ln\frac{C_i}{O_i} - \bar{c}\right)^2
+$$
 
-$$H(\xi) = G(\xi)^2 = [\ln(\widetilde{B}(\xi^2))]^2 \tag{5.7}$$
+**Rogers-Satchell Variance**:
+$$
+\sigma_{RS}^2 = \frac{1}{n} \sum_{i=1}^{n} \left[\ln\frac{H_i}{C_i} \cdot \ln\frac{H_i}{O_i} + \ln\frac{L_i}{C_i} \cdot \ln\frac{L_i}{O_i}\right]
+$$
 
-**Theorem 5.1** (Transformation Regularity): *The composite transformation $H(\xi)$ defined by equation (5.7) is infinitely differentiable on $(0,1]$ and exhibits polynomial growth in its derivatives, ensuring exponential convergence of the Chebyshev approximation.*
+**Combined Estimator**:
+$$
+\sigma_{YZ}^2 = \sigma_o^2 + k\sigma_c^2 + (1-k)\sigma_{RS}^2
+$$ {#eq-yang-zhang}
 
-The proof of this theorem relies on the asymptotic analysis of the boundary function and demonstrates that the transformed function $H(\xi)$ possesses the regularity properties necessary for spectral convergence.
+where $k = 0.34 / (1.34 + \frac{n+1}{n-1})$.
+:::
 
-### Chebyshev Collocation Implementation
+::: {#thm-yz-efficiency}
+## Yang-Zhang Efficiency
+The Yang-Zhang estimator achieves efficiency factor $\eta \approx 8$ relative to close-to-close volatility estimation, meaning it requires approximately $1/8$ as many observations for equivalent precision.
+:::
 
-The collocation method determines the expansion coefficients by requiring the approximation to satisfy the governing equation at a discrete set of carefully chosen points. For Chebyshev polynomials, the optimal choice of collocation points corresponds to the Chebyshev-Gauss-Lobatto nodes:
 
-$$\xi_j = \cos\left(\frac{j\pi}{N}\right), \quad j = 0, 1, \ldots, N \tag{5.8}$$
+## Term Structure Analysis
 
-These points cluster near the boundaries of the interval $[-1,1]$ and provide optimal conditioning for the resulting linear system.
+### Linear Term Structure Model
 
-The boundary values $H(\xi_j)$ at the collocation points determine the Chebyshev expansion coefficients through the discrete cosine transform:
+The implied volatility term structure is modelled as:
 
-$$a_k = \frac{2}{N} \sum_{j=0}^{N} \frac{H(\xi_j)}{c_k} \cos\left(\frac{jk\pi}{N}\right) \tag{5.9}$$
+$$
+\sigma_I(\tau) = \alpha + \beta \cdot \tau + \epsilon(\tau)
+$$ {#eq-term-structure}
 
-where $c_0 = 2$ and $c_k = 1$ for $k \geq 1$.
+where $\tau$ is days to expiration.
 
-The evaluation of the interpolating polynomial at arbitrary points employs the numerically stable Clenshaw recurrence algorithm:
+The slope parameter $\beta$ is estimated via ordinary least squares:
 
-$$\begin{aligned}
-b_{N+1} &= b_{N+2} = 0 \\
-b_k &= a_k + 2\xi b_{k+1} - b_{k+2}, \quad k = N, N-1, \ldots, 1 \\
-H(\xi) &= a_0 + \xi b_1 - b_2
-\end{aligned} \tag{5.10}$$
+$$
+\hat{\beta} = \frac{\sum_{i=1}^{m}(\tau_i - \bar{\tau})(\sigma_i - \bar{\sigma})}{\sum_{i=1}^{m}(\tau_i - \bar{\tau})^2}
+$$ {#eq-ols-slope}
 
-### Convergence Analysis
+::: {#def-term-structure-signal}
+## Term Structure Trading Signal
+A negative slope $\hat{\beta} < \beta^* = -0.00406$ indicates elevated short-dated implied volatility relative to longer tenors, consistent with the pre-earnings IV premium.
+:::
 
-The convergence properties of the spectral collocation method depend fundamentally on the smoothness of the transformed boundary function. For the Alaris transformation sequence, the convergence can be characterized through the following theorem.
 
-**Theorem 5.2** (Spectral Convergence): *Let $H(\xi)$ denote the transformed boundary function defined by equation (5.7), and let $H_N(\xi)$ denote its $N$-point Chebyshev interpolant. If $H$ is analytic in a region containing $[-1,1]$, then the approximation error satisfies:*
+## Position Sizing: The Kelly Criterion
 
-$$\|H - H_N\|_{\infty} \leq C \rho^{-N} \tag{5.11}$$
+### Optimal Growth Framework
 
-*where $C$ is a constant depending on the function and $\rho > 1$ is determined by the location of the nearest singularity in the complex plane.*
+Position sizing employs the Kelly criterion to maximise long-run geometric growth rate.
 
-The exponential convergence rate characterized by equation (5.11) represents a dramatic improvement over the algebraic convergence rates $O(N^{-p})$ achieved by finite difference methods. This superior convergence enables the achievement of high accuracy with relatively few degrees of freedom, typically requiring only 5-8 collocation points for most practical applications.
+::: {#thm-kelly}
+## Kelly Criterion
+For a bet with probability $p$ of winning return $b$ and probability $(1-p)$ of losing stake, the growth-optimal fraction is:
 
-### Integration of Singular Kernels
+$$
+f^* = \frac{p(b+1) - 1}{b} = \frac{pb - (1-p)}{b}
+$$ {#eq-kelly-full}
 
-The integral operators appearing in the boundary equations often contain weak singularities that require careful mathematical treatment to maintain the accuracy of the spectral method. The smooth-pasting formulation contains integrals of the form:
+For small expected returns, this simplifies to:
 
-$$\mathcal{I}(\tau) = \int_0^\tau \frac{f(u)}{\sqrt{\tau-u}} du \tag{5.12}$$
+$$
+f^* \approx \frac{\mu}{\sigma^2}
+$$
 
-where the factor $(\tau-u)^{-1/2}$ creates a weak singularity at $u = \tau$.
+where $\mu$ is expected return and $\sigma^2$ is variance.
+:::
 
-The Alaris methodology eliminates this singularity through the analytical transformation $z = \sqrt{\tau-u}$, which yields $du = -2z \, dz$ and converts the integral to:
+### Fractional Kelly Implementation
 
-$$\mathcal{I}(\tau) = 2\int_0^{\sqrt{\tau}} f(\tau-z^2) z \, dz \tag{5.13}$$
+The Alaris system employs fractional Kelly sizing to reduce variance:
 
-This transformation completely removes the singularity and produces a smooth integrand amenable to high-order quadrature rules. The additional factor of $z$ ensures that the transformed integral remains well-behaved at $z = 0$.
+$$
+f_{\text{actual}} = \kappa \cdot f^* \quad \text{with } \kappa \in \{0.01, 0.02\}
+$$ {#eq-fractional-kelly}
 
-For computational efficiency, the integration domain is further normalized to the standard interval $[-1,1]$ through:
+The fraction $\kappa$ depends on signal strength:
 
-$$y = -1 + \frac{2z}{\sqrt{\tau}} = -1 + 2\sqrt{\frac{\tau-u}{\tau}} \tag{5.14}$$
+$$
+\kappa = \begin{cases}
+0.02 & \text{if } \Sigma = \text{Recommended} \\
+0.01 & \text{if } \Sigma = \text{Consider} \\
+0 & \text{if } \Sigma = \text{Avoid}
+\end{cases}
+$$
 
-This normalization enables the use of standard Gaussian quadrature weights and nodes, eliminating the need to recompute quadrature parameters for each value of $\tau$.
 
-## Fixed-Point Iteration and Convergence Acceleration
+# Fault Detection and Monitoring System
 
-### Mathematical Structure of the Fixed-Point Problem
+## Overview of the Fault Framework
 
-The boundary integral equations derived in the previous sections can be cast in the abstract fixed-point form $B = \mathcal{F}(B)$ where $\mathcal{F}$ represents a nonlinear operator mapping boundary functions to boundary functions. The mathematical properties of this operator determine the convergence behavior of iterative solution methods.
+The Alaris fault detection system is designed to identify conditions where model assumptions may be violated or execution may be compromised. Each fault condition is specified as a mathematically precise inequality or predicate.
 
-For the single-boundary case, the fixed-point operator takes the form:
+### Fault Classification
 
-$$\mathcal{F}(B)(\tau) = K e^{(r-q)\tau} \frac{N(\tau,B)}{D(\tau,B)} \tag{6.1}$$
+Faults are classified into four categories:
 
-where the functionals $N(\tau,B)$ and $D(\tau,B)$ are defined through the integral terms in the boundary equation.
+1. **Data Quality Faults**: Violations of input data validity assumptions
+2. **Model Validity Faults**: Conditions where pricing models may be unreliable  
+3. **Execution Risk Faults**: Conditions threatening profitable execution
+4. **Position Risk Faults**: Conditions requiring position adjustment or exit
 
-**Theorem 6.1** (Contraction Mapping): *Under suitable regularity conditions on the parameters $(r,q,\sigma)$ and for boundary functions in an appropriate function space, the operator $\mathcal{F}$ defined by equation (6.1) is a contraction mapping with Lipschitz constant $L < 1$.*
 
-The proof of this theorem employs the analysis of the Gâteaux derivative of the operator $\mathcal{F}$ and demonstrates that small perturbations in the boundary function lead to proportionally smaller perturbations in the image, ensuring convergence of the fixed-point iteration.
+## Data Quality Validation
 
-### Accelerated Iteration Schemes
+### Price Data Validation
 
-While the basic fixed-point iteration $B^{(k+1)} = \mathcal{F}(B^{(k)})$ guarantees convergence under the contraction mapping property, the convergence rate is typically linear and may require numerous iterations to achieve high precision. The Alaris methodology employs sophisticated acceleration techniques to achieve quadratic convergence rates.
+::: {#def-price-validation}
+## Price Data Validity Predicates
+For price data point $P_i = (O_i, H_i, L_i, C_i, V_i)$:
 
-The Jacobi-Newton acceleration scheme incorporates information about the functional derivative of the operator $\mathcal{F}$ to achieve superlinear convergence. The iteration takes the form:
+\begin{align}
+\mathcal{D}_1(P_i) &\equiv O_i > 0 \land H_i > 0 \land L_i > 0 \land C_i > 0 \tag{Positivity} \\
+\mathcal{D}_2(P_i) &\equiv L_i \leq O_i \leq H_i \land L_i \leq C_i \leq H_i \tag{OHLC Consistency} \\
+\mathcal{D}_3(P_i) &\equiv V_i \geq 0 \tag{Volume Non-negativity} \\
+\mathcal{D}_4(P_i, P_{i-1}) &\equiv \left|\frac{O_i - C_{i-1}}{C_{i-1}}\right| < 0.50 \tag{Gap Reasonableness}
+\end{align}
 
-$$B^{(k+1)}(\tau) = B^{(k)}(\tau) + \eta \frac{B^{(k)}(\tau) - \mathcal{F}(B^{(k)})(\tau)}{\mathcal{F}'(B^{(k)})(\tau) - 1} \tag{6.2}$$
+Aggregate price validity:
+$$
+\mathcal{D}_{\text{price}}(P_i) \equiv \bigwedge_{j=1}^{4} \mathcal{D}_j
+$$
+:::
 
-where $\mathcal{F}'(B)(\tau)$ denotes the Gâteaux derivative of the operator with respect to boundary perturbations at the point $\tau$, and $\eta \in (0,1]$ represents a relaxation parameter.
+### Implied Volatility Validation
 
-The computation of the functional derivative requires evaluation of additional integral expressions but typically reduces the required number of iterations from dozens to fewer than five, providing substantial overall computational savings.
+::: {#def-iv-validation}
+## IV Data Validity Predicates
+For implied volatility observation $\sigma_I$:
 
-**Lemma 6.1** (Gâteaux Derivative): *For both single-boundary fixed-point systems, the Gâteaux derivative of the operator $\mathcal{F}$ with respect to proportional boundary perturbations $\ln B(\tau) \to \ln B(\tau) + \omega g(\tau)$ satisfies:*
+\begin{align}
+\mathcal{D}_5(\sigma_I) &\equiv 0.01 \leq \sigma_I \leq 5.00 \tag{Range Constraint} \\
+\mathcal{D}_6(\sigma_I, \sigma_I') &\equiv \left|\sigma_I - \sigma_I'\right| < 0.50 \tag{Temporal Continuity}
+\end{align}
+:::
 
-$$\frac{\partial \mathcal{F}}{\partial \omega}\bigg|_{\omega=0} = \frac{K e^{(r-q)\tau}}{D(\tau,B)} \int_0^\tau e^{ru} \frac{r-q}{B(u)/K} \psi(\tau-u, B(\tau)/B(u)) \frac{\phi(d_-(\tau-u,B(\tau)/B(u)))}{\sigma\sqrt{\tau-u}} (g(\tau) - g(u)) du \tag{6.3}$$
+### Volume and Open Interest Validation
 
-*where $\psi$ is a system-dependent weighting function.*
+::: {#def-liquidity-validation}
+## Liquidity Data Validity
+For option contract with volume $V$ and open interest $OI$:
 
-### Anderson Acceleration
+\begin{align}
+\mathcal{D}_7(V, OI) &\equiv V \geq 0 \land OI \geq 0 \tag{Non-negativity} \\
+\mathcal{D}_8(V, OI) &\equiv V \leq 10 \cdot OI \tag{Volume/OI Ratio}
+\end{align}
+:::
 
-For boundary functions that exhibit slowly converging fixed-point behavior, the Alaris framework incorporates Anderson acceleration, a multisecant method that combines information from multiple previous iterates to accelerate convergence.
 
-The Anderson acceleration maintains a history of the most recent $m$ iterates and residuals:
+## Execution Cost Validation
 
-$$\mathbf{F}_k = [F_k, F_{k-1}, \ldots, F_{k-m+1}], \quad \mathbf{G}_k = [G_k, G_{k-1}, \ldots, G_{k-m+1}] \tag{6.4}$$
+### Cost Model Specification
 
-where $F_j = B^{(j)}$ and $G_j = \mathcal{F}(B^{(j)}) - B^{(j)}$ represent the iterates and residuals, respectively.
+The execution cost model computes total transaction cost as:
 
-The accelerated iterate is computed as:
+$$
+C_{\text{exec}}(n) = C_{\text{spread}}(n) + C_{\text{commission}}(n) + C_{\text{slippage}}(n)
+$$ {#eq-exec-cost}
 
-$$B^{(k+1)} = \mathcal{F}\left(\mathbf{F}_k \boldsymbol{\alpha}\right) \tag{6.5}$$
+where $n$ is the number of contracts.
 
-where the weight vector $\boldsymbol{\alpha}$ solves the least-squares problem:
+**Spread Cost**:
+$$
+C_{\text{spread}}(n) = \frac{(A - B)}{2} \cdot n \cdot 100
+$$
 
-$$\boldsymbol{\alpha} = \arg\min_{\boldsymbol{\beta}} \left\|\mathbf{G}_k \boldsymbol{\beta}\right\|_2 \text{ subject to } \mathbf{e}^T \boldsymbol{\beta} = 1 \tag{6.6}$$
+where $A$ is the ask price and $B$ is the bid price.
 
-This acceleration technique often achieves superlinear convergence for well-conditioned problems and provides robustness against ill-conditioning that might affect the Jacobi-Newton method.
+**Commission Cost**:
+$$
+C_{\text{commission}}(n) = (\phi_{\text{broker}} + \phi_{\text{exchange}} + \phi_{\text{regulatory}}) \cdot n
+$$
 
-### Double-Boundary Iteration Schemes
+with $\phi_{\text{broker}} = 0.65$, $\phi_{\text{exchange}} = 0.30$, $\phi_{\text{regulatory}} = 0.02$.
 
-The mathematical decoupling established in Theorem 4.2 enables the development of separate iteration schemes for the upper and lower boundaries in the double-boundary case. However, the practical implementation reveals that different acceleration strategies prove optimal for each boundary.
+### Cost Survival Predicate
 
-For the upper boundary $B(\tau)$, which typically exhibits more nonlinear behavior, the full Jacobi-Newton acceleration provides optimal performance:
+::: {#def-cost-survival}
+## Execution Cost Survival
+The post-cost IV/RV ratio must remain above threshold:
 
-$$B^{(k+1)}(\tau) = B^{(k)}(\tau) + \eta \frac{B^{(k)}(\tau) - \mathcal{F}_B(B^{(k)})(\tau)}{\mathcal{F}_B'(B^{(k)})(\tau) - 1} \tag{6.7}$$
+$$
+\mathcal{F}_{\text{cost}}(\xi) \equiv \frac{\sigma_I^{30}(\xi)}{\sigma_R^{30}(\xi)} \cdot \left(1 - \frac{C_{\text{exec}}}{V_{\text{position}}}\right) \geq 1.20
+$$ {#eq-cost-survival}
 
-For the lower boundary $Y(\tau)$, which tends to be smoother and more linear, simplified acceleration schemes or even standard fixed-point iteration often suffice:
+where $V_{\text{position}}$ is the position value.
+:::
 
-$$Y^{(k+1)}(\tau) = \mathcal{F}_Y(Y^{(k)})(\tau) \tag{6.8}$$
 
-where $\mathcal{F}_Y$ denotes the fixed-point operator derived from the smooth-pasting condition for the lower boundary.
+## Vega Correlation Analysis
 
-### Convergence Monitoring and Adaptive Control
+### Independence Criterion
 
-The Alaris framework incorporates sophisticated convergence monitoring that employs multiple criteria to ensure robust termination of the iterative process. The primary convergence criterion monitors the maximum relative change in the boundary function:
+The calendar spread strategy requires that front-month and back-month implied volatilities exhibit low correlation, ensuring that the spread provides genuine vega hedging.
 
-$$\epsilon_{\text{rel}} = \max_{\tau \in [0,\tau_{\max}]} \left|\frac{B^{(k+1)}(\tau) - B^{(k)}(\tau)}{B^{(k)}(\tau)}\right| \tag{6.9}$$
+::: {#def-vega-independence}
+## Vega Correlation Fault Predicate
+Let $\{\sigma_I^{(F)}_i\}_{i=1}^{N}$ and $\{\sigma_I^{(B)}_i\}_{i=1}^{N}$ be historical IV observations for front and back months.
 
-Secondary criteria detect oscillatory behavior and stagnation:
+The Pearson correlation coefficient is:
 
-$$\epsilon_{\text{osc}} = \max_{\tau \in [0,\tau_{\max}]} \left|B^{(k+1)}(\tau) - B^{(k-1)}(\tau)\right| \tag{6.10}$$
+$$
+\rho_{FB} = \frac{\sum_{i=1}^{N}(\sigma_I^{(F)}_i - \bar{\sigma}^{(F)})(\sigma_I^{(B)}_i - \bar{\sigma}^{(B)})}{\sqrt{\sum_{i=1}^{N}(\sigma_I^{(F)}_i - \bar{\sigma}^{(F)})^2} \cdot \sqrt{\sum_{i=1}^{N}(\sigma_I^{(B)}_i - \bar{\sigma}^{(B)})^2}}
+$$ {#eq-correlation}
 
-$$\epsilon_{\text{stag}} = \max_{j=1,\ldots,5} \left\|\mathbf{B}^{(k)} - \mathbf{B}^{(k-j)}\right\|_{\infty} \tag{6.11}$$
+The vega independence fault predicate is:
 
-The iteration terminates when either high accuracy is achieved ($\epsilon_{\text{rel}} < \epsilon_{\text{tol}}$) or when the convergence rate indicates that further iterations are unlikely to improve the solution significantly.
+$$
+\mathcal{F}_{\text{vega}}(\xi) \equiv |\rho_{FB}(\xi)| > 0.70
+$$ {#eq-vega-fault}
 
-## Mathematical Validation and Error Analysis
+If $\mathcal{F}_{\text{vega}}$ is true, the trade should not proceed due to elevated sympathetic collapse risk.
+:::
 
-### Theoretical Error Bounds
 
-The mathematical validation of the Alaris methodology requires rigorous analysis of the various sources of approximation error and their cumulative effect on the final option price computation. The total error can be decomposed into three primary components: boundary approximation error, integral approximation error, and iteration truncation error.
+## Liquidity Assurance
 
-**Boundary Approximation Error**: The spectral approximation of the transformed boundary function $H(\xi)$ through its $N$-point Chebyshev interpolant $H_N(\xi)$ introduces an error that propagates through the inverse transformation to the original boundary function. The error bound can be established through the following theorem.
+### Position-to-Liquidity Constraints
 
-**Theorem 7.1** (Boundary Error Propagation): *Let $B(\tau)$ denote the exact exercise boundary and $B_N(\tau)$ denote the boundary reconstructed from the $N$-point Chebyshev approximation of the transformed function $H(\xi)$. If the transformation sequence satisfies the regularity conditions of Theorem 5.1, then:*
+::: {#def-liquidity-constraints}
+## Liquidity Fault Predicates
+For position size $n$ contracts with daily volume $V$ and open interest $OI$:
 
-$$\|B - B_N\|_{\infty} \leq C_1 \|H - H_N\|_{\infty} \leq C_1 C_2 \rho^{-N} \tag{7.1}$$
+\begin{align}
+\mathcal{F}_{\text{vol}}(n) &\equiv \frac{n}{V} > 0.05 \tag{Volume Ratio Fault} \\
+\mathcal{F}_{\text{OI}}(n) &\equiv \frac{n}{OI} > 0.02 \tag{Open Interest Ratio Fault}
+\end{align}
 
-*where $C_1$ depends on the transformation Jacobian and $C_2$ depends on the smoothness of $H(\xi)$.*
+Aggregate liquidity fault:
+$$
+\mathcal{F}_{\text{liq}}(n) \equiv \mathcal{F}_{\text{vol}}(n) \lor \mathcal{F}_{\text{OI}}(n)
+$$ {#eq-liquidity-fault}
+:::
 
-**Integral Approximation Error**: The evaluation of the integral operators through high-order quadrature rules introduces a second source of approximation error. For Gaussian quadrature with $L$ nodes applied to smooth integrands, the error satisfies:
 
-$$\left|\int_0^\tau f(u) du - \sum_{l=1}^{L} w_l f(u_l)\right| \leq C_3 \tau^{2L+1} \max_{u \in [0,\tau]} |f^{(2L)}(u)| \tag{7.2}$$
+## Gamma Risk Monitoring
 
-where $\{w_l, u_l\}_{l=1}^{L}$ represent the quadrature weights and nodes.
+### Delta-Neutral Maintenance
 
-**Iteration Truncation Error**: The finite number of fixed-point iterations introduces a third error component that depends on the convergence rate of the iteration scheme. For the accelerated methods, this error typically decreases quadratically:
+The calendar spread strategy aims to maintain delta-neutrality. Monitoring detects when delta exceeds acceptable bounds.
 
-$$\|B^{(M)} - B^*\|_{\infty} \leq C_4 \lambda^M \tag{7.3}$$
+::: {#def-delta-monitoring}
+## Delta Drift Fault
+For position with net delta $\Delta_{\text{net}}$:
 
-where $M$ represents the number of iterations, $B^*$ denotes the exact fixed-point solution, and $\lambda < 1$ characterizes the convergence rate.
+$$
+\mathcal{F}_{\text{delta}}(\Delta_{\text{net}}) \equiv |\Delta_{\text{net}}| > 0.10
+$$ {#eq-delta-fault}
+:::
 
-### Option Price Error Analysis
+### Gamma Warning Threshold
 
-The ultimate objective of the boundary computation is the accurate evaluation of option prices. The error in the option price depends on both the accuracy of the boundary approximation and the precision of the final price integral evaluation.
+::: {#def-gamma-monitoring}
+## Gamma Risk Fault
+For position with net gamma $\Gamma_{\text{net}}$:
 
-**Theorem 7.2** (Option Price Error Bound): *Let $V(\tau,s)$ denote the exact American option price and $V_h(\tau,s)$ denote the computed approximation using boundary approximation error $\|B - B_h\|_{\infty} \leq h$. Then the option price error satisfies:*
+$$
+\mathcal{F}_{\text{gamma}}(\Gamma_{\text{net}}) \equiv \Gamma_{\text{net}} < -0.05
+$$ {#eq-gamma-fault}
 
-$$|V(\tau,s) - V_h(\tau,s)| \leq C_5 h + C_6 \varepsilon_{\text{quad}} \tag{7.4}$$
+Negative gamma indicates the position loses value as the underlying moves in either direction, requiring heightened monitoring.
+:::
 
-*where $\varepsilon_{\text{quad}}$ represents the quadrature error in the final price integral and the constants $C_5, C_6$ depend on the option parameters and the boundary sensitivity.*
+### Moneyness Alert
 
-The proof of this theorem employs the Lipschitz continuity of the option price functional with respect to the boundary function and demonstrates that the price error scales linearly with the boundary approximation error.
+::: {#def-moneyness-alert}
+## Moneyness Fault
+For underlying price $S$ and strike $K$:
 
-### Convergence Verification
+$$
+\mathcal{F}_{\text{moneyness}}(S, K) \equiv \left|\frac{S - K}{K}\right| > 0.03
+$$ {#eq-moneyness-fault}
 
-The practical verification of convergence requires comparison with high-precision benchmark solutions. The Alaris framework employs multiple validation strategies to ensure the reliability of computed results.
+Calendar spreads function optimally near the money; significant drift requires re-evaluation.
+:::
 
-**Richardson Extrapolation**: Multiple solutions are computed with different numbers of collocation points $N_1 < N_2 < N_3$, and Richardson extrapolation is used to estimate the error:
 
-$$V_{\text{extrap}} = V_{N_3} + \frac{V_{N_3} - V_{N_2}}{(N_3/N_2)^p - 1} \tag{7.5}$$
+## Circuit Breaker Conditions
 
-where $p$ represents the theoretical convergence order.
+### System-Level Halts
 
-**Method Comparison**: The spectral results are compared with high-precision finite difference solutions computed on extremely fine grids. These comparisons consistently demonstrate the superior accuracy of the spectral approach.
+::: {#def-circuit-breakers}
+## Circuit Breaker Predicates
+**Position Loss Circuit Breaker**:
+$$
+\mathcal{C}_{\text{loss}}(\xi) \equiv \frac{P\&L_{\text{daily}}(\xi)}{\text{Capital}} < -0.05
+$$ {#eq-loss-breaker}
 
-**Asymptotic Verification**: For limiting cases where analytical solutions exist (such as perpetual options or European options), the computed results are compared with the exact formulas to verify the correctness of the implementation.
+**Data Feed Circuit Breaker**:
+$$
+\mathcal{C}_{\text{data}} \equiv t_{\text{current}} - t_{\text{last update}} > 15 \text{ minutes}
+$$ {#eq-data-breaker}
 
-### Greeks Computation and Sensitivity Analysis
+**Validation Failure Circuit Breaker**:
+$$
+\mathcal{C}_{\text{valid}} \equiv \frac{\#\text{validation failures}}{\#\text{total checks}} > 0.10
+$$ {#eq-valid-breaker}
 
-The spectral representation of the boundary function enables the analytical computation of option price sensitivities (Greeks) with exceptional accuracy. The Greeks can be computed through either direct differentiation of the price formula or through automatic differentiation of the boundary computation algorithm.
+**Volatility Spike Circuit Breaker**:
+$$
+\mathcal{C}_{\text{VIX}} \equiv \text{VIX} > 40 \lor \sigma_R(\xi) > 2 \cdot \bar{\sigma}_R(\xi)
+$$ {#eq-vix-breaker}
+:::
 
-**Delta Computation**: The hedge ratio $\Delta = \partial V/\partial S$ can be computed analytically from the integral representation:
 
-$$\Delta(\tau,s) = \frac{\partial v}{\partial s}(\tau,s) + \int_0^\tau \left[rK e^{-r(\tau-u)} + qs e^{-q(\tau-u)}\right] \frac{\phi(d_-(\tau-u,s/B(u)))}{\sigma\sqrt{\tau-u}} \frac{1}{s} du \tag{7.6}$$
+## Production Validation Aggregation
 
-**Gamma Computation**: The convexity $\Gamma = \partial^2 V/\partial S^2$ follows from differentiating the delta expression:
+### Composite Production Readiness
 
-$$\Gamma(\tau,s) = \frac{\partial^2 v}{\partial s^2}(\tau,s) + \int_0^\tau \frac{rK e^{-r(\tau-u)} + qs e^{-q(\tau-u)}}{\sigma\sqrt{\tau-u}} \frac{\phi(d_-(\tau-u,s/B(u)))}{s^2} \left[\frac{d_-(\tau-u,s/B(u))}{\sigma\sqrt{\tau-u}} - 1\right] du \tag{7.7}$$
+::: {#def-production-ready}
+## Production Readiness Predicate
+A signal is production-ready if and only if:
 
-The spectral accuracy of the boundary representation ensures that the Greeks maintain their precision throughout the differentiation process, providing reliable sensitivity measures for risk management applications.
+$$
+\mathcal{P}_{\text{ready}}(\xi) \equiv \Sigma(\xi) = \text{Recommended} \land \bigwedge_{i \in \mathcal{I}} \neg\mathcal{F}_i(\xi)
+$$ {#eq-production-ready}
 
-## Extensions and Mathematical Generalizations
+where $\mathcal{I} = \{\text{cost}, \text{vega}, \text{liq}, \text{delta}, \text{gamma}, \text{moneyness}\}$ is the index set of all fault predicates.
+:::
 
-### Time-Dependent Parameter Extensions
+The production validator (Component STHD005A) implements this predicate composition, returning a structured result indicating which conditions passed and which failed.
 
-The mathematical framework of the Alaris methodology can be extended to accommodate time-dependent interest rates, dividend yields, and volatilities through careful modification of the integral equation formulation. Consider the stochastic differential equation:
 
-$$\frac{dS(t)}{S(t)} = (r(t)-q(t))dt + \sigma(t) dW(t) \tag{8.1}$$
+# Stochasticity and Non-Determinism
 
-where the parameters are now deterministic functions of time.
+## Inherently Stochastic Components
 
-The modified integral representation takes the form:
+Certain components of the Alaris system involve quantities that are fundamentally stochastic. This section explicitly characterises these components and the statistical methods used to handle them.
 
-$$V(\tau,s) = v_T(\tau,s) + \int_0^\tau r(T-u)K P(T-\tau,T-u) \Phi(-\tilde{d}_-(u,s/B(u),T-\tau)) du - \int_0^\tau q(T-u)s Q(T-\tau,T-u) \Phi(-\tilde{d}_+(u,s/B(u),T-\tau)) du \tag{8.2}$$
+### Asset Price Evolution
 
-where $P(t_1,t_2) = \exp(-\int_{t_1}^{t_2} r(u) du)$ and $Q(t_1,t_2) = \exp(-\int_{t_1}^{t_2} q(u) du)$ represent the integrated discount factors, and the modified $d$-functions account for the time-dependent parameters:
+The underlying asset price follows a continuous-time stochastic process (@eq-sde). **This is not a fault**—it is the defining characteristic of the problem domain. The system handles this through:
 
-$$\tilde{d}_{\pm}(\delta,z,t) = \frac{\ln(z \cdot Q(t,t+\delta)/P(t,t+\delta)) \pm \frac{1}{2}\Sigma(t,t+\delta)}{\sqrt{\Sigma(t,t+\delta)}} \tag{8.3}$$
+1. **Risk-neutral pricing**: Option values are computed as expectations under $\mathbb{Q}$, eliminating the need to forecast price direction
+2. **Delta hedging**: The strategy is approximately delta-neutral, reducing sensitivity to price movements
 
-with $\Sigma(t_1,t_2) = \int_{t_1}^{t_2} \sigma(u)^2 du$.
+### Volatility Estimation
 
-### Jump-Diffusion Extensions
+Realised volatility estimation from finite samples is inherently subject to statistical uncertainty.
 
-The incorporation of jump components in the underlying asset price dynamics requires fundamental modifications to both the stochastic process specification and the integral equation formulation. Consider the jump-diffusion process:
+::: {#prop-yz-distribution}
+## Yang-Zhang Estimator Distribution
+Under the assumption of geometric Brownian motion, the Yang-Zhang variance estimator $\hat{\sigma}_{YZ}^2$ satisfies:
 
-$$\frac{dS(t)}{S(t-)} = (r-q-\lambda\kappa)dt + \sigma dW(t) + \int_{\mathbb{R}} z \tilde{N}(dt,dz) \tag{8.4}$$
+$$
+\frac{(n-1)\hat{\sigma}_{YZ}^2}{\sigma^2} \sim \chi^2_{n-1 + \eta(n-1)}
+$$
 
-where $\tilde{N}(dt,dz)$ represents a compensated Poisson random measure with intensity $\lambda$ and jump size distribution characterized by the Lévy measure $\nu(dz)$.
+approximately, where $\eta \approx 7$ is the efficiency factor.
 
-The modified integral equation must account for the additional contribution from jumps that cross the exercise boundary:
+The $(1-\alpha)$ confidence interval for $\sigma^2$ is:
 
-$$V(\tau,s) = v_J(\tau,s) + \int_0^\tau \mathbb{E}^{\mathbb{Q}}\left[e^{-ru} \mathbbm{1}_{\{S(u-) \leq B(\tau-u)\}} (rK - qS(u-)) \mid S(0) = s\right] du + \int_0^\tau \lambda \int_{\mathbb{R}} \mathbb{E}^{\mathbb{Q}}\left[e^{-ru} (V(\tau-u,S(u-)e^z) - V(\tau-u,S(u-))) \mathbbm{1}_{\{S(u-) > B(\tau-u), S(u-)e^z \leq B(\tau-u)\}} \mid S(0) = s\right] \nu(dz) du \tag{8.5}$$
+$$
+\left[\frac{(n-1)\hat{\sigma}_{YZ}^2}{\chi^2_{n-1, 1-\alpha/2}}, \frac{(n-1)\hat{\sigma}_{YZ}^2}{\chi^2_{n-1, \alpha/2}}\right]
+$$
+:::
 
-where $v_J(\tau,s)$ denotes the corresponding European option price under the jump-diffusion model.
+**Accounting for this uncertainty**: The IV/RV ratio threshold (1.25) incorporates a buffer above 1.0 to account for estimation error in the denominator.
 
-### Stochastic Volatility Extensions
 
-The extension to stochastic volatility models, such as the Heston model, requires a fundamental increase in dimensionality as the exercise boundary becomes a function of both time and the volatility state variable. Consider the Heston system:
+### Implied Volatility Surface
 
-$$\begin{aligned}
-\frac{dS(t)}{S(t)} &= (r-q)dt + \sqrt{V(t)} dW_1(t) \\
-dV(t) &= \kappa(\theta - V(t))dt + \sigma_v \sqrt{V(t)} dW_2(t)
-\end{aligned} \tag{8.6}$$
+Implied volatility observations are subject to:
 
-where $dW_1(t) dW_2(t) = \rho dt$.
+1. **Bid-ask spread noise**: Mid-prices may not reflect true market clearing levels
+2. **Temporal asynchrony**: Options may have traded at different times
+3. **Model error**: Black-Scholes implied volatility assumes constant volatility
 
-The exercise boundary becomes a surface $B(\tau,v)$ in the two-dimensional state space, and the integral equation formulation requires two-dimensional integration over the exercise region. The spectral collocation method can be extended through tensor product constructions using bivariate Chebyshev polynomials:
+**Accounting for these**: The term structure analysis uses robust regression on multiple strike/expiry points, and the slope threshold (-0.00406) is calibrated from empirical studies.
 
-$$B_N(\tau,v) = \sum_{j=0}^{N_1} \sum_{k=0}^{N_2} c_{jk} T_j(\xi_\tau) T_k(\xi_v) \tag{8.7}$$
 
-where $\xi_\tau$ and $\xi_v$ represent transformed time and volatility variables, respectively.
+## Deterministic Components
 
-### Multi-Asset Extensions
+The following components are fully deterministic given their inputs:
 
-The extension to multi-asset American options, such as exchange options or basket options, follows naturally from the single-asset framework. For a two-asset exchange option with payoff $(S_1 - S_2)^+$, the exercise boundary becomes a curve in the two-dimensional asset price space.
+### Boundary Computation
 
-The correlated geometric Brownian motion system:
+Given parameters $(S, K, T, r, q, \sigma)$, the computed boundaries $B(\tau)$ and $Y(\tau)$ are deterministic. The only source of variation is:
 
-$$\begin{aligned}
-\frac{dS_1(t)}{S_1(t)} &= (r-q_1)dt + \sigma_1 dW_1(t) \\
-\frac{dS_2(t)}{S_2(t)} &= (r-q_2)dt + \sigma_2 dW_2(t)
-\end{aligned} \tag{8.8}$$
+1. **Numerical precision**: Controlled by specified tolerances ($\epsilon = 10^{-10}$)
+2. **Iteration limits**: Maximum iterations prevent infinite loops
 
-with $dW_1(t) dW_2(t) = \rho dt$ leads to a two-dimensional optimal stopping problem with exercise boundary $B(\tau,s_2)$ representing the critical level of $S_1$ as a function of time and the level of $S_2$.
+### Signal Generation
 
-The spectral representation of the boundary surface employs two-dimensional Chebyshev expansion:
+Given input data, the signal strength $\Sigma$ is deterministic:
 
-$$B(\tau,s_2) = \sum_{j=0}^{N_1} \sum_{k=0}^{N_2} c_{jk} T_j(\xi_\tau) T_k(\xi_{s_2}) \tag{8.9}$$
+$$
+\Sigma = \Sigma(\mathcal{S}_1, \mathcal{S}_2, \mathcal{S}_3)
+$$
 
-where appropriate transformations are applied to both the temporal and spatial dimensions.
+Each $\mathcal{S}_i$ is a deterministic function of the input data.
 
-## Conclusion
+### Fault Detection
 
-The Alaris mathematical framework represents a comprehensive analytical architecture that fundamentally advances the theoretical and computational treatment of American option pricing across the full spectrum of interest rate conditions. Through the innovative combination of optimal stopping theory, integral equation transformations, and spectral collocation techniques, the methodology achieves unprecedented mathematical rigor while maintaining exceptional computational efficiency.
+All fault predicates $\mathcal{F}_i$ are deterministic Boolean functions of system state.
 
-The mathematical elegance of the approach lies in its unified treatment of both traditional single-boundary configurations and the complex double-boundary topologies that emerge under negative interest rate conditions. The development of decoupled iteration schemes for the double-boundary case represents a particularly significant mathematical contribution, enabling the independent computation of multiple exercise boundaries while preserving the convergence properties of the single-boundary framework.
 
-The transformation sequence that converts singular, highly nonlinear boundary functions into smooth, nearly linear functions amenable to spectral approximation demonstrates the power of appropriate mathematical preprocessing in numerical algorithm design. The resulting exponential convergence rates represent a qualitative improvement over traditional algebraic methods and enable the achievement of machine precision accuracy with minimal computational effort.
+## Accounting Summary
 
-The rigorous mathematical analysis of convergence properties, error bounds, and stability characteristics provides theoretical guarantees that complement the exceptional empirical performance. The framework's ability to maintain mathematical rigor across challenging parameter regimes, including those that arise in modern negative interest rate environments, ensures its applicability to the full range of contemporary financial market conditions.
+| Component | Stochastic? | Accounting Method |
+|-----------|-------------|-------------------|
+| Asset price | Yes | Risk-neutral pricing, delta hedging |
+| Realised volatility | Yes (estimation) | Yang-Zhang estimator, ratio buffer |
+| Implied volatility | Yes (measurement) | Multiple observations, robust fitting |
+| Boundary computation | No | Tolerance specification |
+| Signal generation | No | Deterministic predicate evaluation |
+| Fault detection | No | Deterministic inequality evaluation |
+| Position sizing | No | Deterministic Kelly formula |
 
-The extensibility of the mathematical framework to accommodate time-dependent parameters, alternative underlying processes, and multi-dimensional problems demonstrates the fundamental soundness of the analytical approach. The spectral methodology provides a robust foundation for addressing increasingly complex derivative valuation challenges while maintaining the mathematical precision required for critical financial applications.
+: Component Stochasticity Summary {#tbl-stochasticity}
 
-The Alaris framework thus establishes a new standard for the mathematical treatment of American option pricing problems, combining theoretical rigor with computational excellence in a unified analytical architecture. The methodology's emphasis on mathematical elegance, provable convergence properties, and practical efficiency positions it as a foundational contribution to the field of computational finance that will enable both current applications and future theoretical developments.
 
----
+# Numerical Methods and Implementation
+
+## Collocation Method for Boundary Refinement
+
+### Chebyshev Node Distribution
+
+The Kim integral equation is discretised using Chebyshev collocation points for optimal polynomial interpolation:
+
+$$
+\xi_j = \cos\left(\frac{(2j-1)\pi}{2N}\right), \quad j = 1, \ldots, N
+$$ {#eq-chebyshev}
+
+These nodes are mapped to the time domain $[0, T]$ via:
+
+$$
+\tau_j = \frac{T}{2}(1 + \xi_j)
+$$
+
+### Spectral Convergence
+
+::: {#thm-spectral}
+## Spectral Convergence
+For analytic integrands, the collocation method achieves exponential convergence:
+
+$$
+\|B_N - B_{\text{exact}}\|_{\infty} = O(e^{-cN})
+$$
+
+for some constant $c > 0$ depending on the analyticity domain.
+:::
+
+The Alaris system uses $N = 50$ collocation points, providing accuracy exceeding the Healy (2021) benchmark values.
+
+
+## Convergence Criteria
+
+### Iteration Termination
+
+The FP-B' iteration terminates when:
+
+$$
+\max_{j=1,\ldots,N} |B_j^{(n+1)} - B_j^{(n)}| < \epsilon_{\text{tol}}
+$$ {#eq-convergence}
+
+with $\epsilon_{\text{tol}} = 10^{-6}$ and maximum iterations $N_{\max} = 100$.
+
+
+## Benchmark Validation
+
+The implementation is validated against Healy (2021) Table 2 benchmark values:
+
+| $T$ (years) | $B_{\text{Healy}}$ | $Y_{\text{Healy}}$ | $B_{\text{Alaris}}$ | $Y_{\text{Alaris}}$ | Error |
+|-------------|--------------------|--------------------|---------------------|---------------------|-------|
+| 5 | 71.60 | 61.60 | 71.60 | 61.60 | <0.01% |
+| 10 | 69.62 | 58.72 | 69.62 | 58.72 | <0.01% |
+| 15 | 68.00 | 57.00 | 68.00 | 57.00 | <0.01% |
+
+: Healy Benchmark Validation {#tbl-healy-benchmark}
+
+Parameters: $S = K = 100$, $r = -0.005$, $q = -0.01$, $\sigma = 0.08$.
+
+
+# Conclusion
+
+This document has provided a complete mathematical specification of the Alaris quantitative trading system. The key contributions are:
+
+1. **Rigorous option pricing framework** extending classical methods to negative interest rate environments with double boundary topologies
+
+2. **Formal specification of trading signals** with each criterion expressed as an evaluable mathematical predicate
+
+3. **Complete fault detection system** specified as a collection of inequalities and logical predicates, ensuring deterministic monitoring behaviour
+
+4. **Explicit treatment of stochasticity** distinguishing between inherently random quantities and measurement/estimation uncertainty, with appropriate statistical methods for each
+
+The mathematical framework ensures that every algorithmic decision in the Alaris system corresponds to the evaluation of a well-defined mathematical expression. Where randomness is inherent to the underlying phenomena, we have specified the probabilistic models and derived estimators with known statistical properties. Where measurements are subject to uncertainty, we have incorporated appropriate buffers and validation checks.
+
+This specification serves as the authoritative reference for the Alaris implementation and provides the foundation for formal verification of system behaviour.
+
+
+# References
+
+::: {#refs}
+:::
+
+
+# Appendix: Symbol Reference
+
+## Greek Letters
+
+| Symbol | Description |
+|--------|-------------|
+| $\alpha$ | Term structure intercept |
+| $\beta$ | Term structure slope |
+| $\gamma, \Gamma$ | Option gamma (second derivative w.r.t. spot) |
+| $\delta, \Delta$ | Option delta (first derivative w.r.t. spot) |
+| $\epsilon$ | Error term / tolerance |
+| $\eta$ | Efficiency factor |
+| $\theta, \Theta$ | Option theta (time decay) |
+| $\kappa$ | Kelly fraction multiplier |
+| $\lambda$ | Characteristic equation roots |
+| $\mu$ | Expected return |
+| $\rho$ | Correlation coefficient |
+| $\sigma$ | Volatility |
+| $\tau$ | Time to maturity |
+| $\phi$ | Commission component |
+| $\Phi$ | Standard normal CDF |
+| $\Sigma$ | Signal strength function |
+
+: Greek Letter Notation {#tbl-greek}
+
+
+## Roman Letters
+
+| Symbol | Description |
+|--------|-------------|
+| $B(\tau)$ | Upper exercise boundary |
+| $Y(\tau)$ | Lower exercise boundary |
+| $C$ | Cost component |
+| $K$ | Strike price |
+| $N$ | Number of collocation points |
+| $O, H, L, C$ | Open, High, Low, Close prices |
+| $r$ | Risk-free interest rate |
+| $q$ | Dividend yield |
+| $S$ | Spot price |
+| $T$ | Maturity |
+| $V$ | Option value / Volume |
+| $v$ | European option value |
+
+: Roman Letter Notation {#tbl-roman}
+
+
+## Calligraphic and Blackboard Bold
+
+| Symbol | Description |
+|--------|-------------|
+| $\mathcal{C}$ | Circuit breaker predicate |
+| $\mathcal{D}$ | Data validation predicate |
+| $\mathcal{E}$ | Exercise region |
+| $\mathcal{F}$ | Fault predicate / Filtration |
+| $\mathcal{K}$ | Integral kernel |
+| $\mathcal{L}$ | Infinitesimal generator |
+| $\mathcal{P}$ | Early exercise premium / Production predicate |
+| $\mathcal{R}$ | Regime indicator |
+| $\mathcal{S}$ | Signal criterion predicate |
+| $\mathcal{T}$ | Set of stopping times |
+| $\mathcal{V}$ | Validity predicate |
+| $\mathbb{E}$ | Expectation operator |
+| $\mathbb{P}$ | Physical probability measure |
+| $\mathbb{Q}$ | Risk-neutral probability measure |
+| $\mathbb{R}$ | Real numbers |
+
+: Special Notation {#tbl-special}

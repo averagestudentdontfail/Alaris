@@ -90,28 +90,59 @@ public sealed class AlarisDataBridge
 
         try
         {
-            // Step 1: Fetch all data concurrently
-            var spotPriceTask = _marketDataProvider.GetSpotPriceAsync(symbol, cancellationToken);
+            // Step 1: Fetch primary data concurrently
+            // Note: Spot price is derived from historical bars, NOT from /prev endpoint
+            // The /prev endpoint only returns yesterday's close and doesn't work for historical dates in backtests
             var historicalBarsTask = GetHistoricalBarsForRvCalculationAsync(symbol, effectiveDate, cancellationToken);
             var optionChainTask = GetOptionChainWithCacheFallbackAsync(symbol, effectiveDate, cancellationToken);
             var earningsTask = GetEarningsDataAsync(symbol, effectiveDate, cancellationToken);
-            var riskFreeRateTask = _riskFreeRateProvider.GetCurrentRateAsync(cancellationToken);
             var avgVolumeTask = _marketDataProvider.GetAverageVolume30DayAsync(symbol, effectiveDate, cancellationToken);
 
             await Task.WhenAll(
-                spotPriceTask,
                 historicalBarsTask,
                 optionChainTask,
                 earningsTask,
-                riskFreeRateTask,
                 avgVolumeTask);
 
-            var spotPrice = await spotPriceTask;
             var historicalBars = await historicalBarsTask;
             var optionChain = await optionChainTask;
             var (nextEarnings, historicalEarnings) = await earningsTask;
-            var riskFreeRate = await riskFreeRateTask;
             var avgVolume = await avgVolumeTask;
+            
+            // Derive spot price from the most recent bar's close price
+            // This works for both live (recent bars) and backtesting (historical bars)
+            decimal spotPrice;
+            if (historicalBars.Count > 0)
+            {
+                // Get the bar closest to evaluation date (but not after it)
+                var relevantBar = historicalBars
+                    .Where(b => b.Timestamp.Date <= effectiveDate.Date)
+                    .OrderByDescending(b => b.Timestamp)
+                    .FirstOrDefault();
+                    
+                spotPrice = relevantBar?.Close ?? historicalBars[^1].Close;
+                _logger.LogDebug("Derived spot price {Price} from historical bars for {Symbol}", spotPrice, symbol);
+            }
+            else
+            {
+                // Fallback to live spot price only if no historical data
+                spotPrice = await _marketDataProvider.GetSpotPriceAsync(symbol, cancellationToken);
+            }
+            
+            // For backtesting, use a reasonable historical risk-free rate
+            // The Treasury API returns 0% for future dates, so we use a sensible default
+            decimal riskFreeRate;
+            if (evaluationDate.HasValue && evaluationDate.Value > DateTime.UtcNow.Date)
+            {
+                // Future date in backtest - use typical historical rate
+                riskFreeRate = 0.05m; // 5% typical for 2023-2024
+                _logger.LogDebug("Using default risk-free rate {Rate}% for backtest date {Date}", 
+                    riskFreeRate * 100, effectiveDate);
+            }
+            else
+            {
+                riskFreeRate = await _riskFreeRateProvider.GetCurrentRateAsync(cancellationToken);
+            }
 
             // Step 2: Construct snapshot
             var snapshot = new MarketDataSnapshot

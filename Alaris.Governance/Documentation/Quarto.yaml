@@ -2,21 +2,26 @@ project:
   type: default
   output-dir: docs
 
+# Render only the mathematical specification by default
+render:
+  - Alaris-Mathematical-Specification.qmd
+
 format:
   html:
     theme: [cosmo, Styling.scss]
     toc: true
+    toc-depth: 4
     number-sections: true
+    code-fold: true
+    smooth-scroll: true
     
   pdf:
     pdf-engine: xelatex
     keep-tex: true
-    include-in-header:
-      text: |
-        \usepackage{microtype}
-        \usepackage{booktabs}
-        \usepackage{amsmath}
-        \usepackage{mathtools}
+    documentclass: article
+    classoption: [11pt, a4paper]
+    geometry:
+      - margin=2.5cm
 
 execute:
   freeze: auto

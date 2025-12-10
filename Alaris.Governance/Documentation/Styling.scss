@@ -1,85 +1,98 @@
 /*-- scss:defaults --*/
 
-// Import Inter (Clean sans-serif) and JetBrains Mono (Code)
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+// Professional typography
+@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&family=Source+Sans+3:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
-// Minimalist Palette
-$primary-color: #0f172a;      // Slate 900
-$secondary-color: #334155;    // Slate 700
-$accent-color: #2563eb;       // Blue 600
-$text-color: #1e293b;         // Slate 800
+// Colour palette - Academic/Technical
+$primary-color: #1a365d;      // Deep navy
+$secondary-color: #2d3748;    // Slate grey
+$accent-color: #2b6cb0;       // Professional blue
+$text-color: #1a202c;         // Near black
 $background-color: #ffffff;
-$light-gray: #f8fafc;         // Slate 50
-$border-color: #e2e8f0;       // Slate 200
+$light-gray: #f7fafc;
+$border-color: #e2e8f0;
+$theorem-bg: #ebf8ff;         // Light blue for theorems
+$definition-bg: #faf5ff;      // Light purple for definitions
+$remark-bg: #fffaf0;          // Light orange for remarks
 
 // Typography
-$font-family-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-$font-family-mono: "JetBrains Mono", monospace;
+$font-family-sans: "Source Sans 3", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+$font-family-serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+$font-family-mono: "JetBrains Mono", "Fira Code", monospace;
 
 $font-size-base: 1.05rem;
-$line-height-base: 1.7;
+$line-height-base: 1.75;
 
 /*-- scss:rules --*/
 
 body {
-  font-family: $font-family-sans;
+  font-family: $font-family-serif;
   color: $text-color;
   background-color: $background-color;
   -webkit-font-smoothing: antialiased;
+  line-height: $line-height-base;
 }
 
-// Container
+// Container width for readability
 .quarto-container {
-  max-width: 1200px; // Slightly narrower for better readability
+  max-width: 900px;
   padding: 0 2rem;
 }
 
-// Headings - Minimal & Clean
+// Headings - Professional academic style
 h1, h2, h3, h4, h5, h6 {
+  font-family: $font-family-sans;
   color: $primary-color;
   font-weight: 600;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
   margin-top: 2.5rem;
   margin-bottom: 1rem;
 }
 
 h1 {
-  font-size: 2.5rem;
+  font-size: 2.25rem;
   font-weight: 700;
-  border-bottom: none; // Removed heavy border
+  border-bottom: 2px solid $accent-color;
+  padding-bottom: 0.5rem;
   margin-bottom: 2rem;
 }
 
 h2 {
-  font-size: 1.75rem;
-  border-bottom: 1px solid $border-color; // Subtle divider
-  padding-bottom: 0.5rem;
+  font-size: 1.6rem;
+  border-bottom: 1px solid $border-color;
+  padding-bottom: 0.4rem;
 }
 
 h3 {
-  font-size: 1.35rem;
-  border-left: none; // Removed heavy border
+  font-size: 1.3rem;
   color: $secondary-color;
 }
 
-// Title Block - Centered & Elegant
+h4 {
+  font-size: 1.15rem;
+  font-weight: 500;
+}
+
+// Title block
 header#title-block-header {
   text-align: center;
-  margin-bottom: 4rem;
+  margin-bottom: 3rem;
   padding-bottom: 2rem;
-  border-bottom: 1px solid $border-color;
+  border-bottom: 2px solid $primary-color;
   
   h1.title {
-    font-size: 3rem;
+    font-size: 2.5rem;
     margin-bottom: 0.5rem;
     color: $primary-color;
+    border: none;
   }
   
   p.subtitle {
-    font-size: 1.4rem;
+    font-size: 1.25rem;
     color: $secondary-color;
-    font-weight: 300;
-    margin-bottom: 2rem;
+    font-weight: 400;
+    font-style: italic;
+    margin-bottom: 1.5rem;
   }
   
   .quarto-title-meta {
@@ -88,112 +101,221 @@ header#title-block-header {
     gap: 3rem;
     color: $secondary-color;
     font-size: 0.95rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+    font-family: $font-family-sans;
   }
 }
 
-// Abstract
+// Abstract styling
 .abstract {
   background-color: $light-gray;
-  border-radius: 8px;
-  padding: 2rem;
+  border-radius: 4px;
+  padding: 1.5rem 2rem;
   margin: 2rem 0;
-  border: 1px solid $border-color;
+  border-left: 4px solid $accent-color;
   
   .block-title {
+    font-family: $font-family-sans;
     font-weight: 600;
     text-transform: uppercase;
     font-size: 0.85rem;
     letter-spacing: 0.05em;
-    color: $secondary-color;
+    color: $accent-color;
     margin-bottom: 1rem;
+  }
+  
+  p {
+    font-size: 0.95rem;
+    text-align: justify;
   }
 }
 
-// Math Equations - THE FIX
+// Math equations - proper spacing and scroll
 .katex-display {
   overflow-x: auto;
   overflow-y: hidden;
   padding: 1rem 0;
   margin: 1.5rem 0;
-  text-align: center;
   
-  // Scrollbar styling
-  &::-webkit-scrollbar {
-    height: 6px;
-  }
-  &::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 3px;
-  }
-  
-  // Ensure the container allows scrolling
-  > .katex {
+  // Numbered equations
+  .katex-html {
     white-space: nowrap;
-    display: inline-block; 
-    min-width: 100%; 
   }
 }
 
-// Tables - Minimalist
+// Inline math
+.katex {
+  font-size: 1.1em;
+}
+
+// Callouts for theorems, definitions, etc.
+.callout {
+  margin: 1.5rem 0;
+  border-radius: 4px;
+  border-width: 1px;
+  
+  .callout-header {
+    font-family: $font-family-sans;
+    font-weight: 600;
+  }
+  
+  .callout-body {
+    font-size: 0.95rem;
+  }
+}
+
+.callout-note {
+  background-color: $theorem-bg;
+  border-color: $accent-color;
+}
+
+.callout-tip {
+  background-color: $definition-bg;
+  border-color: #805ad5;
+}
+
+.callout-warning {
+  background-color: $remark-bg;
+  border-color: #dd6b20;
+}
+
+// Tables - academic style
 table {
   width: 100%;
+  margin: 1.5rem 0;
   border-collapse: collapse;
-  margin: 2rem 0;
-  font-size: 0.95rem;
-}
-
-thead th {
-  text-align: left;
-  padding: 1rem;
-  background-color: $light-gray;
-  border-bottom: 2px solid $border-color;
-  font-weight: 600;
-  color: $primary-color;
-}
-
-tbody td {
-  padding: 1rem;
-  border-bottom: 1px solid $border-color;
-}
-
-// Table of Contents
-#TOC {
-  border: none;
-  background-color: transparent;
+  font-size: 0.9rem;
   
-  .toc-title {
-    font-size: 0.9rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: $secondary-color;
+  th {
+    font-family: $font-family-sans;
     font-weight: 600;
-    margin-bottom: 1rem;
-    border-bottom: none;
+    background-color: $light-gray;
+    border-bottom: 2px solid $border-color;
+    padding: 0.75rem;
+    text-align: left;
   }
   
-  ul {
-    border-left: 1px solid $border-color;
-    padding-left: 1rem;
+  td {
+    padding: 0.75rem;
+    border-bottom: 1px solid $border-color;
+  }
+  
+  caption {
+    font-family: $font-family-sans;
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-top: 0.5rem;
+    color: $secondary-color;
+  }
+}
+
+// Code blocks
+pre {
+  background-color: $light-gray;
+  border: 1px solid $border-color;
+  border-radius: 4px;
+  padding: 1rem;
+  font-family: $font-family-mono;
+  font-size: 0.85rem;
+  overflow-x: auto;
+}
+
+code {
+  font-family: $font-family-mono;
+  font-size: 0.9em;
+  background-color: $light-gray;
+  padding: 0.1em 0.3em;
+  border-radius: 3px;
+}
+
+pre code {
+  background-color: transparent;
+  padding: 0;
+}
+
+// Lists
+ul, ol {
+  margin: 1rem 0;
+  padding-left: 1.5rem;
+}
+
+li {
+  margin-bottom: 0.5rem;
+}
+
+// Block quotes
+blockquote {
+  border-left: 4px solid $accent-color;
+  margin: 1.5rem 0;
+  padding: 0.5rem 1.5rem;
+  background-color: $light-gray;
+  font-style: italic;
+}
+
+// Links
+a {
+  color: $accent-color;
+  text-decoration: none;
+  
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+// Table of contents
+#TOC {
+  font-family: $font-family-sans;
+  font-size: 0.9rem;
+  
+  a {
+    color: $secondary-color;
     
-    li a {
-      color: $secondary-color;
-      font-size: 0.95rem;
-      padding: 0.4rem 0;
-      display: block;
-      
-      &:hover, &.active {
-        color: $accent-color;
-      }
+    &:hover {
+      color: $accent-color;
     }
   }
 }
 
-// Code Blocks
-pre {
-  background-color: #1e1e1e; // Dark theme for code
-  color: #d4d4d4;
-  border-radius: 6px;
-  padding: 1.5rem;
+// References section
+#refs {
+  font-size: 0.9rem;
+  
+  .csl-entry {
+    margin-bottom: 1rem;
+    padding-left: 2em;
+    text-indent: -2em;
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+  .quarto-container {
+    padding: 0 1rem;
+  }
+  
+  h1 {
+    font-size: 1.75rem;
+  }
+  
+  h2 {
+    font-size: 1.4rem;
+  }
+  
+  .katex-display {
+    font-size: 0.9rem;
+  }
+}
+
+// Print styles
+@media print {
+  body {
+    font-size: 11pt;
+  }
+  
+  h1, h2, h3 {
+    page-break-after: avoid;
+  }
+  
+  table, figure {
+    page-break-inside: avoid;
+  }
 }
