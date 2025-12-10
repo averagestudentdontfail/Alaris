@@ -82,8 +82,9 @@ jobs:
       - name: Analyze core projects (excludes external code)
         run: |
           # Build only core Alaris projects with strict analysis
-          # Excludes: Alaris.Quantlib (SWIG-generated), Alaris.Lean (external)
-          for project in Alaris.Double Alaris.Strategy Alaris.Events Alaris.Test; do
+          # Excludes: Alaris.Quantlib (SWIG-generated), Alaris.Lean (external), 
+          #           Alaris.Test (depends on Lean/Quantlib transitively)
+          for project in Alaris.Double Alaris.Strategy Alaris.Events Alaris.Data Alaris.Simulation; do
             if [ -d "$project" ]; then
               echo "=== Analyzing $project ==="
               dotnet build "$project" --configuration Release \
