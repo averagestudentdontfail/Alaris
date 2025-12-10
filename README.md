@@ -1,23 +1,19 @@
-# Alaris Mathematical Specification
+# Alaris
 
-This directory contains the formal mathematical specification of the Alaris quantitative trading system. The document derives the complete theoretical foundation for option pricing under both positive and negative interest rate regimes, specifies the earnings-based volatility trading strategy with mathematically precise entry criteria, and formalises the fault monitoring framework as a system of inequalities and logical predicates.
+Alaris is a quantitative trading system designed to capture the implied volatility premium that manifests around corporate earnings announcements. The system implements calendar spread strategies on American-style equity options, exploiting the documented phenomenon that implied volatility systematically exceeds realised volatility in the days preceding earnings releases.
 
-## Overview
+## Theoretical Foundation
 
-The specification begins from first principles with the risk-neutral stochastic differential equation governing asset prices and develops the free boundary formulation for American option pricing. It extends this framework to the double boundary regime that arises under negative interest rates, where the optimal exercise region becomes a bounded interval rather than a half-line. The document then formalises the earnings volatility calendar spread strategy, expressing trading signals as evaluable predicates derived from academic literature. Finally, it specifies the complete fault detection system that monitors data quality, model validity, execution risk, and position risk.
+The pricing methodology derives from first principles, beginning with the risk-neutral stochastic differential equation governing asset prices and developing the free boundary formulation for American option pricing. The system extends this framework to accommodate negative interest rate environments, where the optimal exercise region exhibits double boundary behaviour. Trading signals are expressed as mathematically precise predicates derived from academic literature on earnings volatility, with position sizing governed by fractional Kelly criterion to balance growth optimisation against drawdown risk.
 
-## Building the Documentation
+## Architecture
 
-The specification is written in Quarto markdown and renders to both HTML and PDF formats. To build the documentation, ensure you have Quarto installed with XeLaTeX support, then run the following from this directory:
+The system is organised into domain-specific components. The pricing engine in `Alaris.Double` implements spectral collocation methods for solving the free boundary integral equations, validated against published benchmark values. The strategy layer in `Alaris.Strategy` encodes the signal generation logic and position management rules. Market data flows through `Alaris.Data`, which interfaces with external providers and maintains the historical databases required for volatility estimation. The backtesting infrastructure integrates with the LEAN algorithmic trading engine via `Alaris.Lean`, enabling systematic validation of strategy performance across historical earnings cycles.
 
-1. Navigate to the Documentation directory.
-2. Execute `quarto render Alaris.qmd` to generate both HTML and PDF outputs.
-3. The rendered files will appear as `Alaris.html` and `Alaris.pdf`.
+## Fault Monitoring
 
-## File Structure
+Every decision rule in the system corresponds to an evaluable predicate, ensuring deterministic behaviour under normal operating conditions. The fault detection framework monitors data quality, model validity, execution risk, and position risk through a system of inequalities and logical predicates. Circuit breakers trigger automatic position reduction or system halt when monitored quantities exceed specified thresholds, protecting against both market dislocations and data feed failures.
 
-The `Alaris.qmd` file is the primary source document. The `References.bib` file contains the bibliography in BibTeX format, covering American option pricing, volatility estimation, earnings announcements, and related financial literature. The `Finance.csl` file specifies the citation style, and `Styling.scss` provides custom styling for the HTML output. The `Literature` subdirectory contains reference materials used during document preparation.
+## Documentation
 
-## Dependencies
-
-Rendering requires Quarto 1.3 or later with a working TeX installation. The PDF output uses XeLaTeX with the microtype, booktabs, amsmath, amssymb, mathtools, tikz, and pgfplots packages. These are typically included in a full TeX Live installation.
+The formal mathematical specification is maintained in `Alaris.Governance/Documentation`, providing rigorous derivations of all computational methods employed by the system. This specification serves as the authoritative reference for implementation correctness and documents the academic provenance of the trading signals.
