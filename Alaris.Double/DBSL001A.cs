@@ -207,17 +207,31 @@ public sealed class DBSL001A
     /// <summary>
     /// Detects if the option is in a double boundary regime.
     /// </summary>
+    /// <remarks>
+    /// Uses hysteresis bands to prevent oscillation when rates hover near zero.
+    /// The regime only changes when rates clearly cross thresholds by at least
+    /// the hysteresis epsilon (5 basis points).
+    /// </remarks>
     private bool DetectDoubleBoundaryRegime()
     {
+        // Hysteresis epsilon: 5 basis points prevents oscillation at regime boundaries
+        const double HysteresisEpsilon = 0.0005;
+        
         if (!_isCall)
         {
             // Put: double boundary when q < r < 0
-            return _dividendYield < _rate && _rate < 0;
+            // With hysteresis: require clear crossing of thresholds
+            bool rateClearlyNegative = _rate < -HysteresisEpsilon;
+            bool dividendClearlyBelowRate = _dividendYield < _rate - HysteresisEpsilon;
+            return dividendClearlyBelowRate && rateClearlyNegative;
         }
         else
         {
             // Call: double boundary when 0 < r < q
-            return 0 < _rate && _rate < _dividendYield;
+            // With hysteresis: require clear crossing of thresholds
+            bool rateClearlyPositive = _rate > HysteresisEpsilon;
+            bool rateClearlyBelowDividend = _rate < _dividendYield - HysteresisEpsilon;
+            return rateClearlyPositive && rateClearlyBelowDividend;
         }
     }
     
