@@ -206,10 +206,10 @@
 \floatname{codelisting}{Listing}
 \newcommand*\listoflistings{\listof{codelisting}{List of Listings}}
 \usepackage{amsthm}
-\theoremstyle{plain}
-\newtheorem{theorem}{Theorem}[section]
 \theoremstyle{definition}
 \newtheorem{definition}{Definition}[section]
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
 \theoremstyle{remark}
 \AtBeginDocument{\renewcommand*{\proofname}{Proof}}
 \newtheorem*{remark}{Remark}
@@ -241,8 +241,8 @@
 \IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
 \urlstyle{same} % disable monospaced font for URLs
 \hypersetup{
-  pdftitle={Alaris: A Rigorous Mathematical Specification},
-  pdfauthor={Kiran K. Nath},
+  pdftitle={Alaris},
+  pdfauthor={Kiran Nath},
   pdflang={en-AU},
   pdfkeywords={American Options, Spectral Methods, Free Boundary
 Problems, Negative Interest Rates, Optimal Stopping, Earnings
@@ -255,16 +255,15 @@ Volatility, Calendar Spreads, Fault Detection},
   pdfcreator={LaTeX via pandoc}}
 
 
-\title{Alaris: A Rigorous Mathematical Specification}
+\title{Alaris}
 \usepackage{etoolbox}
 \makeatletter
 \providecommand{\subtitle}[1]{% add subtitle to \maketitle
   \apptocmd{\@title}{\par {\large #1 \par}}{}{}
 }
 \makeatother
-\subtitle{Formal Derivation of the Earnings Volatility Calendar Spread
-System with Complete Fault Monitoring}
-\author{Kiran K. Nath}
+\subtitle{Earnings Volatility Calendar Spread System}
+\author{Kiran Nath}
 \date{2025-12-01}
 
 \begin{document}
@@ -347,7 +346,7 @@ where:
   \(\mathbb{Q}\)
 \end{itemize}
 
-\begin{tcolorbox}[enhanced jigsaw, colbacktitle=quarto-callout-note-color!10!white, left=2mm, leftrule=.75mm, opacityback=0, colframe=quarto-callout-note-color-frame, title=\textcolor{quarto-callout-note-color}{\faInfo}\hspace{0.5em}{Parameter Domain Extension}, colback=white, rightrule=.15mm, toprule=.15mm, coltitle=black, breakable, bottomrule=.15mm, bottomtitle=1mm, toptitle=1mm, titlerule=0mm, arc=.35mm, opacitybacktitle=0.6]
+\begin{tcolorbox}[enhanced jigsaw, breakable, rightrule=.15mm, toptitle=1mm, leftrule=.75mm, left=2mm, opacitybacktitle=0.6, colbacktitle=quarto-callout-note-color!10!white, colframe=quarto-callout-note-color-frame, colback=white, coltitle=black, opacityback=0, titlerule=0mm, toprule=.15mm, bottomrule=.15mm, title=\textcolor{quarto-callout-note-color}{\faInfo}\hspace{0.5em}{Parameter Domain Extension}, arc=.35mm, bottomtitle=1mm]
 
 Unlike classical treatments that assume \(r \geq 0\), Alaris explicitly
 permits \(r < 0\) to accommodate negative interest rate environments.
