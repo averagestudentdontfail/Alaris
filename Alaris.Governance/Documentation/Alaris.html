@@ -1,16 +1,14 @@
 <!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" lang="en-AU" xml:lang="en-AU">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en-AU" xml:lang="en-AU"><head>
 
-<head>
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.6.38">
 
-<meta charset="utf-8" />
-<meta name="generator" content="quarto-1.6.38" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-
-<meta name="author" content="Kiran K. Nath" />
-<meta name="dcterms.date" content="2025-12-01" />
-<meta name="keywords" content="American Options, Spectral Methods, Free Boundary Problems, Negative Interest Rates, Optimal Stopping, Earnings Volatility, Calendar Spreads, Fault Detection" />
+<meta name="author" content="Kiran K. Nath">
+<meta name="dcterms.date" content="2025-12-01">
+<meta name="keywords" content="American Options, Spectral Methods, Free Boundary Problems, Negative Interest Rates, Optimal Stopping, Earnings Volatility, Calendar Spreads, Fault Detection">
 
 <title>Alaris: A Rigorous Mathematical Specification</title>
 <style>
@@ -46,7 +44,17 @@ div.csl-indent {
   margin-left: 2em;
 }</style>
 
-<!-- htmldependencies:E3FAD763 -->
+
+<script src="Alaris_files/libs/clipboard/clipboard.min.js"></script>
+<script src="Alaris_files/libs/quarto-html/quarto.js"></script>
+<script src="Alaris_files/libs/quarto-html/popper.min.js"></script>
+<script src="Alaris_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="Alaris_files/libs/quarto-html/anchor.min.js"></script>
+<link href="Alaris_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="Alaris_files/libs/quarto-html/quarto-syntax-highlighting-b663525e4b92bb903b2199e2d401bf36.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="Alaris_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="Alaris_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="Alaris_files/libs/bootstrap/bootstrap-a9537a988efdc6583aaf105e0637c119.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 
   <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
@@ -84,7 +92,161 @@ window.Quarto = {
 
 <div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
 <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
-  <div id="quarto-toc-target"></div>
+  <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#introduction" id="toc-introduction" class="nav-link active" data-scroll-target="#introduction"><span class="header-section-number">1</span> Introduction</a>
+  <ul>
+  <li><a href="#purpose-and-scope" id="toc-purpose-and-scope" class="nav-link" data-scroll-target="#purpose-and-scope"><span class="header-section-number">1.1</span> Purpose and Scope</a></li>
+  <li><a href="#document-organisation" id="toc-document-organisation" class="nav-link" data-scroll-target="#document-organisation"><span class="header-section-number">1.2</span> Document Organisation</a></li>
+  </ul></li>
+  <li><a href="#the-option-pricing-framework" id="toc-the-option-pricing-framework" class="nav-link" data-scroll-target="#the-option-pricing-framework"><span class="header-section-number">2</span> The Option Pricing Framework</a>
+  <ul>
+  <li><a href="#stochastic-foundation" id="toc-stochastic-foundation" class="nav-link" data-scroll-target="#stochastic-foundation"><span class="header-section-number">2.1</span> Stochastic Foundation</a>
+  <ul class="collapse">
+  <li><a href="#the-risk-neutral-measure" id="toc-the-risk-neutral-measure" class="nav-link" data-scroll-target="#the-risk-neutral-measure"><span class="header-section-number">2.1.1</span> The Risk-Neutral Measure</a></li>
+  <li><a href="#filtration-and-information-structure" id="toc-filtration-and-information-structure" class="nav-link" data-scroll-target="#filtration-and-information-structure"><span class="header-section-number">2.1.2</span> Filtration and Information Structure</a></li>
+  </ul></li>
+  <li><a href="#the-free-boundary-problem" id="toc-the-free-boundary-problem" class="nav-link" data-scroll-target="#the-free-boundary-problem"><span class="header-section-number">2.2</span> The Free Boundary Problem</a>
+  <ul class="collapse">
+  <li><a href="#value-function-characterisation" id="toc-value-function-characterisation" class="nav-link" data-scroll-target="#value-function-characterisation"><span class="header-section-number">2.2.1</span> Value Function Characterisation</a></li>
+  <li><a href="#the-free-boundary" id="toc-the-free-boundary" class="nav-link" data-scroll-target="#the-free-boundary"><span class="header-section-number">2.2.2</span> The Free Boundary</a></li>
+  </ul></li>
+  <li><a href="#the-integral-equation-formulation" id="toc-the-integral-equation-formulation" class="nav-link" data-scroll-target="#the-integral-equation-formulation"><span class="header-section-number">2.3</span> The Integral Equation Formulation</a>
+  <ul class="collapse">
+  <li><a href="#early-exercise-premium-decomposition" id="toc-early-exercise-premium-decomposition" class="nav-link" data-scroll-target="#early-exercise-premium-decomposition"><span class="header-section-number">2.3.1</span> Early Exercise Premium Decomposition</a></li>
+  <li><a href="#the-boundary-integral-equation" id="toc-the-boundary-integral-equation" class="nav-link" data-scroll-target="#the-boundary-integral-equation"><span class="header-section-number">2.3.2</span> The Boundary Integral Equation</a></li>
+  <li><a href="#asymptotic-behaviour" id="toc-asymptotic-behaviour" class="nav-link" data-scroll-target="#asymptotic-behaviour"><span class="header-section-number">2.3.3</span> Asymptotic Behaviour</a></li>
+  </ul></li>
+  <li><a href="#the-qd-approximation-method" id="toc-the-qd-approximation-method" class="nav-link" data-scroll-target="#the-qd-approximation-method"><span class="header-section-number">2.4</span> The QD+ Approximation Method</a>
+  <ul class="collapse">
+  <li><a href="#quasi-analytic-framework" id="toc-quasi-analytic-framework" class="nav-link" data-scroll-target="#quasi-analytic-framework"><span class="header-section-number">2.4.1</span> Quasi-Analytic Framework</a></li>
+  <li><a href="#super-halleys-method" id="toc-super-halleys-method" class="nav-link" data-scroll-target="#super-halleys-method"><span class="header-section-number">2.4.2</span> Super Halley’s Method</a></li>
+  </ul></li>
+  </ul></li>
+  <li><a href="#double-boundary-regime-under-negative-rates" id="toc-double-boundary-regime-under-negative-rates" class="nav-link" data-scroll-target="#double-boundary-regime-under-negative-rates"><span class="header-section-number">3</span> Double Boundary Regime Under Negative Rates</a>
+  <ul>
+  <li><a href="#regime-characterisation" id="toc-regime-characterisation" class="nav-link" data-scroll-target="#regime-characterisation"><span class="header-section-number">3.1</span> Regime Characterisation</a>
+  <ul class="collapse">
+  <li><a href="#mathematical-conditions-for-double-boundaries" id="toc-mathematical-conditions-for-double-boundaries" class="nav-link" data-scroll-target="#mathematical-conditions-for-double-boundaries"><span class="header-section-number">3.1.1</span> Mathematical Conditions for Double Boundaries</a></li>
+  <li><a href="#physical-interpretation" id="toc-physical-interpretation" class="nav-link" data-scroll-target="#physical-interpretation"><span class="header-section-number">3.1.2</span> Physical Interpretation</a></li>
+  <li><a href="#critical-volatility-threshold" id="toc-critical-volatility-threshold" class="nav-link" data-scroll-target="#critical-volatility-threshold"><span class="header-section-number">3.1.3</span> Critical Volatility Threshold</a></li>
+  </ul></li>
+  <li><a href="#modified-integral-equation-system" id="toc-modified-integral-equation-system" class="nav-link" data-scroll-target="#modified-integral-equation-system"><span class="header-section-number">3.2</span> Modified Integral Equation System</a>
+  <ul class="collapse">
+  <li><a href="#two-boundary-integral-representation" id="toc-two-boundary-integral-representation" class="nav-link" data-scroll-target="#two-boundary-integral-representation"><span class="header-section-number">3.2.1</span> Two-Boundary Integral Representation</a></li>
+  <li><a href="#decoupled-fixed-point-systems" id="toc-decoupled-fixed-point-systems" class="nav-link" data-scroll-target="#decoupled-fixed-point-systems"><span class="header-section-number">3.2.2</span> Decoupled Fixed-Point Systems</a></li>
+  <li><a href="#fp-b-stabilisation" id="toc-fp-b-stabilisation" class="nav-link" data-scroll-target="#fp-b-stabilisation"><span class="header-section-number">3.2.3</span> FP-B’ Stabilisation</a></li>
+  </ul></li>
+  <li><a href="#boundary-validation-predicates" id="toc-boundary-validation-predicates" class="nav-link" data-scroll-target="#boundary-validation-predicates"><span class="header-section-number">3.3</span> Boundary Validation Predicates</a></li>
+  </ul></li>
+  <li><a href="#the-earnings-volatility-trading-strategy" id="toc-the-earnings-volatility-trading-strategy" class="nav-link" data-scroll-target="#the-earnings-volatility-trading-strategy"><span class="header-section-number">4</span> The Earnings Volatility Trading Strategy</a>
+  <ul>
+  <li><a href="#theoretical-foundation" id="toc-theoretical-foundation" class="nav-link" data-scroll-target="#theoretical-foundation"><span class="header-section-number">4.1</span> Theoretical Foundation</a>
+  <ul class="collapse">
+  <li><a href="#the-volatility-risk-premium" id="toc-the-volatility-risk-premium" class="nav-link" data-scroll-target="#the-volatility-risk-premium"><span class="header-section-number">4.1.1</span> The Volatility Risk Premium</a></li>
+  </ul></li>
+  <li><a href="#earnings-vrp-assumption" id="toc-earnings-vrp-assumption" class="nav-link" data-scroll-target="#earnings-vrp-assumption"><span class="header-section-number">4.2</span> Earnings VRP Assumption</a></li>
+  <li><a href="#signal-generation-predicates" id="toc-signal-generation-predicates" class="nav-link" data-scroll-target="#signal-generation-predicates"><span class="header-section-number">4.3</span> Signal Generation Predicates</a>
+  <ul class="collapse">
+  <li><a href="#the-atilgan-criteria" id="toc-the-atilgan-criteria" class="nav-link" data-scroll-target="#the-atilgan-criteria"><span class="header-section-number">4.3.1</span> The Atilgan Criteria</a></li>
+  <li><a href="#signal-strength-classification" id="toc-signal-strength-classification" class="nav-link" data-scroll-target="#signal-strength-classification"><span class="header-section-number">4.3.2</span> Signal Strength Classification</a></li>
+  </ul></li>
+  <li><a href="#realised-volatility-estimation" id="toc-realised-volatility-estimation" class="nav-link" data-scroll-target="#realised-volatility-estimation"><span class="header-section-number">4.4</span> Realised Volatility Estimation</a>
+  <ul class="collapse">
+  <li><a href="#the-yang-zhang-estimator" id="toc-the-yang-zhang-estimator" class="nav-link" data-scroll-target="#the-yang-zhang-estimator"><span class="header-section-number">4.4.1</span> The Yang-Zhang Estimator</a></li>
+  </ul></li>
+  <li><a href="#term-structure-analysis" id="toc-term-structure-analysis" class="nav-link" data-scroll-target="#term-structure-analysis"><span class="header-section-number">4.5</span> Term Structure Analysis</a>
+  <ul class="collapse">
+  <li><a href="#linear-term-structure-model" id="toc-linear-term-structure-model" class="nav-link" data-scroll-target="#linear-term-structure-model"><span class="header-section-number">4.5.1</span> Linear Term Structure Model</a></li>
+  </ul></li>
+  <li><a href="#position-sizing-the-kelly-criterion" id="toc-position-sizing-the-kelly-criterion" class="nav-link" data-scroll-target="#position-sizing-the-kelly-criterion"><span class="header-section-number">4.6</span> Position Sizing: The Kelly Criterion</a>
+  <ul class="collapse">
+  <li><a href="#optimal-growth-framework" id="toc-optimal-growth-framework" class="nav-link" data-scroll-target="#optimal-growth-framework"><span class="header-section-number">4.6.1</span> Optimal Growth Framework</a></li>
+  <li><a href="#fractional-kelly-implementation" id="toc-fractional-kelly-implementation" class="nav-link" data-scroll-target="#fractional-kelly-implementation"><span class="header-section-number">4.6.2</span> Fractional Kelly Implementation</a></li>
+  </ul></li>
+  </ul></li>
+  <li><a href="#fault-detection-and-monitoring-system" id="toc-fault-detection-and-monitoring-system" class="nav-link" data-scroll-target="#fault-detection-and-monitoring-system"><span class="header-section-number">5</span> Fault Detection and Monitoring System</a>
+  <ul>
+  <li><a href="#overview-of-the-fault-framework" id="toc-overview-of-the-fault-framework" class="nav-link" data-scroll-target="#overview-of-the-fault-framework"><span class="header-section-number">5.1</span> Overview of the Fault Framework</a>
+  <ul class="collapse">
+  <li><a href="#fault-classification" id="toc-fault-classification" class="nav-link" data-scroll-target="#fault-classification"><span class="header-section-number">5.1.1</span> Fault Classification</a></li>
+  </ul></li>
+  <li><a href="#data-quality-validation" id="toc-data-quality-validation" class="nav-link" data-scroll-target="#data-quality-validation"><span class="header-section-number">5.2</span> Data Quality Validation</a>
+  <ul class="collapse">
+  <li><a href="#price-data-validation" id="toc-price-data-validation" class="nav-link" data-scroll-target="#price-data-validation"><span class="header-section-number">5.2.1</span> Price Data Validation</a></li>
+  <li><a href="#implied-volatility-validation" id="toc-implied-volatility-validation" class="nav-link" data-scroll-target="#implied-volatility-validation"><span class="header-section-number">5.2.2</span> Implied Volatility Validation</a></li>
+  <li><a href="#volume-and-open-interest-validation" id="toc-volume-and-open-interest-validation" class="nav-link" data-scroll-target="#volume-and-open-interest-validation"><span class="header-section-number">5.2.3</span> Volume and Open Interest Validation</a></li>
+  </ul></li>
+  <li><a href="#execution-cost-validation" id="toc-execution-cost-validation" class="nav-link" data-scroll-target="#execution-cost-validation"><span class="header-section-number">5.3</span> Execution Cost Validation</a>
+  <ul class="collapse">
+  <li><a href="#cost-model-specification" id="toc-cost-model-specification" class="nav-link" data-scroll-target="#cost-model-specification"><span class="header-section-number">5.3.1</span> Cost Model Specification</a></li>
+  <li><a href="#cost-survival-predicate" id="toc-cost-survival-predicate" class="nav-link" data-scroll-target="#cost-survival-predicate"><span class="header-section-number">5.3.2</span> Cost Survival Predicate</a></li>
+  </ul></li>
+  <li><a href="#vega-correlation-analysis" id="toc-vega-correlation-analysis" class="nav-link" data-scroll-target="#vega-correlation-analysis"><span class="header-section-number">5.4</span> Vega Correlation Analysis</a>
+  <ul class="collapse">
+  <li><a href="#independence-criterion" id="toc-independence-criterion" class="nav-link" data-scroll-target="#independence-criterion"><span class="header-section-number">5.4.1</span> Independence Criterion</a></li>
+  </ul></li>
+  <li><a href="#liquidity-assurance" id="toc-liquidity-assurance" class="nav-link" data-scroll-target="#liquidity-assurance"><span class="header-section-number">5.5</span> Liquidity Assurance</a>
+  <ul class="collapse">
+  <li><a href="#position-to-liquidity-constraints" id="toc-position-to-liquidity-constraints" class="nav-link" data-scroll-target="#position-to-liquidity-constraints"><span class="header-section-number">5.5.1</span> Position-to-Liquidity Constraints</a></li>
+  </ul></li>
+  <li><a href="#gamma-risk-monitoring" id="toc-gamma-risk-monitoring" class="nav-link" data-scroll-target="#gamma-risk-monitoring"><span class="header-section-number">5.6</span> Gamma Risk Monitoring</a>
+  <ul class="collapse">
+  <li><a href="#delta-neutral-maintenance" id="toc-delta-neutral-maintenance" class="nav-link" data-scroll-target="#delta-neutral-maintenance"><span class="header-section-number">5.6.1</span> Delta-Neutral Maintenance</a></li>
+  <li><a href="#gamma-warning-threshold" id="toc-gamma-warning-threshold" class="nav-link" data-scroll-target="#gamma-warning-threshold"><span class="header-section-number">5.6.2</span> Gamma Warning Threshold</a></li>
+  <li><a href="#moneyness-alert" id="toc-moneyness-alert" class="nav-link" data-scroll-target="#moneyness-alert"><span class="header-section-number">5.6.3</span> Moneyness Alert</a></li>
+  </ul></li>
+  <li><a href="#circuit-breaker-conditions" id="toc-circuit-breaker-conditions" class="nav-link" data-scroll-target="#circuit-breaker-conditions"><span class="header-section-number">5.7</span> Circuit Breaker Conditions</a>
+  <ul class="collapse">
+  <li><a href="#system-level-halts" id="toc-system-level-halts" class="nav-link" data-scroll-target="#system-level-halts"><span class="header-section-number">5.7.1</span> System-Level Halts</a></li>
+  </ul></li>
+  <li><a href="#production-validation-aggregation" id="toc-production-validation-aggregation" class="nav-link" data-scroll-target="#production-validation-aggregation"><span class="header-section-number">5.8</span> Production Validation Aggregation</a>
+  <ul class="collapse">
+  <li><a href="#composite-production-readiness" id="toc-composite-production-readiness" class="nav-link" data-scroll-target="#composite-production-readiness"><span class="header-section-number">5.8.1</span> Composite Production Readiness</a></li>
+  </ul></li>
+  </ul></li>
+  <li><a href="#stochasticity-and-non-determinism" id="toc-stochasticity-and-non-determinism" class="nav-link" data-scroll-target="#stochasticity-and-non-determinism"><span class="header-section-number">6</span> Stochasticity and Non-Determinism</a>
+  <ul>
+  <li><a href="#inherently-stochastic-components" id="toc-inherently-stochastic-components" class="nav-link" data-scroll-target="#inherently-stochastic-components"><span class="header-section-number">6.1</span> Inherently Stochastic Components</a>
+  <ul class="collapse">
+  <li><a href="#asset-price-evolution" id="toc-asset-price-evolution" class="nav-link" data-scroll-target="#asset-price-evolution"><span class="header-section-number">6.1.1</span> Asset Price Evolution</a></li>
+  <li><a href="#volatility-estimation" id="toc-volatility-estimation" class="nav-link" data-scroll-target="#volatility-estimation"><span class="header-section-number">6.1.2</span> Volatility Estimation</a></li>
+  </ul></li>
+  <li><a href="#yang-zhang-estimator-distribution" id="toc-yang-zhang-estimator-distribution" class="nav-link" data-scroll-target="#yang-zhang-estimator-distribution"><span class="header-section-number">6.2</span> Yang-Zhang Estimator Distribution</a></li>
+  <li><a href="#implied-volatility-surface" id="toc-implied-volatility-surface" class="nav-link" data-scroll-target="#implied-volatility-surface"><span class="header-section-number">6.2.1</span> Implied Volatility Surface</a></li>
+  <li><a href="#deterministic-components" id="toc-deterministic-components" class="nav-link" data-scroll-target="#deterministic-components"><span class="header-section-number">6.3</span> Deterministic Components</a>
+  <ul class="collapse">
+  <li><a href="#boundary-computation" id="toc-boundary-computation" class="nav-link" data-scroll-target="#boundary-computation"><span class="header-section-number">6.3.1</span> Boundary Computation</a></li>
+  <li><a href="#signal-generation" id="toc-signal-generation" class="nav-link" data-scroll-target="#signal-generation"><span class="header-section-number">6.3.2</span> Signal Generation</a></li>
+  <li><a href="#fault-detection" id="toc-fault-detection" class="nav-link" data-scroll-target="#fault-detection"><span class="header-section-number">6.3.3</span> Fault Detection</a></li>
+  </ul></li>
+  <li><a href="#accounting-summary" id="toc-accounting-summary" class="nav-link" data-scroll-target="#accounting-summary"><span class="header-section-number">6.4</span> Accounting Summary</a></li>
+  </ul></li>
+  <li><a href="#numerical-methods-and-implementation" id="toc-numerical-methods-and-implementation" class="nav-link" data-scroll-target="#numerical-methods-and-implementation"><span class="header-section-number">7</span> Numerical Methods and Implementation</a>
+  <ul>
+  <li><a href="#collocation-method-for-boundary-refinement" id="toc-collocation-method-for-boundary-refinement" class="nav-link" data-scroll-target="#collocation-method-for-boundary-refinement"><span class="header-section-number">7.1</span> Collocation Method for Boundary Refinement</a>
+  <ul class="collapse">
+  <li><a href="#chebyshev-node-distribution" id="toc-chebyshev-node-distribution" class="nav-link" data-scroll-target="#chebyshev-node-distribution"><span class="header-section-number">7.1.1</span> Chebyshev Node Distribution</a></li>
+  <li><a href="#spectral-convergence" id="toc-spectral-convergence" class="nav-link" data-scroll-target="#spectral-convergence"><span class="header-section-number">7.1.2</span> Spectral Convergence</a></li>
+  </ul></li>
+  <li><a href="#convergence-criteria" id="toc-convergence-criteria" class="nav-link" data-scroll-target="#convergence-criteria"><span class="header-section-number">7.2</span> Convergence Criteria</a>
+  <ul class="collapse">
+  <li><a href="#iteration-termination" id="toc-iteration-termination" class="nav-link" data-scroll-target="#iteration-termination"><span class="header-section-number">7.2.1</span> Iteration Termination</a></li>
+  </ul></li>
+  <li><a href="#benchmark-validation" id="toc-benchmark-validation" class="nav-link" data-scroll-target="#benchmark-validation"><span class="header-section-number">7.3</span> Benchmark Validation</a></li>
+  </ul></li>
+  <li><a href="#conclusion" id="toc-conclusion" class="nav-link" data-scroll-target="#conclusion"><span class="header-section-number">8</span> Conclusion</a></li>
+  <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references"><span class="header-section-number">9</span> References</a></li>
+  <li><a href="#appendix-symbol-reference" id="toc-appendix-symbol-reference" class="nav-link" data-scroll-target="#appendix-symbol-reference"><span class="header-section-number">10</span> Appendix: Symbol Reference</a>
+  <ul>
+  <li><a href="#greek-letters" id="toc-greek-letters" class="nav-link" data-scroll-target="#greek-letters"><span class="header-section-number">10.1</span> Greek Letters</a></li>
+  <li><a href="#roman-letters" id="toc-roman-letters" class="nav-link" data-scroll-target="#roman-letters"><span class="header-section-number">10.2</span> Roman Letters</a></li>
+  <li><a href="#calligraphic-and-blackboard-bold" id="toc-calligraphic-and-blackboard-bold" class="nav-link" data-scroll-target="#calligraphic-and-blackboard-bold"><span class="header-section-number">10.3</span> Calligraphic and Blackboard Bold</a></li>
+  </ul></li>
+  </ul>
+<div class="quarto-alternate-formats"><h2>Other Formats</h2><ul><li><a href="Alaris.pdf"><i class="bi bi-file-pdf"></i>PDF</a></li></ul></div></nav>
 </div>
 <main class="content" id="quarto-document-content">
 
@@ -131,179 +293,25 @@ window.Quarto = {
 
 </header>
 
-<nav id="TOC" role="doc-toc">
-    <h2 id="toc-title">Table of contents</h2>
-   
-  <ul>
-  <li><a href="#introduction" id="toc-introduction"><span class="header-section-number">1</span> Introduction</a>
-  <ul>
-  <li><a href="#purpose-and-scope" id="toc-purpose-and-scope"><span class="header-section-number">1.1</span> Purpose and Scope</a></li>
-  <li><a href="#document-organisation" id="toc-document-organisation"><span class="header-section-number">1.2</span> Document Organisation</a></li>
-  </ul></li>
-  <li><a href="#the-option-pricing-framework" id="toc-the-option-pricing-framework"><span class="header-section-number">2</span> The Option Pricing Framework</a>
-  <ul>
-  <li><a href="#stochastic-foundation" id="toc-stochastic-foundation"><span class="header-section-number">2.1</span> Stochastic Foundation</a>
-  <ul>
-  <li><a href="#the-risk-neutral-measure" id="toc-the-risk-neutral-measure"><span class="header-section-number">2.1.1</span> The Risk-Neutral Measure</a></li>
-  <li><a href="#filtration-and-information-structure" id="toc-filtration-and-information-structure"><span class="header-section-number">2.1.2</span> Filtration and Information Structure</a></li>
-  </ul></li>
-  <li><a href="#the-free-boundary-problem" id="toc-the-free-boundary-problem"><span class="header-section-number">2.2</span> The Free Boundary Problem</a>
-  <ul>
-  <li><a href="#value-function-characterisation" id="toc-value-function-characterisation"><span class="header-section-number">2.2.1</span> Value Function Characterisation</a></li>
-  <li><a href="#the-free-boundary" id="toc-the-free-boundary"><span class="header-section-number">2.2.2</span> The Free Boundary</a></li>
-  </ul></li>
-  <li><a href="#the-integral-equation-formulation" id="toc-the-integral-equation-formulation"><span class="header-section-number">2.3</span> The Integral Equation Formulation</a>
-  <ul>
-  <li><a href="#early-exercise-premium-decomposition" id="toc-early-exercise-premium-decomposition"><span class="header-section-number">2.3.1</span> Early Exercise Premium Decomposition</a></li>
-  <li><a href="#the-boundary-integral-equation" id="toc-the-boundary-integral-equation"><span class="header-section-number">2.3.2</span> The Boundary Integral Equation</a></li>
-  <li><a href="#asymptotic-behaviour" id="toc-asymptotic-behaviour"><span class="header-section-number">2.3.3</span> Asymptotic Behaviour</a></li>
-  </ul></li>
-  <li><a href="#the-qd-approximation-method" id="toc-the-qd-approximation-method"><span class="header-section-number">2.4</span> The QD+ Approximation Method</a>
-  <ul>
-  <li><a href="#quasi-analytic-framework" id="toc-quasi-analytic-framework"><span class="header-section-number">2.4.1</span> Quasi-Analytic Framework</a></li>
-  <li><a href="#super-halleys-method" id="toc-super-halleys-method"><span class="header-section-number">2.4.2</span> Super Halley’s Method</a></li>
-  </ul></li>
-  </ul></li>
-  <li><a href="#double-boundary-regime-under-negative-rates" id="toc-double-boundary-regime-under-negative-rates"><span class="header-section-number">3</span> Double Boundary Regime Under Negative Rates</a>
-  <ul>
-  <li><a href="#regime-characterisation" id="toc-regime-characterisation"><span class="header-section-number">3.1</span> Regime Characterisation</a>
-  <ul>
-  <li><a href="#mathematical-conditions-for-double-boundaries" id="toc-mathematical-conditions-for-double-boundaries"><span class="header-section-number">3.1.1</span> Mathematical Conditions for Double Boundaries</a></li>
-  <li><a href="#physical-interpretation" id="toc-physical-interpretation"><span class="header-section-number">3.1.2</span> Physical Interpretation</a></li>
-  <li><a href="#critical-volatility-threshold" id="toc-critical-volatility-threshold"><span class="header-section-number">3.1.3</span> Critical Volatility Threshold</a></li>
-  </ul></li>
-  <li><a href="#modified-integral-equation-system" id="toc-modified-integral-equation-system"><span class="header-section-number">3.2</span> Modified Integral Equation System</a>
-  <ul>
-  <li><a href="#two-boundary-integral-representation" id="toc-two-boundary-integral-representation"><span class="header-section-number">3.2.1</span> Two-Boundary Integral Representation</a></li>
-  <li><a href="#decoupled-fixed-point-systems" id="toc-decoupled-fixed-point-systems"><span class="header-section-number">3.2.2</span> Decoupled Fixed-Point Systems</a></li>
-  <li><a href="#fp-b-stabilisation" id="toc-fp-b-stabilisation"><span class="header-section-number">3.2.3</span> FP-B’ Stabilisation</a></li>
-  </ul></li>
-  <li><a href="#boundary-validation-predicates" id="toc-boundary-validation-predicates"><span class="header-section-number">3.3</span> Boundary Validation Predicates</a></li>
-  </ul></li>
-  <li><a href="#the-earnings-volatility-trading-strategy" id="toc-the-earnings-volatility-trading-strategy"><span class="header-section-number">4</span> The Earnings Volatility Trading Strategy</a>
-  <ul>
-  <li><a href="#theoretical-foundation" id="toc-theoretical-foundation"><span class="header-section-number">4.1</span> Theoretical Foundation</a>
-  <ul>
-  <li><a href="#the-volatility-risk-premium" id="toc-the-volatility-risk-premium"><span class="header-section-number">4.1.1</span> The Volatility Risk Premium</a></li>
-  </ul></li>
-  <li><a href="#earnings-vrp-assumption" id="toc-earnings-vrp-assumption"><span class="header-section-number">4.2</span> Earnings VRP Assumption</a></li>
-  <li><a href="#signal-generation-predicates" id="toc-signal-generation-predicates"><span class="header-section-number">4.3</span> Signal Generation Predicates</a>
-  <ul>
-  <li><a href="#the-atilgan-criteria" id="toc-the-atilgan-criteria"><span class="header-section-number">4.3.1</span> The Atilgan Criteria</a></li>
-  <li><a href="#signal-strength-classification" id="toc-signal-strength-classification"><span class="header-section-number">4.3.2</span> Signal Strength Classification</a></li>
-  </ul></li>
-  <li><a href="#realised-volatility-estimation" id="toc-realised-volatility-estimation"><span class="header-section-number">4.4</span> Realised Volatility Estimation</a>
-  <ul>
-  <li><a href="#the-yang-zhang-estimator" id="toc-the-yang-zhang-estimator"><span class="header-section-number">4.4.1</span> The Yang-Zhang Estimator</a></li>
-  </ul></li>
-  <li><a href="#term-structure-analysis" id="toc-term-structure-analysis"><span class="header-section-number">4.5</span> Term Structure Analysis</a>
-  <ul>
-  <li><a href="#linear-term-structure-model" id="toc-linear-term-structure-model"><span class="header-section-number">4.5.1</span> Linear Term Structure Model</a></li>
-  </ul></li>
-  <li><a href="#position-sizing-the-kelly-criterion" id="toc-position-sizing-the-kelly-criterion"><span class="header-section-number">4.6</span> Position Sizing: The Kelly Criterion</a>
-  <ul>
-  <li><a href="#optimal-growth-framework" id="toc-optimal-growth-framework"><span class="header-section-number">4.6.1</span> Optimal Growth Framework</a></li>
-  <li><a href="#fractional-kelly-implementation" id="toc-fractional-kelly-implementation"><span class="header-section-number">4.6.2</span> Fractional Kelly Implementation</a></li>
-  </ul></li>
-  </ul></li>
-  <li><a href="#fault-detection-and-monitoring-system" id="toc-fault-detection-and-monitoring-system"><span class="header-section-number">5</span> Fault Detection and Monitoring System</a>
-  <ul>
-  <li><a href="#overview-of-the-fault-framework" id="toc-overview-of-the-fault-framework"><span class="header-section-number">5.1</span> Overview of the Fault Framework</a>
-  <ul>
-  <li><a href="#fault-classification" id="toc-fault-classification"><span class="header-section-number">5.1.1</span> Fault Classification</a></li>
-  </ul></li>
-  <li><a href="#data-quality-validation" id="toc-data-quality-validation"><span class="header-section-number">5.2</span> Data Quality Validation</a>
-  <ul>
-  <li><a href="#price-data-validation" id="toc-price-data-validation"><span class="header-section-number">5.2.1</span> Price Data Validation</a></li>
-  <li><a href="#implied-volatility-validation" id="toc-implied-volatility-validation"><span class="header-section-number">5.2.2</span> Implied Volatility Validation</a></li>
-  <li><a href="#volume-and-open-interest-validation" id="toc-volume-and-open-interest-validation"><span class="header-section-number">5.2.3</span> Volume and Open Interest Validation</a></li>
-  </ul></li>
-  <li><a href="#execution-cost-validation" id="toc-execution-cost-validation"><span class="header-section-number">5.3</span> Execution Cost Validation</a>
-  <ul>
-  <li><a href="#cost-model-specification" id="toc-cost-model-specification"><span class="header-section-number">5.3.1</span> Cost Model Specification</a></li>
-  <li><a href="#cost-survival-predicate" id="toc-cost-survival-predicate"><span class="header-section-number">5.3.2</span> Cost Survival Predicate</a></li>
-  </ul></li>
-  <li><a href="#vega-correlation-analysis" id="toc-vega-correlation-analysis"><span class="header-section-number">5.4</span> Vega Correlation Analysis</a>
-  <ul>
-  <li><a href="#independence-criterion" id="toc-independence-criterion"><span class="header-section-number">5.4.1</span> Independence Criterion</a></li>
-  </ul></li>
-  <li><a href="#liquidity-assurance" id="toc-liquidity-assurance"><span class="header-section-number">5.5</span> Liquidity Assurance</a>
-  <ul>
-  <li><a href="#position-to-liquidity-constraints" id="toc-position-to-liquidity-constraints"><span class="header-section-number">5.5.1</span> Position-to-Liquidity Constraints</a></li>
-  </ul></li>
-  <li><a href="#gamma-risk-monitoring" id="toc-gamma-risk-monitoring"><span class="header-section-number">5.6</span> Gamma Risk Monitoring</a>
-  <ul>
-  <li><a href="#delta-neutral-maintenance" id="toc-delta-neutral-maintenance"><span class="header-section-number">5.6.1</span> Delta-Neutral Maintenance</a></li>
-  <li><a href="#gamma-warning-threshold" id="toc-gamma-warning-threshold"><span class="header-section-number">5.6.2</span> Gamma Warning Threshold</a></li>
-  <li><a href="#moneyness-alert" id="toc-moneyness-alert"><span class="header-section-number">5.6.3</span> Moneyness Alert</a></li>
-  </ul></li>
-  <li><a href="#circuit-breaker-conditions" id="toc-circuit-breaker-conditions"><span class="header-section-number">5.7</span> Circuit Breaker Conditions</a>
-  <ul>
-  <li><a href="#system-level-halts" id="toc-system-level-halts"><span class="header-section-number">5.7.1</span> System-Level Halts</a></li>
-  </ul></li>
-  <li><a href="#production-validation-aggregation" id="toc-production-validation-aggregation"><span class="header-section-number">5.8</span> Production Validation Aggregation</a>
-  <ul>
-  <li><a href="#composite-production-readiness" id="toc-composite-production-readiness"><span class="header-section-number">5.8.1</span> Composite Production Readiness</a></li>
-  </ul></li>
-  </ul></li>
-  <li><a href="#stochasticity-and-non-determinism" id="toc-stochasticity-and-non-determinism"><span class="header-section-number">6</span> Stochasticity and Non-Determinism</a>
-  <ul>
-  <li><a href="#inherently-stochastic-components" id="toc-inherently-stochastic-components"><span class="header-section-number">6.1</span> Inherently Stochastic Components</a>
-  <ul>
-  <li><a href="#asset-price-evolution" id="toc-asset-price-evolution"><span class="header-section-number">6.1.1</span> Asset Price Evolution</a></li>
-  <li><a href="#volatility-estimation" id="toc-volatility-estimation"><span class="header-section-number">6.1.2</span> Volatility Estimation</a></li>
-  </ul></li>
-  <li><a href="#yang-zhang-estimator-distribution" id="toc-yang-zhang-estimator-distribution"><span class="header-section-number">6.2</span> Yang-Zhang Estimator Distribution</a></li>
-  <li><a href="#implied-volatility-surface" id="toc-implied-volatility-surface"><span class="header-section-number">6.2.1</span> Implied Volatility Surface</a></li>
-  <li><a href="#deterministic-components" id="toc-deterministic-components"><span class="header-section-number">6.3</span> Deterministic Components</a>
-  <ul>
-  <li><a href="#boundary-computation" id="toc-boundary-computation"><span class="header-section-number">6.3.1</span> Boundary Computation</a></li>
-  <li><a href="#signal-generation" id="toc-signal-generation"><span class="header-section-number">6.3.2</span> Signal Generation</a></li>
-  <li><a href="#fault-detection" id="toc-fault-detection"><span class="header-section-number">6.3.3</span> Fault Detection</a></li>
-  </ul></li>
-  <li><a href="#accounting-summary" id="toc-accounting-summary"><span class="header-section-number">6.4</span> Accounting Summary</a></li>
-  </ul></li>
-  <li><a href="#numerical-methods-and-implementation" id="toc-numerical-methods-and-implementation"><span class="header-section-number">7</span> Numerical Methods and Implementation</a>
-  <ul>
-  <li><a href="#collocation-method-for-boundary-refinement" id="toc-collocation-method-for-boundary-refinement"><span class="header-section-number">7.1</span> Collocation Method for Boundary Refinement</a>
-  <ul>
-  <li><a href="#chebyshev-node-distribution" id="toc-chebyshev-node-distribution"><span class="header-section-number">7.1.1</span> Chebyshev Node Distribution</a></li>
-  <li><a href="#spectral-convergence" id="toc-spectral-convergence"><span class="header-section-number">7.1.2</span> Spectral Convergence</a></li>
-  </ul></li>
-  <li><a href="#convergence-criteria" id="toc-convergence-criteria"><span class="header-section-number">7.2</span> Convergence Criteria</a>
-  <ul>
-  <li><a href="#iteration-termination" id="toc-iteration-termination"><span class="header-section-number">7.2.1</span> Iteration Termination</a></li>
-  </ul></li>
-  <li><a href="#benchmark-validation" id="toc-benchmark-validation"><span class="header-section-number">7.3</span> Benchmark Validation</a></li>
-  </ul></li>
-  <li><a href="#conclusion" id="toc-conclusion"><span class="header-section-number">8</span> Conclusion</a></li>
-  <li><a href="#references" id="toc-references"><span class="header-section-number">9</span> References</a></li>
-  <li><a href="#appendix-symbol-reference" id="toc-appendix-symbol-reference"><span class="header-section-number">10</span> Appendix: Symbol Reference</a>
-  <ul>
-  <li><a href="#greek-letters" id="toc-greek-letters"><span class="header-section-number">10.1</span> Greek Letters</a></li>
-  <li><a href="#roman-letters" id="toc-roman-letters"><span class="header-section-number">10.2</span> Roman Letters</a></li>
-  <li><a href="#calligraphic-and-blackboard-bold" id="toc-calligraphic-and-blackboard-bold"><span class="header-section-number">10.3</span> Calligraphic and Blackboard Bold</a></li>
-  </ul></li>
-  </ul>
-</nav>
+
 <section id="introduction" class="level1" data-number="1">
 <h1 data-number="1"><span class="header-section-number">1</span> Introduction</h1>
 <section id="purpose-and-scope" class="level2" data-number="1.1">
-<h2 data-number="1.1"><span class="header-section-number">1.1</span> Purpose and Scope</h2>
+<h2 data-number="1.1" class="anchored" data-anchor-id="purpose-and-scope"><span class="header-section-number">1.1</span> Purpose and Scope</h2>
 <p>The Alaris system implements a systematic approach to capturing the implied volatility premium that manifests around corporate earnings announcements. This document serves three purposes: to provide a rigorous mathematical foundation for all computational methods employed, to specify formally the decision rules governing strategy execution, and to derive the complete set of fault conditions that the system monitors.</p>
 <p>A distinguishing characteristic of this specification is its emphasis on mathematical completeness. Every algorithmic decision in Alaris corresponds to an evaluable predicate derived from the mathematical framework. Where the underlying phenomena are inherently stochastic, we explicitly state the probabilistic model assumptions and derive estimators with known convergence properties.</p>
 </section>
 <section id="document-organisation" class="level2" data-number="1.2">
-<h2 data-number="1.2"><span class="header-section-number">1.2</span> Document Organisation</h2>
+<h2 data-number="1.2" class="anchored" data-anchor-id="document-organisation"><span class="header-section-number">1.2</span> Document Organisation</h2>
 <p>The document proceeds as follows. Section 2 establishes the mathematical framework for option pricing, deriving the free boundary formulation and its integral equation transformation. Section 3 extends this framework to the double boundary regime arising under negative interest rates. Section 4 develops the volatility trading strategy, specifying the signal generation predicates with their academic provenance. Section 5 formalises the complete fault detection and monitoring system as a set of mathematical inequalities. Section 6 addresses the inherent stochasticity in certain components and specifies how this is accounted for.</p>
 </section>
 </section>
 <section id="the-option-pricing-framework" class="level1" data-number="2">
 <h1 data-number="2"><span class="header-section-number">2</span> The Option Pricing Framework</h1>
 <section id="stochastic-foundation" class="level2" data-number="2.1">
-<h2 data-number="2.1"><span class="header-section-number">2.1</span> Stochastic Foundation</h2>
+<h2 data-number="2.1" class="anchored" data-anchor-id="stochastic-foundation"><span class="header-section-number">2.1</span> Stochastic Foundation</h2>
 <section id="the-risk-neutral-measure" class="level3" data-number="2.1.1">
-<h3 data-number="2.1.1"><span class="header-section-number">2.1.1</span> The Risk-Neutral Measure</h3>
+<h3 data-number="2.1.1" class="anchored" data-anchor-id="the-risk-neutral-measure"><span class="header-section-number">2.1.1</span> The Risk-Neutral Measure</h3>
 <p>The Alaris pricing methodology operates under the risk-neutral probability measure <span class="math inline">\(\mathbb{Q}\)</span>. Under this measure, the asset price process <span class="math inline">\(S(t)\)</span> satisfies the stochastic differential equation:</p>
 <p><span id="eq-sde"><span class="math display">\[
 \frac{dS(t)}{S(t)} = (r - q) \, dt + \sigma \, dW^{\mathbb{Q}}(t)
@@ -311,7 +319,7 @@ window.Quarto = {
 <p>where:</p>
 <ul>
 <li><span class="math inline">\(r \in \mathbb{R}\)</span> denotes the continuously compounded risk-free interest rate</li>
-<li><span class="math inline">\(q \in \mathbb{R}\)</span> denotes the continuous dividend yield<br />
+<li><span class="math inline">\(q \in \mathbb{R}\)</span> denotes the continuous dividend yield<br>
 </li>
 <li><span class="math inline">\(\sigma &gt; 0\)</span> denotes the instantaneous volatility</li>
 <li><span class="math inline">\(W^{\mathbb{Q}}(t)\)</span> is a standard Brownian motion under <span class="math inline">\(\mathbb{Q}\)</span></li>
@@ -319,7 +327,7 @@ window.Quarto = {
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
-<i class='callout-icon'></i>
+<i class="callout-icon"></i>
 </div>
 <div class="callout-title-container flex-fill">
 Parameter Domain Extension
@@ -329,33 +337,33 @@ Parameter Domain Extension
 <p>Unlike classical treatments that assume <span class="math inline">\(r \geq 0\)</span>, Alaris explicitly permits <span class="math inline">\(r &lt; 0\)</span> to accommodate negative interest rate environments. This extension requires careful treatment of the exercise region topology, addressed in Section 3.</p>
 </div>
 </div>
-<p>The solution to <a href="#eq-sde" class="quarto-xref">Equation 1</a> is the geometric Brownian motion:</p>
+<p>The solution to <a href="#eq-sde" class="quarto-xref">Equation&nbsp;1</a> is the geometric Brownian motion:</p>
 <p><span id="eq-gbm-solution"><span class="math display">\[
 S(t) = S(0) \exp\left[\left(r - q - \frac{\sigma^2}{2}\right)t + \sigma W^{\mathbb{Q}}(t)\right]
 \tag{2}\]</span></span></p>
 </section>
 <section id="filtration-and-information-structure" class="level3" data-number="2.1.2">
-<h3 data-number="2.1.2"><span class="header-section-number">2.1.2</span> Filtration and Information Structure</h3>
+<h3 data-number="2.1.2" class="anchored" data-anchor-id="filtration-and-information-structure"><span class="header-section-number">2.1.2</span> Filtration and Information Structure</h3>
 <p>Let <span class="math inline">\((\Omega, \mathcal{F}, \mathbb{Q})\)</span> be a complete probability space equipped with the natural filtration <span class="math inline">\(\{\mathcal{F}_t\}_{t \geq 0}\)</span> generated by the Brownian motion <span class="math inline">\(W^{\mathbb{Q}}(t)\)</span>, augmented by null sets. All stopping times referenced in this document are with respect to this filtration.</p>
 </section>
 </section>
 <section id="the-free-boundary-problem" class="level2" data-number="2.2">
-<h2 data-number="2.2"><span class="header-section-number">2.2</span> The Free Boundary Problem</h2>
+<h2 data-number="2.2" class="anchored" data-anchor-id="the-free-boundary-problem"><span class="header-section-number">2.2</span> The Free Boundary Problem</h2>
 <section id="value-function-characterisation" class="level3" data-number="2.2.1">
-<h3 data-number="2.2.1"><span class="header-section-number">2.2.1</span> Value Function Characterisation</h3>
+<h3 data-number="2.2.1" class="anchored" data-anchor-id="value-function-characterisation"><span class="header-section-number">2.2.1</span> Value Function Characterisation</h3>
 <p>For an American put option with strike <span class="math inline">\(K\)</span> and maturity <span class="math inline">\(T\)</span>, define the value function <span class="math inline">\(V: [0,T] \times \mathbb{R}_{&gt;0} \to \mathbb{R}_{\geq 0}\)</span> as:</p>
 <p><span id="eq-value-function"><span class="math display">\[
 V(t, s) = \sup_{\tau \in \mathcal{T}_{t,T}} \mathbb{E}^{\mathbb{Q}}\left[e^{-r(\tau - t)}(K - S(\tau))^+ \,\Big|\, S(t) = s\right]
 \tag{3}\]</span></span></p>
 <p>where <span class="math inline">\(\mathcal{T}_{t,T}\)</span> denotes the set of stopping times taking values in <span class="math inline">\([t, T]\)</span>.</p>
-<p>The supremum in <a href="#eq-value-function" class="quarto-xref">Equation 3</a> is attained by the optimal stopping time:</p>
+<p>The supremum in <a href="#eq-value-function" class="quarto-xref">Equation&nbsp;3</a> is attained by the optimal stopping time:</p>
 <p><span id="eq-optimal-stopping"><span class="math display">\[
 \tau^* = \inf\{u \in [t, T] : S(u) \leq B(T - u)\}
 \tag{4}\]</span></span></p>
 <p>where <span class="math inline">\(B(\cdot)\)</span> is the optimal exercise boundary function.</p>
 </section>
 <section id="the-free-boundary" class="level3" data-number="2.2.2">
-<h3 data-number="2.2.2"><span class="header-section-number">2.2.2</span> The Free Boundary</h3>
+<h3 data-number="2.2.2" class="anchored" data-anchor-id="the-free-boundary"><span class="header-section-number">2.2.2</span> The Free Boundary</h3>
 <div id="def-exercise-boundary" class="theorem definition">
 <p><span class="theorem-title"><strong>Definition 1 (Exercise Boundary)</strong></span> The optimal exercise boundary <span class="math inline">\(B: [0, T] \to \mathbb{R}_{&gt;0}\)</span> is the unique continuous function satisfying:</p>
 <ol type="1">
@@ -374,9 +382,9 @@ V(t, s) = \sup_{\tau \in \mathcal{T}_{t,T}} \mathbb{E}^{\mathbb{Q}}\left[e^{-r(\
 </section>
 </section>
 <section id="the-integral-equation-formulation" class="level2" data-number="2.3">
-<h2 data-number="2.3"><span class="header-section-number">2.3</span> The Integral Equation Formulation</h2>
+<h2 data-number="2.3" class="anchored" data-anchor-id="the-integral-equation-formulation"><span class="header-section-number">2.3</span> The Integral Equation Formulation</h2>
 <section id="early-exercise-premium-decomposition" class="level3" data-number="2.3.1">
-<h3 data-number="2.3.1"><span class="header-section-number">2.3.1</span> Early Exercise Premium Decomposition</h3>
+<h3 data-number="2.3.1" class="anchored" data-anchor-id="early-exercise-premium-decomposition"><span class="header-section-number">2.3.1</span> Early Exercise Premium Decomposition</h3>
 <p>The American option value decomposes into European option value plus early exercise premium:</p>
 <p><span id="eq-eep-decomposition"><span class="math display">\[
 V(\tau, s) = v(\tau, s) + \mathcal{P}(\tau, s)
@@ -395,18 +403,18 @@ d_{\pm}(u, z) = \frac{\ln(z) + (r-q)u \pm \frac{1}{2}\sigma^2 u}{\sigma\sqrt{u}}
 </div>
 </section>
 <section id="the-boundary-integral-equation" class="level3" data-number="2.3.2">
-<h3 data-number="2.3.2"><span class="header-section-number">2.3.2</span> The Boundary Integral Equation</h3>
+<h3 data-number="2.3.2" class="anchored" data-anchor-id="the-boundary-integral-equation"><span class="header-section-number">2.3.2</span> The Boundary Integral Equation</h3>
 <p>Applying the value-matching condition at the boundary yields the nonlinear integral equation for <span class="math inline">\(B(\tau)\)</span>:</p>
 <p><span id="eq-boundary-integral"><span class="math display">\[
 K - B(\tau) = v(\tau, B(\tau)) + \int_0^{\tau} \mathcal{K}(\tau, u, B(\tau), B(u)) \, du
 \tag{8}\]</span></span></p>
 <p>where the kernel <span class="math inline">\(\mathcal{K}\)</span> is:</p>
 <p><span class="math display">\[
-\mathcal{K}(\tau, u, b, b&#39;) = e^{-ru}\left[rK\Phi(-d_-(u, b/b&#39;)) - qb \cdot e^{(r-q)u}\Phi(-d_+(u, b/b&#39;))\right]
+\mathcal{K}(\tau, u, b, b') = e^{-ru}\left[rK\Phi(-d_-(u, b/b')) - qb \cdot e^{(r-q)u}\Phi(-d_+(u, b/b'))\right]
 \]</span></p>
 </section>
 <section id="asymptotic-behaviour" class="level3" data-number="2.3.3">
-<h3 data-number="2.3.3"><span class="header-section-number">2.3.3</span> Asymptotic Behaviour</h3>
+<h3 data-number="2.3.3" class="anchored" data-anchor-id="asymptotic-behaviour"><span class="header-section-number">2.3.3</span> Asymptotic Behaviour</h3>
 <p>The boundary function exhibits the following asymptotic behaviour:</p>
 <p><strong>Near Expiration</strong> (<span class="math inline">\(\tau \to 0^+\)</span>): <span id="eq-near-expiry"><span class="math display">\[
 \lim_{\tau \to 0^+} B(\tau) = \begin{cases}
@@ -424,10 +432,10 @@ K \cdot \frac{r}{q} &amp; \text{if } r &lt; q \text{ and } r &gt; 0
 </section>
 </section>
 <section id="the-qd-approximation-method" class="level2" data-number="2.4">
-<h2 data-number="2.4"><span class="header-section-number">2.4</span> The QD+ Approximation Method</h2>
+<h2 data-number="2.4" class="anchored" data-anchor-id="the-qd-approximation-method"><span class="header-section-number">2.4</span> The QD+ Approximation Method</h2>
 <section id="quasi-analytic-framework" class="level3" data-number="2.4.1">
-<h3 data-number="2.4.1"><span class="header-section-number">2.4.1</span> Quasi-Analytic Framework</h3>
-<p>The Alaris system employs the QD+ approximation method of Andersen, Lake, and Offengenden (2016) as the first stage of boundary estimation. This method provides an accurate quasi-analytic approximation that serves as initialisation for subsequent refinement.</p>
+<h3 data-number="2.4.1" class="anchored" data-anchor-id="quasi-analytic-framework"><span class="header-section-number">2.4.1</span> Quasi-Analytic Framework</h3>
+<p>The Alaris system employs the QD+ approximation method of <span class="citation" data-cites="andersen2016">Andersen, Lake, and Offengenden <a href="#ref-andersen2016" role="doc-biblioref">(2016)</a></span> as the first stage of boundary estimation. This method provides an accurate quasi-analytic approximation that serves as initialisation for subsequent refinement.</p>
 <div id="def-qd-approximation" class="theorem definition">
 <p><span class="theorem-title"><strong>Definition 2 (QD+ Boundary Approximation)</strong></span> The QD+ approximation expresses the boundary as:</p>
 <p><span id="eq-qd-boundary"><span class="math display">\[
@@ -441,10 +449,10 @@ B^{\text{QD}}(\tau) = K \cdot \frac{\lambda(\tau)}{\lambda(\tau) - 1}
 </div>
 </section>
 <section id="super-halleys-method" class="level3" data-number="2.4.2">
-<h3 data-number="2.4.2"><span class="header-section-number">2.4.2</span> Super Halley’s Method</h3>
+<h3 data-number="2.4.2" class="anchored" data-anchor-id="super-halleys-method"><span class="header-section-number">2.4.2</span> Super Halley’s Method</h3>
 <p>The QD+ boundary equation is solved using Super Halley’s method, a third-order root-finding algorithm:</p>
 <p><span id="eq-super-halley"><span class="math display">\[
-S_{n+1} = S_n - \frac{f(S_n)}{f&#39;(S_n)} \cdot \frac{1}{1 - \frac{f(S_n) \cdot f&#39;&#39;(S_n)}{2[f&#39;(S_n)]^2}}
+S_{n+1} = S_n - \frac{f(S_n)}{f'(S_n)} \cdot \frac{1}{1 - \frac{f(S_n) \cdot f''(S_n)}{2[f'(S_n)]^2}}
 \tag{13}\]</span></span></p>
 <div id="thm-halley-convergence" class="theorem">
 <p><span class="theorem-title"><strong>Theorem 2 (Super Halley Convergence)</strong></span> For a function <span class="math inline">\(f\)</span> with simple root <span class="math inline">\(S^*\)</span> and continuous third derivative in a neighbourhood of <span class="math inline">\(S^*\)</span>, Super Halley’s method converges cubically:</p>
@@ -459,9 +467,9 @@ S_{n+1} = S_n - \frac{f(S_n)}{f&#39;(S_n)} \cdot \frac{1}{1 - \frac{f(S_n) \cdot
 <section id="double-boundary-regime-under-negative-rates" class="level1" data-number="3">
 <h1 data-number="3"><span class="header-section-number">3</span> Double Boundary Regime Under Negative Rates</h1>
 <section id="regime-characterisation" class="level2" data-number="3.1">
-<h2 data-number="3.1"><span class="header-section-number">3.1</span> Regime Characterisation</h2>
+<h2 data-number="3.1" class="anchored" data-anchor-id="regime-characterisation"><span class="header-section-number">3.1</span> Regime Characterisation</h2>
 <section id="mathematical-conditions-for-double-boundaries" class="level3" data-number="3.1.1">
-<h3 data-number="3.1.1"><span class="header-section-number">3.1.1</span> Mathematical Conditions for Double Boundaries</h3>
+<h3 data-number="3.1.1" class="anchored" data-anchor-id="mathematical-conditions-for-double-boundaries"><span class="header-section-number">3.1.1</span> Mathematical Conditions for Double Boundaries</h3>
 <p>The emergence of double boundaries occurs under specific parameter configurations involving negative interest rates.</p>
 <div id="def-double-boundary-regime" class="theorem definition">
 <p><span class="theorem-title"><strong>Definition 3 (Double Boundary Regime)</strong></span> The double boundary regime is characterised by the predicate:</p>
@@ -476,7 +484,7 @@ S_{n+1} = S_n - \frac{f(S_n)}{f&#39;(S_n)} \cdot \frac{1}{1 - \frac{f(S_n) \cdot
 </div>
 </section>
 <section id="physical-interpretation" class="level3" data-number="3.1.2">
-<h3 data-number="3.1.2"><span class="header-section-number">3.1.2</span> Physical Interpretation</h3>
+<h3 data-number="3.1.2" class="anchored" data-anchor-id="physical-interpretation"><span class="header-section-number">3.1.2</span> Physical Interpretation</h3>
 <p>In the double boundary regime, immediate exercise is optimal only when the asset price falls within a bounded interval. This arises because:</p>
 <ol type="1">
 <li>When <span class="math inline">\(s &gt; B(\tau)\)</span>: Continuation is optimal due to potential for deeper in-the-money scenarios</li>
@@ -485,7 +493,7 @@ S_{n+1} = S_n - \frac{f(S_n)}{f&#39;(S_n)} \cdot \frac{1}{1 - \frac{f(S_n) \cdot
 </ol>
 </section>
 <section id="critical-volatility-threshold" class="level3" data-number="3.1.3">
-<h3 data-number="3.1.3"><span class="header-section-number">3.1.3</span> Critical Volatility Threshold</h3>
+<h3 data-number="3.1.3" class="anchored" data-anchor-id="critical-volatility-threshold"><span class="header-section-number">3.1.3</span> Critical Volatility Threshold</h3>
 <p>The behaviour of the double boundary system depends on whether volatility exceeds a critical threshold.</p>
 <div id="def-critical-volatility" class="theorem definition">
 <p><span class="theorem-title"><strong>Definition 4 (Critical Volatility)</strong></span> Define the critical volatility as:</p>
@@ -497,9 +505,9 @@ S_{n+1} = S_n - \frac{f(S_n)}{f&#39;(S_n)} \cdot \frac{1}{1 - \frac{f(S_n) \cdot
 </section>
 </section>
 <section id="modified-integral-equation-system" class="level2" data-number="3.2">
-<h2 data-number="3.2"><span class="header-section-number">3.2</span> Modified Integral Equation System</h2>
+<h2 data-number="3.2" class="anchored" data-anchor-id="modified-integral-equation-system"><span class="header-section-number">3.2</span> Modified Integral Equation System</h2>
 <section id="two-boundary-integral-representation" class="level3" data-number="3.2.1">
-<h3 data-number="3.2.1"><span class="header-section-number">3.2.1</span> Two-Boundary Integral Representation</h3>
+<h3 data-number="3.2.1" class="anchored" data-anchor-id="two-boundary-integral-representation"><span class="header-section-number">3.2.1</span> Two-Boundary Integral Representation</h3>
 <p>Under the double boundary regime, the American put value satisfies:</p>
 <p><span id="eq-double-eep"><span class="math display">\[
 V(\tau, s) = v(\tau, s) + \mathcal{P}_B(\tau, s) - \mathcal{P}_Y(\tau, s)
@@ -513,7 +521,7 @@ V(\tau, s) = v(\tau, s) + \mathcal{P}_B(\tau, s) - \mathcal{P}_Y(\tau, s)
 \]</span></p>
 </section>
 <section id="decoupled-fixed-point-systems" class="level3" data-number="3.2.2">
-<h3 data-number="3.2.2"><span class="header-section-number">3.2.2</span> Decoupled Fixed-Point Systems</h3>
+<h3 data-number="3.2.2" class="anchored" data-anchor-id="decoupled-fixed-point-systems"><span class="header-section-number">3.2.2</span> Decoupled Fixed-Point Systems</h3>
 <p>A key mathematical result enabling efficient computation is the decoupling of the boundary equations.</p>
 <div id="thm-decoupling" class="theorem">
 <p><span class="theorem-title"><strong>Theorem 3 (Boundary Decoupling)</strong></span> The upper boundary <span class="math inline">\(B(\tau)\)</span> can be computed independently of <span class="math inline">\(Y(\tau)\)</span> using:</p>
@@ -527,8 +535,8 @@ K - Y(\tau) = v(\tau, Y(\tau)) + \int_0^{\tau} \mathcal{K}_B(\tau, u, Y(\tau), B
 </div>
 </section>
 <section id="fp-b-stabilisation" class="level3" data-number="3.2.3">
-<h3 data-number="3.2.3"><span class="header-section-number">3.2.3</span> FP-B’ Stabilisation</h3>
-<p>The Alaris system employs the FP-B’ stabilised iteration scheme from Healy (2021) to prevent oscillatory behaviour in long-maturity options.</p>
+<h3 data-number="3.2.3" class="anchored" data-anchor-id="fp-b-stabilisation"><span class="header-section-number">3.2.3</span> FP-B’ Stabilisation</h3>
+<p>The Alaris system employs the FP-B’ stabilised iteration scheme from <span class="citation" data-cites="healy2021">Healy <a href="#ref-healy2021" role="doc-biblioref">(2021)</a></span> to prevent oscillatory behaviour in long-maturity options.</p>
 <div id="def-fpb-prime" class="theorem definition">
 <p><span class="theorem-title"><strong>Definition 5 (FP-B’ Iteration)</strong></span> At iteration <span class="math inline">\(n\)</span>, the stabilised update for the lower boundary is:</p>
 <p><span class="math display">\[
@@ -540,7 +548,7 @@ Y^{(n+1)}(\tau) = \mathcal{T}_Y\left[Y^{(n)}; B^{(n+1)}\right]
 </section>
 </section>
 <section id="boundary-validation-predicates" class="level2" data-number="3.3">
-<h2 data-number="3.3"><span class="header-section-number">3.3</span> Boundary Validation Predicates</h2>
+<h2 data-number="3.3" class="anchored" data-anchor-id="boundary-validation-predicates"><span class="header-section-number">3.3</span> Boundary Validation Predicates</h2>
 <p>The computed boundaries must satisfy mathematical constraints from the free boundary theory.</p>
 <div id="def-boundary-validation" class="theorem definition">
 <p><span class="theorem-title"><strong>Definition 6 (Boundary Validity Conditions)</strong></span> A computed boundary pair <span class="math inline">\((B(\tau), Y(\tau))\)</span> is valid if and only if:</p>
@@ -561,9 +569,9 @@ Y^{(n+1)}(\tau) = \mathcal{T}_Y\left[Y^{(n)}; B^{(n+1)}\right]
 <section id="the-earnings-volatility-trading-strategy" class="level1" data-number="4">
 <h1 data-number="4"><span class="header-section-number">4</span> The Earnings Volatility Trading Strategy</h1>
 <section id="theoretical-foundation" class="level2" data-number="4.1">
-<h2 data-number="4.1"><span class="header-section-number">4.1</span> Theoretical Foundation</h2>
+<h2 data-number="4.1" class="anchored" data-anchor-id="theoretical-foundation"><span class="header-section-number">4.1</span> Theoretical Foundation</h2>
 <section id="the-volatility-risk-premium" class="level3" data-number="4.1.1">
-<h3 data-number="4.1.1"><span class="header-section-number">4.1.1</span> The Volatility Risk Premium</h3>
+<h3 data-number="4.1.1" class="anchored" data-anchor-id="the-volatility-risk-premium"><span class="header-section-number">4.1.1</span> The Volatility Risk Premium</h3>
 <p>The earnings volatility strategy exploits the documented phenomenon that implied volatility systematically exceeds realised volatility around corporate earnings announcements. Let:</p>
 <ul>
 <li><span class="math inline">\(\sigma_I(t)\)</span> denote the market-implied volatility at time <span class="math inline">\(t\)</span></li>
@@ -577,7 +585,7 @@ Y^{(n+1)}(\tau) = \mathcal{T}_Y\left[Y^{(n)}; B^{(n+1)}\right]
 </section>
 <div id="assumption-vrp">
 <section id="earnings-vrp-assumption" class="level2" data-number="4.2">
-<h2 data-number="4.2"><span class="header-section-number">4.2</span> Earnings VRP Assumption</h2>
+<h2 data-number="4.2" class="anchored" data-anchor-id="earnings-vrp-assumption"><span class="header-section-number">4.2</span> Earnings VRP Assumption</h2>
 <p>For securities with scheduled earnings announcements at time <span class="math inline">\(T_E\)</span>, the volatility risk premium exhibits the pattern:</p>
 <p><span class="math display">\[
 \mathbb{E}[\text{VRP}(t)] &gt; 0 \quad \text{for } t \in [T_E - \Delta, T_E)
@@ -586,10 +594,10 @@ Y^{(n+1)}(\tau) = \mathcal{T}_Y\left[Y^{(n)}; B^{(n+1)}\right]
 </section>
 </div>
 <section id="signal-generation-predicates" class="level2" data-number="4.3">
-<h2 data-number="4.3"><span class="header-section-number">4.3</span> Signal Generation Predicates</h2>
+<h2 data-number="4.3" class="anchored" data-anchor-id="signal-generation-predicates"><span class="header-section-number">4.3</span> Signal Generation Predicates</h2>
 <section id="the-atilgan-criteria" class="level3" data-number="4.3.1">
-<h3 data-number="4.3.1"><span class="header-section-number">4.3.1</span> The Atilgan Criteria</h3>
-<p>The signal generation system implements the criteria from Atilgan et al. (2014), expressed as formal predicates.</p>
+<h3 data-number="4.3.1" class="anchored" data-anchor-id="the-atilgan-criteria"><span class="header-section-number">4.3.1</span> The Atilgan Criteria</h3>
+<p>The signal generation system implements the criteria from <span class="citation" data-cites="atilgan2014">Atilgan et al. <a href="#ref-atilgan2014" role="doc-biblioref">(2014)</a></span>, expressed as formal predicates.</p>
 <div id="def-signal-predicates" class="theorem definition">
 <p><span class="theorem-title"><strong>Definition 7 (Trading Signal Predicates)</strong></span> For a security with symbol <span class="math inline">\(\xi\)</span> evaluated at time <span class="math inline">\(t\)</span> with earnings date <span class="math inline">\(T_E\)</span>, define:</p>
 <p><strong>IV/RV Ratio Criterion</strong>: <span id="eq-ivrv-criterion"><span class="math display">\[
@@ -606,7 +614,7 @@ Y^{(n+1)}(\tau) = \mathcal{T}_Y\left[Y^{(n)}; B^{(n+1)}\right]
 </div>
 </section>
 <section id="signal-strength-classification" class="level3" data-number="4.3.2">
-<h3 data-number="4.3.2"><span class="header-section-number">4.3.2</span> Signal Strength Classification</h3>
+<h3 data-number="4.3.2" class="anchored" data-anchor-id="signal-strength-classification"><span class="header-section-number">4.3.2</span> Signal Strength Classification</h3>
 <div id="def-signal-strength" class="theorem definition">
 <p><span class="theorem-title"><strong>Definition 8 (Signal Strength Function)</strong></span> The signal strength function <span class="math inline">\(\Sigma: \{\text{true}, \text{false}\}^3 \to \{\text{Recommended}, \text{Consider}, \text{Avoid}\}\)</span> is:</p>
 <p><span id="eq-signal-strength"><span class="math display">\[
@@ -620,10 +628,10 @@ Y^{(n+1)}(\tau) = \mathcal{T}_Y\left[Y^{(n)}; B^{(n+1)}\right]
 </section>
 </section>
 <section id="realised-volatility-estimation" class="level2" data-number="4.4">
-<h2 data-number="4.4"><span class="header-section-number">4.4</span> Realised Volatility Estimation</h2>
+<h2 data-number="4.4" class="anchored" data-anchor-id="realised-volatility-estimation"><span class="header-section-number">4.4</span> Realised Volatility Estimation</h2>
 <section id="the-yang-zhang-estimator" class="level3" data-number="4.4.1">
-<h3 data-number="4.4.1"><span class="header-section-number">4.4.1</span> The Yang-Zhang Estimator</h3>
-<p>The Alaris system employs the Yang-Zhang (2000) estimator for realised volatility, which is efficient for OHLC (open-high-low-close) data and robust to opening gaps.</p>
+<h3 data-number="4.4.1" class="anchored" data-anchor-id="the-yang-zhang-estimator"><span class="header-section-number">4.4.1</span> The Yang-Zhang Estimator</h3>
+<p>The Alaris system employs the <span class="citation" data-cites="yang2000">Yang and Zhang <a href="#ref-yang2000" role="doc-biblioref">(2000)</a></span> estimator for realised volatility, which is efficient for OHLC (open-high-low-close) data and robust to opening gaps.</p>
 <div id="def-yang-zhang" class="theorem definition">
 <p><span class="theorem-title"><strong>Definition 9 (Yang-Zhang Estimator)</strong></span> Given <span class="math inline">\(n\)</span> trading days with price data <span class="math inline">\((O_i, H_i, L_i, C_i)\)</span>, define:</p>
 <p><strong>Overnight Variance</strong>: <span class="math display">\[
@@ -646,9 +654,9 @@ Y^{(n+1)}(\tau) = \mathcal{T}_Y\left[Y^{(n)}; B^{(n+1)}\right]
 </section>
 </section>
 <section id="term-structure-analysis" class="level2" data-number="4.5">
-<h2 data-number="4.5"><span class="header-section-number">4.5</span> Term Structure Analysis</h2>
+<h2 data-number="4.5" class="anchored" data-anchor-id="term-structure-analysis"><span class="header-section-number">4.5</span> Term Structure Analysis</h2>
 <section id="linear-term-structure-model" class="level3" data-number="4.5.1">
-<h3 data-number="4.5.1"><span class="header-section-number">4.5.1</span> Linear Term Structure Model</h3>
+<h3 data-number="4.5.1" class="anchored" data-anchor-id="linear-term-structure-model"><span class="header-section-number">4.5.1</span> Linear Term Structure Model</h3>
 <p>The implied volatility term structure is modelled as:</p>
 <p><span id="eq-term-structure"><span class="math display">\[
 \sigma_I(\tau) = \alpha + \beta \cdot \tau + \epsilon(\tau)
@@ -664,9 +672,9 @@ Y^{(n+1)}(\tau) = \mathcal{T}_Y\left[Y^{(n)}; B^{(n+1)}\right]
 </section>
 </section>
 <section id="position-sizing-the-kelly-criterion" class="level2" data-number="4.6">
-<h2 data-number="4.6"><span class="header-section-number">4.6</span> Position Sizing: The Kelly Criterion</h2>
+<h2 data-number="4.6" class="anchored" data-anchor-id="position-sizing-the-kelly-criterion"><span class="header-section-number">4.6</span> Position Sizing: The Kelly Criterion</h2>
 <section id="optimal-growth-framework" class="level3" data-number="4.6.1">
-<h3 data-number="4.6.1"><span class="header-section-number">4.6.1</span> Optimal Growth Framework</h3>
+<h3 data-number="4.6.1" class="anchored" data-anchor-id="optimal-growth-framework"><span class="header-section-number">4.6.1</span> Optimal Growth Framework</h3>
 <p>Position sizing employs the Kelly criterion to maximise long-run geometric growth rate.</p>
 <div id="thm-kelly" class="theorem">
 <p><span class="theorem-title"><strong>Theorem 5 (Kelly Criterion)</strong></span> For a bet with probability <span class="math inline">\(p\)</span> of winning return <span class="math inline">\(b\)</span> and probability <span class="math inline">\((1-p)\)</span> of losing stake, the growth-optimal fraction is:</p>
@@ -681,7 +689,7 @@ f^* \approx \frac{\mu}{\sigma^2}
 </div>
 </section>
 <section id="fractional-kelly-implementation" class="level3" data-number="4.6.2">
-<h3 data-number="4.6.2"><span class="header-section-number">4.6.2</span> Fractional Kelly Implementation</h3>
+<h3 data-number="4.6.2" class="anchored" data-anchor-id="fractional-kelly-implementation"><span class="header-section-number">4.6.2</span> Fractional Kelly Implementation</h3>
 <p>The Alaris system employs fractional Kelly sizing to reduce variance:</p>
 <p><span id="eq-fractional-kelly"><span class="math display">\[
 f_{\text{actual}} = \kappa \cdot f^* \quad \text{with } \kappa \in \{0.01, 0.02\}
@@ -700,14 +708,14 @@ f_{\text{actual}} = \kappa \cdot f^* \quad \text{with } \kappa \in \{0.01, 0.02\
 <section id="fault-detection-and-monitoring-system" class="level1" data-number="5">
 <h1 data-number="5"><span class="header-section-number">5</span> Fault Detection and Monitoring System</h1>
 <section id="overview-of-the-fault-framework" class="level2" data-number="5.1">
-<h2 data-number="5.1"><span class="header-section-number">5.1</span> Overview of the Fault Framework</h2>
+<h2 data-number="5.1" class="anchored" data-anchor-id="overview-of-the-fault-framework"><span class="header-section-number">5.1</span> Overview of the Fault Framework</h2>
 <p>The Alaris fault detection system is designed to identify conditions where model assumptions may be violated or execution may be compromised. Each fault condition is specified as a mathematically precise inequality or predicate.</p>
 <section id="fault-classification" class="level3" data-number="5.1.1">
-<h3 data-number="5.1.1"><span class="header-section-number">5.1.1</span> Fault Classification</h3>
+<h3 data-number="5.1.1" class="anchored" data-anchor-id="fault-classification"><span class="header-section-number">5.1.1</span> Fault Classification</h3>
 <p>Faults are classified into four categories:</p>
 <ol type="1">
 <li><strong>Data Quality Faults</strong>: Violations of input data validity assumptions</li>
-<li><strong>Model Validity Faults</strong>: Conditions where pricing models may be unreliable<br />
+<li><strong>Model Validity Faults</strong>: Conditions where pricing models may be unreliable<br>
 </li>
 <li><strong>Execution Risk Faults</strong>: Conditions threatening profitable execution</li>
 <li><strong>Position Risk Faults</strong>: Conditions requiring position adjustment or exit</li>
@@ -715,9 +723,9 @@ f_{\text{actual}} = \kappa \cdot f^* \quad \text{with } \kappa \in \{0.01, 0.02\
 </section>
 </section>
 <section id="data-quality-validation" class="level2" data-number="5.2">
-<h2 data-number="5.2"><span class="header-section-number">5.2</span> Data Quality Validation</h2>
+<h2 data-number="5.2" class="anchored" data-anchor-id="data-quality-validation"><span class="header-section-number">5.2</span> Data Quality Validation</h2>
 <section id="price-data-validation" class="level3" data-number="5.2.1">
-<h3 data-number="5.2.1"><span class="header-section-number">5.2.1</span> Price Data Validation</h3>
+<h3 data-number="5.2.1" class="anchored" data-anchor-id="price-data-validation"><span class="header-section-number">5.2.1</span> Price Data Validation</h3>
 <div id="def-price-validation" class="theorem definition">
 <p><span class="theorem-title"><strong>Definition 11 (Price Data Validity Predicates)</strong></span> For price data point <span class="math inline">\(P_i = (O_i, H_i, L_i, C_i, V_i)\)</span>:</p>
 <p><span class="math display">\[\begin{align}
@@ -732,17 +740,17 @@ f_{\text{actual}} = \kappa \cdot f^* \quad \text{with } \kappa \in \{0.01, 0.02\
 </div>
 </section>
 <section id="implied-volatility-validation" class="level3" data-number="5.2.2">
-<h3 data-number="5.2.2"><span class="header-section-number">5.2.2</span> Implied Volatility Validation</h3>
+<h3 data-number="5.2.2" class="anchored" data-anchor-id="implied-volatility-validation"><span class="header-section-number">5.2.2</span> Implied Volatility Validation</h3>
 <div id="def-iv-validation" class="theorem definition">
 <p><span class="theorem-title"><strong>Definition 12 (IV Data Validity Predicates)</strong></span> For implied volatility observation <span class="math inline">\(\sigma_I\)</span>:</p>
 <p><span class="math display">\[\begin{align}
 \mathcal{D}_5(\sigma_I) &amp;\equiv 0.01 \leq \sigma_I \leq 5.00 \tag{Range Constraint} \\
-\mathcal{D}_6(\sigma_I, \sigma_I&#39;) &amp;\equiv \left|\sigma_I - \sigma_I&#39;\right| &lt; 0.50 \tag{Temporal Continuity}
+\mathcal{D}_6(\sigma_I, \sigma_I') &amp;\equiv \left|\sigma_I - \sigma_I'\right| &lt; 0.50 \tag{Temporal Continuity}
 \end{align}\]</span></p>
 </div>
 </section>
 <section id="volume-and-open-interest-validation" class="level3" data-number="5.2.3">
-<h3 data-number="5.2.3"><span class="header-section-number">5.2.3</span> Volume and Open Interest Validation</h3>
+<h3 data-number="5.2.3" class="anchored" data-anchor-id="volume-and-open-interest-validation"><span class="header-section-number">5.2.3</span> Volume and Open Interest Validation</h3>
 <div id="def-liquidity-validation" class="theorem definition">
 <p><span class="theorem-title"><strong>Definition 13 (Liquidity Data Validity)</strong></span> For option contract with volume <span class="math inline">\(V\)</span> and open interest <span class="math inline">\(OI\)</span>:</p>
 <p><span class="math display">\[\begin{align}
@@ -753,9 +761,9 @@ f_{\text{actual}} = \kappa \cdot f^* \quad \text{with } \kappa \in \{0.01, 0.02\
 </section>
 </section>
 <section id="execution-cost-validation" class="level2" data-number="5.3">
-<h2 data-number="5.3"><span class="header-section-number">5.3</span> Execution Cost Validation</h2>
+<h2 data-number="5.3" class="anchored" data-anchor-id="execution-cost-validation"><span class="header-section-number">5.3</span> Execution Cost Validation</h2>
 <section id="cost-model-specification" class="level3" data-number="5.3.1">
-<h3 data-number="5.3.1"><span class="header-section-number">5.3.1</span> Cost Model Specification</h3>
+<h3 data-number="5.3.1" class="anchored" data-anchor-id="cost-model-specification"><span class="header-section-number">5.3.1</span> Cost Model Specification</h3>
 <p>The execution cost model computes total transaction cost as:</p>
 <p><span id="eq-exec-cost"><span class="math display">\[
 C_{\text{exec}}(n) = C_{\text{spread}}(n) + C_{\text{commission}}(n) + C_{\text{slippage}}(n)
@@ -771,7 +779,7 @@ C_{\text{commission}}(n) = (\phi_{\text{broker}} + \phi_{\text{exchange}} + \phi
 <p>with <span class="math inline">\(\phi_{\text{broker}} = 0.65\)</span>, <span class="math inline">\(\phi_{\text{exchange}} = 0.30\)</span>, <span class="math inline">\(\phi_{\text{regulatory}} = 0.02\)</span>.</p>
 </section>
 <section id="cost-survival-predicate" class="level3" data-number="5.3.2">
-<h3 data-number="5.3.2"><span class="header-section-number">5.3.2</span> Cost Survival Predicate</h3>
+<h3 data-number="5.3.2" class="anchored" data-anchor-id="cost-survival-predicate"><span class="header-section-number">5.3.2</span> Cost Survival Predicate</h3>
 <div id="def-cost-survival" class="theorem definition">
 <p><span class="theorem-title"><strong>Definition 14 (Execution Cost Survival)</strong></span> The post-cost IV/RV ratio must remain above threshold:</p>
 <p><span id="eq-cost-survival"><span class="math display">\[
@@ -782,15 +790,15 @@ C_{\text{commission}}(n) = (\phi_{\text{broker}} + \phi_{\text{exchange}} + \phi
 </section>
 </section>
 <section id="vega-correlation-analysis" class="level2" data-number="5.4">
-<h2 data-number="5.4"><span class="header-section-number">5.4</span> Vega Correlation Analysis</h2>
+<h2 data-number="5.4" class="anchored" data-anchor-id="vega-correlation-analysis"><span class="header-section-number">5.4</span> Vega Correlation Analysis</h2>
 <section id="independence-criterion" class="level3" data-number="5.4.1">
-<h3 data-number="5.4.1"><span class="header-section-number">5.4.1</span> Independence Criterion</h3>
+<h3 data-number="5.4.1" class="anchored" data-anchor-id="independence-criterion"><span class="header-section-number">5.4.1</span> Independence Criterion</h3>
 <p>The calendar spread strategy requires that front-month and back-month implied volatilities exhibit low correlation, ensuring that the spread provides genuine vega hedging.</p>
 <div id="def-vega-independence" class="theorem definition">
-<p><span class="theorem-title"><strong>Definition 15 (Vega Independence Predicate)</strong></span> Let <span class="math inline">\(\{\sigma_I^{(F)}_{i}\}_{i=1}^{N}\)</span> and <span class="math inline">\(\{\sigma_I^{(B)}_{i}\}_{i=1}^{N}\)</span> be historical IV observations for front and back months.</p>
+<p><span class="theorem-title"><strong>Definition 15 (Vega Independence Predicate)</strong></span> Let <span class="math inline">\(\{\sigma_{I,i}^{(F)}\}_{i=1}^{N}\)</span> and <span class="math inline">\(\{\sigma_{I,i}^{(B)}\}_{i=1}^{N}\)</span> be historical IV observations for front and back months.</p>
 <p>The Pearson correlation coefficient is:</p>
 <p><span id="eq-correlation"><span class="math display">\[
-\rho_{FB} = \frac{\sum_{i=1}^{N} \left(\sigma_I^{(F)}_{i} - \overline{\sigma_I^{(F)}}\right)\left(\sigma_I^{(B)}_{i} - \overline{\sigma_I^{(B)}}\right)}{\sqrt{\sum_{i=1}^{N} \left(\sigma_I^{(F)}_{i} - \overline{\sigma_I^{(F)}}\right)^2} \cdot \sqrt{\sum_{i=1}^{N} \left(\sigma_I^{(B)}_{i} - \overline{\sigma_I^{(B)}}\right)^2}}
+\rho_{FB} = \frac{\sum_{i=1}^{N} \left(\sigma_{I,i}^{(F)} - \overline{\sigma_I^{(F)}}\right)\left(\sigma_{I,i}^{(B)} - \overline{\sigma_I^{(B)}}\right)}{\sqrt{\sum_{i=1}^{N} \left(\sigma_{I,i}^{(F)} - \overline{\sigma_I^{(F)}}\right)^2} \cdot \sqrt{\sum_{i=1}^{N} \left(\sigma_{I,i}^{(B)} - \overline{\sigma_I^{(B)}}\right)^2}}
 \tag{31}\]</span></span></p>
 <p>The vega independence fault predicate is:</p>
 <p><span id="eq-vega-fault"><span class="math display">\[
@@ -801,9 +809,9 @@ C_{\text{commission}}(n) = (\phi_{\text{broker}} + \phi_{\text{exchange}} + \phi
 </section>
 </section>
 <section id="liquidity-assurance" class="level2" data-number="5.5">
-<h2 data-number="5.5"><span class="header-section-number">5.5</span> Liquidity Assurance</h2>
+<h2 data-number="5.5" class="anchored" data-anchor-id="liquidity-assurance"><span class="header-section-number">5.5</span> Liquidity Assurance</h2>
 <section id="position-to-liquidity-constraints" class="level3" data-number="5.5.1">
-<h3 data-number="5.5.1"><span class="header-section-number">5.5.1</span> Position-to-Liquidity Constraints</h3>
+<h3 data-number="5.5.1" class="anchored" data-anchor-id="position-to-liquidity-constraints"><span class="header-section-number">5.5.1</span> Position-to-Liquidity Constraints</h3>
 <div id="def-liquidity-constraints" class="theorem definition">
 <p><span class="theorem-title"><strong>Definition 16 (Liquidity Fault Predicates)</strong></span> For position size <span class="math inline">\(n\)</span> contracts with daily volume <span class="math inline">\(V\)</span> and open interest <span class="math inline">\(OI\)</span>:</p>
 <p><span class="math display">\[\begin{align}
@@ -817,9 +825,9 @@ C_{\text{commission}}(n) = (\phi_{\text{broker}} + \phi_{\text{exchange}} + \phi
 </section>
 </section>
 <section id="gamma-risk-monitoring" class="level2" data-number="5.6">
-<h2 data-number="5.6"><span class="header-section-number">5.6</span> Gamma Risk Monitoring</h2>
+<h2 data-number="5.6" class="anchored" data-anchor-id="gamma-risk-monitoring"><span class="header-section-number">5.6</span> Gamma Risk Monitoring</h2>
 <section id="delta-neutral-maintenance" class="level3" data-number="5.6.1">
-<h3 data-number="5.6.1"><span class="header-section-number">5.6.1</span> Delta-Neutral Maintenance</h3>
+<h3 data-number="5.6.1" class="anchored" data-anchor-id="delta-neutral-maintenance"><span class="header-section-number">5.6.1</span> Delta-Neutral Maintenance</h3>
 <p>The calendar spread strategy aims to maintain delta-neutrality. Monitoring detects when delta exceeds acceptable bounds.</p>
 <div id="def-delta-monitoring" class="theorem definition">
 <p><span class="theorem-title"><strong>Definition 17 (Delta Drift Fault)</strong></span> For position with net delta <span class="math inline">\(\Delta_{\text{net}}\)</span>:</p>
@@ -829,7 +837,7 @@ C_{\text{commission}}(n) = (\phi_{\text{broker}} + \phi_{\text{exchange}} + \phi
 </div>
 </section>
 <section id="gamma-warning-threshold" class="level3" data-number="5.6.2">
-<h3 data-number="5.6.2"><span class="header-section-number">5.6.2</span> Gamma Warning Threshold</h3>
+<h3 data-number="5.6.2" class="anchored" data-anchor-id="gamma-warning-threshold"><span class="header-section-number">5.6.2</span> Gamma Warning Threshold</h3>
 <div id="def-gamma-monitoring" class="theorem definition">
 <p><span class="theorem-title"><strong>Definition 18 (Gamma Risk Fault)</strong></span> For position with net gamma <span class="math inline">\(\Gamma_{\text{net}}\)</span>:</p>
 <p><span id="eq-gamma-fault"><span class="math display">\[
@@ -839,7 +847,7 @@ C_{\text{commission}}(n) = (\phi_{\text{broker}} + \phi_{\text{exchange}} + \phi
 </div>
 </section>
 <section id="moneyness-alert" class="level3" data-number="5.6.3">
-<h3 data-number="5.6.3"><span class="header-section-number">5.6.3</span> Moneyness Alert</h3>
+<h3 data-number="5.6.3" class="anchored" data-anchor-id="moneyness-alert"><span class="header-section-number">5.6.3</span> Moneyness Alert</h3>
 <div id="def-moneyness-alert" class="theorem definition">
 <p><span class="theorem-title"><strong>Definition 19 (Moneyness Fault)</strong></span> For underlying price <span class="math inline">\(S\)</span> and strike <span class="math inline">\(K\)</span>:</p>
 <p><span id="eq-moneyness-fault"><span class="math display">\[
@@ -850,9 +858,9 @@ C_{\text{commission}}(n) = (\phi_{\text{broker}} + \phi_{\text{exchange}} + \phi
 </section>
 </section>
 <section id="circuit-breaker-conditions" class="level2" data-number="5.7">
-<h2 data-number="5.7"><span class="header-section-number">5.7</span> Circuit Breaker Conditions</h2>
+<h2 data-number="5.7" class="anchored" data-anchor-id="circuit-breaker-conditions"><span class="header-section-number">5.7</span> Circuit Breaker Conditions</h2>
 <section id="system-level-halts" class="level3" data-number="5.7.1">
-<h3 data-number="5.7.1"><span class="header-section-number">5.7.1</span> System-Level Halts</h3>
+<h3 data-number="5.7.1" class="anchored" data-anchor-id="system-level-halts"><span class="header-section-number">5.7.1</span> System-Level Halts</h3>
 <div id="def-circuit-breakers" class="theorem definition">
 <p><span class="theorem-title"><strong>Definition 20 (Circuit Breaker Predicates)</strong></span> <strong>Position Loss Circuit Breaker</strong>: <span id="eq-loss-breaker"><span class="math display">\[
 \mathcal{C}_{\text{loss}}(\xi) \equiv \frac{P\&amp;L_{\text{daily}}(\xi)}{\text{Capital}} &lt; -0.05
@@ -870,9 +878,9 @@ C_{\text{commission}}(n) = (\phi_{\text{broker}} + \phi_{\text{exchange}} + \phi
 </section>
 </section>
 <section id="production-validation-aggregation" class="level2" data-number="5.8">
-<h2 data-number="5.8"><span class="header-section-number">5.8</span> Production Validation Aggregation</h2>
+<h2 data-number="5.8" class="anchored" data-anchor-id="production-validation-aggregation"><span class="header-section-number">5.8</span> Production Validation Aggregation</h2>
 <section id="composite-production-readiness" class="level3" data-number="5.8.1">
-<h3 data-number="5.8.1"><span class="header-section-number">5.8.1</span> Composite Production Readiness</h3>
+<h3 data-number="5.8.1" class="anchored" data-anchor-id="composite-production-readiness"><span class="header-section-number">5.8.1</span> Composite Production Readiness</h3>
 <div id="def-production-ready" class="theorem definition">
 <p><span class="theorem-title"><strong>Definition 21 (Production Readiness Predicate)</strong></span> A signal is production-ready if and only if:</p>
 <p><span id="eq-production-ready"><span class="math display">\[
@@ -887,24 +895,24 @@ C_{\text{commission}}(n) = (\phi_{\text{broker}} + \phi_{\text{exchange}} + \phi
 <section id="stochasticity-and-non-determinism" class="level1" data-number="6">
 <h1 data-number="6"><span class="header-section-number">6</span> Stochasticity and Non-Determinism</h1>
 <section id="inherently-stochastic-components" class="level2" data-number="6.1">
-<h2 data-number="6.1"><span class="header-section-number">6.1</span> Inherently Stochastic Components</h2>
+<h2 data-number="6.1" class="anchored" data-anchor-id="inherently-stochastic-components"><span class="header-section-number">6.1</span> Inherently Stochastic Components</h2>
 <p>Certain components of the Alaris system involve quantities that are fundamentally stochastic. This section explicitly characterises these components and the statistical methods used to handle them.</p>
 <section id="asset-price-evolution" class="level3" data-number="6.1.1">
-<h3 data-number="6.1.1"><span class="header-section-number">6.1.1</span> Asset Price Evolution</h3>
-<p>The underlying asset price follows a continuous-time stochastic process (<a href="#eq-sde" class="quarto-xref">Equation 1</a>). <strong>This is not a fault</strong>—it is the defining characteristic of the problem domain. The system handles this through:</p>
+<h3 data-number="6.1.1" class="anchored" data-anchor-id="asset-price-evolution"><span class="header-section-number">6.1.1</span> Asset Price Evolution</h3>
+<p>The underlying asset price follows a continuous-time stochastic process (<a href="#eq-sde" class="quarto-xref">Equation&nbsp;1</a>). <strong>This is not a fault</strong>—it is the defining characteristic of the problem domain. The system handles this through:</p>
 <ol type="1">
 <li><strong>Risk-neutral pricing</strong>: Option values are computed as expectations under <span class="math inline">\(\mathbb{Q}\)</span>, eliminating the need to forecast price direction</li>
 <li><strong>Delta hedging</strong>: The strategy is approximately delta-neutral, reducing sensitivity to price movements</li>
 </ol>
 </section>
 <section id="volatility-estimation" class="level3" data-number="6.1.2">
-<h3 data-number="6.1.2"><span class="header-section-number">6.1.2</span> Volatility Estimation</h3>
+<h3 data-number="6.1.2" class="anchored" data-anchor-id="volatility-estimation"><span class="header-section-number">6.1.2</span> Volatility Estimation</h3>
 <p>Realised volatility estimation from finite samples is inherently subject to statistical uncertainty.</p>
 </section>
 </section>
 <div id="prop-yz-distribution">
 <section id="yang-zhang-estimator-distribution" class="level2" data-number="6.2">
-<h2 data-number="6.2"><span class="header-section-number">6.2</span> Yang-Zhang Estimator Distribution</h2>
+<h2 data-number="6.2" class="anchored" data-anchor-id="yang-zhang-estimator-distribution"><span class="header-section-number">6.2</span> Yang-Zhang Estimator Distribution</h2>
 <p>Under the assumption of geometric Brownian motion, the Yang-Zhang variance estimator <span class="math inline">\(\hat{\sigma}_{YZ}^2\)</span> satisfies:</p>
 <p><span class="math display">\[
 \frac{(n-1)\hat{\sigma}_{YZ}^2}{\sigma^2} \sim \chi^2_{n-1 + \eta(n-1)}
@@ -918,7 +926,7 @@ C_{\text{commission}}(n) = (\phi_{\text{broker}} + \phi_{\text{exchange}} + \phi
 </div>
 <p><strong>Accounting for this uncertainty</strong>: The IV/RV ratio threshold (1.25) incorporates a buffer above 1.0 to account for estimation error in the denominator.</p>
 <section id="implied-volatility-surface" class="level3" data-number="6.2.1">
-<h3 data-number="6.2.1"><span class="header-section-number">6.2.1</span> Implied Volatility Surface</h3>
+<h3 data-number="6.2.1" class="anchored" data-anchor-id="implied-volatility-surface"><span class="header-section-number">6.2.1</span> Implied Volatility Surface</h3>
 <p>Implied volatility observations are subject to:</p>
 <ol type="1">
 <li><strong>Bid-ask spread noise</strong>: Mid-prices may not reflect true market clearing levels</li>
@@ -928,10 +936,10 @@ C_{\text{commission}}(n) = (\phi_{\text{broker}} + \phi_{\text{exchange}} + \phi
 <p><strong>Accounting for these</strong>: The term structure analysis uses robust regression on multiple strike/expiry points, and the slope threshold (-0.00406) is calibrated from empirical studies.</p>
 </section>
 <section id="deterministic-components" class="level2" data-number="6.3">
-<h2 data-number="6.3"><span class="header-section-number">6.3</span> Deterministic Components</h2>
+<h2 data-number="6.3" class="anchored" data-anchor-id="deterministic-components"><span class="header-section-number">6.3</span> Deterministic Components</h2>
 <p>The following components are fully deterministic given their inputs:</p>
 <section id="boundary-computation" class="level3" data-number="6.3.1">
-<h3 data-number="6.3.1"><span class="header-section-number">6.3.1</span> Boundary Computation</h3>
+<h3 data-number="6.3.1" class="anchored" data-anchor-id="boundary-computation"><span class="header-section-number">6.3.1</span> Boundary Computation</h3>
 <p>Given parameters <span class="math inline">\((S, K, T, r, q, \sigma)\)</span>, the computed boundaries <span class="math inline">\(B(\tau)\)</span> and <span class="math inline">\(Y(\tau)\)</span> are deterministic. The only source of variation is:</p>
 <ol type="1">
 <li><strong>Numerical precision</strong>: Controlled by specified tolerances (<span class="math inline">\(\epsilon = 10^{-10}\)</span>)</li>
@@ -939,7 +947,7 @@ C_{\text{commission}}(n) = (\phi_{\text{broker}} + \phi_{\text{exchange}} + \phi
 </ol>
 </section>
 <section id="signal-generation" class="level3" data-number="6.3.2">
-<h3 data-number="6.3.2"><span class="header-section-number">6.3.2</span> Signal Generation</h3>
+<h3 data-number="6.3.2" class="anchored" data-anchor-id="signal-generation"><span class="header-section-number">6.3.2</span> Signal Generation</h3>
 <p>Given input data, the signal strength <span class="math inline">\(\Sigma\)</span> is deterministic:</p>
 <p><span class="math display">\[
 \Sigma = \Sigma(\mathcal{S}_1, \mathcal{S}_2, \mathcal{S}_3)
@@ -947,23 +955,23 @@ C_{\text{commission}}(n) = (\phi_{\text{broker}} + \phi_{\text{exchange}} + \phi
 <p>Each <span class="math inline">\(\mathcal{S}_i\)</span> is a deterministic function of the input data.</p>
 </section>
 <section id="fault-detection" class="level3" data-number="6.3.3">
-<h3 data-number="6.3.3"><span class="header-section-number">6.3.3</span> Fault Detection</h3>
+<h3 data-number="6.3.3" class="anchored" data-anchor-id="fault-detection"><span class="header-section-number">6.3.3</span> Fault Detection</h3>
 <p>All fault predicates <span class="math inline">\(\mathcal{F}_i\)</span> are deterministic Boolean functions of system state.</p>
 </section>
 </section>
 <section id="accounting-summary" class="level2" data-number="6.4">
-<h2 data-number="6.4"><span class="header-section-number">6.4</span> Accounting Summary</h2>
-<div id="tbl-stochasticity" class="quarto-float quarto-figure quarto-figure-center">
-<figure class="quarto-float quarto-float-tbl">
+<h2 data-number="6.4" class="anchored" data-anchor-id="accounting-summary"><span class="header-section-number">6.4</span> Accounting Summary</h2>
+<div id="tbl-stochasticity" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
 <figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-stochasticity-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Table 1: Component Stochasticity Summary
+Table&nbsp;1: Component Stochasticity Summary
 </figcaption>
 <div aria-describedby="tbl-stochasticity-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<table class="caption-top">
+<table class="caption-top table">
 <colgroup>
-<col style="width: 25%" />
-<col style="width: 30%" />
-<col style="width: 44%" />
+<col style="width: 25%">
+<col style="width: 30%">
+<col style="width: 44%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -1018,9 +1026,9 @@ Table 1: Component Stochasticity Summary
 <section id="numerical-methods-and-implementation" class="level1" data-number="7">
 <h1 data-number="7"><span class="header-section-number">7</span> Numerical Methods and Implementation</h1>
 <section id="collocation-method-for-boundary-refinement" class="level2" data-number="7.1">
-<h2 data-number="7.1"><span class="header-section-number">7.1</span> Collocation Method for Boundary Refinement</h2>
+<h2 data-number="7.1" class="anchored" data-anchor-id="collocation-method-for-boundary-refinement"><span class="header-section-number">7.1</span> Collocation Method for Boundary Refinement</h2>
 <section id="chebyshev-node-distribution" class="level3" data-number="7.1.1">
-<h3 data-number="7.1.1"><span class="header-section-number">7.1.1</span> Chebyshev Node Distribution</h3>
+<h3 data-number="7.1.1" class="anchored" data-anchor-id="chebyshev-node-distribution"><span class="header-section-number">7.1.1</span> Chebyshev Node Distribution</h3>
 <p>The Kim integral equation is discretised using Chebyshev collocation points for optimal polynomial interpolation:</p>
 <p><span id="eq-chebyshev"><span class="math display">\[
 \xi_j = \cos\left(\frac{(2j-1)\pi}{2N}\right), \quad j = 1, \ldots, N
@@ -1031,7 +1039,7 @@ Table 1: Component Stochasticity Summary
 \]</span></p>
 </section>
 <section id="spectral-convergence" class="level3" data-number="7.1.2">
-<h3 data-number="7.1.2"><span class="header-section-number">7.1.2</span> Spectral Convergence</h3>
+<h3 data-number="7.1.2" class="anchored" data-anchor-id="spectral-convergence"><span class="header-section-number">7.1.2</span> Spectral Convergence</h3>
 <div id="thm-spectral" class="theorem">
 <p><span class="theorem-title"><strong>Theorem 6 (Spectral Convergence)</strong></span> For analytic integrands, the collocation method achieves exponential convergence:</p>
 <p><span class="math display">\[
@@ -1039,13 +1047,13 @@ Table 1: Component Stochasticity Summary
 \]</span></p>
 <p>for some constant <span class="math inline">\(c &gt; 0\)</span> depending on the analyticity domain.</p>
 </div>
-<p>The Alaris system uses <span class="math inline">\(N = 50\)</span> collocation points, providing accuracy exceeding the Healy (2021) benchmark values.</p>
+<p>The Alaris system uses <span class="math inline">\(N = 50\)</span> collocation points, providing accuracy exceeding the <span class="citation" data-cites="healy2021">Healy <a href="#ref-healy2021" role="doc-biblioref">(2021)</a></span> benchmark values.</p>
 </section>
 </section>
 <section id="convergence-criteria" class="level2" data-number="7.2">
-<h2 data-number="7.2"><span class="header-section-number">7.2</span> Convergence Criteria</h2>
+<h2 data-number="7.2" class="anchored" data-anchor-id="convergence-criteria"><span class="header-section-number">7.2</span> Convergence Criteria</h2>
 <section id="iteration-termination" class="level3" data-number="7.2.1">
-<h3 data-number="7.2.1"><span class="header-section-number">7.2.1</span> Iteration Termination</h3>
+<h3 data-number="7.2.1" class="anchored" data-anchor-id="iteration-termination"><span class="header-section-number">7.2.1</span> Iteration Termination</h3>
 <p>The FP-B’ iteration terminates when:</p>
 <p><span id="eq-convergence"><span class="math display">\[
 \max_{j=1,\ldots,N} |B_j^{(n+1)} - B_j^{(n)}| &lt; \epsilon_{\text{tol}}
@@ -1054,22 +1062,22 @@ Table 1: Component Stochasticity Summary
 </section>
 </section>
 <section id="benchmark-validation" class="level2" data-number="7.3">
-<h2 data-number="7.3"><span class="header-section-number">7.3</span> Benchmark Validation</h2>
-<p>The implementation is validated against Healy (2021) Table 2 benchmark values:</p>
-<div id="tbl-healy-benchmark" class="quarto-float quarto-figure quarto-figure-center">
-<figure class="quarto-float quarto-float-tbl">
+<h2 data-number="7.3" class="anchored" data-anchor-id="benchmark-validation"><span class="header-section-number">7.3</span> Benchmark Validation</h2>
+<p>The implementation is validated against <span class="citation" data-cites="healy2021">Healy <a href="#ref-healy2021" role="doc-biblioref">(2021)</a></span> Table 2 benchmark values:</p>
+<div id="tbl-healy-benchmark" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
 <figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-healy-benchmark-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Table 2: Healy Benchmark Validation
+Table&nbsp;2: Healy Benchmark Validation
 </figcaption>
 <div aria-describedby="tbl-healy-benchmark-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<table class="caption-top" style="width:100%;">
+<table class="caption-top table">
 <colgroup>
-<col style="width: 12%" />
-<col style="width: 19%" />
-<col style="width: 19%" />
-<col style="width: 20%" />
-<col style="width: 20%" />
-<col style="width: 6%" />
+<col style="width: 12%">
+<col style="width: 19%">
+<col style="width: 19%">
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 6%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -1128,21 +1136,32 @@ Table 2: Healy Benchmark Validation
 </section>
 <section id="references" class="level1" data-number="9">
 <h1 data-number="9"><span class="header-section-number">9</span> References</h1>
-<div id="refs" role="list">
-
+<div id="refs" class="references csl-bib-body" role="list">
+<div id="ref-andersen2016" class="csl-entry" role="listitem">
+Andersen, Leif B. G., Mark Lake, and Dimitri Offengenden, 2016, High-performance <span>A</span>merican option pricing, <em>Journal of Computational Finance</em> 20, 39–87.
+</div>
+<div id="ref-atilgan2014" class="csl-entry" role="listitem">
+Atilgan, Yigit, Turan G Bali, K Ozgur Demirtas, and A Doruk Gunaydin, 2014, Implied volatility spreads and expected market returns, <em>Journal of Business &amp; Economic Statistics</em> 32, 212–227.
+</div>
+<div id="ref-healy2021" class="csl-entry" role="listitem">
+Healy, Jerome V, 2021, Pricing <span>A</span>merican options under negative rates, <em>Journal of Derivatives</em> 28, 33–52.
+</div>
+<div id="ref-yang2000" class="csl-entry" role="listitem">
+Yang, Dennis, and Qiang Zhang, 2000, Drift-independent volatility estimation based on high, low, open, and close prices, <em>Journal of Business</em> 73, 477–492.
+</div>
 </div>
 </section>
 <section id="appendix-symbol-reference" class="level1" data-number="10">
 <h1 data-number="10"><span class="header-section-number">10</span> Appendix: Symbol Reference</h1>
 <section id="greek-letters" class="level2" data-number="10.1">
-<h2 data-number="10.1"><span class="header-section-number">10.1</span> Greek Letters</h2>
-<div id="tbl-greek" class="quarto-float quarto-figure quarto-figure-center">
-<figure class="quarto-float quarto-float-tbl">
+<h2 data-number="10.1" class="anchored" data-anchor-id="greek-letters"><span class="header-section-number">10.1</span> Greek Letters</h2>
+<div id="tbl-greek" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
 <figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-greek-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Table 3: Greek Letter Notation
+Table&nbsp;3: Greek Letter Notation
 </figcaption>
 <div aria-describedby="tbl-greek-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<table class="caption-top">
+<table class="caption-top table">
 <thead>
 <tr class="header">
 <th>Symbol</th>
@@ -1221,14 +1240,14 @@ Table 3: Greek Letter Notation
 </div>
 </section>
 <section id="roman-letters" class="level2" data-number="10.2">
-<h2 data-number="10.2"><span class="header-section-number">10.2</span> Roman Letters</h2>
-<div id="tbl-roman" class="quarto-float quarto-figure quarto-figure-center">
-<figure class="quarto-float quarto-float-tbl">
+<h2 data-number="10.2" class="anchored" data-anchor-id="roman-letters"><span class="header-section-number">10.2</span> Roman Letters</h2>
+<div id="tbl-roman" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
 <figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-roman-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Table 4: Roman Letter Notation
+Table&nbsp;4: Roman Letter Notation
 </figcaption>
 <div aria-describedby="tbl-roman-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<table class="caption-top">
+<table class="caption-top table">
 <thead>
 <tr class="header">
 <th>Symbol</th>
@@ -1291,14 +1310,14 @@ Table 4: Roman Letter Notation
 </div>
 </section>
 <section id="calligraphic-and-blackboard-bold" class="level2" data-number="10.3">
-<h2 data-number="10.3"><span class="header-section-number">10.3</span> Calligraphic and Blackboard Bold</h2>
-<div id="tbl-special" class="quarto-float quarto-figure quarto-figure-center">
-<figure class="quarto-float quarto-float-tbl">
+<h2 data-number="10.3" class="anchored" data-anchor-id="calligraphic-and-blackboard-bold"><span class="header-section-number">10.3</span> Calligraphic and Blackboard Bold</h2>
+<div id="tbl-special" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
 <figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-special-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Table 5: Special Notation
+Table&nbsp;5: Special Notation
 </figcaption>
 <div aria-describedby="tbl-special-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<table class="caption-top">
+<table class="caption-top table">
 <thead>
 <tr class="header">
 <th>Symbol</th>
@@ -1376,7 +1395,7 @@ Table 5: Special Notation
 
 </main>
 <!-- /main column -->
-<script id = "quarto-html-after-body" type="application/javascript">
+<script id="quarto-html-after-body" type="application/javascript">
 window.document.addEventListener("DOMContentLoaded", function (event) {
   const toggleBodyColorMode = (bsSheetEl) => {
     const mode = bsSheetEl.getAttribute("data-mode");
@@ -1795,6 +1814,7 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 </script>
 </div> <!-- /content -->
 
-</body>
 
-</html>
+
+
+</body></html>

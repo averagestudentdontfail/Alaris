@@ -245,7 +245,7 @@ $$ {#eq-characteristic}
 
 ### Quasi-Analytic Framework
 
-The Alaris system employs the QD+ approximation method of Andersen, Lake, and Offengenden (2016) as the first stage of boundary estimation. This method provides an accurate quasi-analytic approximation that serves as initialisation for subsequent refinement.
+The Alaris system employs the QD+ approximation method of @andersen2016 as the first stage of boundary estimation. This method provides an accurate quasi-analytic approximation that serves as initialisation for subsequent refinement.
 
 ::: {#def-qd-approximation}
 ## QD+ Boundary Approximation
@@ -374,7 +374,7 @@ $$ {#eq-lower-fixed}
 
 ### FP-B' Stabilisation
 
-The Alaris system employs the FP-B' stabilised iteration scheme from Healy (2021) to prevent oscillatory behaviour in long-maturity options.
+The Alaris system employs the FP-B' stabilised iteration scheme from @healy2021 to prevent oscillatory behaviour in long-maturity options.
 
 ::: {#def-fpb-prime}
 ## FP-B' Iteration
@@ -447,7 +447,7 @@ where $\Delta \approx 5\text{-}7$ trading days, with mean reversion following th
 
 ### The Atilgan Criteria
 
-The signal generation system implements the criteria from Atilgan et al. (2014), expressed as formal predicates.
+The signal generation system implements the criteria from @atilgan2014, expressed as formal predicates.
 
 ::: {#def-signal-predicates}
 ## Trading Signal Predicates
@@ -493,7 +493,7 @@ $$ {#eq-signal-strength}
 
 ### The Yang-Zhang Estimator
 
-The Alaris system employs the Yang-Zhang (2000) estimator for realised volatility, which is efficient for OHLC (open-high-low-close) data and robust to opening gaps.
+The Alaris system employs the @yang2000 estimator for realised volatility, which is efficient for OHLC (open-high-low-close) data and robust to opening gaps.
 
 ::: {#def-yang-zhang}
 ## Yang-Zhang Estimator
@@ -704,12 +704,12 @@ The calendar spread strategy requires that front-month and back-month implied vo
 
 ::: {#def-vega-independence}
 ## Vega Independence Predicate
-Let $\{\sigma_I^{(F)}_{i}\}_{i=1}^{N}$ and $\{\sigma_I^{(B)}_{i}\}_{i=1}^{N}$ be historical IV observations for front and back months.
+Let $\{\sigma_{I,i}^{(F)}\}_{i=1}^{N}$ and $\{\sigma_{I,i}^{(B)}\}_{i=1}^{N}$ be historical IV observations for front and back months.
 
 The Pearson correlation coefficient is:
 
 $$
-\rho_{FB} = \frac{\sum_{i=1}^{N} \left(\sigma_I^{(F)}_{i} - \overline{\sigma_I^{(F)}}\right)\left(\sigma_I^{(B)}_{i} - \overline{\sigma_I^{(B)}}\right)}{\sqrt{\sum_{i=1}^{N} \left(\sigma_I^{(F)}_{i} - \overline{\sigma_I^{(F)}}\right)^2} \cdot \sqrt{\sum_{i=1}^{N} \left(\sigma_I^{(B)}_{i} - \overline{\sigma_I^{(B)}}\right)^2}}
+\rho_{FB} = \frac{\sum_{i=1}^{N} \left(\sigma_{I,i}^{(F)} - \overline{\sigma_I^{(F)}}\right)\left(\sigma_{I,i}^{(B)} - \overline{\sigma_I^{(B)}}\right)}{\sqrt{\sum_{i=1}^{N} \left(\sigma_{I,i}^{(F)} - \overline{\sigma_I^{(F)}}\right)^2} \cdot \sqrt{\sum_{i=1}^{N} \left(\sigma_{I,i}^{(B)} - \overline{\sigma_I^{(B)}}\right)^2}}
 $$ {#eq-correlation}
 
 The vega independence fault predicate is:
@@ -950,7 +950,7 @@ $$
 for some constant $c > 0$ depending on the analyticity domain.
 :::
 
-The Alaris system uses $N = 50$ collocation points, providing accuracy exceeding the Healy (2021) benchmark values.
+The Alaris system uses $N = 50$ collocation points, providing accuracy exceeding the @healy2021 benchmark values.
 
 
 ## Convergence Criteria
@@ -968,7 +968,7 @@ with $\epsilon_{\text{tol}} = 10^{-6}$ and maximum iterations $N_{\max} = 100$.
 
 ## Benchmark Validation
 
-The implementation is validated against Healy (2021) Table 2 benchmark values:
+The implementation is validated against @healy2021 Table 2 benchmark values:
 
 | $T$ (years) | $B_{\text{Healy}}$ | $Y_{\text{Healy}}$ | $B_{\text{Alaris}}$ | $Y_{\text{Alaris}}$ | Error |
 |-------------|--------------------|--------------------|---------------------|---------------------|-------|
