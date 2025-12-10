@@ -40,12 +40,28 @@ jobs:
         run: dotnet restore
 
       - name: Build (with analyzers)
-        run: dotnet build --no-restore --configuration Release
+        run: |
+          # Build only core Alaris projects (excludes Alaris.Lean external code)
+          # Alaris.Algorithm and Alaris.Application depend on LEAN and are excluded
+          for project in \
+            Alaris.Double/Alaris.Double.csproj \
+            Alaris.Strategy/Alaris.Strategy.csproj \
+            Alaris.Events/Alaris.Events.csproj \
+            Alaris.Data/Alaris.Data.csproj \
+            Alaris.Simulation/Alaris.Simulation.csproj \
+            Alaris.Quantlib/Alaris.Quantlib.csproj \
+            Alaris.Test/Alaris.Test.csproj; do
+            echo "=== Building $project ==="
+            dotnet build "$project" --no-restore --configuration Release
+          done
         env:
           CI: true
 
       - name: Run tests
-        run: dotnet test --no-build --configuration Release --verbosity normal
+        run: |
+          # Run tests only for Alaris.Test (excludes LEAN algorithm tests)
+          dotnet test Alaris.Test/Alaris.Test.csproj \
+            --no-build --configuration Release --verbosity normal
 
   analyze:
     name: Static Analysis
