@@ -1,7 +1,7 @@
 ---
-title: "Alaris: A Rigorous Mathematical Specification"
-subtitle: "Formal Derivation of the Earnings Volatility Calendar Spread System with Complete Fault Monitoring"
-author: "Kiran K. Nath"
+title: "Alaris"
+subtitle: "Earnings Volatility Calendar Spread System"
+author: "Kiran Nath"
 date: "December 2025"
 abstract: |
   This document provides a complete mathematical specification of the Alaris quantitative trading system. Beginning from first principles, we derive the option pricing methodology for American-style securities under both positive and negative interest rate regimes, formalise the earnings-based volatility trading strategy with mathematically precise entry criteria, and specify the complete fault monitoring framework as a system of inequalities and logical predicates. Every decision rule in the system corresponds to a mathematically specified condition, ensuring deterministic behaviour. Where stochasticity is inherent to the underlying processes, we explicitly characterise the probabilistic assumptions and derive appropriate estimators with known statistical properties.
