@@ -1,3 +1,34 @@
+// =============================================================================
+// TSUN003A.cs - Unit Tests for DBEX001A (Near-Expiry Stability Handler)
+// Component ID: TSUN003A
+// =============================================================================
+//
+// Mathematical Foundation
+// =======================
+// Near-expiry stability handles the T→0 numerical singularity in option pricing.
+//
+// Key Equations:
+// --------------
+// 1. Blending function: w(τ) = (τ - τ_min) / (τ_blend - τ_min)
+//    where τ_min = 1 day, τ_blend = 3 days
+//
+// 2. Blended price: V_blended = w(τ) * V_model + (1 - w(τ)) * V_intrinsic
+//
+// 3. Intrinsic values:
+//    - Call: max(S - K, 0)
+//    - Put:  max(K - S, 0)
+//
+// 4. Limiting Greeks as τ → 0:
+//    - Delta → sign(S - K) for ITM, 0 for OTM, 0.5 for ATM
+//    - Vega → 0 (no time value sensitivity)
+//    - Gamma → ∞ at the strike (modeled as spike)
+//
+// Arbitrage Constraint:
+// ---------------------
+// V >= max(intrinsic, 0) always (no-arbitrage)
+//
+// =============================================================================
+
 using System;
 using Xunit;
 using FluentAssertions;
@@ -6,14 +37,15 @@ using Alaris.Double;
 namespace Alaris.Test.Unit;
 
 /// <summary>
-/// Unit tests for DBEX001A - Near-Expiry Numerical Stability Handler.
-/// Tests smooth blending, intrinsic value, and limiting Greeks behaviour.
+/// TSUN003A: Unit tests for DBEX001A (Near-Expiry Stability Handler).
+/// Tests smooth blending, intrinsic value, and limiting Greeks behavior
+/// for numerical stability as τ → 0.
 /// </summary>
-public sealed class DBEX001ATests
+public sealed class TSUN003A
 {
     private readonly DBEX001A _handler;
 
-    public DBEX001ATests()
+    public TSUN003A()
     {
         _handler = new DBEX001A();
     }

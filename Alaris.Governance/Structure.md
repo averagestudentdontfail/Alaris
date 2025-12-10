@@ -96,6 +96,14 @@ The naming format consists of four segments:
 | `DM` | Domain | Domain-specific event definitions. |
 | `IF` | Infrastructure | Infrastructure implementations (stores, loggers). |
 
+#### 4.3.5 Test Suite (TS)
+| Code | Category | Description |
+|------|----------|-------------|
+| `UN` | Unit | Component-level unit tests with formal derivation. |
+| `IN` | Integration | End-to-end integration tests. |
+| `DG` | Diagnostic | Mathematical constraint validation tests. |
+| `BM` | Benchmark | Performance and accuracy benchmark tests. |
+
 ### 4.4 Variant Codes
 | Code | Meaning | Usage |
 |------|---------|-------|

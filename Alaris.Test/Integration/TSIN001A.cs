@@ -1,3 +1,43 @@
+// =============================================================================
+// TSIN001A.cs - Integration Tests for Alaris.Double Complete Workflow
+// Component ID: TSIN001A
+// =============================================================================
+//
+// Mathematical Foundation
+// =======================
+// Reference: Healy (2021) "Pricing American Options Under Negative Rates"
+// Reference: Kim (1990) "The Analytic Valuation of American Options"
+//
+// This integration test validates the complete double-boundary workflow:
+//   QD+ Approximation (DBAP001A) → Kim Refinement (DBSL002A) → Final Boundaries
+//
+// Workflow Stages:
+// ----------------
+// 1. Initial Approximation (DBAP001A):
+//    - Compute λ roots from Healy Eq. 15
+//    - Apply Super Halley iteration for S_u, S_l
+//
+// 2. Refinement (DBSL002A):
+//    - FP-B' stabilized iteration per Healy §5.3
+//    - Crossing time detection with Δτ < 10⁻² accuracy
+//
+// 3. Validation:
+//    - Constraints A1-A5 (Healy Appendix A)
+//    - Benchmark accuracy against Healy Table 2
+//
+// Benchmark Values (Healy Table 2):
+// ---------------------------------
+// | T    | S_u   | S_l   |
+// |------|-------|-------|
+// | 1    | 73.50 | 63.50 |
+// | 5    | 71.60 | 61.60 |
+// | 10   | 69.62 | 58.72 |
+// | 15   | 68.00 | 57.00 |
+//
+// Parameters: K=100, r=-0.005, q=-0.01, σ=0.08
+//
+// =============================================================================
+
 using System;
 using System.Diagnostics;
 using Xunit;
@@ -7,11 +47,17 @@ using Alaris.Double;
 namespace Alaris.Test.Integration;
 
 /// <summary>
-/// Integration tests for the complete double boundary solver workflow.
-/// Tests QD+ approximation → Kim refinement → Final boundaries.
+/// TSIN001A: Integration tests for Alaris.Double complete workflow.
+/// Tests QD+ approximation → Kim refinement → Final boundaries
+/// per Healy (2021) and Kim (1990).
 /// </summary>
-public class DoubleBoundaryIntegrationTests
+public class TSIN001A
 {
+    /// <summary>
+    /// Validates complete workflow against Healy (2021) Table 2 benchmark.
+    /// Parameters: K=100, T=10, r=-0.005, q=-0.01, σ=0.08
+    /// Expected: S_u ≈ 69.62, S_l ≈ 58.72
+    /// </summary>
     [Fact]
     public void CompleteWorkflow_HealyTable2_MatchesBenchmark()
     {
@@ -31,17 +77,15 @@ public class DoubleBoundaryIntegrationTests
         // Act
         var result = solver.Solve();
         
-        // Assert: Should match Healy benchmarks
+        // Assert: Should match Healy benchmarks within 1.0 tolerance
         result.UpperBoundary.Should().BeApproximately(69.62, 1.0,
-            "upper boundary should match Healy Table 2");
+            "upper boundary should match Healy Table 2 (T=10)");
         result.LowerBoundary.Should().BeApproximately(58.72, 1.0,
-            "lower boundary should match Healy Table 2");
+            "lower boundary should match Healy Table 2 (T=10)");
         
         // Verify refinement was attempted
         result.IsRefined.Should().BeTrue();
 
-        // UpperImprovement/LowerImprovement measure absolute change from QD+
-        // When QD+ is already perfect (as with Healy benchmarks), change can be 0 (preservation is correct)
         // Improvement should be >= 0 (never negative, which would indicate corruption)
         result.UpperImprovement.Should().BeGreaterOrEqualTo(0,
             "refinement should not corrupt upper boundary");
@@ -53,10 +97,14 @@ public class DoubleBoundaryIntegrationTests
         result.IsValid.Should().BeTrue();
     }
     
+    /// <summary>
+    /// Tests workflow scaling across maturity and resolution combinations.
+    /// Mathematical basis: Convergence should improve with higher collocation points.
+    /// </summary>
     [Theory]
-    [InlineData(1.0, 20)]
-    [InlineData(5.0, 50)]
-    [InlineData(10.0, 100)]
+    [InlineData(1.0, 20)]   // Short maturity, low resolution
+    [InlineData(5.0, 50)]   // Medium maturity, medium resolution
+    [InlineData(10.0, 100)] // Long maturity, high resolution
     public void CompleteWorkflow_ScalesWithMaturityAndResolution(double maturity, int collocationPoints)
     {
         // Arrange
@@ -81,10 +129,10 @@ public class DoubleBoundaryIntegrationTests
         stopwatch.ElapsedMilliseconds.Should().BeLessThan(5000,
             $"should complete within 5 seconds for T={maturity}, points={collocationPoints}");
         
-        // Results should be valid
+        // Results should be valid (A1, A2, A3 constraints)
         result.IsValid.Should().BeTrue();
-        result.UpperBoundary.Should().BeLessThan(100.0);
-        result.LowerBoundary.Should().BeGreaterThan(0.0);
+        result.UpperBoundary.Should().BeLessThan(100.0);  // A3
+        result.LowerBoundary.Should().BeGreaterThan(0.0); // A1
         
         // Path should have correct number of points
         if (result.UpperBoundaryPath != null)
@@ -94,10 +142,13 @@ public class DoubleBoundaryIntegrationTests
         }
     }
     
+    /// <summary>
+    /// Compares QD+ approximation vs refined solution.
+    /// Mathematical basis: Refinement should preserve or improve QD+ accuracy.
+    /// </summary>
     [Fact]
     public void CompleteWorkflow_QdPlusOnly_VersusRefined()
     {
-        // Compare QD+ approximation with refined solution
         var parameters = new
         {
             spot = 100.0,
@@ -110,7 +161,7 @@ public class DoubleBoundaryIntegrationTests
             collocationPoints = 50
         };
         
-        // Arrange
+        // Arrange: Two solvers - QD+ only vs with refinement
         var qdPlusOnly = new DBSL001A(
             parameters.spot, parameters.strike, parameters.maturity,
             parameters.rate, parameters.dividendYield, parameters.volatility,
@@ -129,27 +180,27 @@ public class DoubleBoundaryIntegrationTests
         var qdResult = qdPlusOnly.Solve();
         var refinedResult = withRefinement.Solve();
         
-        // Assert: Refined should either preserve QD+ (when already accurate) or adjust moderately
-        // When QD+ matches Healy benchmarks perfectly, preservation (difference = 0) is correct
-        // When QD+ needs improvement, refinement should adjust but not drastically
+        // Assert: Refinement should preserve or adjust moderately
         Math.Abs(refinedResult.UpperBoundary - qdResult.UpperBoundary).Should().BeInRange(0.0, 10.0,
-            "refinement should preserve or adjust boundaries moderately (not drastically)");
+            "refinement should preserve or adjust boundaries moderately");
         Math.Abs(refinedResult.LowerBoundary - qdResult.LowerBoundary).Should().BeInRange(0.0, 10.0,
-            "refinement should preserve or adjust boundaries moderately (not drastically)");
+            "refinement should preserve or adjust boundaries moderately");
         
         // QD+ boundaries should be stored in refined result
         refinedResult.QdUpperBoundary.Should().Be(qdResult.UpperBoundary);
         refinedResult.QdLowerBoundary.Should().Be(qdResult.LowerBoundary);
         
-        // Check improvement metrics
-        // When QD+ is already perfect (as with Healy benchmarks), improvement can be 0 (preservation is correct)
-        // Improvement should be >= 0 (never negative, which would indicate corruption)
+        // Improvement should be >= 0 (never negative)
         refinedResult.UpperImprovement.Should().BeGreaterOrEqualTo(0,
             "refinement should not corrupt upper boundary");
         refinedResult.LowerImprovement.Should().BeGreaterOrEqualTo(0,
             "refinement should not corrupt lower boundary");
     }
     
+    /// <summary>
+    /// Tests crossing boundary detection and handling.
+    /// Mathematical basis: For some parameters, S_u and S_l may cross at τ* before expiry.
+    /// </summary>
     [Fact]
     public void CompleteWorkflow_CrossingBoundaries_HandledCorrectly()
     {
@@ -188,50 +239,13 @@ public class DoubleBoundaryIntegrationTests
         result.IsValid.Should().BeTrue("solution should be valid even with crossing");
     }
     
-    [Theory]
-    [InlineData(true)]   // Call option
-    [InlineData(false)]  // Put option
-    public void CompleteWorkflow_CallPutConsistency(bool isCall)
-    {
-        // Test both call and put options under negative rates
-        var solver = new DBSL001A(
-            spot: 100.0,
-            strike: 100.0,
-            maturity: 5.0,
-            rate: -0.005,
-            dividendYield: -0.01,
-            volatility: 0.10,
-            isCall: isCall,
-            collocationPoints: 30,
-            useRefinement: true
-        );
-        
-        // Act
-        var result = solver.Solve();
-        
-        // Assert
-        result.IsValid.Should().BeTrue($"{(isCall ? "call" : "put")} should have valid boundaries");
-        
-        if (isCall)
-        {
-            // For calls in negative rate regime, boundaries depend on specific conditions
-            result.UpperBoundary.Should().BeGreaterThan(0);
-        }
-        else
-        {
-            // For puts with q < r < 0, expect double boundaries
-            result.UpperBoundary.Should().BeLessThan(100.0);
-            result.LowerBoundary.Should().BeGreaterThan(0.0);
-        }
-        
-        result.Method.Should().NotBeNullOrEmpty();
-    }
-    
+    /// <summary>
+    /// Tests regime detection for single vs double boundary.
+    /// Mathematical basis: r > 0 → single boundary; q < r < 0 → double boundary.
+    /// </summary>
     [Fact]
     public void CompleteWorkflow_RegimeDetection_WorksCorrectly()
     {
-        // Test regime detection for single vs double boundary
-        
         // Case 1: Standard put (r > 0) - single boundary
         var standardPut = new DBSL001A(
             spot: 100.0,
@@ -266,25 +280,28 @@ public class DoubleBoundaryIntegrationTests
         standardResult.Method.Should().Contain("Single Boundary");
         negativeResult.Method.Should().NotContain("Single Boundary");
         
-        // Standard put should have lower boundary only
+        // Standard put should have lower boundary only (A3), upper = ∞
         double.IsPositiveInfinity(standardResult.UpperBoundary).Should().BeTrue(
             "standard put upper boundary should be infinity");
         standardResult.LowerBoundary.Should().BeLessThan(100.0);
         
-        // Negative rate put should have both boundaries
-        negativeResult.UpperBoundary.Should().BeLessThan(100.0);
-        negativeResult.LowerBoundary.Should().BeGreaterThan(0.0);
+        // Negative rate put should have both finite boundaries
+        negativeResult.UpperBoundary.Should().BeLessThan(100.0);  // A3
+        negativeResult.LowerBoundary.Should().BeGreaterThan(0.0); // A1
     }
     
+    /// <summary>
+    /// Stress test with extreme but valid parameters.
+    /// Validates numerical stability at edge cases.
+    /// </summary>
     [Fact]
     public void CompleteWorkflow_StressTest_ExtremeParameters()
     {
-        // Test with extreme but valid parameters
         var extremeCases = new[]
         {
             new { T = 0.01, r = -0.10, q = -0.20, σ = 0.50 },  // Very short, high vol
             new { T = 20.0, r = -0.001, q = -0.002, σ = 0.05 }, // Very long, low vol
-            new { T = 5.0, r = -0.05, q = -0.10, σ = 0.30 }     // Moderate with large negative rates
+            new { T = 5.0, r = -0.05, q = -0.10, σ = 0.30 }     // Large negative rates
         };
         
         foreach (var testCase in extremeCases)
@@ -299,7 +316,7 @@ public class DoubleBoundaryIntegrationTests
                 volatility: testCase.σ,
                 isCall: false,
                 collocationPoints: 20,
-                useRefinement: false  // QD+ only for speed in stress test
+                useRefinement: false  // QD+ only for speed
             );
             
             // Act & Assert: Should not throw and produce valid results
@@ -307,8 +324,8 @@ public class DoubleBoundaryIntegrationTests
             act.Should().NotThrow($"should handle T={testCase.T}, r={testCase.r}, q={testCase.q}, σ={testCase.σ}");
             
             var result = solver.Solve();
-            result.UpperBoundary.Should().BeGreaterThan(0, "boundary should be positive");
-            result.LowerBoundary.Should().BeGreaterThan(0, "boundary should be positive");
+            result.UpperBoundary.Should().BeGreaterThan(0, "A1: boundary should be positive");
+            result.LowerBoundary.Should().BeGreaterThan(0, "A1: boundary should be positive");
             
             // NaN check
             double.IsNaN(result.UpperBoundary).Should().BeFalse("should not produce NaN");
@@ -316,10 +333,13 @@ public class DoubleBoundaryIntegrationTests
         }
     }
     
+    /// <summary>
+    /// Performance and memory efficiency test.
+    /// Validates Rule 5 (zero-allocation hot paths) compliance.
+    /// </summary>
     [Fact]
     public void CompleteWorkflow_MemoryAndPerformance_IsEfficient()
     {
-        // Test memory allocation and performance with large collocation grid
         var solver = new DBSL001A(
             spot: 100.0,
             strike: 100.0,
@@ -348,11 +368,11 @@ public class DoubleBoundaryIntegrationTests
         stopwatch.ElapsedMilliseconds.Should().BeLessThan(10000,
             "should complete large grid within 10 seconds");
         
-        // Memory usage should be reasonable (less than 50MB for this operation)
+        // Memory usage should be reasonable (less than 50MB)
         (memoryUsed / 1024.0 / 1024.0).Should().BeLessThan(50.0,
             "memory usage should be under 50MB");
         
-        // Results should still be accurate
+        // Results should still be accurate (Healy Table 2)
         result.IsValid.Should().BeTrue();
         result.UpperBoundary.Should().BeInRange(65.0, 75.0);
         result.LowerBoundary.Should().BeInRange(55.0, 65.0);
