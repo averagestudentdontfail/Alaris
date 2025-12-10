@@ -110,6 +110,29 @@ public sealed class STHD001A
     }
 
     /// <summary>
+    /// Gets a VIX-conditional correlation threshold for regime-dependent filtering.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// High VIX environments (>25) tend to compress term structure correlation,
+    /// so we accept higher correlation thresholds during stress regimes.
+    /// </para>
+    /// <code>
+    /// ρ_threshold(VIX) = 0.70 + 0.15 × 𝟙{VIX > 25}
+    /// </code>
+    /// </remarks>
+    /// <param name="currentVIX">Current VIX level.</param>
+    /// <returns>Conditional correlation threshold.</returns>
+    public static double GetConditionalCorrelationThreshold(double currentVIX)
+    {
+        const double BaseThreshold = 0.70;
+        const double HighVolThreshold = 0.85;
+        const double VixBreakpoint = 25.0;
+
+        return currentVIX > VixBreakpoint ? HighVolThreshold : BaseThreshold;
+    }
+
+    /// <summary>
     /// Analyses the correlation between front-month and back-month IV changes.
     /// </summary>
     /// <param name="symbol">The underlying symbol.</param>

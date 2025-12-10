@@ -159,6 +159,61 @@ public sealed class STRK001A
     }
 
     /// <summary>
+    /// Calculates Kelly fraction adjusted for transaction costs.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The net-of-cost Kelly formula accounts for transaction costs that reduce
+    /// effective winnings:
+    /// </para>
+    /// <code>
+    /// f*_net = (p × (b - c/W) - q) / (b - c/W)
+    /// </code>
+    /// <para>
+    /// where c is round-trip cost (bid-ask spread × 2), W is average win amount.
+    /// This reduces position size when costs erode edge significantly.
+    /// </para>
+    /// </remarks>
+    /// <param name="winProbability">Historical win probability (0-1).</param>
+    /// <param name="avgWin">Average winning trade amount.</param>
+    /// <param name="avgLoss">Average losing trade amount (positive).</param>
+    /// <param name="roundTripCost">Round-trip transaction cost per contract.</param>
+    /// <returns>Net-of-cost Kelly fraction.</returns>
+    public static double CalculateNetOfCostKelly(
+        double winProbability,
+        double avgWin,
+        double avgLoss,
+        double roundTripCost)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(avgWin);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(avgLoss);
+        ArgumentOutOfRangeException.ThrowIfNegative(roundTripCost);
+
+        if (winProbability <= 0 || winProbability >= 1)
+        {
+            return 0.0;
+        }
+
+        double lossProbability = 1.0 - winProbability;
+
+        // Adjust win amount for transaction costs
+        double effectiveWin = avgWin - roundTripCost;
+        if (effectiveWin <= 0)
+        {
+            return 0.0; // Costs exceed edge - no positive expectancy
+        }
+
+        // Adjusted win/loss ratio
+        double effectiveWinLossRatio = effectiveWin / avgLoss;
+
+        // Modified Kelly formula with costs
+        double kellyFraction = ((winProbability * effectiveWinLossRatio) - lossProbability) / effectiveWinLossRatio;
+
+        // Never bet if negative expectancy
+        return Math.Max(0.0, kellyFraction);
+    }
+
+    /// <summary>
     /// Adjusts allocation based on signal strength.
     /// </summary>
     private static double AdjustForSTCR004AStrength(double baseAllocation, STCR004A signal)
