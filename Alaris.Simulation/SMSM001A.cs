@@ -1427,8 +1427,8 @@ internal static class SMSM001A
         // Create queue manager
         STQT001A queueManager = new STQT001A();
 
-        // Sample parameters
-        double arrivalRate = 0.5;     // 0.5 signals per day
+        // Sample parameters (stable queue: ρ < 1)
+        double arrivalRate = 0.05;    // 0.05 signals per day (1 per 20 days)
         double serviceRate = 0.1;     // Mean holding = 10 days
         double serviceCv = 0.5;       // CV of holding time
 
