@@ -6,23 +6,157 @@ Project changelog with completed items collapsed and active/future items detaile
 
 ## Active Development
 
-### Trading Calendar Integration ✅ (2025-12-11)
+### Test Coverage Expansion (2025-12-11)
 
 **Status**: Complete
 
-Created NYSE trading calendar (`STCL001A`) and standardized time-to-expiry across all components.
+Comprehensive test coverage improvement adding 8 new test files with 314 test cases, improving the production-to-test ratio from 3.2:1 to 2.1:1.
 
-**Files Changed**: STCL001A.cs, STMG001A.cs, STIV001A-005A.cs, STCR001A.cs, STHD009A.cs, TSUN022A.cs
+**Quantitative Results**:
+| Metric | Before | After | Change |
+|--------|--------|-------|--------|
+| Test Lines | 9,798 | 14,861 | +5,063 (+52%) |
+| Test Cases | ~435 | 749 | +314 (+72%) |
+| Prod:Test Ratio | 3.2:1 | 2.1:1 | -34% |
+
+**Unit Tests Created**:
+- `TSUN023A` (528 lines) - DBEX001A near-expiry handler, intrinsic values, blending
+- `TSUN024A` (717 lines) - STIV001A-003A IV calculators, Heston/Kou invariants
+- `TSUN026A` (664 lines) - STCS001A-006A cost models, fee additivity
+- `TSUN027A` (686 lines) - STRK001A/002A + STMG001A risk/maturity guard
+- `TSUN028A` (450 lines) - SMSM001A/STLN001A simulation and algo constants
+- `TSUN029A` (801 lines) - DTmd001A data models + DTpr003A-005A provider interfaces
+
+**Integration Tests Created**:
+- `TSIN004A` (560 lines) - EVIF001A/EVIF002A event store + audit logger
+- `TSIN005A` (657 lines) - APsv001A/APmd001A session management CRUD
+
+**Test Approach**:
+All tests use in-language mocking (hand-crafted mock implementations, temporary directories) with no external mock servers or subprocess spawning.
+
+**Files Changed**: Alaris.Test/Unit/TSUN023A-029A.cs, Alaris.Test/Integration/TSIN004A-005A.cs, Alaris.Test.csproj
 
 ---
 
 ## Future Development (Deferred)
+
+### End-to-End Backtest Integration Tests
+
+> [!IMPORTANT]
+> High-value enhancement for production confidence. The current unit and integration tests are excellent for component-level validation, but a full "smoke test" that exercises the complete pipeline would catch integration issues between LEAN, data providers, and strategy components.
+
+**Problem**: Current tests validate individual components in isolation. While mathematically rigorous, they cannot detect:
+- LEAN configuration mismatches
+- Data format incompatibilities between providers
+- Session lifecycle issues under realistic backtest conditions
+- Memory leaks or performance regressions across full trading day simulations
+
+**Proposed Solution**: End-to-end integration test class `TSIN006A`
+
+#### 1. Mock Data Infrastructure
+
+Create synthetic market data that exercises all code paths:
+
+```csharp
+public sealed class MockLeanDataProvider
+{
+    /// <summary>
+    /// Generates realistic OHLCV bars with configurable volatility regimes.
+    /// </summary>
+    public IEnumerable<PriceBar> GenerateSyntheticBars(
+        string symbol,
+        DateTime start,
+        DateTime end,
+        decimal basePrice,
+        VolatilityRegime regime);
+
+    /// <summary>
+    /// Creates option chain snapshots consistent with underlying prices.
+    /// </summary>
+    public OptionChainSnapshot GenerateSyntheticChain(
+        string symbol,
+        decimal spotPrice,
+        DateTime evaluationDate);
+}
+```
+
+#### 2. LEAN Harness Integration
+
+Wrap LEAN's backtesting engine with test instrumentation:
+
+```csharp
+public sealed class TestBacktestHarness : IDisposable
+{
+    private readonly APsv001A _sessionService;
+    private readonly MockLeanDataProvider _dataProvider;
+
+    /// <summary>
+    /// Runs a complete backtest session with mock data.
+    /// </summary>
+    public BacktestResult RunSession(
+        DateTime startDate,
+        DateTime endDate,
+        IEnumerable<string> symbols,
+        AlgorithmConfiguration config);
+
+    /// <summary>
+    /// Validates session artifacts (results JSON, logs, metrics).
+    /// </summary>
+    public ValidationResult ValidateSessionArtifacts(string sessionId);
+}
+```
+
+#### 3. Test Scenarios
+
+| Scenario | Description | Validates |
+|----------|-------------|-----------|
+| `HappyPath_SingleSymbol` | Complete backtest with one equity | Full pipeline |
+| `EarningsEvent_SignalGeneration` | Backtest spanning earnings dates | STCR001A → STLN001A |
+| `HighVolatility_PositionSizing` | VIX > 30 regime | STRK001A, STMG001A |
+| `NearExpiry_BoundaryHandling` | T < 3 DTE scenarios | DBEX001A blending |
+| `DataGap_Recovery` | Missing bars mid-session | Data quality handling |
+| `LargeUniverse_Performance` | 50+ symbols backtest | Memory/performance |
+
+#### 4. Assertions
+
+```csharp
+// Pipeline integrity
+result.ExitCode.Should().Be(0);
+result.Statistics.TotalTradingDays.Should().BeGreaterThan(0);
+
+// No runtime errors
+result.Logs.Should().NotContain(log => log.Level == LogLevel.Error);
+
+// Reasonable performance
+result.Statistics.DurationSeconds.Should().BeLessThan(300);
+
+// Signal generation occurred
+result.Statistics.SignalsGenerated.Should().BeGreaterThan(0);
+```
+
+**Benefits**:
+- Catches LEAN version incompatibilities before production
+- Validates data flow from providers through strategy to execution
+- Provides confidence for algorithm updates
+- Serves as regression test for major refactors
+
+**Estimated Effort**: 5-7 days
+
+**Priority**: Medium (valuable for production confidence, but component tests already catch most bugs)
+
+**Dependencies**: 
+- MockLeanDataProvider implementation
+- Test fixture for session cleanup
+- CI pipeline integration (longer test timeout)
+
+---
 
 ### Near-Expiry Boundary Extrapolation
 
 > [!NOTE]
 > Optional enhancement for strategies other than the current earnings spread strategy.
 > The current `DBEX001A` intrinsic fallback is sufficient for earnings plays.
+> **Note**: `TSUN023A` has been implemented as part of Phase 6 (Test Coverage).
 
 **Problem**: As T → 0, QD+ asymptotic expansion degrades. Current approach uses intrinsic value fallback with σ√T-scaled boundaries, but this creates a discontinuity.
 
@@ -57,14 +191,6 @@ result = H0 * intrinsic + H1 * qd + derivatives...
 - Continuous theta (∂V/∂t) at handoff
 - Eliminates gamma spikes near threshold
 
-#### 3. Greeks Validation Suite
-
-New test class `TSUN023A` to verify:
-- Delta continuity across T_thresh
-- Theta continuity across T_thresh
-- Gamma behaviour in blending zone
-- Vega decay near expiry
-
 **Estimated Effort**: 3-5 days
 
 **Priority**: Low (only needed for non-earnings strategies)
@@ -72,6 +198,23 @@ New test class `TSUN023A` to verify:
 ---
 
 ## Completed Phases
+
+<details>
+<summary><strong>Phase 6: Test Coverage Expansion (2025-12-11)</strong></summary>
+
+- Created 8 new test files with 314 test cases
+- Added `TSUN023A.cs` for DBEX001A near-expiry handler tests
+- Added `TSUN024A.cs` for STIV001A-003A IV calculator tests
+- Added `TSUN026A.cs` for STCS* cost model tests
+- Added `TSUN027A.cs` for STRK* risk + STMG maturity guard tests
+- Added `TSUN028A.cs` for simulation/algorithm constants tests
+- Added `TSUN029A.cs` for data models + provider interface tests
+- Added `TSIN004A.cs` for events infrastructure integration tests
+- Added `TSIN005A.cs` for session management CRUD integration tests
+- Improved production:test ratio from 3.2:1 to 2.1:1
+- All tests use in-language mocking (no external servers)
+
+</details>
 
 <details>
 <summary><strong>Phase 5: Trading Calendar (2025-12-11)</strong></summary>
