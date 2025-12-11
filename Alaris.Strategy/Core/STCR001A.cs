@@ -1,4 +1,5 @@
 using Alaris.Strategy.Bridge;
+using Alaris.Strategy.Calendar;
 using Alaris.Strategy.Model;
 using Microsoft.Extensions.Logging;
 
@@ -337,7 +338,7 @@ public sealed class STCR001A
             return;
         }
 
-        double timeToExpiry = dte / 252.0; // Convert to years
+        double timeToExpiry = TradingCalendarDefaults.DteToYears(dte);
 
         // Compute theoretical IV using L&S formula: I(t) = sqrt(sigma^2 + sigma_e^2/(T-t))
         signal.TheoreticalIV = STIV004A.ComputeTheoreticalIV(

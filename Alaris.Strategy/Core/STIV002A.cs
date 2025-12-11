@@ -1,3 +1,4 @@
+using Alaris.Strategy.Calendar;
 using Alaris.Strategy.Core.Numerical;
 
 namespace Alaris.Strategy.Core;
@@ -295,7 +296,7 @@ public sealed class STIV002A
                 continue;
             }
 
-            double timeToExpiry = dte / 252.0;
+            double timeToExpiry = TradingCalendarDefaults.DteToYears(dte);
             result[i] = (dte, ComputeTheoreticalIV(spot, strike, timeToExpiry));
         }
 
@@ -393,7 +394,7 @@ public sealed class STIV002A
 
             foreach ((double strike, int dte, double marketIV) in marketData)
             {
-                double timeToExpiry = dte / 252.0;
+                double timeToExpiry = TradingCalendarDefaults.DteToYears(dte);
 
                 try
                 {
@@ -509,7 +510,7 @@ public sealed class STIV002A
 
         foreach ((double strike, int dte, double marketIV) in marketData)
         {
-            double timeToExpiry = dte / 252.0;
+            double timeToExpiry = TradingCalendarDefaults.DteToYears(dte);
             double modelIV = model.ComputeTheoreticalIV(spot, strike, timeToExpiry);
             double error = modelIV - marketIV;
             totalError += error * error;

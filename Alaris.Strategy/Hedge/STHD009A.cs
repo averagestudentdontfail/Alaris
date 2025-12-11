@@ -6,6 +6,7 @@
 // Compliance: High-Integrity Coding Standard v1.2
 // =============================================================================
 
+using Alaris.Strategy.Calendar;
 using Microsoft.Extensions.Logging;
 
 namespace Alaris.Strategy.Hedge;
@@ -206,7 +207,7 @@ public sealed class STHD009A
         }
 
         const double TypicalVol = 0.30;
-        double timeToExpiry = daysToExpiry / 252.0;
+        double timeToExpiry = TradingCalendarDefaults.DteToYears(daysToExpiry);
         double sqrtT = Math.Sqrt(timeToExpiry);
 
         // ATM gamma ≈ φ(0) / (S × σ × √T) ≈ 0.4 / (S × σ × √T)

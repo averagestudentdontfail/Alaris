@@ -1,3 +1,5 @@
+using Alaris.Strategy.Calendar;
+
 namespace Alaris.Strategy.Core;
 
 /// <summary>
@@ -207,7 +209,7 @@ public sealed class STIV003A
 
         foreach ((double strike, int dte, double _) in context.MarketIVs)
         {
-            double timeToExpiry = dte / 252.0;
+            double timeToExpiry = TradingCalendarDefaults.DteToYears(dte);
             double modelIV = modelType switch
             {
                 RecommendedModel.BlackScholes =>

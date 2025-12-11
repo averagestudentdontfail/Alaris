@@ -1,3 +1,5 @@
+using Alaris.Strategy.Calendar;
+
 namespace Alaris.Strategy.Core;
 
 /// <summary>
@@ -191,7 +193,7 @@ public sealed class STIV004A
                 continue;
             }
 
-            double timeToExpiry = dte / 252.0; // Convert to years
+            double timeToExpiry = TradingCalendarDefaults.DteToYears(dte);
             result[i] = (dte, ComputeTheoreticalIV(baseVolatility, earningsJumpVolatility, timeToExpiry));
         }
 

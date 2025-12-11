@@ -6,6 +6,7 @@
 // Compliance: High-Integrity Coding Standard v1.2
 // =============================================================================
 
+using Alaris.Strategy.Calendar;
 using Microsoft.Extensions.Logging;
 
 namespace Alaris.Strategy.Risk;
@@ -57,14 +58,16 @@ public sealed class STMG001A
 
     private readonly double _minEntryMaturity;
     private readonly double _forceExitMaturity;
+    private readonly ITradingCalendar? _calendar;
     private readonly ILogger<STMG001A>? _logger;
 
     /// <summary>
     /// Initialises a new maturity guard with default thresholds.
     /// </summary>
+    /// <param name="calendar">Optional trading calendar for accurate business days.</param>
     /// <param name="logger">Optional logger instance.</param>
-    public STMG001A(ILogger<STMG001A>? logger = null)
-        : this(DefaultMinEntryMaturity, DefaultForceExitMaturity, logger)
+    public STMG001A(ITradingCalendar? calendar = null, ILogger<STMG001A>? logger = null)
+        : this(DefaultMinEntryMaturity, DefaultForceExitMaturity, calendar, logger)
     {
     }
 
@@ -73,10 +76,12 @@ public sealed class STMG001A
     /// </summary>
     /// <param name="minEntryMaturity">Minimum maturity for entry.</param>
     /// <param name="forceExitMaturity">Maturity threshold for force exit.</param>
+    /// <param name="calendar">Optional trading calendar for accurate business days.</param>
     /// <param name="logger">Optional logger instance.</param>
     public STMG001A(
         double minEntryMaturity, 
         double forceExitMaturity, 
+        ITradingCalendar? calendar = null,
         ILogger<STMG001A>? logger = null)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(minEntryMaturity);
@@ -90,6 +95,7 @@ public sealed class STMG001A
 
         _minEntryMaturity = minEntryMaturity;
         _forceExitMaturity = forceExitMaturity;
+        _calendar = calendar;
         _logger = logger;
     }
 
@@ -191,19 +197,41 @@ public sealed class STMG001A
     }
 
     /// <summary>
-    /// Converts calendar days to time-to-expiry in years.
+    /// Converts dates to time-to-expiry in years using trading calendar.
     /// </summary>
     /// <param name="expiryDate">Option expiration date.</param>
     /// <param name="currentDate">Current evaluation date.</param>
     /// <returns>Time to expiry in years (trading days / 252).</returns>
-    public static double CalculateTimeToExpiry(DateTime expiryDate, DateTime currentDate)
+    /// <remarks>
+    /// Uses NYSE trading calendar if available, otherwise falls back to 5/7 approximation.
+    /// </remarks>
+    public double CalculateTimeToExpiry(DateTime expiryDate, DateTime currentDate)
+    {
+        // Use trading calendar if available for accurate business day count
+        if (_calendar is not null)
+        {
+            return _calendar.GetTimeToExpiryInYears(currentDate, expiryDate);
+        }
+
+        // Fallback: approximate using 5/7 calendar-to-trading day ratio
+        TimeSpan span = expiryDate - currentDate;
+        double calendarDays = span.TotalDays;
+        double tradingDays = calendarDays * (5.0 / 7.0);
+        return Math.Max(0, tradingDays / 252.0);
+    }
+
+    /// <summary>
+    /// Static fallback for calculating time-to-expiry without a calendar instance.
+    /// Uses 5/7 approximation for calendar-to-trading day conversion.
+    /// </summary>
+    /// <param name="expiryDate">Option expiration date.</param>
+    /// <param name="currentDate">Current evaluation date.</param>
+    /// <returns>Time to expiry in years (approximate).</returns>
+    public static double CalculateTimeToExpiryApproximate(DateTime expiryDate, DateTime currentDate)
     {
         TimeSpan span = expiryDate - currentDate;
         double calendarDays = span.TotalDays;
-        
-        // Convert to trading days (approximate: 5/7 of calendar days)
         double tradingDays = calendarDays * (5.0 / 7.0);
-        
         return Math.Max(0, tradingDays / 252.0);
     }
 

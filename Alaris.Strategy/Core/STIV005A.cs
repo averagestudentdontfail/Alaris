@@ -1,4 +1,5 @@
 using Alaris.Strategy.Bridge;
+using Alaris.Strategy.Calendar;
 using Alaris.Strategy.Model;
 using Microsoft.Extensions.Logging;
 
@@ -214,8 +215,8 @@ public sealed class STIV005A
             return null;
         }
 
-        double t1 = dte1 / 252.0; // Convert to years
-        double t2 = dte2 / 252.0;
+        double t1 = TradingCalendarDefaults.DteToYears(dte1);
+        double t2 = TradingCalendarDefaults.DteToYears(dte2);
 
         // From equation 5.2: sigma_e^2 = (IV(T1)^2 - IV(T2)^2) / (1/(T1-t) - 1/(T2-t))
         double ivSquaredDiff = (iv1 * iv1) - (iv2 * iv2);
@@ -253,8 +254,8 @@ public sealed class STIV005A
             return null;
         }
 
-        double t1 = dte1 / 252.0;
-        double t2 = dte2 / 252.0;
+        double t1 = TradingCalendarDefaults.DteToYears(dte1);
+        double t2 = TradingCalendarDefaults.DteToYears(dte2);
 
         // sigma^2 = ((T1-t)*IV(T1)^2 - (T2-t)*IV(T2)^2) / (T1 - T2)
         double numerator = (t1 * iv1 * iv1) - (t2 * iv2 * iv2);
