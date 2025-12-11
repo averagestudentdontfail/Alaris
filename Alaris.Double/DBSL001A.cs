@@ -97,9 +97,26 @@ public sealed class DBSL001A
     /// <summary>
     /// Solves for both boundaries using QD+ approximation and optional Kim refinement.
     /// </summary>
+    /// <remarks>
+    /// For very short maturities (T &lt; 3/252 years ≈ 3 trading days), the method 
+    /// uses the near-expiry handler to avoid numerical singularities in the QD+ 
+    /// asymptotic expansion.
+    /// </remarks>
     /// <returns>Solution containing boundaries and metadata</returns>
     public DoubleBoundaryResult Solve()
     {
+        // Near-expiry guard: Handle T near zero where QD+ has numerical issues
+        DBEX001A nearExpiryHandler = new DBEX001A();
+        NearExpiryValidation validation = nearExpiryHandler.Validate(_maturity);
+
+        if (validation.Recommendation == NearExpiryRecommendation.UseIntrinsic ||
+            validation.Recommendation == NearExpiryRecommendation.UseBlended)
+        {
+            // Very near expiry or in blending zone: return intrinsic-based boundaries
+            // QD+ asymptotic expansion is numerically unstable in this regime
+            return CreateNearExpiryResult(validation);
+        }
+
         // Stage 1: QD+ approximation for initial boundaries
         (double upperInitial, double lowerInitial) = CalculateInitialBoundaries();
 
@@ -118,6 +135,51 @@ public sealed class DBSL001A
 
         // Stage 2: Kim refinement with FP-B' stabilization
         return ApplyKimRefinement(upperInitial, lowerInitial);
+    }
+
+    /// <summary>
+    /// Creates result for near-expiry regime where QD+ is numerically unstable.
+    /// </summary>
+    /// <remarks>
+    /// Near expiry, boundaries collapse towards strike and intrinsic value dominates.
+    /// Uses limiting behavior: S_u → K, S_l → K (boundaries merge at strike).
+    /// Spread scales with σ√T for dimensional correctness.
+    /// </remarks>
+    private DoubleBoundaryResult CreateNearExpiryResult(NearExpiryValidation validation)
+    {
+        // Near expiry boundary spread should scale with σ√T (diffusion theory)
+        // This ensures dimensional correctness: spread ~ σ√T, not fixed percentage
+        double theoreticalSpread = Math.Max(0.01, _volatility * Math.Sqrt(_maturity));
+
+        // For puts: exercise optimal when S < K
+        // Upper boundary: slightly below strike (0.3× spread factor)
+        // Lower boundary: further below strike (full spread factor)
+        double nearExpiryUpper = _isCall
+            ? _strike * (1.0 + (0.3 * theoreticalSpread))
+            : _strike * (1.0 - (0.3 * theoreticalSpread));
+
+        double nearExpiryLower = _isCall
+            ? _strike * (1.0 + (0.1 * theoreticalSpread))
+            : _strike * (1.0 - theoreticalSpread);
+
+        // Ensure ordering constraints (A2: upper > lower)
+        if (!_isCall && nearExpiryLower >= nearExpiryUpper)
+        {
+            nearExpiryLower = nearExpiryUpper * 0.99;
+        }
+
+        return new DoubleBoundaryResult
+        {
+            UpperBoundary = nearExpiryUpper,
+            LowerBoundary = nearExpiryLower,
+            QdUpperBoundary = nearExpiryUpper,
+            QdLowerBoundary = nearExpiryLower,
+            CrossingTime = 0.0,
+            IsRefined = false,
+            Method = $"Near-Expiry Handler ({validation.Reason})",
+            IsValid = true,
+            Iterations = 0
+        };
     }
 
     /// <summary>
