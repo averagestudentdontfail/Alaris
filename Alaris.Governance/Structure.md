@@ -79,6 +79,9 @@ The naming format consists of four segments:
 | `HD` | Hedging | Hedging analysis, vega correlation, gamma risk management. |
 | `SD` | Signal Detection | Statistical signal detection and hypothesis testing. |
 | `QT` | Queue Theory | Queue-theoretic position and capacity management. |
+| `CL` | Calendar | Trading calendars and time utilities. |
+| `MG` | Maturity Guard | Maturity-based entry/exit filtering. |
+| `KF` | Kalman Filter | Kalman-filtered estimation. |
 | `UN` | Universe | Universe selection models. |
 
 #### 4.3.3 Data (DT)
@@ -165,6 +168,12 @@ The following table lists the primary components and their academic references.
 |----------------|------------|-------------|-----------|
 | `STRK001A` | `KellyPositionSizer` | Position sizing (Kelly) | Kelly Criterion |
 | `STQT001A` | `STQT001A` | Queue-theoretic position management | Little (1961), M/G/1 Queue |
+| `STMG001A` | `MaturityGuard` | Entry/exit filtering by maturity | Near-expiry safety |
+
+#### 5.2.6 Calendar Subdirectory (Alaris.Strategy/Calendar/)
+| Component Code | Class Name | Description | Reference |
+|----------------|------------|-------------|-----------|
+| `STCL001A` | `TradingCalendar` | NYSE trading calendar | QuantLib UnitedStates |
 
 #### 5.2.3 Hedging Subdirectory (Alaris.Strategy/Hedging/)
 | Component Code | Class Name | Description | Reference |
@@ -176,7 +185,13 @@ The following table lists the primary components and their academic references.
 | `STHD005A` | `ProductionValidator` | Orchestrates all pre-trade checks | - |
 | `STHD006A` | `ProductionResult` | Complete production validation | - |
 | `STHD009A` | `PinRiskMonitor` | Near-expiry pin risk detection | Gamma explosion at strike |
+| `STHD007A` | `GapRiskAnalyser` | Overnight gap risk analysis | Options Risk Management |
 | `STHD007B` | `STHD007B` | Rule-based exit monitor with stall detection | Alaris Phase 3 Specification |
+
+#### 5.2.7 Core Subdirectory (Phase 3)
+| Component Code | Class Name | Description | Reference |
+|----------------|------------|-------------|-----------|
+| `STKF001A` | `KalmanVolatilityEstimator` | Kalman-filtered volatility | Kalman (1960), Yang-Zhang |
 
 ### 5.3 Alaris.Data
 | Component Code | Class Name | Description | Reference |

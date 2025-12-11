@@ -63,7 +63,10 @@ Alaris/
 │   ├── Risk/
 │   │   ├── STRK001A.cs         (Kelly Position Sizer + Net-of-Cost)
 │   │   ├── STRK002A.cs         (Position Size)
-│   │   └── STQT001A.cs         (Queue-Theoretic Position Manager) [Phase 3]
+│   │   ├── STQT001A.cs         (Queue-Theoretic Position Manager) [Phase 3]
+│   │   └── STMG001A.cs         (Maturity Guard) [NEW]
+│   ├── Calendar/          (Trading Calendar Utilities) [NEW]
+│   │   └── STCL001A.cs         (NYSE Trading Calendar)
 │   ├── Bridge/
 │   │   ├── STBR001A.cs         (Unified Pricing Engine)
 │   │   ├── STBR002A.cs         (Option Pricing Engine Interface)
@@ -86,13 +89,15 @@ Alaris/
 │   │   └── EVIF002A.cs         (InMemoryAuditLogger)
 │
 ├── Alaris.Governance/      Governance & Compliance
-│   ├── Compliance/         (Compliance Rules)
+│   ├── Compliance/         (Compliance Rules) [REMOVED - see Update.md]
 │   ├── Documentation/      (Project Documentation)
 │   ├── StructureCompliance.md
 │   ├── CodingCompliance.md
 │   └── Claude.md           (This File)
 │
 ├── Alaris.Quantlib/        Standard American option pricing (positive rates)
+├── Alaris.Simulation/      Full workflow demonstration (13 phases)
+│   └── SMSM001A.cs         (Simulation Main)
 └── Alaris.Test/            Test suite (229+ tests)
 ```
 
@@ -369,4 +374,4 @@ git push -u origin <branch>
 
 ---
 
-*Last validated: 2025-12-10 | 229+/229+ tests passing*
+*Last validated: 2025-12-11 | 229+/229+ tests passing*
