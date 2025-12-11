@@ -220,5 +220,37 @@ The following table lists the primary components and their academic references.
 | `APcm002A` | `APcm002A` | Config command (alaris config) | - |
 | `APcm003A` | `APcm003A` | Data command (alaris data) | - |
 
+### 5.5 Alaris.Test
+
+#### 5.5.1 Unit Tests (TSUN)
+| Component Code | File Name | Description | Coverage |
+|----------------|-----------|-------------|----------|
+| `TSUN001A-022A` | `TSUN001A-022A.cs` | Core functionality tests | Alaris.Double, Alaris.Strategy |
+| `TSUN023A` | `TSUN023A.cs` | Near-expiry handler tests | DBEX001A intrinsic values, blending |
+| `TSUN024A` | `TSUN024A.cs` | IV calculator tests | STIV001A-003A Heston/Kou invariants |
+| `TSUN026A` | `TSUN026A.cs` | Cost model tests | STCS001A-006A fee additivity |
+| `TSUN027A` | `TSUN027A.cs` | Risk/Maturity tests | STRK001A/002A Kelly, STMG001A |
+| `TSUN028A` | `TSUN028A.cs` | Simulation/Algo tests | SMSM001A/STLN001A constants |
+| `TSUN029A` | `TSUN029A.cs` | Data model tests | DTmd001A, DTpr003A-005A interfaces |
+
+#### 5.5.2 Integration Tests (TSIN)
+| Component Code | File Name | Description | Coverage |
+|----------------|-----------|-------------|----------|
+| `TSIN001A-003A` | `TSIN001A-003A.cs` | Core integration tests | Data pipeline, strategy flow |
+| `TSIN004A` | `TSIN004A.cs` | Events infrastructure tests | EVIF001A/EVIF002A event store, audit |
+| `TSIN005A` | `TSIN005A.cs` | Session management tests | APsv001A/APmd001A CRUD operations |
+
+#### 5.5.3 Other Test Categories
+| Component Code | File Name | Description | Coverage |
+|----------------|-----------|-------------|----------|
+| `TSDG001A-002A` | `TSDG001A-002A.cs` | Diagnostic tests | Mathematical constraint validation |
+| `TSBM001A` | `TSBM001A.cs` | Benchmark tests | Performance vs Healy (2021) |
+
+**Test Statistics** (2025-12-11):
+- Total test cases: 749
+- Test lines: 14,861
+- Production:Test ratio: 2.1:1
+
+
 ## 6. Compliance
 All changes to the codebase must adhere to this standard. Non-compliant components will be rejected during code review.
