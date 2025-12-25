@@ -9,8 +9,8 @@ using System.Collections.Generic;
 using Xunit;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
-using Alaris.Data.Model;
-using Alaris.Data.Quality;
+using Alaris.Infrastructure.Data.Model;
+using Alaris.Infrastructure.Data.Quality;
 
 namespace Alaris.Test.Unit;
 

@@ -25,8 +25,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 using FluentAssertions;
-using Alaris.Data.Model;
-using Alaris.Data.Provider;
+using Alaris.Infrastructure.Data.Model;
+using Alaris.Infrastructure.Data.Provider;
 
 namespace Alaris.Test.Unit;
 

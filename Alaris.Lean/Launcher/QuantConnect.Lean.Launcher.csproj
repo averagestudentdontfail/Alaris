@@ -63,9 +63,8 @@
     <!-- Alaris core dependencies - ensures assemblies are in Launcher bin for algorithm loading -->
     <ProjectReference Include="..\..\Alaris.Quantlib\Alaris.Quantlib.csproj" />
     <ProjectReference Include="..\..\Alaris.Double\Alaris.Double.csproj" />
-    <ProjectReference Include="..\..\Alaris.Events\Alaris.Events.csproj" />
+    <ProjectReference Include="..\..\Alaris.Infrastructure\Alaris.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Alaris.Strategy\Alaris.Strategy.csproj" />
-    <ProjectReference Include="..\..\Alaris.Data\Alaris.Data.csproj" />
   </ItemGroup>
   <!-- Microsoft.Extensions packages for Alaris algorithm dependencies -->
   <ItemGroup>

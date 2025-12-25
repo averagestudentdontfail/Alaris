@@ -12,14 +12,14 @@
 
 using System;
 using System.Collections.Generic;
-using Alaris.Data.Model;
-using Alaris.Data.Serialization;
-using Alaris.Events.Core;
-using Alaris.Events.Serialization;
-using Alaris.Application.Model;
-using Alaris.Application.Serialization;
-using Alaris.Protocol.Buffers;
-using Alaris.Protocol.Serialization;
+using Alaris.Infrastructure.Data.Model;
+using Alaris.Infrastructure.Data.Serialization;
+using Alaris.Infrastructure.Events.Core;
+using Alaris.Infrastructure.Events.Serialization;
+using Alaris.Host.Application.Model;
+using Alaris.Host.Application.Serialization;
+using Alaris.Infrastructure.Protocol.Buffers;
+using Alaris.Infrastructure.Protocol.Serialization;
 using FluentAssertions;
 using Xunit;
 

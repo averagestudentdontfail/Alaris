@@ -1,3 +1,4 @@
+using Alaris.Core.HotPath;
 using Alaris.Strategy.Calendar;
 
 namespace Alaris.Strategy.Core;
@@ -54,16 +55,16 @@ public sealed class STIV003A
             evaluations.Add(evaluation);
         }
 
-        // Select best based on composite score
-        ModelEvaluation? best = evaluations
-            .Where(e => e.MartingaleValid)
-            .OrderBy(e => e.CompositeScore)
-            .FirstOrDefault();
+        // Select best based on composite score - ZERO ALLOC
+        ModelEvaluation? best = CRFN001A.FindMinBy<ModelEvaluation>(
+            (IReadOnlyList<ModelEvaluation>)evaluations,
+            e => e.CompositeScore,
+            e => e.MartingaleValid);
 
         if (best == null)
         {
-            // Fall back to simplest valid model
-            best = evaluations.OrderBy(e => e.Complexity).First();
+            // Fall back to simplest valid model - ZERO ALLOC
+            best = CRFN001A.FindMinBy<ModelEvaluation>((IReadOnlyList<ModelEvaluation>)evaluations, e => e.Complexity)!;
         }
 
         return new ModelSelectionResult

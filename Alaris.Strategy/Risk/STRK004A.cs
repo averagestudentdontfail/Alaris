@@ -6,6 +6,7 @@
 // Compliance: High-Integrity Coding Standard v1.2
 // =============================================================================
 
+using Alaris.Core.HotPath;
 using Alaris.Strategy.Core;
 using Microsoft.Extensions.Logging;
 
@@ -404,15 +405,27 @@ public sealed class STRK004A
         double spreadCost,
         STRK002A basePosition)
     {
-        // Find lowest-priority open position
-        List<QueueEntry> openEntries = queue.Where(q => q.IsOpen).ToList();
-        if (openEntries.Count == 0)
+        // Find lowest-priority open position - ZERO ALLOC (struct)
+        QueueEntry lowestOpen = default;
+        bool foundOpen = false;
+        double lowestPriority = double.MaxValue;
+        
+        for (int i = 0; i < queue.Count; i++)
+        {
+            QueueEntry entry = queue[i];
+            if (entry.IsOpen && entry.Priority < lowestPriority)
+            {
+                lowestOpen = entry;
+                lowestPriority = entry.Priority;
+                foundOpen = true;
+            }
+        }
+
+        if (!foundOpen)
         {
             return QueueAllocationResult.Reject(candidate.Symbol,
                 "No open positions available for displacement analysis");
         }
-
-        QueueEntry lowestOpen = openEntries.OrderBy(q => q.Priority).First();
 
         SafeLog(() => LogDisplacementDecision(_logger!,
             candidate.Symbol, lowestOpen.Symbol,

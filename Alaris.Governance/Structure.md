@@ -25,11 +25,13 @@ The Alaris system follows a strict domain-driven directory structure. All compon
 | `Alaris.Core` | Core | Core mathematical primitives with documented accuracy bounds. |
 | `Alaris.Double` | Double Boundary | Negative rate American option pricing engine. |
 | `Alaris.Strategy` | Strategy | Trading strategy implementation, including core logic, pricing, and risk management. |
-| `Alaris.Data` | Data | Data acquisition, validation, and integration layer. |
-| `Alaris.Events` | Events | Event sourcing, audit logging, and domain event definitions. |
+| `Alaris.Infrastructure` | Infrastructure | Data acquisition, event sourcing, and binary protocol serialization. Consolidates Data, Events, and Protocol. |
+| `Alaris.Host` | Host | CLI, terminal UI, and LEAN algorithm integration. Consolidates Application and Algorithm. |
+| `Alaris.Simulation` | Simulation | Monte Carlo simulations and output storage. |
 | `Alaris.Governance` | Governance | Compliance documentation, standards, and project governance artifacts. |
 | `Alaris.Test` | Test Suite | Unit, integration, and diagnostic tests. |
 | `Alaris.Quantlib` | QuantLib | C# bindings and extensions for the QuantLib library. |
+| `Alaris.Lean` | LEAN | QuantConnect LEAN engine (external dependency). |
 
 ## 4. Component Naming Convention
 Alaris utilizes a hierarchical significant-digit coding system for component naming, ensuring uniqueness and traceability.

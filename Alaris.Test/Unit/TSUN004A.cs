@@ -5,7 +5,7 @@
 // Tests for DTmd003A corporate action model adjustment computations.
 // =============================================================================
 
-using Alaris.Data.Model;
+using Alaris.Infrastructure.Data.Model;
 using Xunit;
 
 namespace Alaris.Test.Unit;

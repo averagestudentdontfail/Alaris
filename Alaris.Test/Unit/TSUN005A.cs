@@ -14,9 +14,9 @@ using Xunit;
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Alaris.Data.Provider.Polygon;
-using Alaris.Data.Provider.FMP;
-using Alaris.Data.Provider.Treasury;
+using Alaris.Infrastructure.Data.Provider.Polygon;
+using Alaris.Infrastructure.Data.Provider.FMP;
+using Alaris.Infrastructure.Data.Provider.Treasury;
 
 namespace Alaris.Test.Unit;
 

@@ -9,10 +9,10 @@ using System.Threading.Tasks;
 using Xunit;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
-using Alaris.Data.Bridge;
-using Alaris.Data.Model;
-using Alaris.Data.Provider;
-using Alaris.Data.Quality;
+using Alaris.Infrastructure.Data.Bridge;
+using Alaris.Infrastructure.Data.Model;
+using Alaris.Infrastructure.Data.Provider;
+using Alaris.Infrastructure.Data.Quality;
 
 namespace Alaris.Test.Integration;
 

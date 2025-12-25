@@ -1,3 +1,4 @@
+using Alaris.Core.HotPath;
 using Alaris.Strategy.Bridge;
 using Alaris.Strategy.Calendar;
 using Alaris.Strategy.Model;
@@ -321,11 +322,11 @@ public sealed class STCR001A
         DateTime earningsDate,
         DateTime evaluationDate)
     {
-        // Find the front-month expiry (closest to but after earnings)
-        OptionExpiry? targetExpiry = optionChain.Expiries
-            .Where(e => e.ExpiryDate >= earningsDate)
-            .OrderBy(e => e.ExpiryDate)
-            .FirstOrDefault();
+        // Find the front-month expiry (closest to but after earnings) - ZERO ALLOC
+        OptionExpiry? targetExpiry = CRFN001A.FindMinBy<OptionExpiry>(
+            optionChain.Expiries,
+            e => (e.ExpiryDate - earningsDate).TotalDays,
+            e => e.ExpiryDate >= earningsDate);
 
         if (targetExpiry == null)
         {
@@ -377,16 +378,16 @@ public sealed class STCR001A
                 continue;
             }
 
-            // Find ATM options
-            OptionContract? atmCall = expiry.Calls
-                .Where(c => (c.OpenInterest > 0) && (c.ImpliedVolatility > 0))
-                .OrderBy(c => Math.Abs(c.Strike - underlyingPrice))
-                .FirstOrDefault();
+            // Find ATM options - ZERO ALLOC
+            OptionContract? atmCall = CRFN001A.FindMinBy<OptionContract>(
+                expiry.Calls,
+                c => Math.Abs(c.Strike - underlyingPrice),
+                c => (c.OpenInterest > 0) && (c.ImpliedVolatility > 0));
 
-            OptionContract? atmPut = expiry.Puts
-                .Where(p => (p.OpenInterest > 0) && (p.ImpliedVolatility > 0))
-                .OrderBy(p => Math.Abs(p.Strike - underlyingPrice))
-                .FirstOrDefault();
+            OptionContract? atmPut = CRFN001A.FindMinBy<OptionContract>(
+                expiry.Puts,
+                p => Math.Abs(p.Strike - underlyingPrice),
+                p => (p.OpenInterest > 0) && (p.ImpliedVolatility > 0));
 
             if ((atmCall is not null) && (atmPut is not null))
             {
@@ -410,11 +411,11 @@ public sealed class STCR001A
     /// </summary>
     private double CalculateExpectedMove(STDT002A chain, DateTime earningsDate, DateTime evaluationDate)
     {
-        // Find the expiry closest to (but after) earnings date
-        OptionExpiry? targetExpiry = chain.Expiries
-            .Where(e => e.ExpiryDate >= earningsDate)
-            .OrderBy(e => e.ExpiryDate)
-            .FirstOrDefault();
+        // Find the expiry closest to (but after) earnings date - ZERO ALLOC
+        OptionExpiry? targetExpiry = CRFN001A.FindMinBy<OptionExpiry>(
+            chain.Expiries,
+            e => (e.ExpiryDate - earningsDate).TotalDays,
+            e => e.ExpiryDate >= earningsDate);
 
         if (targetExpiry is null)
         {
@@ -423,15 +424,15 @@ public sealed class STCR001A
 
         double underlyingPrice = chain.UnderlyingPrice;
 
-        // Find ATM straddle
-        OptionContract? atmCall = targetExpiry.Calls
-            .Where(c => (c.Bid > 0) && (c.Ask > 0))
-            .OrderBy(c => Math.Abs(c.Strike - underlyingPrice))
-            .FirstOrDefault();
+        // Find ATM straddle - ZERO ALLOC
+        OptionContract? atmCall = CRFN001A.FindMinBy<OptionContract>(
+            targetExpiry.Calls,
+            c => Math.Abs(c.Strike - underlyingPrice),
+            c => (c.Bid > 0) && (c.Ask > 0));
 
-        OptionContract? atmPut = targetExpiry.Puts
-            .Where(p => (p.Bid > 0) && (p.Ask > 0) && (Math.Abs(p.Strike - (atmCall?.Strike ?? 0)) < 0.01))
-            .FirstOrDefault();
+        OptionContract? atmPut = CRFN001A.FirstWhere<OptionContract>(
+            targetExpiry.Puts,
+            p => (p.Bid > 0) && (p.Ask > 0) && (Math.Abs(p.Strike - (atmCall?.Strike ?? 0)) < 0.01));
 
         if ((atmCall is null) || (atmPut is null))
         {

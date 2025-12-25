@@ -24,8 +24,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using Xunit;
 using FluentAssertions;
-using Alaris.Events.Core;
-using Alaris.Events.Infrastructure;
+using Alaris.Infrastructure.Events.Core;
+using Alaris.Infrastructure.Events.Infrastructure;
 
 namespace Alaris.Test.Integration;
 

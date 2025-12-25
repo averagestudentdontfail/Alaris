@@ -16,7 +16,8 @@
 8. LOC-3: Defensive Coding
 9. LOC-4: Code Clarity
 10. LOC-5: Mission Assurance
-11. References
+11. LOC-6: Performance
+12. References
 
 ## 1. Rule Summary
 
@@ -46,6 +47,10 @@
 15. **Fault Isolation**: Use the Bulkhead pattern; non-critical subsystems must not crash critical paths.
 16. **Deterministic Cleanup**: Enforce `IDisposable`; do not rely on the Garbage Collector/Finalizers for resource release.
 17. **Auditability**: All critical state changes must be append-only and traceable (Event Sourcing).
+
+### Performance
+18. **Zero-Alloc Finders**: Use `CRFN001A.FindMinBy<T>()` instead of `.Where().OrderBy().First()` in hot paths.
+19. **Buffer Pooling**: Use `CRPL001A.WithDoubleBuffer()` or `ArrayPool<T>` for temporary buffers.
 
 ## 2. Introduction
 Considerable efforts have been invested by organizations like NASA/JPL and MISRA to develop coding standards for C/C++. This standard translates those high-integrity principles into the managed C# environment.
@@ -141,7 +146,23 @@ Critical state changes must be traceable and append-only.
 *   **Rationale**: In mission-critical systems, the history of how a state was reached is often as important as the state itself for post-incident analysis and recovery.
 *   **Implementation**: Use Event Sourcing or immutable Audit Logs. Never overwrite critical state data; always append a new state record.
 
-## 11. References
+## 11. LOC-6: Performance
+
+### Rule 18 (Zero-Alloc Finders)
+Replace LINQ allocation chains with zero-allocation alternatives on hot paths.
+*   **Prohibited Patterns**: `.Where().OrderBy().First()`, `.Select().ToList()`, `.ToArray()` in hot paths.
+*   **Approved Alternatives**: Use `CRFN001A.FindMinBy<T>()`, `CRFN001A.FirstWhere<T>()`, or manual loops.
+*   **Rationale**: Each LINQ operator allocates an enumerator. Closures cause heap allocations. These accumulate into GC pressure affecting p99 latency.
+
+### Rule 19 (Buffer Pooling)
+Use ArrayPool for temporary buffers in hot paths.
+*   **Required Package**: `System.Buffers.ArrayPool<T>`
+*   **Approved API**: Use `CRPL001A.WithDoubleBuffer()` for RAII-style rent/return, or manual `RentDoubles()`/`ReturnDoubles()`.
+*   **Rationale**: Creating `new double[n]` per call causes allocation pressure. Pooled buffers amortize allocation cost.
+
+## 12. References
 1. JPL D-60411: JPL Institutional Coding Standard for C.
 2. RTCA DO-178B: Software Considerations in Airborne Systems and Equipment Certification.
 3. The Power of 10: Rules for Developing Safety-Critical Code, Gerard J. Holzmann.
+4. High-Performance .NET: Span<T>, Memory<T>, and ArrayPool (Microsoft Docs).
+

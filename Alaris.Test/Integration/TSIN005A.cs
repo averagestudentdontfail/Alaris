@@ -29,8 +29,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using Xunit;
 using FluentAssertions;
-using Alaris.Application.Model;
-using Alaris.Application.Service;
+using Alaris.Host.Application.Model;
+using Alaris.Host.Application.Service;
 
 namespace Alaris.Test.Integration;
 

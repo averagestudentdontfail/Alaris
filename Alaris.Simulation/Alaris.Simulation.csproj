@@ -24,7 +24,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Alaris.Double\Alaris.Double.csproj" />
     <ProjectReference Include="..\Alaris.Strategy\Alaris.Strategy.csproj" />
-    <ProjectReference Include="..\Alaris.Events\Alaris.Events.csproj" />
+    <ProjectReference Include="..\Alaris.Infrastructure\Alaris.Infrastructure.csproj" />
   </ItemGroup>
 
   <!-- NuGet Packages -->

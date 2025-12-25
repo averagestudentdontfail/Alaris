@@ -16,7 +16,7 @@ using System.Threading.Tasks;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Xunit;
-using Alaris.Data.Provider.SEC;
+using Alaris.Infrastructure.Data.Provider.SEC;
 
 namespace Alaris.Test.Unit;
 

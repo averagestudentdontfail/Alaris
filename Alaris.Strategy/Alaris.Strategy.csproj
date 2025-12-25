@@ -27,7 +27,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Alaris.Quantlib\Alaris.Quantlib.csproj" />
     <ProjectReference Include="..\Alaris.Double\Alaris.Double.csproj" />
-    <ProjectReference Include="..\Alaris.Protocol\Alaris.Protocol.csproj" />
+    <ProjectReference Include="..\Alaris.Infrastructure\Alaris.Infrastructure.csproj" />
     <ProjectReference Include="..\Alaris.Core\Alaris.Core.csproj" />
   </ItemGroup>
 

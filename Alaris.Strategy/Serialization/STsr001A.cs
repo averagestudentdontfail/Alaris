@@ -11,7 +11,7 @@
 // =============================================================================
 
 using System.Buffers.Binary;
-using Alaris.Protocol.Serialization;
+using Alaris.Infrastructure.Protocol.Serialization;
 
 namespace Alaris.Strategy.Serialization;
 

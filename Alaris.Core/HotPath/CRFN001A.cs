@@ -33,6 +33,8 @@ public static class CRFN001A
         Func<T, double> selector,
         Func<T, bool>? filter = null) where T : class
     {
+        ArgumentNullException.ThrowIfNull(selector);
+
         T? result = null;
         double minValue = double.MaxValue;
 
@@ -188,6 +190,64 @@ public static class CRFN001A
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static T? FirstWhere<T>(IReadOnlyList<T> items, Func<T, bool> predicate) where T : class
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        ArgumentNullException.ThrowIfNull(predicate);
+
+        int length = items.Count;
+
+        for (int i = 0; i < length; i++)
+        {
+            T item = items[i];
+            if (predicate(item))
+            {
+                return item;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Finds the first item with minimum value (IList overload).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static T? FindMinBy<T>(
+        IList<T> items,
+        Func<T, double> selector,
+        Func<T, bool>? filter = null) where T : class
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        ArgumentNullException.ThrowIfNull(selector);
+
+        T? result = null;
+        double minValue = double.MaxValue;
+        int count = items.Count;
+
+        for (int i = 0; i < count; i++)
+        {
+            T item = items[i];
+            if (filter is not null && !filter(item))
+            {
+                continue;
+            }
+
+            double value = selector(item);
+            if (value < minValue)
+            {
+                minValue = value;
+                result = item;
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Finds first item matching a predicate (IList overload).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static T? FirstWhere<T>(IList<T> items, Func<T, bool> predicate) where T : class
     {
         ArgumentNullException.ThrowIfNull(items);
         ArgumentNullException.ThrowIfNull(predicate);
