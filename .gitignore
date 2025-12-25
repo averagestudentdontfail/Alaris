@@ -107,7 +107,7 @@ secrets.json
 .env.local
 *.secrets
 logs/
-Data/
+/Data/
 *.log
 
 # Alaris Output Directory (LEAN runtime artifacts)
