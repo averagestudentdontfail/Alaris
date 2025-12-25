@@ -43,6 +43,7 @@ public static class STPR002A
     /// 
     /// Instead of mapping (a, inf) -> (-1, 1), we integrate in chunks [a, a+step], [a+step, a+2*step]...
     /// until the contribution of a chunk is smaller than the tolerance.
+    /// Uses adaptive step sizing: step doubles when convergence accelerates.
     /// This is superior for oscillatory Characteristic Functions (Heston/Kou).
     /// </summary>
     public static (double Value, double Error) IntegrateToInfinity(
@@ -56,23 +57,34 @@ public static class STPR002A
         double totalSum = 0;
         double currentStart = a;
         int chunkCount = 0;
+        double currentStepSize = IntegrationStepSize;
+        double previousChunkMagnitude = double.MaxValue;
 
         while (chunkCount < MaxChunks)
         {
-            double currentEnd = currentStart + IntegrationStepSize;
+            double currentEnd = currentStart + currentStepSize;
             
             // Integrate this chunk
             double chunkValue = GaussLegendreRule.Integrate(f, currentStart, currentEnd, GaussLegendreOrder);
+            double chunkMagnitude = Math.Abs(chunkValue);
             
             totalSum += chunkValue;
             
             // Check convergence: if the latest chunk added almost nothing, we are done.
             // Characteristic functions decay exponentially, so this happens relatively fast.
-            if (Math.Abs(chunkValue) < absoluteTolerance && chunkCount > 0)
+            if (chunkMagnitude < absoluteTolerance && chunkCount > 0)
             {
                 return (totalSum, absoluteTolerance); // Converged
             }
 
+            // Adaptive step sizing: if magnitude dropped significantly, double the step
+            // This accelerates convergence for well-behaved decaying integrands
+            if (chunkCount > 2 && chunkMagnitude < previousChunkMagnitude * 0.1)
+            {
+                currentStepSize = Math.Min(currentStepSize * 2.0, IntegrationStepSize * 16);
+            }
+
+            previousChunkMagnitude = chunkMagnitude;
             currentStart = currentEnd;
             chunkCount++;
         }
@@ -83,6 +95,7 @@ public static class STPR002A
 
     /// <summary>
     /// Integrates a complex function from a to infinity using Adaptive Truncation.
+    /// Uses adaptive step sizing for faster convergence.
     /// </summary>
     public static (Complex Value, double Error) IntegrateComplexToInfinity(
         Func<double, Complex> f,
@@ -95,24 +108,34 @@ public static class STPR002A
         Complex totalSum = Complex.Zero;
         double currentStart = a;
         int chunkCount = 0;
+        double currentStepSize = IntegrationStepSize;
+        double previousMagnitude = double.MaxValue;
 
         while (chunkCount < MaxChunks)
         {
-            double currentEnd = currentStart + IntegrationStepSize;
+            double currentEnd = currentStart + currentStepSize;
 
             // Integrate Real and Imaginary parts separately over this chunk
             double realPart = GaussLegendreRule.Integrate(x => f(x).Real, currentStart, currentEnd, GaussLegendreOrder);
             double imagPart = GaussLegendreRule.Integrate(x => f(x).Imaginary, currentStart, currentEnd, GaussLegendreOrder);
             
             Complex chunkValue = new Complex(realPart, imagPart);
+            double chunkMagnitude = chunkValue.Magnitude;
             totalSum += chunkValue;
 
             // Convergence check on the magnitude of the added chunk
-            if (chunkValue.Magnitude < absoluteTolerance && chunkCount > 0)
+            if (chunkMagnitude < absoluteTolerance && chunkCount > 0)
             {
                 return (totalSum, absoluteTolerance);
             }
 
+            // Adaptive step sizing for faster convergence
+            if (chunkCount > 2 && chunkMagnitude < previousMagnitude * 0.1)
+            {
+                currentStepSize = Math.Min(currentStepSize * 2.0, IntegrationStepSize * 16);
+            }
+
+            previousMagnitude = chunkMagnitude;
             currentStart = currentEnd;
             chunkCount++;
         }

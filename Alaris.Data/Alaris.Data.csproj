@@ -45,6 +45,8 @@
   <ItemGroup>
     <!-- Reference to Alaris.Strategy for data models -->
     <ProjectReference Include="..\Alaris.Strategy\Alaris.Strategy.csproj" />
+    <!-- Reference to Alaris.Protocol for binary serialization -->
+    <ProjectReference Include="..\Alaris.Protocol\Alaris.Protocol.csproj" />
   </ItemGroup>
 
 </Project>

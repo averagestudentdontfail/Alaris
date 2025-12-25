@@ -292,7 +292,7 @@ public sealed class STIV001A
     }
 
     /// <summary>
-    /// Computes the IV term structure.
+    /// Computes the IV term structure using parallel computation.
     /// </summary>
     public (int DTE, double TheoreticalIV)[] ComputeSTTM001A(
         double spot,
@@ -303,24 +303,25 @@ public sealed class STIV001A
 
         var result = new (int DTE, double TheoreticalIV)[dtePoints.Length];
 
-        for (int i = 0; i < dtePoints.Length; i++)
+        // Parallel computation for independent DTE points
+        Parallel.For(0, dtePoints.Length, i =>
         {
             int dte = dtePoints[i];
             if (dte <= 0)
             {
                 result[i] = (dte, Math.Sqrt(_params.V0));
-                continue;
+                return;
             }
 
             double timeToExpiry = TradingCalendarDefaults.DteToYears(dte);
             result[i] = (dte, ComputeTheoreticalIV(spot, strike, timeToExpiry));
-        }
+        });
 
         return result;
     }
 
     /// <summary>
-    /// Computes the IV smile across strikes.
+    /// Computes the IV smile across strikes using parallel computation.
     /// </summary>
     public (double Strike, double TheoreticalIV)[] ComputeSmile(
         double spot,
@@ -331,10 +332,11 @@ public sealed class STIV001A
 
         var result = new (double Strike, double TheoreticalIV)[strikes.Length];
 
-        for (int i = 0; i < strikes.Length; i++)
+        // Parallel computation for independent strikes
+        Parallel.For(0, strikes.Length, i =>
         {
             result[i] = (strikes[i], ComputeTheoreticalIV(spot, strikes[i], timeToExpiry));
-        }
+        });
 
         return result;
     }
@@ -454,7 +456,7 @@ public sealed class STIV001A
     }
 
     /// <summary>
-    /// Calibrates Heston parameters using grid search.
+    /// Calibrates Heston parameters using parallel grid search.
     /// LEGACY VERSION: Used as fallback when LM optimization fails.
     /// For production, prefer Calibrate() which uses Levenberg-Marquardt.
     /// </summary>
@@ -466,6 +468,7 @@ public sealed class STIV001A
     {
         double bestError = double.MaxValue;
         HestonParameters? bestParams = null;
+        object lockObj = new();
 
         // Parameter grid (coarse grid for demo)
         double[] v0s = { 0.02, 0.04, 0.06, 0.09 };
@@ -474,45 +477,46 @@ public sealed class STIV001A
         double[] sigmaVs = { 0.2, 0.3, 0.4, 0.5 };
         double[] rhos = { -0.9, -0.7, -0.5, -0.3 };
 
-        foreach (double v0 in v0s)
+        // Flatten parameter combinations for parallel processing
+        var combinations = from v0 in v0s
+                          from theta in thetas
+                          from kappa in kappas
+                          from sigmaV in sigmaVs
+                          from rho in rhos
+                          select (v0, theta, kappa, sigmaV, rho);
+
+        // Parallel grid search over all parameter combinations
+        Parallel.ForEach(combinations, combination =>
         {
-            foreach (double theta in thetas)
+            var (v0, theta, kappa, sigmaV, rho) = combination;
+            HestonParameters candidateParams = new()
             {
-                foreach (double kappa in kappas)
+                V0 = v0,
+                Theta = theta,
+                Kappa = kappa,
+                SigmaV = sigmaV,
+                Rho = rho,
+                RiskFreeRate = riskFreeRate,
+                DividendYield = dividendYield
+            };
+
+            if (!candidateParams.Validate().IsValid)
+            {
+                return;
+            }
+
+            STIV001A model = new(candidateParams);
+            double error = ComputeCalibrationError(model, spot, marketData);
+
+            lock (lockObj)
+            {
+                if (error < bestError)
                 {
-                    foreach (double sigmaV in sigmaVs)
-                    {
-                        foreach (double rho in rhos)
-                        {
-                            HestonParameters candidateParams = new()
-                            {
-                                V0 = v0,
-                                Theta = theta,
-                                Kappa = kappa,
-                                SigmaV = sigmaV,
-                                Rho = rho,
-                                RiskFreeRate = riskFreeRate,
-                                DividendYield = dividendYield
-                            };
-
-                            if (!candidateParams.Validate().IsValid)
-                            {
-                                continue;
-                            }
-
-                            STIV001A model = new(candidateParams);
-                            double error = ComputeCalibrationError(model, spot, marketData);
-
-                            if (error < bestError)
-                            {
-                                bestError = error;
-                                bestParams = candidateParams;
-                            }
-                        }
-                    }
+                    bestError = error;
+                    bestParams = candidateParams;
                 }
             }
-        }
+        });
 
         return bestParams ?? HestonParameters.DefaultEquity;
     }

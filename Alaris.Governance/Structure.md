@@ -22,6 +22,7 @@ The Alaris system follows a strict domain-driven directory structure. All compon
 ### 3.1 Domain Projects
 | Directory | Domain | Description |
 |-----------|--------|-------------|
+| `Alaris.Core` | Core | Core mathematical primitives with documented accuracy bounds. |
 | `Alaris.Double` | Double Boundary | Negative rate American option pricing engine. |
 | `Alaris.Strategy` | Strategy | Trading strategy implementation, including core logic, pricing, and risk management. |
 | `Alaris.Data` | Data | Data acquisition, validation, and integration layer. |
@@ -46,10 +47,12 @@ The naming format consists of four segments:
 ### 4.2 Domain Codes
 | Code | Domain | Description |
 |------|--------|-------------|
+| `CR` | Core | Core mathematical primitives and shared utilities. |
 | `DB` | Double Boundary | Components related to the `Alaris.Double` project. |
 | `ST` | Strategy | Components related to the `Alaris.Strategy` project. |
 | `DT` | Data | Components related to the `Alaris.Data` project. |
 | `EV` | Events | Components related to the `Alaris.Events` project. |
+| `PL` | Protocol | Binary protocol schemas and serialization. |
 | `TS` | Test Suite | Components related to testing and validation. |
 | `CM` | Common | Shared utilities and infrastructure. |
 

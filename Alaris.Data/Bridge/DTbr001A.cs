@@ -8,6 +8,8 @@ using Microsoft.Extensions.Logging;
 using Alaris.Data.Model;
 using Alaris.Data.Provider;
 using Alaris.Data.Quality;
+using Alaris.Data.Serialization;
+using Alaris.Protocol.Buffers;
 
 namespace Alaris.Data.Bridge;
 
@@ -211,10 +213,7 @@ public sealed class AlarisDataBridge
     /// <summary>
     /// Gets option chain with cache fallback for backtest mode.
     /// Loads from session cache if available, otherwise falls back to live API.
-    /// </summary>
-    /// <summary>
-    /// Gets option chain with cache fallback for backtest mode.
-    /// Loads from session cache if verified strictly against evaluation date, otherwise fetches from provider.
+    /// Now supports both binary (.sbe) and legacy JSON (.json) cache formats.
     /// </summary>
     private async Task<OptionChainSnapshot> GetOptionChainWithCacheFallbackAsync(
         string symbol,
@@ -224,33 +223,60 @@ public sealed class AlarisDataBridge
         // Try to load from session cache first (backtest mode)
         if (!string.IsNullOrEmpty(_sessionDataPath))
         {
-            var cacheFilePath = System.IO.Path.Combine(_sessionDataPath, "options", $"{symbol.ToLowerInvariant()}.json");
+            var optionsDir = System.IO.Path.Combine(_sessionDataPath, "options");
+            var symbolLower = symbol.ToLowerInvariant();
             
-            if (File.Exists(cacheFilePath))
+            // Try binary cache first (preferred - zero allocation on read path)
+            var binaryCachePath = System.IO.Path.Combine(optionsDir, $"{symbolLower}.sbe");
+            if (File.Exists(binaryCachePath))
             {
                 try
                 {
-                    var json = await File.ReadAllTextAsync(cacheFilePath, cancellationToken);
-                    var cached = JsonSerializer.Deserialize<OptionChainSnapshot>(json, JsonOptions);
-                    
+                    var cached = await LoadBinaryCacheAsync(binaryCachePath, cancellationToken);
                     if (cached != null && cached.Contracts.Count > 0)
                     {
-                        // STRICT CHECK: Only return cache if it matches the evaluation date.
-                        // For backtesting, we cannot use stale option chains (e.g. from 6 months ago).
                         if (cached.Timestamp.Date == evaluationDate.Date)
                         {
-                            _logger.LogDebug("Loaded {Count} options contracts from cache for {Symbol} (Hit)", 
+                            _logger.LogDebug("Loaded {Count} options from binary cache for {Symbol} (Hit)", 
                                 cached.Contracts.Count, symbol);
                             return cached;
                         }
                         
-                        _logger.LogDebug("Cache mismatch for {Symbol}: Cached={CachedDate:yyyy-MM-dd}, Requested={ReqDate:yyyy-MM-dd}. Fetching fresh.",
+                        _logger.LogDebug("Binary cache mismatch for {Symbol}: Cached={CachedDate:yyyy-MM-dd}, Requested={ReqDate:yyyy-MM-dd}",
+                            symbol, cached.Timestamp, evaluationDate);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to load binary cache for {Symbol}, trying JSON fallback", symbol);
+                }
+            }
+            
+            // Fallback to legacy JSON cache
+            var jsonCachePath = System.IO.Path.Combine(optionsDir, $"{symbolLower}.json");
+            if (File.Exists(jsonCachePath))
+            {
+                try
+                {
+                    var json = await File.ReadAllTextAsync(jsonCachePath, cancellationToken);
+                    var cached = JsonSerializer.Deserialize<OptionChainSnapshot>(json, JsonOptions);
+                    
+                    if (cached != null && cached.Contracts.Count > 0)
+                    {
+                        if (cached.Timestamp.Date == evaluationDate.Date)
+                        {
+                            _logger.LogDebug("Loaded {Count} options from JSON cache for {Symbol} (Hit)", 
+                                cached.Contracts.Count, symbol);
+                            return cached;
+                        }
+                        
+                        _logger.LogDebug("JSON cache mismatch for {Symbol}: Cached={CachedDate:yyyy-MM-dd}, Requested={ReqDate:yyyy-MM-dd}",
                             symbol, cached.Timestamp, evaluationDate);
                     }
                 }
                 catch (JsonException ex)
                 {
-                    _logger.LogWarning(ex, "Failed to deserialize options cache for {Symbol}", symbol);
+                    _logger.LogWarning(ex, "Failed to deserialize JSON cache for {Symbol}", symbol);
                 }
             }
             else
@@ -262,6 +288,50 @@ public sealed class AlarisDataBridge
         // Fetch from provider (Live or Historical On-Demand)
         _logger.LogDebug("Fetching option chain for {Symbol} as of {Date}", symbol, evaluationDate);
         return await _marketDataProvider.GetOptionChainAsync(symbol, evaluationDate, cancellationToken);
+    }
+
+    /// <summary>
+    /// Loads option chain snapshot from binary cache file.
+    /// Uses zero-allocation deserialization via DTsr001A.
+    /// </summary>
+    private async Task<OptionChainSnapshot?> LoadBinaryCacheAsync(string path, CancellationToken cancellationToken)
+    {
+        using var buffer = PLBF001A.RentBuffer(PLBF001A.LargeBufferSize);
+        using var stream = File.OpenRead(path);
+        
+        int bytesRead = await stream.ReadAsync(buffer.Memory, cancellationToken);
+        if (bytesRead == 0)
+        {
+            return null;
+        }
+        
+        return DTsr001A.DecodeOptionChainSnapshot(buffer.Array.AsSpan(0, bytesRead));
+    }
+
+    /// <summary>
+    /// Saves option chain snapshot to binary cache file.
+    /// </summary>
+    public async Task SaveOptionChainCacheAsync(
+        string symbol,
+        OptionChainSnapshot snapshot,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(_sessionDataPath))
+        {
+            return;
+        }
+        
+        var optionsDir = System.IO.Path.Combine(_sessionDataPath, "options");
+        Directory.CreateDirectory(optionsDir);
+        
+        var binaryCachePath = System.IO.Path.Combine(optionsDir, $"{symbol.ToLowerInvariant()}.sbe");
+        
+        using var buffer = PLBF001A.RentBuffer(PLBF001A.LargeBufferSize);
+        int bytesWritten = DTsr001A.EncodeOptionChainSnapshot(snapshot, buffer.Span);
+        
+        await File.WriteAllBytesAsync(binaryCachePath, buffer.Array.AsSpan(0, bytesWritten).ToArray(), cancellationToken);
+        
+        _logger.LogDebug("Saved {Count} options to binary cache for {Symbol}", snapshot.Contracts.Count, symbol);
     }
 
     /// <summary>

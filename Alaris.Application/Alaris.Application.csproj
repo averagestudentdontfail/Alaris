@@ -43,6 +43,7 @@
   <!-- Alaris Project References -->
   <ItemGroup>
     <ProjectReference Include="..\Alaris.Algorithm\Alaris.Algorithm.csproj" />
+    <ProjectReference Include="..\Alaris.Protocol\Alaris.Protocol.csproj" />
   </ItemGroup>
 
   <!-- LEAN Launcher References -->

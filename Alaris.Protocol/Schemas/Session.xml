@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Session.xml - SBE Message Schema for Alaris Session Management
+  
+  This schema defines the binary message format for backtest session
+  metadata and session index used by the Application layer.
+  
+  References:
+    - Alaris.Application/Service/APsv001A.cs
+    - Alaris.Application/Model/APmd001A.cs
+-->
+<sbe:messageSchema xmlns:sbe="http://fixprotocol.io/2016/sbe"
+    package="Alaris.Protocol.Generated.Session"
+    id="3"
+    version="1"
+    semanticVersion="1.0.0"
+    description="Alaris Session Management Binary Protocol"
+    byteOrder="littleEndian">
+
+    <!-- Encoding types -->
+    <types>
+        <type name="int32" primitiveType="int32"/>
+        <type name="int64" primitiveType="int64"/>
+        <type name="uint16" primitiveType="uint16"/>
+        
+        <type name="timestamp" primitiveType="int64" description="Unix epoch milliseconds"/>
+        <type name="date" primitiveType="int32" description="Days since epoch"/>
+        
+        <!-- Session ID (max 64 chars) -->
+        <type name="sessionId" primitiveType="char" length="64"/>
+        
+        <!-- Symbol (max 16 chars) -->
+        <type name="symbol" primitiveType="char" length="16"/>
+        
+        <composite name="varDataEncoding">
+            <type name="length" primitiveType="uint32"/>
+            <type name="varData" primitiveType="uint8" length="0"/>
+        </composite>
+        
+        <composite name="messageHeader">
+            <type name="blockLength" primitiveType="uint16"/>
+            <type name="templateId" primitiveType="uint16"/>
+            <type name="schemaId" primitiveType="uint16"/>
+            <type name="version" primitiveType="uint16"/>
+        </composite>
+        
+        <composite name="groupSizeEncoding">
+            <type name="blockLength" primitiveType="uint16"/>
+            <type name="numInGroup" primitiveType="uint16"/>
+        </composite>
+    </types>
+
+    <types>
+        <enum name="SessionStatus" encodingType="uint8">
+            <validValue name="Created">0</validValue>
+            <validValue name="DataFetching">1</validValue>
+            <validValue name="Ready">2</validValue>
+            <validValue name="Running">3</validValue>
+            <validValue name="Completed">4</validValue>
+            <validValue name="Failed">5</validValue>
+        </enum>
+    </types>
+
+    <!-- Session Metadata: Corresponds to APmd001A -->
+    <sbe:message name="SessionMetadata" id="1" description="Backtest session metadata">
+        <field name="sessionId" id="1" type="sessionId"/>
+        <field name="startDate" id="2" type="date"/>
+        <field name="endDate" id="3" type="date"/>
+        <field name="createdAt" id="4" type="timestamp"/>
+        <field name="status" id="5" type="SessionStatus"/>
+        <field name="symbolCount" id="6" type="int32"/>
+        <!-- Symbols as repeating group -->
+        <group name="symbols" id="7" dimensionType="groupSizeEncoding">
+            <field name="symbol" id="1" type="symbol"/>
+        </group>
+    </sbe:message>
+    
+    <!-- Session Index: List of all sessions -->
+    <sbe:message name="SessionIndex" id="2" description="Index of all sessions">
+        <field name="lastSequence" id="1" type="int32" description="Last sequence number"/>
+        <group name="sessions" id="2" dimensionType="groupSizeEncoding">
+            <field name="sessionId" id="1" type="sessionId"/>
+            <field name="startDate" id="2" type="date"/>
+            <field name="endDate" id="3" type="date"/>
+            <field name="createdAt" id="4" type="timestamp"/>
+            <field name="status" id="5" type="SessionStatus"/>
+        </group>
+    </sbe:message>
+
+</sbe:messageSchema>

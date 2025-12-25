@@ -326,41 +326,13 @@ public static class STPR003A
 
     /// <summary>
     /// Cumulative distribution function for standard normal.
+    /// Delegates to unified CRMF001A implementation.
     /// </summary>
-    private static double NormalCDF(double x)
-    {
-        return 0.5 * (1 + Erf(x / Math.Sqrt(2)));
-    }
+    private static double NormalCDF(double x) => Alaris.Core.Math.CRMF001A.NormalCDF(x);
 
     /// <summary>
     /// Probability density function for standard normal.
+    /// Delegates to unified CRMF001A implementation.
     /// </summary>
-    private static double NormalPDF(double x)
-    {
-        return Math.Exp(-0.5 * x * x) / Math.Sqrt(2 * Math.PI);
-    }
-
-    /// <summary>
-    /// Error function approximation.
-    /// Uses Abramowitz and Stegun formula 7.1.26 with maximum error 1.5e-7.
-    /// </summary>
-    private static double Erf(double x)
-    {
-        double a1 = 0.254829592;
-        double a2 = -0.284496736;
-        double a3 = 1.421413741;
-        double a4 = -1.453152027;
-        double a5 = 1.061405429;
-        double p = 0.3275911;
-
-        int sign = x < 0 ? -1 : 1;
-        x = Math.Abs(x);
-
-        double t = 1.0 / (1.0 + (p * x));
-
-        double polynomial = (((((((a5 * t) + a4) * t) + a3) * t) + a2) * t) + a1;
-        double y = 1.0 - (polynomial * t * Math.Exp(-(x * x)));
-
-        return sign * y;
-    }
+    private static double NormalPDF(double x) => Alaris.Core.Math.CRMF001A.NormalPDF(x);
 }

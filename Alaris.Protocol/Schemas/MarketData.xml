@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  MarketData.xml - SBE Message Schema for Alaris Market Data Types
+  
+  This schema defines the binary message format for core market data structures
+  used in the Alaris trading system. It enables zero-allocation encoding/decoding
+  as required by Alaris.Governance/Coding.md Rule 5.
+  
+  Message Types:
+    1. OptionContract - Individual option contract with Greeks
+    2. PriceBar       - OHLCV bar for historical data
+    3. EarningsEvent  - Earnings announcement event
+    4. OptionChainSnapshot - Complete option chain with repeating contracts
+    5. MarketDataSnapshot  - Full market data for strategy evaluation
+  
+  References:
+    - FIX SBE Specification v1.0
+    - Alaris.Data/Model/DTmd001A.cs (source types)
+-->
+<sbe:messageSchema xmlns:sbe="http://fixprotocol.io/2016/sbe"
+    package="Alaris.Protocol.Generated"
+    id="1"
+    version="1"
+    semanticVersion="1.0.0"
+    description="Alaris Market Data Binary Protocol"
+    byteOrder="littleEndian">
+
+    <!-- Encoding types -->
+    <types>
+        <!-- Primitive type aliases -->
+        <type name="int8" primitiveType="int8"/>
+        <type name="int16" primitiveType="int16"/>
+        <type name="int32" primitiveType="int32"/>
+        <type name="int64" primitiveType="int64"/>
+        <type name="uint8" primitiveType="uint8"/>
+        <type name="uint16" primitiveType="uint16"/>
+        <type name="uint32" primitiveType="uint32"/>
+        <type name="uint64" primitiveType="uint64"/>
+        
+        <!-- Decimal representation: mantissa + exponent for precise financial values -->
+        <composite name="decimal64" description="Decimal with 8 decimal places">
+            <type name="mantissa" primitiveType="int64"/>
+            <type name="exponent" primitiveType="int8" presence="constant" nullValue="-8"/>
+        </composite>
+        
+        <!-- Timestamp as Unix epoch milliseconds -->
+        <type name="timestamp" primitiveType="int64" description="Unix epoch milliseconds"/>
+        
+        <!-- Date as days since Unix epoch -->
+        <type name="date" primitiveType="int32" description="Days since 1970-01-01"/>
+        
+        <!-- Fixed-length symbol (max 16 chars, null-padded) -->
+        <type name="symbol" primitiveType="char" length="16"/>
+        
+        <!-- Variable-length string encoding -->
+        <composite name="varAsciiEncoding">
+            <type name="length" primitiveType="uint16"/>
+            <type name="varData" primitiveType="uint8" length="0" characterEncoding="ASCII"/>
+        </composite>
+        
+        <!-- Group size encoding for repeating groups -->
+        <composite name="groupSizeEncoding">
+            <type name="blockLength" primitiveType="uint16"/>
+            <type name="numInGroup" primitiveType="uint16"/>
+        </composite>
+        
+        <!-- Message header -->
+        <composite name="messageHeader" description="SBE message header">
+            <type name="blockLength" primitiveType="uint16"/>
+            <type name="templateId" primitiveType="uint16"/>
+            <type name="schemaId" primitiveType="uint16"/>
+            <type name="version" primitiveType="uint16"/>
+        </composite>
+    </types>
+
+    <!-- Enumerations -->
+    <types>
+        <enum name="OptionRight" encodingType="uint8" description="Option type: Call or Put">
+            <validValue name="Call" description="Call option">0</validValue>
+            <validValue name="Put" description="Put option">1</validValue>
+        </enum>
+        
+        <enum name="EarningsTiming" encodingType="uint8" description="Timing relative to market hours">
+            <validValue name="BeforeMarketOpen" description="Before market open">0</validValue>
+            <validValue name="AfterMarketClose" description="After market close">1</validValue>
+            <validValue name="DuringMarketHours" description="During market hours">2</validValue>
+            <validValue name="Unknown" description="Timing unknown">255</validValue>
+        </enum>
+    </types>
+
+    <!-- Message definitions -->
+    
+    <!-- OptionContract: Corresponds to Alaris.Data.Model.OptionContract -->
+    <sbe:message name="OptionContract" id="1" description="Single option contract with market data">
+        <field name="strike" id="1" type="decimal64" description="Strike price"/>
+        <field name="expiration" id="2" type="date" description="Expiration date"/>
+        <field name="right" id="3" type="OptionRight" description="Call or Put"/>
+        <field name="bid" id="4" type="decimal64" description="Best bid price"/>
+        <field name="ask" id="5" type="decimal64" description="Best ask price"/>
+        <field name="last" id="6" type="decimal64" description="Last trade price"/>
+        <field name="impliedVolatility" id="7" type="decimal64" description="Implied volatility (decimal)"/>
+        <field name="delta" id="8" type="decimal64" description="Delta Greek"/>
+        <field name="gamma" id="9" type="decimal64" description="Gamma Greek"/>
+        <field name="theta" id="10" type="decimal64" description="Theta Greek"/>
+        <field name="vega" id="11" type="decimal64" description="Vega Greek"/>
+        <field name="openInterest" id="12" type="int64" description="Open interest"/>
+        <field name="volume" id="13" type="int64" description="Trading volume"/>
+        <field name="symbol" id="14" type="symbol" description="Contract symbol"/>
+    </sbe:message>
+    
+    <!-- PriceBar: Corresponds to Alaris.Data.Model.PriceBar -->
+    <sbe:message name="PriceBar" id="2" description="OHLCV price bar">
+        <field name="timestamp" id="1" type="timestamp" description="Bar timestamp (epoch ms)"/>
+        <field name="open" id="2" type="decimal64" description="Open price"/>
+        <field name="high" id="3" type="decimal64" description="High price"/>
+        <field name="low" id="4" type="decimal64" description="Low price"/>
+        <field name="close" id="5" type="decimal64" description="Close price"/>
+        <field name="volume" id="6" type="int64" description="Volume"/>
+    </sbe:message>
+    
+    <!-- EarningsEvent: Corresponds to Alaris.Data.Model.EarningsEvent -->
+    <sbe:message name="EarningsEvent" id="3" description="Earnings announcement event">
+        <field name="date" id="1" type="date" description="Earnings date"/>
+        <field name="timing" id="2" type="EarningsTiming" description="BMO/AMC"/>
+        <field name="fiscalQuarter" id="3" type="int8" description="Fiscal quarter (1-4)"/>
+        <field name="fiscalYear" id="4" type="int16" description="Fiscal year"/>
+        <field name="epsEstimate" id="5" type="decimal64" description="EPS estimate"/>
+        <field name="epsActual" id="6" type="decimal64" description="EPS actual"/>
+        <field name="revenueEstimate" id="7" type="decimal64" description="Revenue estimate"/>
+        <field name="revenueActual" id="8" type="decimal64" description="Revenue actual"/>
+        <field name="symbol" id="9" type="symbol" description="Stock symbol"/>
+    </sbe:message>
+    
+    <!-- OptionChainSnapshot: Collection of contracts -->
+    <sbe:message name="OptionChainSnapshot" id="4" description="Complete option chain">
+        <field name="timestamp" id="1" type="timestamp" description="Snapshot timestamp"/>
+        <field name="spotPrice" id="2" type="decimal64" description="Underlying spot price"/>
+        <field name="symbol" id="3" type="symbol" description="Underlying symbol"/>
+        <group name="contracts" id="4" dimensionType="groupSizeEncoding" description="Option contracts">
+            <field name="strike" id="1" type="decimal64"/>
+            <field name="expiration" id="2" type="date"/>
+            <field name="right" id="3" type="OptionRight"/>
+            <field name="bid" id="4" type="decimal64"/>
+            <field name="ask" id="5" type="decimal64"/>
+            <field name="last" id="6" type="decimal64"/>
+            <field name="impliedVolatility" id="7" type="decimal64"/>
+            <field name="delta" id="8" type="decimal64"/>
+            <field name="gamma" id="9" type="decimal64"/>
+            <field name="theta" id="10" type="decimal64"/>
+            <field name="vega" id="11" type="decimal64"/>
+            <field name="openInterest" id="12" type="int64"/>
+            <field name="volume" id="13" type="int64"/>
+        </group>
+    </sbe:message>
+    
+    <!-- MarketDataSnapshot: Full market data for strategy evaluation -->
+    <sbe:message name="MarketDataSnapshot" id="5" description="Complete market data snapshot">
+        <field name="timestamp" id="1" type="timestamp" description="Snapshot timestamp"/>
+        <field name="spotPrice" id="2" type="decimal64" description="Current spot price"/>
+        <field name="riskFreeRate" id="3" type="decimal64" description="Risk-free rate"/>
+        <field name="dividendYield" id="4" type="decimal64" description="Dividend yield"/>
+        <field name="averageVolume30Day" id="5" type="int64" description="30-day avg volume"/>
+        <field name="symbol" id="6" type="symbol" description="Symbol"/>
+        <!-- Historical bars as repeating group -->
+        <group name="historicalBars" id="7" dimensionType="groupSizeEncoding">
+            <field name="timestamp" id="1" type="timestamp"/>
+            <field name="open" id="2" type="decimal64"/>
+            <field name="high" id="3" type="decimal64"/>
+            <field name="low" id="4" type="decimal64"/>
+            <field name="close" id="5" type="decimal64"/>
+            <field name="volume" id="6" type="int64"/>
+        </group>
+        <!-- Next earnings event (optional) -->
+        <group name="nextEarnings" id="8" dimensionType="groupSizeEncoding">
+            <field name="date" id="1" type="date"/>
+            <field name="timing" id="2" type="EarningsTiming"/>
+        </group>
+    </sbe:message>
+
+</sbe:messageSchema>

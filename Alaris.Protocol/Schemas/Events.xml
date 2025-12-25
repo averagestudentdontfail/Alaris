@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Events.xml - SBE Message Schema for Alaris Event Sourcing
+  
+  This schema defines the binary message format for event envelope and 
+  domain events used in the Alaris event sourcing infrastructure.
+  
+  References:
+    - Alaris.Events/Core/EVCR003A.cs (EventEnvelope)
+    - Alaris.Events/Domain/EVDM001A.cs (Domain Events)
+    - Rule 17 (Auditability) - immutable event records
+-->
+<sbe:messageSchema xmlns:sbe="http://fixprotocol.io/2016/sbe"
+    package="Alaris.Protocol.Generated.Events"
+    id="2"
+    version="1"
+    semanticVersion="1.0.0"
+    description="Alaris Event Sourcing Binary Protocol"
+    byteOrder="littleEndian">
+
+    <!-- Encoding types -->
+    <types>
+        <type name="int8" primitiveType="int8"/>
+        <type name="int16" primitiveType="int16"/>
+        <type name="int32" primitiveType="int32"/>
+        <type name="int64" primitiveType="int64"/>
+        <type name="uint8" primitiveType="uint8"/>
+        <type name="uint16" primitiveType="uint16"/>
+        
+        <type name="timestamp" primitiveType="int64" description="Unix epoch milliseconds"/>
+        
+        <!-- UUID as 16 bytes -->
+        <type name="uuid" primitiveType="uint8" length="16" description="UUID bytes"/>
+        
+        <!-- Fixed-length strings -->
+        <type name="eventType" primitiveType="char" length="64" description="Event type name"/>
+        <type name="correlationId" primitiveType="char" length="36" description="Correlation ID"/>
+        <type name="aggregateId" primitiveType="char" length="64" description="Aggregate ID"/>
+        
+        <!-- Variable-length encoding -->
+        <composite name="varDataEncoding">
+            <type name="length" primitiveType="uint32"/>
+            <type name="varData" primitiveType="uint8" length="0"/>
+        </composite>
+        
+        <!-- Message header -->
+        <composite name="messageHeader">
+            <type name="blockLength" primitiveType="uint16"/>
+            <type name="templateId" primitiveType="uint16"/>
+            <type name="schemaId" primitiveType="uint16"/>
+            <type name="version" primitiveType="uint16"/>
+        </composite>
+        
+        <composite name="groupSizeEncoding">
+            <type name="blockLength" primitiveType="uint16"/>
+            <type name="numInGroup" primitiveType="uint16"/>
+        </composite>
+    </types>
+
+    <!-- Event Envelope: Corresponds to EVCR003A -->
+    <sbe:message name="EventEnvelope" id="1" description="Immutable event wrapper with metadata">
+        <field name="eventId" id="1" type="uuid" description="Unique event identifier"/>
+        <field name="sequenceNumber" id="2" type="int64" description="Monotonic sequence"/>
+        <field name="storedAtUtc" id="3" type="timestamp" description="Storage timestamp"/>
+        <field name="eventType" id="4" type="eventType" description="Event type name"/>
+        <field name="aggregateId" id="5" type="aggregateId" description="Aggregate ID"/>
+        <field name="correlationId" id="6" type="correlationId" description="Correlation ID"/>
+        <!-- Variable-length event payload -->
+        <data name="eventData" id="7" type="varDataEncoding" description="Serialized event data"/>
+    </sbe:message>
+
+    <!-- Domain Events from EVDM001A -->
+    
+    <sbe:message name="SignalGeneratedEvent" id="10" description="Signal generation event">
+        <field name="timestamp" id="1" type="timestamp"/>
+        <field name="ivRatio" id="2" type="int64" description="IV/RV ratio * 1e8"/>
+        <field name="termStructureSlope" id="3" type="int64" description="Slope * 1e8"/>
+        <field name="signalStrength" id="4" type="int64" description="Strength * 1e8"/>
+        <data name="symbol" id="5" type="varDataEncoding"/>
+    </sbe:message>
+    
+    <sbe:message name="PositionOpenedEvent" id="11" description="Position opened event">
+        <field name="timestamp" id="1" type="timestamp"/>
+        <field name="quantity" id="2" type="int32"/>
+        <field name="entryPrice" id="3" type="int64" description="Price * 1e8"/>
+        <field name="kellyFraction" id="4" type="int64" description="Fraction * 1e8"/>
+        <data name="symbol" id="5" type="varDataEncoding"/>
+    </sbe:message>
+    
+    <sbe:message name="PositionClosedEvent" id="12" description="Position closed event">
+        <field name="timestamp" id="1" type="timestamp"/>
+        <field name="quantity" id="2" type="int32"/>
+        <field name="exitPrice" id="3" type="int64" description="Price * 1e8"/>
+        <field name="realizedPnl" id="4" type="int64" description="PnL * 1e8"/>
+        <data name="symbol" id="5" type="varDataEncoding"/>
+        <data name="exitReason" id="6" type="varDataEncoding"/>
+    </sbe:message>
+    
+    <sbe:message name="RiskLimitBreachedEvent" id="13" description="Risk limit breach event">
+        <field name="timestamp" id="1" type="timestamp"/>
+        <field name="currentValue" id="2" type="int64" description="Value * 1e8"/>
+        <field name="limitValue" id="3" type="int64" description="Limit * 1e8"/>
+        <data name="limitType" id="4" type="varDataEncoding"/>
+        <data name="symbol" id="5" type="varDataEncoding"/>
+    </sbe:message>
+
+</sbe:messageSchema>

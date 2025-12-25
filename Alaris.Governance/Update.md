@@ -6,6 +6,31 @@ Project changelog with completed items collapsed and active/future items detaile
 
 ## Active Development
 
+### FIX SBE Binary Protocol Foundation (2025-12-24)
+
+**Status**: In Progress (Phase 1-2 Complete)
+
+Created `Alaris.Protocol` component implementing FIX Simple Binary Encoding for zero-allocation serialization. Supports Rule 5 (Zero-Allocation Hot Paths) compliance.
+
+**Components Created**:
+- `Alaris.Protocol/` - New domain project (PL code)
+- `PLBF001A.cs` - Buffer pool manager using ArrayPool<byte>
+- `PLSR001A.cs` - Zero-copy binary serialization for market data
+- `Schemas/MarketData.xml` - SBE schema for OptionContract, PriceBar, etc.
+- `Schemas/Events.xml` - SBE schema for event envelopes
+- `Schemas/Session.xml` - SBE schema for session metadata
+- `DTsr001A.cs` - Data model to binary adapter in Alaris.Data
+
+**Binary Format Features**:
+- Fixed layouts at known offsets
+- Zero allocations via Span<T> and ArrayPool
+- Version header for forward compatibility
+- Little-endian byte order
+
+**Verification**: All 749 tests pass (no regressions)
+
+---
+
 ### Test Coverage Expansion (2025-12-11)
 
 **Status**: Complete

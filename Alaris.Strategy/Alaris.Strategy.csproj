@@ -15,14 +15,20 @@
     <Description>Earnings volatility calendar spread trading strategies based on academic research</Description>
     <Authors>Kiran K. Nath</Authors>
     <Version>1.0.0</Version>
-    <!-- Suppress XML documentation warnings for missing comments -->
-    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <!-- Suppress XML documentation warnings and SBE struct pattern analyzer rules -->
+    <!-- CA1051: SBE structs intentionally expose fields for zero-copy access -->
+    <!-- CA1034: Nested structs for SBE data transfer objects -->
+    <!-- CA1815: SBE data structs don't need equality operators -->
+    <!-- IDE0008: Allow var for tuple deconstruction -->
+    <NoWarn>$(NoWarn);CS1591;CA1051;CA1034;CA1815;IDE0008</NoWarn>
   </PropertyGroup>
 
   <!-- Project Dependencies -->
   <ItemGroup>
     <ProjectReference Include="..\Alaris.Quantlib\Alaris.Quantlib.csproj" />
     <ProjectReference Include="..\Alaris.Double\Alaris.Double.csproj" />
+    <ProjectReference Include="..\Alaris.Protocol\Alaris.Protocol.csproj" />
+    <ProjectReference Include="..\Alaris.Core\Alaris.Core.csproj" />
   </ItemGroup>
 
   <!-- NuGet Package Dependencies -->
