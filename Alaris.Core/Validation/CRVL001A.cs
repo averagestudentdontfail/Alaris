@@ -255,4 +255,98 @@ public static class AlgorithmBounds
                 MaxLogMoneyness);
         }
     }
+
+    /// <summary>
+    /// Validates rate is a finite number (allows negative rates).
+    /// </summary>
+    public static void ValidateRate(double rate, string paramName = "rate")
+    {
+        if (double.IsNaN(rate) || double.IsInfinity(rate))
+        {
+            throw new BoundsViolationException(paramName, rate, double.MinValue, double.MaxValue);
+        }
+    }
+
+    /// <summary>
+    /// Validates all inputs required for double boundary American option pricing.
+    /// This is the single entry point for bounds validation before numerical algorithms.
+    /// </summary>
+    /// <param name="spot">Underlying spot price.</param>
+    /// <param name="strike">Option strike price.</param>
+    /// <param name="maturity">Time to expiry in years.</param>
+    /// <param name="rate">Risk-free rate (can be negative).</param>
+    /// <param name="dividendYield">Continuous dividend yield (can be negative).</param>
+    /// <param name="volatility">Implied volatility.</param>
+    /// <exception cref="BoundsViolationException">Thrown if any parameter is out of bounds.</exception>
+    /// <remarks>
+    /// <para>
+    /// Bounds validated:
+    /// <list type="bullet">
+    /// <item>Spot: S &gt; 0</item>
+    /// <item>Strike: K &gt; 0</item>
+    /// <item>Moneyness: |ln(K/S)| ≤ 3</item>
+    /// <item>Maturity: τ ∈ [1/252, 30] years</item>
+    /// <item>Volatility: σ ∈ [0.001, 5.0]</item>
+    /// <item>Rate: finite (allows negative)</item>
+    /// <item>Dividend: finite (allows negative)</item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// In the double boundary regime (q &lt; r &lt; 0), these bounds ensure
+    /// the QD+ algorithm and Kim integral converge deterministically.
+    /// </para>
+    /// </remarks>
+    public static void ValidateDoubleBoundaryInputs(
+        double spot,
+        double strike,
+        double maturity,
+        double rate,
+        double dividendYield,
+        double volatility)
+    {
+        // Validate prices (positive and finite)
+        ValidatePositivePrice(spot, nameof(spot));
+        ValidatePositivePrice(strike, nameof(strike));
+        
+        // Validate moneyness (prevents extreme OTM/ITM)
+        ValidateMoneyness(spot, strike, nameof(spot));
+        
+        // Validate time to expiry
+        ValidateTimeToExpiry(maturity, nameof(maturity));
+        
+        // Validate volatility
+        ValidateVolatility(volatility, nameof(volatility));
+        
+        // Validate rates (finite, allows negative for double boundary regime)
+        ValidateRate(rate, nameof(rate));
+        ValidateRate(dividendYield, nameof(dividendYield));
+    }
+
+    /// <summary>
+    /// Returns whether inputs are within bounds without throwing.
+    /// </summary>
+    /// <returns>True if all inputs are valid, false otherwise.</returns>
+    public static bool TryValidateDoubleBoundaryInputs(
+        double spot,
+        double strike,
+        double maturity,
+        double rate,
+        double dividendYield,
+        double volatility,
+        out string? validationError)
+    {
+        validationError = null;
+
+        try
+        {
+            ValidateDoubleBoundaryInputs(spot, strike, maturity, rate, dividendYield, volatility);
+            return true;
+        }
+        catch (BoundsViolationException ex)
+        {
+            validationError = ex.Message;
+            return false;
+        }
+    }
 }
+

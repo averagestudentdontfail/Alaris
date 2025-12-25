@@ -17,6 +17,7 @@ namespace Alaris.Strategy.Bridge;
 public sealed class STBR001A : STBR002A, IDisposable
 {
     private readonly ILogger<STBR001A>? _logger;
+    private readonly STBR003A? _infrastructureCache;
     private bool _disposed;
 
     // LoggerMessage delegates
@@ -60,9 +61,16 @@ public sealed class STBR001A : STBR002A, IDisposable
     /// Initializes a new instance of the STBR001A.
     /// </summary>
     /// <param name="logger">Optional logger for diagnostics.</param>
-    public STBR001A(ILogger<STBR001A>? logger = null)
+    /// <param name="enableCaching">Enable infrastructure caching for Greek calculations (default: true).</param>
+    public STBR001A(ILogger<STBR001A>? logger = null, bool enableCaching = true)
     {
         _logger = logger;
+        
+        // Create infrastructure cache for optimised Greek calculations (Rule 5)
+        if (enableCaching)
+        {
+            _infrastructureCache = new STBR003A();
+        }
     }
 
     /// <summary>
@@ -1182,6 +1190,9 @@ public sealed class STBR001A : STBR002A, IDisposable
         {
             return;
         }
+        
+        // Dispose infrastructure cache (Rule 16)
+        _infrastructureCache?.Dispose();
 
         _disposed = true;
     }

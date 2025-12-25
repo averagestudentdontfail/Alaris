@@ -1,4 +1,5 @@
 using System;
+using Alaris.Core.Validation;
 
 namespace Alaris.Double;
 
@@ -46,6 +47,7 @@ public sealed class DBSL001A
     /// <param name="isCall">True for call, false for put</param>
     /// <param name="collocationPoints">Number of time points (default 50)</param>
     /// <param name="useRefinement">Use FP-B' Kim refinement (default true)</param>
+    /// <exception cref="BoundsViolationException">Thrown if inputs violate algorithm bounds.</exception>
     public DBSL001A(
         double spot,
         double strike,
@@ -57,26 +59,9 @@ public sealed class DBSL001A
         int collocationPoints = 50,
         bool useRefinement = true)
     {
-        // Rule 9: Guard Clauses
-        if (spot <= 0)
-        {
-            throw new ArgumentException("Spot price must be positive", nameof(spot));
-        }
-
-        if (strike <= 0)
-        {
-            throw new ArgumentException("Strike price must be positive", nameof(strike));
-        }
-
-        if (maturity <= 0)
-        {
-            throw new ArgumentException("Maturity must be positive", nameof(maturity));
-        }
-
-        if (volatility <= 0)
-        {
-            throw new ArgumentException("Volatility must be positive", nameof(volatility));
-        }
+        // Standardised bounds validation (Rule 9)
+        AlgorithmBounds.ValidateDoubleBoundaryInputs(
+            spot, strike, maturity, rate, dividendYield, volatility);
 
         if (collocationPoints <= 0)
         {
