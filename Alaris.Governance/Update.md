@@ -24,8 +24,14 @@ Created `STBR003A.cs` implementing cached QuantLib infrastructure for Greek calc
 - `Alaris.Infrastructure/Events/Infrastructure/EVIF001B.cs` (310 lines) - File-based persistent event store
 - `Alaris.Infrastructure/Events/Infrastructure/EVIF002B.cs` (280 lines) - File-based persistent audit logger
 - `Alaris.Test/Unit/TSUN033A.cs` (315 lines) - 9 unit tests for persistent stores
+- `Alaris.Test/Integration/TSEE001A.cs` (280 lines) - 14 E2E pipeline tests
+- `Alaris.Test/Diagnostic/TSDG003A.cs` (365 lines) - 45 bounds validation tests
 
-**Verification**: All 819 tests pass (previously 776)
+**Standardisation Applied:**
+- `DBAP001A.cs` - Replaced ad-hoc validation with `AlgorithmBounds.ValidateDoubleBoundaryInputs()`
+- `DBSL002A.cs` - Replaced ad-hoc validation with `AlgorithmBounds.ValidateDoubleBoundaryInputs()`
+
+**Verification**: All 878 tests pass (previously 776)
 
 ---
 

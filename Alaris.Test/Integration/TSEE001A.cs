@@ -12,14 +12,13 @@
 // 3. HighVolatility_PositionSizing - VIX > 30 regime adjustments
 // 4. NearExpiry_BoundaryHandling - T < 3 DTE edge cases
 // 5. DataGap_Recovery - Missing data handling
-// 6. MultiSymbol_Throughput - BatchedProcess multiple symbols
+// 6. MultiSymbol_Throughput - Batched process multiple symbols
 //
 // =============================================================================
 
 using Xunit;
 using FluentAssertions;
 using Alaris.Strategy.Core;
-using Alaris.Strategy.Risk;
 using Alaris.Core.Validation;
 
 namespace Alaris.Test.Integration;
@@ -32,24 +31,24 @@ public sealed class TSEE001A
     #region Test Infrastructure
 
     /// <summary>
-    /// Mock market data for testing.
+    /// Creates a test signal with specified parameters.
     /// </summary>
     private static STCR004A CreateTestSignal(
         string symbol,
-        double impliedVol,
-        double realizedVol,
+        double impliedVol30,
+        double realizedVol30,
         double termSlope,
-        double volume = 1_000_000)
+        long volume = 1_000_000)
     {
         return new STCR004A
         {
             Symbol = symbol,
-            ImpliedVolatility = impliedVol,
-            RealizedVolatility30 = realizedVol,
-            IVRVRatio = impliedVol / realizedVol,
+            ImpliedVolatility30 = impliedVol30,
+            RealizedVolatility30 = realizedVol30,
+            IVRVRatio = realizedVol30 > 0 ? impliedVol30 / realizedVol30 : 0,
             STTM001ASlope = termSlope,
             AverageVolume = volume,
-            Strength = 0.8
+            Strength = STCR004AStrength.Consider
         };
     }
 
@@ -68,8 +67,8 @@ public sealed class TSEE001A
         // ═══════════════════════════════════════════════════════════
         STCR004A signal = CreateTestSignal(
             symbol: "AAPL",
-            impliedVol: 0.35,
-            realizedVol: 0.25,
+            impliedVol30: 0.35,
+            realizedVol30: 0.25,
             termSlope: 0.02);
 
         // ═══════════════════════════════════════════════════════════
@@ -102,9 +101,9 @@ public sealed class TSEE001A
         // ═══════════════════════════════════════════════════════════
         STCR004A signal = CreateTestSignal(
             symbol: "NVDA",
-            impliedVol: 0.65,  // Pre-earnings elevated
-            realizedVol: 0.40,
-            termSlope: 0.05); // Strong contango
+            impliedVol30: 0.65,  // Pre-earnings elevated
+            realizedVol30: 0.40,
+            termSlope: 0.05);   // Strong contango
 
         // ═══════════════════════════════════════════════════════════
         // ACT: Calculate IV/RV ratio
@@ -203,19 +202,19 @@ public sealed class TSEE001A
         STCR004A incompleteSignal = new()
         {
             Symbol = "TEST",
-            ImpliedVolatility = 0.30,
+            ImpliedVolatility30 = 0.30,
             RealizedVolatility30 = 0.0, // Missing
             IVRVRatio = 0.0,            // Invalid
             STTM001ASlope = 0.0,
             AverageVolume = 0,
-            Strength = 0.0
+            Strength = STCR004AStrength.Avoid
         };
 
         // ═══════════════════════════════════════════════════════════
         // ACT: Check for valid data
         // ═══════════════════════════════════════════════════════════
         bool hasValidRV = incompleteSignal.RealizedVolatility30 > 0;
-        bool canCalculateRatio = hasValidRV && incompleteSignal.ImpliedVolatility > 0;
+        bool canCalculateRatio = hasValidRV && incompleteSignal.ImpliedVolatility30 > 0;
 
         // ═══════════════════════════════════════════════════════════
         // ASSERT: System detects incomplete data
@@ -240,8 +239,8 @@ public sealed class TSEE001A
         string[] symbols = ["AAPL", "MSFT", "GOOGL", "AMZN", "META"];
         List<STCR004A> signals = symbols.Select(s => CreateTestSignal(
             symbol: s,
-            impliedVol: 0.30 + Random.Shared.NextDouble() * 0.10,
-            realizedVol: 0.20 + Random.Shared.NextDouble() * 0.05,
+            impliedVol30: 0.30 + Random.Shared.NextDouble() * 0.10,
+            realizedVol30: 0.20 + Random.Shared.NextDouble() * 0.05,
             termSlope: 0.01 + Random.Shared.NextDouble() * 0.02
         )).ToList();
 

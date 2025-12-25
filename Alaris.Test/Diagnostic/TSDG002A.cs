@@ -68,7 +68,7 @@ public class SuperHalleyDiagnostic
         
         if (Math.Abs(upper - S0) < 0.01)
         {
-            _output.WriteLine("❌ CRITICAL: Upper boundary = initial guess!");
+            _output.WriteLine("CRITICAL: Upper boundary = initial guess!");
             _output.WriteLine("   Super Halley exited immediately without iterating.");
             _output.WriteLine("");
             _output.WriteLine("Possible causes:");
@@ -95,7 +95,7 @@ public class SuperHalleyDiagnostic
         if (Math.Abs(errorPct) > 5.0)
         {
             _output.WriteLine("");
-            _output.WriteLine("❌ FAIL: Error exceeds 5% threshold");
+            _output.WriteLine("FAIL: Error exceeds 5% threshold");
         }
     }
     

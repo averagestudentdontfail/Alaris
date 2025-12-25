@@ -61,8 +61,9 @@ public sealed class APsv002B : IDisposable
     {
         if (string.IsNullOrEmpty(_apiKey))
         {
-            _logger.LogWarning("Polygon API key not configured, using fallback symbols");
-            return GetFallbackSymbols();
+            _logger.LogError("Polygon API key not configured. Cannot perform stock screening.");
+            throw new InvalidOperationException(
+                "Polygon API key is required for stock screening. Configure 'Polygon:ApiKey' in appsettings.");
         }
         
         try
@@ -141,28 +142,19 @@ public sealed class APsv002B : IDisposable
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogError(ex, "HTTP error during screening, using fallback symbols");
-            return GetFallbackSymbols();
+            _logger.LogError(ex, "HTTP error during screening. Aborting - no fallback data substitution.");
+            throw new InvalidOperationException("Stock screening failed due to HTTP error. Check network connectivity.", ex);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error during screening, using fallback symbols");
-            return GetFallbackSymbols();
+            _logger.LogError(ex, "Error during screening. Aborting - no fallback data substitution.");
+            throw new InvalidOperationException("Stock screening failed unexpectedly.", ex);
         }
     }
     
-    /// <summary>
-    /// Returns a minimal fallback list when screener unavailable.
-    /// </summary>
-    private static List<string> GetFallbackSymbols()
-    {
-        return new List<string> 
-        { 
-            "SPY", "QQQ", "IWM",           // ETFs for market exposure
-            "AAPL", "MSFT", "GOOGL",       // Large-cap tech
-            "AMZN", "NVDA", "TSLA", "META" // High-volume names
-        };
-    }
+    // Fallback symbols removed - fail-fast principle
+    // If screening cannot be performed, the caller must handle the exception
+    // rather than receiving silently substituted data.
     
     /// <summary>
     /// Gets most recent trading day (skips weekends).

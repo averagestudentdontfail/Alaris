@@ -1,14 +1,16 @@
 // =============================================================================
-// EVIF002B.cs - File-Based Persistent Audit Logger
+// EVIF002B.cs - File-Based Persistent Audit Logger (Binary Protocol)
 // Component: EVIF002B | Category: Infrastructure | Variant: B (Persistent)
 // =============================================================================
-// Append-only file storage for audit logs with queryable indices.
-// Production replacement for EVIF002A (in-memory).
+// Binary append-only file storage for audit logs with queryable indices.
+// Production replacement for EVIF002A (in-memory) using SBE-style binary format.
 // =============================================================================
 // Rule 17 (Audibility): Audit logs are never modified or deleted.
+// Rule 5 (Zero-Allocation): Uses Span<byte> for serialization.
 // =============================================================================
 
-using System.Text.Json;
+using System.Buffers.Binary;
+using System.Text;
 using Alaris.Infrastructure.Events.Core;
 
 namespace Alaris.Infrastructure.Events.Infrastructure;
@@ -18,10 +20,22 @@ namespace Alaris.Infrastructure.Events.Infrastructure;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Storage format: JSON Lines (.jsonl)
-/// - One audit entry per line
-/// - Append-only (immutable once written)
+/// Storage format: Binary (SBE-style)
+/// - Fixed header: 48 bytes
+/// - Variable fields: length-prefixed UTF-8 strings
 /// - Date-based file rotation for manageability
+/// </para>
+/// <para>
+/// Binary Layout per record:
+/// [0-15]  AuditId (Guid - 16 bytes)
+/// [16-23] OccurredAtUtc (long, ticks)
+/// [24-27] ActionLength (int)
+/// [28-31] EntityTypeLength (int)
+/// [32-35] EntityIdLength (int)
+/// [36-39] InitiatedByLength (int)
+/// [40-43] DetailsLength (int)
+/// [44-47] TotalRecordLength (int)
+/// [48...] Variable-length string data
 /// </para>
 /// </remarks>
 public sealed class EVIF002B : EVCR004A, IDisposable
@@ -31,14 +45,11 @@ public sealed class EVIF002B : EVCR004A, IDisposable
     private readonly SemaphoreSlim _readSemaphore = new(1, 1);
     private bool _disposed;
 
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        WriteIndented = false
-    };
+    private const int HeaderSize = 48;
+    private const int MaxRecordSize = 1024 * 1024; // 1MB max per record
 
     /// <summary>
-    /// Initializes a new file-based audit logger.
+    /// Initializes a new file-based audit logger with binary format.
     /// </summary>
     /// <param name="storagePath">Directory for audit log files.</param>
     public EVIF002B(string storagePath)
@@ -55,8 +66,8 @@ public sealed class EVIF002B : EVCR004A, IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(entry);
 
-        // Serialize entry
-        string json = JsonSerializer.Serialize(entry, JsonOptions);
+        // Serialize entry to binary
+        byte[] record = SerializeAuditEntry(entry);
 
         // Get the appropriate log file (date-based)
         string logPath = GetLogPathForDate(entry.OccurredAtUtc);
@@ -69,9 +80,8 @@ public sealed class EVIF002B : EVCR004A, IDisposable
                 FileMode.Append,
                 FileAccess.Write,
                 FileShare.Read);
-            await using StreamWriter writer = new(fs);
-            await writer.WriteLineAsync(json).ConfigureAwait(false);
-            await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
+            await fs.WriteAsync(record, cancellationToken).ConfigureAwait(false);
+            await fs.FlushAsync(cancellationToken).ConfigureAwait(false);
         }
         finally
         {
@@ -174,9 +184,110 @@ public sealed class EVIF002B : EVCR004A, IDisposable
         return result.OrderBy(e => e.OccurredAtUtc).ToList();
     }
 
+    #region Binary Serialization
+
+    private static byte[] SerializeAuditEntry(AuditEntry entry)
+    {
+        // Get UTF-8 bytes for variable-length fields
+        byte[] actionBytes = Encoding.UTF8.GetBytes(entry.Action);
+        byte[] entityTypeBytes = Encoding.UTF8.GetBytes(entry.EntityType);
+        byte[] entityIdBytes = Encoding.UTF8.GetBytes(entry.EntityId);
+        byte[] initiatedByBytes = Encoding.UTF8.GetBytes(entry.InitiatedBy);
+        byte[] descriptionBytes = Encoding.UTF8.GetBytes(entry.Description);
+
+        int variableLength = actionBytes.Length + entityTypeBytes.Length +
+                            entityIdBytes.Length + initiatedByBytes.Length + descriptionBytes.Length;
+        int totalLength = HeaderSize + variableLength;
+
+        byte[] buffer = new byte[totalLength];
+        Span<byte> span = buffer;
+
+        // Write header
+        int offset = 0;
+        entry.AuditId.TryWriteBytes(span[offset..]);
+        offset += 16;
+
+        BinaryPrimitives.WriteInt64LittleEndian(span[offset..], entry.OccurredAtUtc.Ticks);
+        offset += 8;
+
+        BinaryPrimitives.WriteInt32LittleEndian(span[offset..], actionBytes.Length);
+        offset += 4;
+        BinaryPrimitives.WriteInt32LittleEndian(span[offset..], entityTypeBytes.Length);
+        offset += 4;
+        BinaryPrimitives.WriteInt32LittleEndian(span[offset..], entityIdBytes.Length);
+        offset += 4;
+        BinaryPrimitives.WriteInt32LittleEndian(span[offset..], initiatedByBytes.Length);
+        offset += 4;
+        BinaryPrimitives.WriteInt32LittleEndian(span[offset..], descriptionBytes.Length);
+        offset += 4;
+        BinaryPrimitives.WriteInt32LittleEndian(span[offset..], totalLength);
+        offset += 4;
+
+        // Write variable-length data
+        actionBytes.CopyTo(span[offset..]);
+        offset += actionBytes.Length;
+        entityTypeBytes.CopyTo(span[offset..]);
+        offset += entityTypeBytes.Length;
+        entityIdBytes.CopyTo(span[offset..]);
+        offset += entityIdBytes.Length;
+        initiatedByBytes.CopyTo(span[offset..]);
+        offset += initiatedByBytes.Length;
+        descriptionBytes.CopyTo(span[offset..]);
+
+        return buffer;
+    }
+
+    private static AuditEntry DeserializeAuditEntry(ReadOnlySpan<byte> buffer)
+    {
+        int offset = 0;
+
+        Guid auditId = new(buffer.Slice(offset, 16));
+        offset += 16;
+
+        long occurredTicks = BinaryPrimitives.ReadInt64LittleEndian(buffer[offset..]);
+        DateTime occurredAtUtc = new(occurredTicks, DateTimeKind.Utc);
+        offset += 8;
+
+        int actionLen = BinaryPrimitives.ReadInt32LittleEndian(buffer[offset..]);
+        offset += 4;
+        int entityTypeLen = BinaryPrimitives.ReadInt32LittleEndian(buffer[offset..]);
+        offset += 4;
+        int entityIdLen = BinaryPrimitives.ReadInt32LittleEndian(buffer[offset..]);
+        offset += 4;
+        int initiatedByLen = BinaryPrimitives.ReadInt32LittleEndian(buffer[offset..]);
+        offset += 4;
+        int descriptionLen = BinaryPrimitives.ReadInt32LittleEndian(buffer[offset..]);
+        offset += 4;
+        // Skip totalLength
+        offset += 4;
+
+        string action = Encoding.UTF8.GetString(buffer.Slice(offset, actionLen));
+        offset += actionLen;
+        string entityType = Encoding.UTF8.GetString(buffer.Slice(offset, entityTypeLen));
+        offset += entityTypeLen;
+        string entityId = Encoding.UTF8.GetString(buffer.Slice(offset, entityIdLen));
+        offset += entityIdLen;
+        string initiatedBy = Encoding.UTF8.GetString(buffer.Slice(offset, initiatedByLen));
+        offset += initiatedByLen;
+        string description = Encoding.UTF8.GetString(buffer.Slice(offset, descriptionLen));
+
+        return new AuditEntry
+        {
+            AuditId = auditId,
+            OccurredAtUtc = occurredAtUtc,
+            Action = action,
+            EntityType = entityType,
+            EntityId = entityId,
+            InitiatedBy = initiatedBy,
+            Description = description
+        };
+    }
+
+    #endregion
+
     private string GetLogPathForDate(DateTime date)
     {
-        return Path.Combine(_storagePath, $"audit-{date:yyyy-MM}.jsonl");
+        return Path.Combine(_storagePath, $"audit-{date:yyyy-MM}.bin");
     }
 
     private string[] GetLogFilesInRange(DateTime fromUtc, DateTime toUtc)
@@ -187,7 +298,7 @@ public sealed class EVIF002B : EVCR004A, IDisposable
         }
 
         // Get all audit files and filter to relevant date range
-        return Directory.GetFiles(_storagePath, "audit-*.jsonl")
+        return Directory.GetFiles(_storagePath, "audit-*.bin")
             .Where(f =>
             {
                 string fileName = Path.GetFileNameWithoutExtension(f);
@@ -221,7 +332,7 @@ public sealed class EVIF002B : EVCR004A, IDisposable
             yield break;
         }
 
-        string[] logFiles = Directory.GetFiles(_storagePath, "audit-*.jsonl").OrderBy(f => f).ToArray();
+        string[] logFiles = Directory.GetFiles(_storagePath, "audit-*.bin").OrderBy(f => f).ToArray();
 
         foreach (string logPath in logFiles)
         {
@@ -246,31 +357,56 @@ public sealed class EVIF002B : EVCR004A, IDisposable
             FileMode.Open,
             FileAccess.Read,
             FileShare.ReadWrite);
-        using StreamReader reader = new(fs);
 
-        while (!reader.EndOfStream && !cancellationToken.IsCancellationRequested)
+        byte[] headerBuffer = new byte[HeaderSize];
+        byte[]? recordBuffer = null;
+
+        while (fs.Position < fs.Length && !cancellationToken.IsCancellationRequested)
         {
-            string? line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false);
-            if (string.IsNullOrWhiteSpace(line))
+            // Read header to get record length
+            int headerRead = await fs.ReadAsync(headerBuffer, cancellationToken).ConfigureAwait(false);
+            if (headerRead < HeaderSize)
             {
-                continue;
+                break; // Incomplete header
             }
 
-            AuditEntry? entry = null;
+            int totalLength = BinaryPrimitives.ReadInt32LittleEndian(headerBuffer.AsSpan(44));
+            if (totalLength <= 0 || totalLength > MaxRecordSize)
+            {
+                break; // Invalid record length
+            }
+
+            // Read full record
+            if (recordBuffer == null || recordBuffer.Length < totalLength)
+            {
+                recordBuffer = new byte[totalLength];
+            }
+
+            headerBuffer.CopyTo(recordBuffer, 0);
+            int remainingBytes = totalLength - HeaderSize;
+            if (remainingBytes > 0)
+            {
+                int dataRead = await fs.ReadAsync(
+                    recordBuffer.AsMemory(HeaderSize, remainingBytes),
+                    cancellationToken).ConfigureAwait(false);
+                if (dataRead < remainingBytes)
+                {
+                    break; // Incomplete record
+                }
+            }
+
+            AuditEntry entry;
             try
             {
-                entry = JsonSerializer.Deserialize<AuditEntry>(line, JsonOptions);
+                entry = DeserializeAuditEntry(recordBuffer.AsSpan(0, totalLength));
             }
-            catch (JsonException)
+            catch
             {
-                // Skip corrupted lines
+                // Skip corrupted records
                 continue;
             }
 
-            if (entry != null)
-            {
-                yield return entry;
-            }
+            yield return entry;
         }
     }
 

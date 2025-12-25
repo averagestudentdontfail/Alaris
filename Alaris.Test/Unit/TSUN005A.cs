@@ -257,13 +257,10 @@ public sealed class DTrf001ATests : IDisposable
     [Fact]
     public async Task GetCurrentRateAsync_ValidResponse_ReturnsParsedRate()
     {
-        // Arrange - Treasury returns rate as percentage string (e.g., "5.25" for 5.25%)
-        var response = new
+        // Arrange - Treasury API returns array directly (not wrapped)
+        var response = new[]
         {
-            securities = new[]
-            {
-            new { cusip = "912796XY0", issueDate = DateTime.Today.AddDays(-1).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), term = "91 Day", interestRate = "5.25" }
-            }
+            new { cusip = "912796XY0", issueDate = DateTime.Today.AddDays(-1).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), maturityDate = DateTime.Today.AddDays(90).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), term = "91 Day", interestRate = "5.25", type = "Bill" }
         };
         _mockHandler.SetResponse(HttpStatusCode.OK, JsonSerializer.Serialize(response));
 
@@ -277,19 +274,17 @@ public sealed class DTrf001ATests : IDisposable
     }
 
     [Fact]
-    public async Task GetCurrentRateAsync_NoData_ReturnsFallbackRate()
+    public async Task GetCurrentRateAsync_NoData_ThrowsException()
     {
-        // Arrange - Empty response
-        var response = new { securities = Array.Empty<object>() };
-        _mockHandler.SetResponse(HttpStatusCode.OK, JsonSerializer.Serialize(response));
+        // Arrange - Empty array response
+        _mockHandler.SetResponse(HttpStatusCode.OK, "[]");
 
         var provider = new TreasuryDirectRateProvider(_httpClient, _logger);
 
-        // Act
-        var rate = await provider.GetCurrentRateAsync();
-
-        // Assert
-        rate.Should().Be(0.0525m); // Fallback rate
+        // Act & Assert - Fail fast, no fallback data substitution
+        Func<Task> act = () => provider.GetCurrentRateAsync();
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*No T-bill auction data*");
     }
 
     [Fact]

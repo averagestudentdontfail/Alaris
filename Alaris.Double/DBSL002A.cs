@@ -2,6 +2,7 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
+using Alaris.Core.Validation;
 
 namespace Alaris.Double;
 
@@ -52,23 +53,10 @@ public sealed class DBSL002A
         bool isCall,
         int collocationPoints = 50)
     {
-        // Rule 9: Guard Clauses
-        if (spot <= 0)
-        {
-            throw new ArgumentException("Spot must be positive", nameof(spot));
-        }
-        if (strike <= 0)
-        {
-            throw new ArgumentException("Strike must be positive", nameof(strike));
-        }
-        if (maturity <= 0)
-        {
-            throw new ArgumentException("Maturity must be positive", nameof(maturity));
-        }
-        if (volatility <= 0)
-        {
-            throw new ArgumentException("Volatility must be positive", nameof(volatility));
-        }
+        // Standardised bounds validation (Rule 9)
+        AlgorithmBounds.ValidateDoubleBoundaryInputs(
+            spot, strike, maturity, rate, dividendYield, volatility);
+
         if (collocationPoints < 2)
         {
             throw new ArgumentException("Collocation points must be at least 2", nameof(collocationPoints));

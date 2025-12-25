@@ -1,4 +1,5 @@
 using System;
+using Alaris.Core.Validation;
 
 namespace Alaris.Double;
 
@@ -55,23 +56,9 @@ public sealed class DBAP001A
         double volatility,
         bool isCall)
     {
-        // Rule 9: Guard Clauses
-        if (spot <= 0)
-        {
-            throw new ArgumentException("Spot price must be positive", nameof(spot));
-        }
-        if (strike <= 0)
-        {
-            throw new ArgumentException("Strike price must be positive", nameof(strike));
-        }
-        if (maturity <= 0)
-        {
-            throw new ArgumentException("Maturity must be positive", nameof(maturity));
-        }
-        if (volatility <= 0)
-        {
-            throw new ArgumentException("Volatility must be positive", nameof(volatility));
-        }
+        // Standardised bounds validation (Rule 9)
+        AlgorithmBounds.ValidateDoubleBoundaryInputs(
+            spot, strike, maturity, rate, dividendYield, volatility);
 
         _spot = spot;
         _strike = strike;
@@ -502,7 +489,9 @@ public sealed class DBAP001A
         // Validate ordering
         if ((_isCall && upper <= lower) || (!_isCall && lower >= upper))
         {
-            return ApproximateEmpiricalBoundaries();
+            throw new InvalidOperationException(
+                $"QD+ boundary calculation produced invalid ordering: upper={upper:F4}, lower={lower:F4}. " +
+                $"Parameters: S={_spot}, K={_strike}, T={_maturity}, r={_rate}, q={_dividendYield}, σ={_volatility}");
         }
 
         return (upper, lower);
@@ -524,28 +513,8 @@ public sealed class DBAP001A
         return (b1, b2);
     }
 
-    private (double Upper, double Lower) ApproximateEmpiricalBoundaries()
-    {
-        // Fallback when calculation fails - purely heuristic
-        double sqrtT = Math.Sqrt(_maturity);
-        double upper = _isCall ? _strike * 1.4 : _strike * 0.75;
-        double lower = _isCall ? _strike * 1.1 : _strike * 0.50;
-
-        // Adjust slightly for volatility
-        double volAdj = _volatility * sqrtT * 0.1 * _strike;
-        if (!_isCall)
-        {
-            upper -= volAdj;
-            lower -= volAdj;
-        }
-        else
-        {
-            upper += volAdj;
-            lower += volAdj;
-        }
-
-        return (upper, lower);
-    }
+    // ApproximateEmpiricalBoundaries removed - fail-fast principle
+    // Heuristic fallbacks with no mathematical basis are not acceptable.
 
     private double CalculateLambdaPrime(double lambda, double h, double sigma2)
     {
