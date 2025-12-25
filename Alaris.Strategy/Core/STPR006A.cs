@@ -20,7 +20,6 @@ public static class STPR006A
 {
     private const double MinIV = 0.001;
     private const double MaxIV = 5.0;
-    private const int MaxNewtonIterations = 50;
     private const double IVTolerance = 1e-6;
 
     /// <summary>
@@ -93,8 +92,8 @@ public static class STPR006A
     }
 
     /// <summary>
-    /// Computes implied volatility from Kou model using Newton-Raphson iteration.
-    /// Production implementation replacing moment-matching approximation.
+    /// Computes implied volatility from Kou model using Brent's method.
+    /// Replaces Newton-Bisection cascade with unified Brent algorithm.
     /// </summary>
     /// <param name="spot">Current spot price.</param>
     /// <param name="strike">Strike price.</param>
@@ -111,39 +110,14 @@ public static class STPR006A
         bool isCall = strike >= spot;
         double kouPrice = ComputePrice(spot, strike, timeToExpiry, @params, isCall);
 
-        // Use Newton-Raphson to find IV that matches this price
-        double iv = @params.Sigma; // Initial guess from diffusion volatility
-
-        for (int iter = 0; iter < MaxNewtonIterations; iter++)
-        {
-            // Compute Black-Scholes price and vega at current IV
-            double bsPrice = BlackScholesPrice(spot, strike, timeToExpiry,
-                @params.RiskFreeRate, @params.DividendYield, iv, isCall);
-            double vega = BlackScholesVega(spot, strike, timeToExpiry,
-                @params.RiskFreeRate, @params.DividendYield, iv);
-
-            double priceDiff = bsPrice - kouPrice;
-
-            // Check convergence
-            if (Math.Abs(priceDiff) < IVTolerance)
-            {
-                return Math.Clamp(iv, MinIV, MaxIV);
-            }
-
-            // Newton step
-            if (vega > 1e-10)
-            {
-                iv -= priceDiff / vega;
-                iv = Math.Clamp(iv, MinIV, MaxIV);
-            }
-            else
-            {
-                break;
-            }
-        }
-
-        // Fallback to bisection
-        return BisectionIVSolver(spot, strike, timeToExpiry, @params, kouPrice, isCall);
+        // Use Brent's method - no fallback cascade needed
+        return STPR007A.SolveImpliedVolatility(
+            iv => BlackScholesPrice(spot, strike, timeToExpiry,
+                @params.RiskFreeRate, @params.DividendYield, iv, isCall),
+            kouPrice,
+            MinIV,
+            MaxIV,
+            IVTolerance);
     }
 
     /// <summary>
@@ -224,7 +198,7 @@ public static class STPR006A
     }
 
     /// <summary>
-    /// Black-Scholes vega for Newton-Raphson.
+    /// Black-Scholes vega for gradient-based methods (retained for reference).
     /// </summary>
     private static double BlackScholesVega(
         double spot,
@@ -242,73 +216,9 @@ public static class STPR006A
         return forward * Math.Sqrt(timeToExpiry) * NormalPDF(d1);
     }
 
-    /// <summary>
-    /// Bisection method for IV solving (fallback).
-    /// </summary>
-    private static double BisectionIVSolver(
-        double spot,
-        double strike,
-        double timeToExpiry,
-        KouParameters @params,
-        double targetPrice,
-        bool isCall)
-    {
-        double ivLow = MinIV;
-        double ivHigh = MaxIV;
+    // BisectionIVSolver removed - replaced by STPR007A.SolveImpliedVolatility (Brent's method)
 
-        for (int iter = 0; iter < MaxNewtonIterations; iter++)
-        {
-            double ivMid = (ivLow + ivHigh) / 2;
-
-            double price = BlackScholesPrice(spot, strike, timeToExpiry,
-                @params.RiskFreeRate, @params.DividendYield, ivMid, isCall);
-
-            if (Math.Abs(price - targetPrice) < IVTolerance)
-            {
-                return ivMid;
-            }
-
-            if (price > targetPrice)
-            {
-                ivHigh = ivMid;
-            }
-            else
-            {
-                ivLow = ivMid;
-            }
-        }
-
-        return (ivLow + ivHigh) / 2;
-    }
-
-    private static double NormalCDF(double x)
-    {
-        return 0.5 * (1 + Erf(x / Math.Sqrt(2)));
-    }
-
-    private static double NormalPDF(double x)
-    {
-        return Math.Exp(-0.5 * x * x) / Math.Sqrt(2 * Math.PI);
-    }
-
-    private static double Erf(double x)
-    {
-        // Abramowitz and Stegun approximation
-        double a1 = 0.254829592;
-        double a2 = -0.284496736;
-        double a3 = 1.421413741;
-        double a4 = -1.453152027;
-        double a5 = 1.061405429;
-        double p = 0.3275911;
-
-        int sign = x < 0 ? -1 : 1;
-        x = Math.Abs(x);
-
-        double t = 1.0 / (1.0 + (p * x));
-
-        double polynomial = (((((((a5 * t) + a4) * t) + a3) * t) + a2) * t) + a1;
-        double y = 1.0 - (polynomial * t * Math.Exp(-(x * x)));
-
-        return sign * y;
-    }
+    // Use centralised CRMF001A for math utilities
+    private static double NormalCDF(double x) => Alaris.Core.Math.CRMF001A.NormalCDF(x);
+    private static double NormalPDF(double x) => Alaris.Core.Math.CRMF001A.NormalPDF(x);
 }

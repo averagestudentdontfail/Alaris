@@ -21,7 +21,6 @@ public static class STPR003A
 {
     private const double MinIV = 0.001;
     private const double MaxIV = 5.0;
-    private const int MaxNewtonIterations = 50;
     private const double IVTolerance = 1e-6;
 
     /// <summary>
@@ -73,8 +72,8 @@ public static class STPR003A
     }
 
     /// <summary>
-    /// Computes implied volatility from Heston model using Newton-Raphson iteration.
-    /// This is the production implementation replacing moment-matching approximation.
+    /// Computes implied volatility from Heston model using Brent's method.
+    /// Replaces Newton-Bisection cascade with unified Brent algorithm.
     /// </summary>
     /// <param name="spot">Current spot price.</param>
     /// <param name="strike">Strike price.</param>
@@ -91,39 +90,14 @@ public static class STPR003A
         bool isCall = strike >= spot;
         double hestonPrice = ComputePrice(spot, strike, timeToExpiry, @params, isCall);
 
-        // Use Newton-Raphson to find IV that matches this price
-        double iv = Math.Sqrt(@params.V0); // Initial guess from current variance
-
-        for (int iter = 0; iter < MaxNewtonIterations; iter++)
-        {
-            // Compute Black-Scholes price and vega at current IV
-            double bsPrice = BlackScholesPrice(spot, strike, timeToExpiry,
-                @params.RiskFreeRate, @params.DividendYield, iv, isCall);
-            double vega = BlackScholesVega(spot, strike, timeToExpiry,
-                @params.RiskFreeRate, @params.DividendYield, iv);
-
-            double priceDiff = bsPrice - hestonPrice;
-
-            // Check convergence
-            if (Math.Abs(priceDiff) < IVTolerance)
-            {
-                return Math.Clamp(iv, MinIV, MaxIV);
-            }
-
-            // Newton step: iv_new = iv - f(iv) / f'(iv)
-            if (vega > 1e-10)
-            {
-                iv -= priceDiff / vega;
-                iv = Math.Clamp(iv, MinIV, MaxIV);
-            }
-            else
-            {
-                break;
-            }
-        }
-
-        // If Newton-Raphson didn't converge, fall back to bisection
-        return BisectionIVSolver(spot, strike, timeToExpiry, @params, hestonPrice, isCall);
+        // Use Brent's method - no fallback cascade needed
+        return STPR007A.SolveImpliedVolatility(
+            iv => BlackScholesPrice(spot, strike, timeToExpiry,
+                @params.RiskFreeRate, @params.DividendYield, iv, isCall),
+            hestonPrice,
+            MinIV,
+            MaxIV,
+            IVTolerance);
     }
 
     /// <summary>
@@ -266,7 +240,7 @@ public static class STPR003A
     }
 
     /// <summary>
-    /// Black-Scholes vega for Newton-Raphson.
+    /// Black-Scholes vega for gradient-based methods (retained for reference).
     /// </summary>
     private static double BlackScholesVega(
         double spot,
@@ -285,44 +259,9 @@ public static class STPR003A
         return forward * sqrtT * NormalPDF(d1);
     }
 
-    /// <summary>
-    /// Bisection method for IV solving (fallback if Newton-Raphson fails).
-    /// </summary>
-    private static double BisectionIVSolver(
-        double spot,
-        double strike,
-        double timeToExpiry,
-        HestonParameters @params,
-        double targetPrice,
-        bool isCall)
-    {
-        double ivLow = MinIV;
-        double ivHigh = MaxIV;
+    // BisectionIVSolver removed - replaced by STPR007A.SolveImpliedVolatility (Brent's method)
 
-        for (int iter = 0; iter < MaxNewtonIterations; iter++)
-        {
-            double ivMid = (ivLow + ivHigh) / 2;
 
-            double price = BlackScholesPrice(spot, strike, timeToExpiry,
-                @params.RiskFreeRate, @params.DividendYield, ivMid, isCall);
-
-            if (Math.Abs(price - targetPrice) < IVTolerance)
-            {
-                return ivMid;
-            }
-
-            if (price > targetPrice)
-            {
-                ivHigh = ivMid;
-            }
-            else
-            {
-                ivLow = ivMid;
-            }
-        }
-
-        return (ivLow + ivHigh) / 2;
-    }
 
     /// <summary>
     /// Cumulative distribution function for standard normal.
