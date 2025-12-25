@@ -1,3 +1,5 @@
+// DBSL002A.cs - Kim integral equation solver with FP-B' stabilized fixed point
+
 using System;
 using System.Buffers;
 using System.Collections.Generic;
@@ -7,17 +9,8 @@ using Alaris.Core.Validation;
 namespace Alaris.Double;
 
 /// <summary>
-/// Refines QD+ boundary approximations using the Kim integral equation with FP-B' stabilized fixed point iteration.
-/// Implements Healy (2021) Equations 27-29 with the stabilized FP-B' method (Equations 33-35).
+/// Refines QD+ boundaries using Kim integral equation with stabilized FP-B' iteration.
 /// </summary>
-/// <remarks>
-/// <para>
-/// Compliance: Alaris High-Integrity Coding Standard v1.2
-/// - Rule 9: Guard clauses on inputs
-/// - Rule 13: Complexity limits observed via helper extraction
-/// - Rule 2: Zero warnings / strict typing
-/// </para>
-/// </remarks>
 public sealed class DBSL002A
 {
     private readonly double _spot;
@@ -733,21 +726,6 @@ public sealed class DBSL002A
         return smoothed;
     }
 
-    private static double NormalCDF(double x) => 0.5 * (1.0 + Erf(x / Math.Sqrt(2.0)));
-
-    private static double Erf(double x)
-    {
-        const double a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741;
-        const double a4 = -1.453152027, a5 = 1.061405429, p = 0.3275911;
-
-        int sign = x < 0 ? -1 : 1;
-        x = Math.Abs(x);
-
-        double t = 1.0 / (1.0 + (p * x));
-
-        double polynomial = (((((((a5 * t) + a4) * t) + a3) * t) + a2) * t) + a1;
-        double y = 1.0 - (polynomial * t * Math.Exp(-(x * x)));
-
-        return sign * y;
-    }
+    // Use centralised CRMF001A for math utilities
+    private static double NormalCDF(double x) => Alaris.Core.Math.CRMF001A.NormalCDF(x);
 }

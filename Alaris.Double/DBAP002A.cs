@@ -1,22 +1,12 @@
+// DBAP002A.cs - High-level API combining QD+ approximation with Kim refinement
+
 using System;
 
 namespace Alaris.Double;
 
 /// <summary>
-/// High-level API for American option double boundary approximation under negative rates.
-/// Combines QD+ approximation with optional Kim solver refinement.
+/// High-level API for double boundary American options (q &lt; r &lt; 0 regime).
 /// </summary>
-/// <remarks>
-/// <para>
-/// Provides a simple interface to the double boundary pricing methodology:
-/// 1. DBAP001A - Fast initial boundary estimate
-/// 2. DBSL002A - Accurate refinement (optional)
-/// </para>
-/// <para>
-/// This class mirrors the QuantLib structure for single boundary options,
-/// adapted for the double boundary regime where q &lt; r &lt; 0.
-/// </para>
-/// </remarks>
 public sealed class DBAP002A
 {
     private readonly double _spot;
@@ -236,50 +226,11 @@ public sealed class DBAP002A
                          + ((_rate - _dividendYield + (0.5 * _volatility * _volatility)) * _maturity);
         return numerator / (_volatility * System.Math.Sqrt(_maturity));
     }
-    
-    /// <summary>
-    /// Standard normal CDF.
-    /// </summary>
-    private double NormalCDF(double x)
-    {
-        if (x > 8.0)
-        {
-            return 1.0;
-        }
-        if (x < -8.0)
-        {
-            return 0.0;
-        }
-        return 0.5 * (1.0 + Erf(x / System.Math.Sqrt(2.0)));
-    }
-    
-    /// <summary>
-    /// Error function.
-    /// </summary>
-    private double Erf(double x)
-    {
-        const double a1 = 0.254829592;
-        const double a2 = -0.284496736;
-        const double a3 = 1.421413741;
-        const double a4 = -1.453152027;
-        const double a5 = 1.061405429;
-        const double p = 0.3275911;
-        
-        int sign = x < 0 ? -1 : 1;
-        x = System.Math.Abs(x);
 
-        double t = 1.0 / (1.0 + (p * x));
-        double t2 = t * t;
-        double t3 = t2 * t;
-        double t4 = t3 * t;
-        double t5 = t4 * t;
-        
-        // Added parentheses around multiplication term for clarity (IDE0048)
-        double y = 1.0 - (((a1 * t) + (a2 * t2) + (a3 * t3) + (a4 * t4) + (a5 * t5)) * System.Math.Exp(-(x * x)));
-
-        return sign * y;
-    }
+    // Use centralised CRMF001A for math utilities
+    private static double NormalCDF(double x) => Alaris.Core.Math.CRMF001A.NormalCDF(x);
 }
+
 
 /// <summary>
 /// Result of boundary calculation for double boundary options.

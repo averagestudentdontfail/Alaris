@@ -1,15 +1,4 @@
-// =============================================================================
-// CRVT001A.cs - SIMD Vectorized Greeks Computation
-// Component: CR (Core) | Category: VT (Vectorized) | Variant: A (Primary)
-// =============================================================================
-// High-performance SIMD implementation for batch Black-Scholes Greeks.
-// Uses System.Numerics.Vector<T> for hardware-accelerated computation.
-// =============================================================================
-// Performance bounds:
-// - Vector width: 4 (double) on AVX, 2 on SSE2
-// - Expected speedup: 2-4x for batched Greeks
-// - Falls back to scalar for non-vectorizable remainder
-// =============================================================================
+// CRVT001A.cs - SIMD-vectorized Black-Scholes Greeks computation
 
 using System.Numerics;
 using System.Runtime.CompilerServices;
@@ -17,13 +6,8 @@ using System.Runtime.CompilerServices;
 namespace Alaris.Core.Vectorized;
 
 /// <summary>
-/// SIMD-vectorized Black-Scholes Greeks computation.
-/// Component ID: CRVT001A
+/// SIMD-vectorized Greeks. Processes batches of Vector&lt;double&gt;.Width with scalar fallback.
 /// </summary>
-/// <remarks>
-/// All methods process arrays in batches of Vector&lt;double&gt;.Width (typically 4 for AVX).
-/// Scalar fallback is used for remainders and when SIMD is unavailable.
-/// </remarks>
 public static class CRVT001A
 {
     /// <summary>
@@ -167,8 +151,6 @@ public static class CRVT001A
         }
     }
 
-    // ========== Private Vector Implementations ==========
-
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void ComputeDeltasVector(
         ReadOnlySpan<double> spots,
@@ -241,8 +223,6 @@ public static class CRVT001A
             results[i] = spotVec[i] * discountDiv[i] * pdf * sqrtTau[i];
         }
     }
-
-    // ========== Vector Math Helpers ==========
 
     /// <summary>
     /// Vectorized natural logarithm (element-wise).

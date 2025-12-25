@@ -1,34 +1,10 @@
-// =============================================================================
-// CRMF001A.cs - Core Mathematical Functions
-// Component: CR (Core) | Category: MF (Math Functions) | Variant: A (Primary)
-// =============================================================================
-// Unified mathematical primitives with documented accuracy bounds.
-// Consolidates duplicate implementations from STPR003A, DBAP001A.
-// =============================================================================
-// Bounds:
-// - Erf: Abramowitz & Stegun 7.1.26, max error 1.5e-7
-// - NormalCDF: Full double precision via erf
-// - NormalPDF: Standard φ(x) = exp(-x²/2)/√(2π)
-// =============================================================================
-// References:
-// - Abramowitz, M. & Stegun, I. (1964) Handbook of Mathematical Functions
-// - Hart, J.F. et al. (1968) Computer Approximations
-// =============================================================================
+// CRMF001A.cs - Core mathematical functions (Erf, NormalCDF, Black-Scholes)
 
 namespace Alaris.Core.Math;
 
 /// <summary>
-/// Core mathematical functions with documented accuracy bounds.
-/// Component ID: CRMF001A
+/// Core mathematical functions. Thread-safe, zero-allocation, bounded error (Erf max 1.5e-7).
 /// </summary>
-/// <remarks>
-/// All functions are:
-/// <list type="bullet">
-/// <item>Thread-safe (pure functions, no state)</item>
-/// <item>Zero-allocation (no heap allocations)</item>
-/// <item>Bounded (documented error bounds)</item>
-/// </list>
-/// </remarks>
 public static class CRMF001A
 {
     #region Constants

@@ -1,64 +1,12 @@
-// =============================================================================
-// DBEX001A.cs - Near-Expiry Numerical Stability Handler
-// Component: DBEX001A | Category: Pricing | Variant: A (Primary)
-// =============================================================================
-// Reference: Alaris.Governance/Structure.md § 3.4
-// Compliance: High-Integrity Coding Standard v1.2
-// =============================================================================
+// DBEX001A.cs - Near-expiry numerical stability with intrinsic value blending
 
 using System;
 
 namespace Alaris.Double;
 
 /// <summary>
-/// Handles numerical stability issues as time-to-expiry approaches zero.
+/// Handles numerical stability as τ → 0 via blending to intrinsic. Threshold: τ &lt; 1/252.
 /// </summary>
-/// <remarks>
-/// <para>
-/// <b>Mathematical Foundation</b>
-/// </para>
-/// 
-/// <para>
-/// As τ = T - t → 0, Black-Scholes terms have limiting behaviour that causes
-/// numerical instability:
-/// </para>
-/// 
-/// <list type="bullet">
-/// <item>d₁ → ±∞ for S ≠ K</item>
-/// <item>Gamma → 0 (S ≠ K) or ∞ (S = K)</item>
-/// <item>Vega → 0</item>
-/// <item>Theta → -∞ (at-the-money)</item>
-/// </list>
-/// 
-/// <para>
-/// <b>Stability Threshold</b>
-/// </para>
-/// 
-/// <para>
-/// When τ &lt; ε_min (default: 1/252 ≈ 1 trading day), option value converges to
-/// intrinsic value:
-/// <code>
-/// V_call = max(S - K, 0)
-/// V_put = max(K - S, 0)
-/// </code>
-/// </para>
-/// 
-/// <para>
-/// <b>Blending Function</b>
-/// </para>
-/// 
-/// <para>
-/// To avoid discontinuities at the threshold, values are smoothly blended:
-/// <code>
-/// V_blend = w(τ) × V_model + (1 - w(τ)) × V_intrinsic
-/// </code>
-/// where w(τ) = min(1, τ / ε_min) provides C⁰ continuity.
-/// </para>
-/// 
-/// <para>
-/// Reference: Hull (2018) "Options, Futures, and Other Derivatives", Ch. 19
-/// </para>
-/// </remarks>
 public sealed class DBEX001A
 {
     /// <summary>

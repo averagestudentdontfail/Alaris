@@ -1,3 +1,5 @@
+// DBEN001A.cs - QuantLib-based American option engine with finite difference Greeks
+
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -6,10 +8,7 @@ using MathNet.Numerics.Differentiation;
 namespace Alaris.Double;
 
 /// <summary>
-/// Advanced American option pricing engine using the double boundary method.
-/// Supports negative interest rates and provides accurate pricing with Greeks.
-/// Based on the Ju-Zhong (1999) quadratic approximation method via QdFpAmericanEngine.
-/// Greeks are computed using central finite differences from MathNet.Numerics.
+/// Pricing engine for American options with Greeks via central finite differences.
 /// </summary>
 public sealed class DBEN001A : IDisposable
 {

@@ -1,28 +1,13 @@
+// DBSL001A.cs - Two-stage solver: QD+ initial + FP-B' Kim refinement
+
 using System;
 using Alaris.Core.Validation;
 
 namespace Alaris.Double;
 
 /// <summary>
-/// Complete solver for American options with double boundaries under negative rates.
-/// Combines QD+ approximation with FP-B' stabilized Kim integral equation refinement.
+/// Complete solver for double boundary options. Stage 1: QD+ (fast). Stage 2: FP-B' Kim (accurate).
 /// </summary>
-/// <remarks>
-/// <para>
-/// Two-stage solving process:
-/// 1. QD+ approximation with Super Halley's method provides fast initial boundaries
-/// 2. FP-B' stabilized Kim solver refines using fixed point iteration
-/// </para>
-/// <para>
-/// Architecture mirrors QuantLib's approach:
-/// - Single boundary (r ≥ 0): QdPlus → QdFp (Chebyshev)
-/// - Double boundary (q &lt; r &lt; 0): QdPlus → FP-B' Kim (collocation + stabilized fixed point)
-/// </para>
-/// <para>
-/// Key improvement: Uses FP-B' (Healy Equations 33-35) instead of basic FP-B to prevent
-/// oscillations in longer maturity options.
-/// </para>
-/// </remarks>
 public sealed class DBSL001A
 {
     private readonly double _spot;

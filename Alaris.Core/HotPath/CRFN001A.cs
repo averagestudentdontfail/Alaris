@@ -1,20 +1,11 @@
-// =============================================================================
-// CRFN001A.cs - Hot Path Finder Utilities
-// Component: CR (Core) | Category: FN (Finder) | Variant: A (Primary)
-// =============================================================================
-// Zero-allocation finder methods to replace LINQ on hot paths.
-// All methods operate on spans/arrays without allocating enumerators or closures.
-// =============================================================================
-// Governance: Rule 5 (Zero-Allocation Hot Paths), Rule 19 (Hot Path Standards)
-// =============================================================================
+// CRFN001A.cs - Zero-allocation finder utilities for hot paths
 
 using System.Runtime.CompilerServices;
 
 namespace Alaris.Core.HotPath;
 
 /// <summary>
-/// Zero-allocation finder utilities for hot paths.
-/// Replaces LINQ patterns like Where().OrderBy().FirstOrDefault().
+/// Zero-allocation finder utilities replacing LINQ on hot paths.
 /// </summary>
 public static class CRFN001A
 {

@@ -9,6 +9,9 @@
 // - Press et al. (2007) "Numerical Recipes" Chapter 9.3
 // =============================================================================
 
+#pragma warning disable IDE0047 // Remove unnecessary parentheses
+#pragma warning disable IDE0048 // Add parentheses for clarity
+
 namespace Alaris.Strategy.Core.Numerical;
 
 /// <summary>
@@ -82,9 +85,9 @@ public static class STPR007A
                 Math.Abs(fb - fc) > MachineEpsilon)
             {
                 // Inverse quadratic interpolation
-                s = (a * fb * fc) / ((fa - fb) * (fa - fc)) +
-                    (b * fa * fc) / ((fb - fa) * (fb - fc)) +
-                    (c * fa * fb) / ((fc - fa) * (fc - fb));
+                s = a * fb * fc / ((fa - fb) * (fa - fc)) +
+                    b * fa * fc / ((fb - fa) * (fb - fc)) +
+                    c * fa * fb / ((fc - fa) * (fc - fb));
             }
             else
             {
@@ -93,7 +96,7 @@ public static class STPR007A
             }
 
             // Conditions for using bisection instead
-            double temp1 = (3 * a + b) / 4;
+            double temp1 = ((3 * a) + b) / 4;
             bool condition1 = !((s > temp1 && s < b) || (s > b && s < temp1));
             bool condition2 = mflag && Math.Abs(s - b) >= Math.Abs(b - c) / 2;
             bool condition3 = !mflag && Math.Abs(s - b) >= Math.Abs(c - d) / 2;
@@ -190,9 +193,9 @@ public static class STPR007A
             if (Math.Abs(fa - fc) > MachineEpsilon &&
                 Math.Abs(fb - fc) > MachineEpsilon)
             {
-            s = ((a * fb * fc) / ((fa - fb) * (fa - fc))) +
-                    ((b * fa * fc) / ((fb - fa) * (fb - fc))) +
-                    ((c * fa * fb) / ((fc - fa) * (fc - fb)));
+            s = a * fb * fc / ((fa - fb) * (fa - fc)) +
+                    b * fa * fc / ((fb - fa) * (fb - fc)) +
+                    c * fa * fb / ((fc - fa) * (fc - fb));
             }
             else
             {

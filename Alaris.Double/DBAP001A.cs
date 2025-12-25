@@ -1,27 +1,13 @@
+// DBAP001A.cs - QD+ boundary approximation for American options under negative rates
+
 using System;
 using Alaris.Core.Validation;
 
 namespace Alaris.Double;
 
 /// <summary>
-/// QD+ approximation for American option boundaries under negative interest rates.
-/// Implements the mathematical framework from Healy (2021).
+/// QD+ approximation using Super Halley's method (third-order). Valid for q &lt; r &lt; 0 regime.
 /// </summary>
-/// <remarks>
-/// <para>
-/// The QD+ algorithm provides fast approximations for early exercise boundaries
-/// by solving characteristic equations with Super Halley's method (third-order convergence).
-/// </para>
-/// <para>
-/// Compliance: Alaris High-Integrity Coding Standard v1.2
-/// - Rule 9: Guard clauses on all public inputs
-/// - Rule 13: Complexity limits observed via helper extraction
-/// - Rule 2: Zero warnings / strict typing
-/// </para>
-/// <para>
-/// Reference: Healy, J. (2021). "Pricing American Options Under Negative Rates".
-/// </para>
-/// </remarks>
 public sealed class DBAP001A
 {
     private readonly double _spot;

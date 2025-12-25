@@ -1,23 +1,10 @@
-// =============================================================================
-// CRVL001A.cs - Core Validation Types
-// Component: CR (Core) | Category: VL (Validation) | Variant: A (Primary)
-// =============================================================================
-// Provides standardized validation results and exception types for numerical
-// algorithms with documented bounds.
-// =============================================================================
+// CRVL001A.cs - Validation types for bounded numerical algorithms
 
 namespace Alaris.Core.Validation;
 
 /// <summary>
-/// Represents the result of a bounded numerical algorithm.
-/// All algorithms must return this type to enable deterministic execution monitoring.
+/// Result of a bounded numerical algorithm with convergence state.
 /// </summary>
-/// <remarks>
-/// Design rationale:
-/// - Immutable record for thread-safety
-/// - Bounded iteration count for determinism
-/// - Explicit convergence/failure states
-/// </remarks>
 public sealed record NumericalResult<T>
 {
     /// <summary>

@@ -1,12 +1,4 @@
-// =============================================================================
-// CRPL001A.cs - Object Pool Manager
-// Component: CR (Core) | Category: PL (Pooling) | Variant: A (Primary)
-// =============================================================================
-// ArrayPool-based pooling for hot path allocations.
-// Provides rent/return semantics for Greeks buffers and pricing contexts.
-// =============================================================================
-// Governance: Rule 5 (Zero-Allocation Hot Paths), Rule 19 (Hot Path Standards)
-// =============================================================================
+// CRPL001A.cs - ArrayPool-based object pooling for hot paths
 
 using System.Buffers;
 using System.Runtime.CompilerServices;
@@ -14,8 +6,7 @@ using System.Runtime.CompilerServices;
 namespace Alaris.Core.Pooling;
 
 /// <summary>
-/// Object pool manager for hot path allocations.
-/// Uses ArrayPool for buffer management and thread-safe pooling.
+/// Object pool manager providing rent/return semantics for buffers.
 /// </summary>
 public static class CRPL001A
 {
