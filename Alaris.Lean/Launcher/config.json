@@ -7,11 +7,11 @@
   // to add more!
   "environment": "live-interactive", // "live-paper", "backtesting", "live-interactive"
   // algorithm class selector
-  "algorithm-type-name": "Alaris.Algorithm.STLN001A",
+  "algorithm-type-name": "Alaris.Host.Algorithm.STLN001A",
   // Algorithm language selector - options CSharp, Python
   "algorithm-language": "CSharp",
   //Physical DLL location
-  "algorithm-location": "../../Alaris.Algorithm/bin/Debug/net9.0/Alaris.Algorithm.dll",
+  "algorithm-location": "../../Alaris.Host/bin/Debug/net9.0/Alaris.Host.dll",
   //"algorithm-location": "../../../Algorithm.Python/BasicTemplateFrameworkAlgorithm.py",
   //Research notebook
   //"composer-dll-directory": ".",

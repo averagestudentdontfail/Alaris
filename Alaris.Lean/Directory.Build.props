@@ -13,7 +13,12 @@
     <!-- Disable TreatWarningsAsErrors for external LEAN code -->
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     
-    <!-- Suppress common QuantConnect code analysis warnings -->
-    <NoWarn>$(NoWarn);CA1031;CA1816;NU1903;NU1902;NU1901;CA1062</NoWarn>
+    <!-- Completely suppress all warnings from external LEAN codebase -->
+    <WarningLevel>0</WarningLevel>
+    <AnalysisLevel>none</AnalysisLevel>
+    <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
+    
+    <!-- Suppress common QuantConnect code analysis warnings (belt and suspenders) -->
+    <NoWarn>$(NoWarn);CA1031;CA1816;NU1903;NU1902;NU1901;CA1062;CA1515;CA1862;CA1308;CA1307;CA1052</NoWarn>
   </PropertyGroup>
 </Project>
