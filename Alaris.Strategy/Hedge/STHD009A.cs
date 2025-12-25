@@ -1,10 +1,4 @@
-// =============================================================================
-// STHD009A.cs - Pin Risk Monitor
-// Component: STHD009A | Category: Hedge | Variant: A (Primary)
-// =============================================================================
-// Reference: Alaris.Governance/Structure.md § 4.3.7
-// Compliance: High-Integrity Coding Standard v1.2
-// =============================================================================
+// STHD009A.cs - pin risk monitor
 
 using Alaris.Strategy.Calendar;
 using Microsoft.Extensions.Logging;
@@ -14,40 +8,7 @@ namespace Alaris.Strategy.Hedge;
 /// <summary>
 /// Monitors pin risk for options near expiry when underlying is close to strike.
 /// </summary>
-/// <remarks>
-/// <para>
-/// <b>Mathematical Foundation</b>
-/// </para>
-/// 
-/// <para>
-/// At expiry, the option payoff is discontinuous at S = K. Pre-expiry gamma:
-/// <code>
-/// Γ ∝ 1/√τ × e^(-d₁²/2)
-/// </code>
-/// </para>
-/// 
-/// <para>
-/// <b>Pin Risk</b>
-/// </para>
-/// 
-/// <para>
-/// Pin risk arises when the underlying "pins" near strike, causing:
-/// - High gamma → large delta swings from small price moves
-/// - Uncertain assignment (for short options)
-/// - Hedge rebalancing becomes costly/infeasible
-/// </para>
-/// 
-/// <para>
-/// <b>Pin Risk Score</b>
-/// </para>
-/// 
-/// <para>
-/// <code>
-/// PRS = (Γ × S²) / notional × 𝟙{|S - K| / K &lt; ε_pin}
-/// </code>
-/// where ε_pin = 1% defines the pin zone.
-/// </para>
-/// </remarks>
+
 public sealed class STHD009A
 {
     private readonly ILogger<STHD009A>? _logger;
@@ -253,9 +214,7 @@ public sealed class STHD009A
     }
 }
 
-// =============================================================================
 // Supporting Types
-// =============================================================================
 
 /// <summary>
 /// Pin risk evaluation result.

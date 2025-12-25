@@ -1,3 +1,5 @@
+// STIV005A.cs - calibrates earnings jump volatility (sigma_e) from historical earnings announ...
+
 using Alaris.Strategy.Bridge;
 using Alaris.Strategy.Calendar;
 using Alaris.Strategy.Model;
@@ -7,17 +9,14 @@ namespace Alaris.Strategy.Core;
 
 /// <summary>
 /// Calibrates earnings jump volatility (sigma_e) from historical earnings announcement data.
-///
 /// The earnings jump volatility represents the standard deviation of log-returns on earnings
 /// announcement dates, as specified in Leung &amp; Santoli (2014). This parameter is crucial for:
 ///   1. Computing theoretical pre-EA implied volatility
 ///   2. Estimating expected IV crush magnitude
 ///   3. Identifying mispricing in market IV vs theoretical IV
-///
 /// Calibration approach:
 ///   sigma_e = sqrt(Var(Z_e)) where Z_e is the log-return on EA date
 ///   Empirically: sigma_e = StdDev(log(S_t+1 / S_t)) for historical EA dates
-///
 /// Reference: "Accounting for Earnings Announcements in the Pricing of Equity Options"
 /// Leung &amp; Santoli (2014), Section 5.2 - Analytic Estimators under the Extended BS Model
 /// </summary>

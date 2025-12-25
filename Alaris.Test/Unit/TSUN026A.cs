@@ -1,4 +1,3 @@
-// =============================================================================
 // TSUN026A.cs - Execution Cost Model Unit Tests
 // Component ID: TSUN026A
 //
@@ -19,7 +18,6 @@
 // References:
 //   - InteractiveBrokersFeeModel (IBKR tiered pricing)
 //   - Atilgan (2014) IV/RV threshold analysis
-// =============================================================================
 
 using System;
 using Xunit;
@@ -34,7 +32,6 @@ namespace Alaris.Test.Unit;
 /// </summary>
 public sealed class TSUN026A
 {
-    #region Test Fixtures
 
     private static STCS002A CreateValidBuyOrderParams() => new STCS002A
     {
@@ -62,11 +59,8 @@ public sealed class TSUN026A
 
     private static STCS005A CreateDefaultCostModel() => new STCS005A();
 
-    #endregion
 
-    // ========================================================================
     // STCS002A: Order Parameters Validation Tests
-    // ========================================================================
 
     /// <summary>
     /// Valid order parameters should pass validation.
@@ -170,9 +164,7 @@ public sealed class TSUN026A
             1e-10);
     }
 
-    // ========================================================================
     // STCS005A: Constant Fee Model Tests
-    // ========================================================================
 
     /// <summary>
     /// Default constructor should use standard fee values.
@@ -202,9 +194,7 @@ public sealed class TSUN026A
         act.Should().Throw<ArgumentOutOfRangeException>();
     }
 
-    // ========================================================================
     // STCS003A: Single Leg Cost Invariants
-    // ========================================================================
 
     /// <summary>
     /// INVARIANT: TotalCost = Commission + ExchangeFees + RegulatoryFees + Slippage.
@@ -342,9 +332,7 @@ public sealed class TSUN026A
             1e-10);
     }
 
-    // ========================================================================
     // STCS004A: Spread Cost Aggregation Tests
-    // ========================================================================
 
     /// <summary>
     /// INVARIANT: TotalExecutionCost = FrontLegCost.TotalCost + BackLegCost.TotalCost.
@@ -460,9 +448,7 @@ public sealed class TSUN026A
         result.TotalCapitalRequired.Should().BeApproximately(expectedCapital, 1e-10);
     }
 
-    // ========================================================================
     // Edge Cases and Boundary Tests
-    // ========================================================================
 
     /// <summary>
     /// Zero bid-ask spread should produce zero slippage.
@@ -531,9 +517,7 @@ public sealed class TSUN026A
         result.Slippage.Should().BeGreaterThan(0);  // Still has spread slippage
     }
 
-    // ========================================================================
     // Interface Compliance Tests
-    // ========================================================================
 
     /// <summary>
     /// STCS005A should implement STCS001A interface.
@@ -581,9 +565,7 @@ public sealed class TSUN026A
         act2.Should().Throw<ArgumentNullException>();
     }
 
-    // ========================================================================
     // Realistic Scenario Tests
-    // ========================================================================
 
     /// <summary>
     /// Typical AAPL calendar spread cost calculation.

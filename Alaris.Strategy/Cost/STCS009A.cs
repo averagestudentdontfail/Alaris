@@ -1,26 +1,11 @@
-// =============================================================================
-// STCS009A.cs - Liquidity Validation Result
-// Component: STCS009A | Category: Cost | Variant: A (Primary)
-// =============================================================================
-// Reference: Alaris.Governance/Structure.md § 4.3.2
-// Compliance: High-Integrity Coding Standard v1.2
-// =============================================================================
+// STCS009A.cs - liquidity validation result
 
 namespace Alaris.Strategy.Cost;
 
 /// <summary>
 /// Represents the result of liquidity validation for a proposed position.
 /// </summary>
-/// <remarks>
-/// <para>
-/// This immutable record captures the complete liquidity assessment,
-/// enabling informed decisions about position sizing and risk management.
-/// </para>
-/// <para>
-/// When DefinedRiskAssured is false, the position size should be reduced
-/// to RecommendedContracts to maintain the "Max Loss = Debit Paid" assumption.
-/// </para>
-/// </remarks>
+
 public sealed record STCS009A
 {
     /// <summary>
@@ -36,10 +21,7 @@ public sealed record STCS009A
     /// <summary>
     /// Gets the recommended number of contracts.
     /// </summary>
-    /// <remarks>
-    /// Equal to RequestedContracts when liquidity is sufficient;
-    /// otherwise, reduced to meet liquidity thresholds.
-    /// </remarks>
+    
     public required int RecommendedContracts { get; init; }
 
     /// <summary>
@@ -85,10 +67,7 @@ public sealed record STCS009A
     /// <summary>
     /// Gets whether the position can be exited with defined risk.
     /// </summary>
-    /// <remarks>
-    /// When true, the "Max Loss = Debit Paid" assumption holds.
-    /// When false, illiquidity may cause losses exceeding theoretical maximum.
-    /// </remarks>
+    
     public required bool DefinedRiskAssured { get; init; }
 
     /// <summary>

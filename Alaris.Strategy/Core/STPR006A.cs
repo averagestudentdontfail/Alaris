@@ -1,3 +1,5 @@
+// STPR006A.cs - production-grade Kou model pricing using characteristic function integration....
+
 using System.Numerics;
 using Alaris.Strategy.Core.Numerical;
 
@@ -6,15 +8,10 @@ namespace Alaris.Strategy.Core;
 /// <summary>
 /// Production-grade Kou model pricing using characteristic function integration.
 /// Implements semi-analytical pricing for double-exponential jump-diffusion model.
-///
 /// The Kou (2002) model extends Black-Scholes with asymmetric jumps:
 /// - Uses Fourier inversion for option pricing
 /// - Handles fat tails and skewness
 /// - Calibrates to market implied volatility smile
-///
-/// References:
-/// Kou (2002) "A Jump-Diffusion Model for Option Pricing", Management Science
-/// Carr and Madan (1999) "Option Valuation Using the Fast Fourier Transform"
 /// </summary>
 public static class STPR006A
 {

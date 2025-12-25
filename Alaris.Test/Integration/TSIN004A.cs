@@ -1,4 +1,3 @@
-// =============================================================================
 // TSIN004A.cs - Integration Tests for Alaris.Events Infrastructure
 // Component ID: TSIN004A
 //
@@ -16,7 +15,6 @@
 // References:
 //   - Alaris Governance Rule 17 (Audibility)
 //   - Event Sourcing pattern (Fowler)
-// =============================================================================
 
 using System;
 using System.Collections.Generic;
@@ -34,9 +32,7 @@ namespace Alaris.Test.Integration;
 /// </summary>
 public sealed class TSIN004A
 {
-    // ========================================================================
     // EVIF001A (Event Store) Tests
-    // ========================================================================
 
     /// <summary>
     /// AppendAsync should create envelope with monotonically increasing sequence.
@@ -210,9 +206,7 @@ public sealed class TSIN004A
         events.All(e => e.StoredAtUtc >= startTime && e.StoredAtUtc <= endTime).Should().BeTrue();
     }
 
-    // ========================================================================
     // EVIF002A (Audit Logger) Tests
-    // ========================================================================
 
     /// <summary>
     /// LogAsync should store audit entries.
@@ -363,9 +357,7 @@ public sealed class TSIN004A
         entries[0].Outcome.Should().Be(outcome);
     }
 
-    // ========================================================================
     // EVCR003A (Event Envelope) Tests
-    // ========================================================================
 
     /// <summary>
     /// Event envelope should serialize event data to JSON.
@@ -448,9 +440,7 @@ public sealed class TSIN004A
         envelope.CorrelationId.Should().Be(correlationId);
     }
 
-    // ========================================================================
     // Concurrent Access Tests
-    // ========================================================================
 
     /// <summary>
     /// Event store should handle concurrent appends correctly.
@@ -515,9 +505,7 @@ public sealed class TSIN004A
         allEntries.Should().HaveCount(entryCount);
     }
 
-    // ========================================================================
     // Helper Methods
-    // ========================================================================
 
     private static AuditEntry CreateTestAuditEntry(
         string entityType, 

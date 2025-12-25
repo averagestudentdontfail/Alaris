@@ -1,9 +1,4 @@
-// =============================================================================
-// APap001A.cs - Alaris Application Entry Point
-// Component: APap001A | Category: Application Entry | Variant: A (Primary)
-// =============================================================================
-// Modern TUI with automation-first design, status indicators, and position monitoring.
-// =============================================================================
+// APap001A.cs - Alaris CLI entry point with TUI
 
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -75,9 +70,7 @@ public static class APap001A
             .WithDescription("Generate and manage universe files");
     }
 
-    // =========================================================================
     // Interactive TUI Mode
-    // =========================================================================
 
     private static int RunInteractiveMode()
     {
@@ -137,9 +130,7 @@ public static class APap001A
         return lastExitCode;
     }
 
-    // =========================================================================
     // Status Bar & Banner
-    // =========================================================================
 
     private static void RenderStatusBar()
     {
@@ -190,9 +181,7 @@ public static class APap001A
         Console.ReadKey(true);
     }
 
-    // =========================================================================
     // Trading Menu
-    // =========================================================================
 
     private static int ShowTradingMenu()
     {
@@ -273,9 +262,7 @@ public static class APap001A
         return Main(new[] { "run", "--mode", mode });
     }
 
-    // =========================================================================
     // Backtest Menu
-    // =========================================================================
 
     private static int ShowBacktestMenu()
     {
@@ -458,9 +445,7 @@ public static class APap001A
         return selection == "Cancel" ? null : selection.Split('|')[0].Trim();
     }
 
-    // =========================================================================
     // Position Monitor
-    // =========================================================================
 
     private static int ShowPositionMonitor()
     {
@@ -505,9 +490,7 @@ public static class APap001A
         return 0;
     }
 
-    // =========================================================================
     // Configuration Menu
-    // =========================================================================
 
     private static int ShowConfigurationMenu()
     {
@@ -615,9 +598,7 @@ public static class APap001A
         WaitForKeyPress();
     }
 
-    // =========================================================================
     // System Menu
-    // =========================================================================
 
     private static int ShowSystemMenu()
     {

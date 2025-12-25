@@ -1,10 +1,4 @@
-// =============================================================================
-// STKF001A.cs - Kalman-Filtered Yang-Zhang Volatility Estimator
-// Component: STKF001A | Category: Core | Variant: A (Primary)
-// =============================================================================
-// Reference: Kalman (1960), Yang-Zhang (2000), Alaris Phase 3 Specification
-// Compliance: High-Integrity Coding Standard v1.2
-// =============================================================================
+// STKF001A.cs - kalman-filtered yang-zhang volatility estimator
 
 using Microsoft.Extensions.Logging;
 
@@ -13,23 +7,7 @@ namespace Alaris.Strategy.Core;
 /// <summary>
 /// Implements a Kalman filter for volatility estimation using Yang-Zhang measurements.
 /// </summary>
-/// <remarks>
-/// <para>
-/// This component provides filtered volatility estimates with uncertainty quantification
-/// by treating the Yang-Zhang estimator as a noisy measurement of true latent volatility.
-/// </para>
-/// <para>
-/// State-space model:
-/// State: x = [σ, dσ/dt]ᵀ (volatility and its rate of change)
-/// Transition: x_{k+1} = F × x_k + w_k where w_k ~ N(0, Q)
-/// Measurement: z_k = H × x_k + v_k where v_k ~ N(0, R_k)
-/// </para>
-/// <para>
-/// The filter provides optimal point estimates minimising mean squared error
-/// for Gaussian noise, with adaptively computed measurement noise based on
-/// Yang-Zhang estimator efficiency.
-/// </para>
-/// </remarks>
+
 public sealed class STKF001A
 {
     private readonly ILogger<STKF001A>? _logger;
@@ -144,9 +122,7 @@ public sealed class STKF001A
             Reset(yangZhangEstimate, 0.02);
         }
 
-        //=====================================================================
-        // PREDICT STEP (Time Update)
-        //=====================================================================
+        // Predict Step (Time Update)
 
         // State prediction: x̂_{k|k-1} = F × x̂_{k-1|k-1}
         double sigmaPred = _sigma + (_params.DeltaT * _sigmaDot);
@@ -158,9 +134,7 @@ public sealed class STKF001A
         double p12Pred = _params.Phi * (_p12 + (_params.DeltaT * _p22));
         double p22Pred = (_params.Phi * _params.Phi * _p22) + _params.QSigmaDot;
 
-        //=====================================================================
-        // UPDATE STEP (Measurement Update)
-        //=====================================================================
+        // Update Step (Measurement Update)
 
         // Measurement noise: R_k = Var(ŝ_YZ) ≈ σ²/(2n×η)
         double measurementNoise = ComputeMeasurementNoise(yangZhangEstimate, sampleSize);
@@ -274,8 +248,6 @@ public sealed class STKF001A
         return (_sigma - (z * se), _sigma + (z * se));
     }
 
-    #region Private Methods
-
     private double ComputeMeasurementNoise(double measurement, int sampleSize)
     {
         // Yang-Zhang variance: Var(σ̂_YZ) ≈ σ²/(2n×η) where η ≈ 8
@@ -306,7 +278,6 @@ public sealed class STKF001A
 #pragma warning restore CA1031
     }
 
-    #endregion
 }
 
 /// <summary>

@@ -1,9 +1,4 @@
-// =============================================================================
-// DTmd003ATests.cs - Corporate Actions Model Tests
-// Component: TSun011A | Category: Unit | Variant: A (Primary)
-// =============================================================================
-// Tests for DTmd003A corporate action model adjustment computations.
-// =============================================================================
+// TSUN004A.cs - Corporate actions model tests
 
 using Alaris.Infrastructure.Data.Model;
 using Xunit;
@@ -15,9 +10,7 @@ namespace Alaris.Test.Unit;
 /// </summary>
 public sealed class DTmd003ATests
 {
-    // =========================================================================
     // Stock Split Tests
-    // =========================================================================
 
     [Fact]
     public void GetPriceMultiplier_TwoForOneSplit_ReturnsHalf()
@@ -73,9 +66,7 @@ public sealed class DTmd003ATests
         Assert.Equal(0.25m, multiplier);
     }
 
-    // =========================================================================
     // Reverse Split Tests
-    // =========================================================================
 
     [Fact]
     public void GetPriceMultiplier_OneForTenReverseSplit_ReturnsTen()
@@ -113,9 +104,7 @@ public sealed class DTmd003ATests
         Assert.Equal(10m, multiplier);
     }
 
-    // =========================================================================
     // Stock Dividend Tests
-    // =========================================================================
 
     [Fact]
     public void GetPriceMultiplier_FivePercentStockDividend_ReturnsAdjustedMultiplier()
@@ -135,9 +124,7 @@ public sealed class DTmd003ATests
         Assert.True(multiplier > 0.952m && multiplier < 0.953m);
     }
 
-    // =========================================================================
     // Cash Dividend Tests (No Price Adjustment)
-    // =========================================================================
 
     [Fact]
     public void GetPriceMultiplier_CashDividend_ReturnsOne()
@@ -175,9 +162,7 @@ public sealed class DTmd003ATests
         Assert.Equal(1m, multiplier);
     }
 
-    // =========================================================================
     // RequiresPriceAdjustment Property Tests
-    // =========================================================================
 
     [Theory]
     [InlineData(CorporateActionType.Split, true)]
@@ -201,9 +186,7 @@ public sealed class DTmd003ATests
         Assert.Equal(expected, action.RequiresPriceAdjustment);
     }
 
-    // =========================================================================
     // RequiresStrikeAdjustment Property Tests
-    // =========================================================================
 
     [Theory]
     [InlineData(CorporateActionType.Split, true)]
@@ -225,9 +208,7 @@ public sealed class DTmd003ATests
         Assert.Equal(expected, action.RequiresStrikeAdjustment);
     }
 
-    // =========================================================================
     // Record Equality Tests
-    // =========================================================================
 
     [Fact]
     public void Equals_SameValues_ReturnsTrue()

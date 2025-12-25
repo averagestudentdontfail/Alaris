@@ -8,12 +8,7 @@ namespace Alaris.Strategy.Bridge;
 /// Unified pricing engine that automatically selects between Alaris.Double and Alaris.Quantlib
 /// based on interest rate regime. Supports both positive and negative interest rates.
 /// </summary>
-/// <remarks>
-/// Regime Detection:
-/// - If r &gt;= 0: Use Alaris.Quantlib (standard American option pricing)
-/// - If r &lt; 0 and q &lt; r: Use Alaris.Double (double boundary method for negative rates)
-/// - If r &lt; 0 and q &gt;= r: Use Alaris.Quantlib (single boundary still applies)
-/// </remarks>
+
 public sealed class STBR001A : STBR002A, IDisposable
 {
     private readonly ILogger<STBR001A>? _logger;

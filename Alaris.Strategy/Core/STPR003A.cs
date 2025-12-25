@@ -1,3 +1,5 @@
+// STPR003A.cs - production-grade Heston model pricing using characteristic function integrati...
+
 using System.Numerics;
 using Alaris.Strategy.Core.Numerical;
 
@@ -8,14 +10,6 @@ namespace Alaris.Strategy.Core;
 /// Implements the semi-analytical pricing formula from Heston (1993).
 /// Uses Carr-Madan Fourier inversion or Lewis (2001) approach for option pricing,
 /// then backs out implied volatility using Newton-Raphson iteration.
-///
-/// References:
-/// Heston (1993) "A Closed-Form Solution for Options with Stochastic Volatility"
-/// Carr and Madan (1999) "Option Valuation Using the Fast Fourier Transform"
-/// Lewis (2001) "A Simple Option Formula for General Jump-Diffusion and Other
-/// Exponential Levy Processes"
-/// Leung and Santoli (2014) "Accounting for Earnings Announcements in the Pricing
-/// of Equity Options" - Extended Heston with EA jumps
 /// </summary>
 public static class STPR003A
 {
@@ -260,8 +254,6 @@ public static class STPR003A
     }
 
     // BisectionIVSolver removed - replaced by STPR007A.SolveImpliedVolatility (Brent's method)
-
-
 
     /// <summary>
     /// Cumulative distribution function for standard normal.

@@ -1,13 +1,4 @@
-// =============================================================================
-// EVIF002B.cs - File-Based Persistent Audit Logger (Binary Protocol)
-// Component: EVIF002B | Category: Infrastructure | Variant: B (Persistent)
-// =============================================================================
-// Binary append-only file storage for audit logs with queryable indices.
-// Production replacement for EVIF002A (in-memory) using SBE-style binary format.
-// =============================================================================
-// Rule 17 (Audibility): Audit logs are never modified or deleted.
-// Rule 5 (Zero-Allocation): Uses Span<byte> for serialization.
-// =============================================================================
+// EVIF002B.cs - File-based persistent audit logger (binary protocol)
 
 using System.Buffers.Binary;
 using System.Text;
@@ -184,7 +175,6 @@ public sealed class EVIF002B : EVCR004A, IDisposable
         return result.OrderBy(e => e.OccurredAtUtc).ToList();
     }
 
-    #region Binary Serialization
 
     private static byte[] SerializeAuditEntry(AuditEntry entry)
     {
@@ -283,7 +273,6 @@ public sealed class EVIF002B : EVCR004A, IDisposable
         };
     }
 
-    #endregion
 
     private string GetLogPathForDate(DateTime date)
     {

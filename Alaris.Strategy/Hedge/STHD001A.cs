@@ -1,11 +1,4 @@
-// =============================================================================
-// STHD001A.cs - Vega Correlation Analyser
-// Component: STHD001A | Category: Hedging | Variant: A (Primary)
-// =============================================================================
-// Reference: Alaris.Governance/Structure.md § 4.3.2
-// Reference: MathNet.Numerics for correlation computation
-// Compliance: High-Integrity Coding Standard v1.2
-// =============================================================================
+// STHD001A.cs - vega correlation analyser
 
 using MathNet.Numerics.Statistics;
 using Microsoft.Extensions.Logging;
@@ -16,23 +9,7 @@ namespace Alaris.Strategy.Hedge;
 /// Analyses the correlation between front-month and back-month implied
 /// volatility changes to assess calendar spread vega independence.
 /// </summary>
-/// <remarks>
-/// <para>
-/// Calendar spread profitability depends on the front-month IV crushing
-/// (dropping) whilst the back-month IV holds steady. If both legs move
-/// in lockstep (high correlation), the spread offers no diversification
-/// benefit and may result in sympathetic volatility collapse.
-/// </para>
-/// <para>
-/// The key metric is the Pearson correlation coefficient between daily
-/// IV changes in front and back tenors. A correlation below 0.70 suggests
-/// sufficient independence for the calendar spread thesis.
-/// </para>
-/// <para>
-/// Reference: Empirically, event-driven front-month volatility tends to
-/// decouple from baseline back-month volatility as earnings approach.
-/// </para>
-/// </remarks>
+
 public sealed class STHD001A
 {
     private readonly ILogger<STHD001A>? _logger;
@@ -55,19 +32,13 @@ public sealed class STHD001A
     /// <summary>
     /// Default maximum acceptable correlation coefficient.
     /// </summary>
-    /// <remarks>
-    /// Correlation below 0.70 indicates sufficient independence between
-    /// front and back tenor volatility movements.
-    /// </remarks>
+    
     public const double DefaultMaxCorrelation = 0.70;
 
     /// <summary>
     /// Default minimum number of observations required.
     /// </summary>
-    /// <remarks>
-    /// At least 20 observations (trading days) provide statistical significance
-    /// for correlation estimation.
-    /// </remarks>
+    
     public const int DefaultMinimumObservations = 20;
 
     /// <summary>
@@ -112,15 +83,7 @@ public sealed class STHD001A
     /// <summary>
     /// Gets a VIX-conditional correlation threshold for regime-dependent filtering.
     /// </summary>
-    /// <remarks>
-    /// <para>
-    /// High VIX environments (>25) tend to compress term structure correlation,
-    /// so we accept higher correlation thresholds during stress regimes.
-    /// </para>
-    /// <code>
-    /// ρ_threshold(VIX) = 0.70 + 0.15 × 𝟙{VIX > 25}
-    /// </code>
-    /// </remarks>
+    
     /// <param name="currentVIX">Current VIX level.</param>
     /// <returns>Conditional correlation threshold.</returns>
     public static double GetConditionalCorrelationThreshold(double currentVIX)
@@ -235,9 +198,7 @@ public sealed class STHD001A
     /// <param name="frontIVHistory">Front-month IV time series (levels, not changes).</param>
     /// <param name="backIVHistory">Back-month IV time series (levels, not changes).</param>
     /// <returns>Vega correlation analysis result.</returns>
-    /// <remarks>
-    /// This overload computes daily changes from IV levels automatically.
-    /// </remarks>
+    
     public STHD002A AnalyseFromLevels(
         string symbol,
         IReadOnlyList<double> frontIVHistory,

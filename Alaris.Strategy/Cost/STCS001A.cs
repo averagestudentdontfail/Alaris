@@ -1,27 +1,11 @@
-// =============================================================================
-// STCS001A.cs - Execution Cost Model Interface
-// Component: STCS001A | Category: Cost | Variant: A (Primary)
-// =============================================================================
-// Reference: Alaris.Governance/Structure.md § 4.3.2
-// Compliance: High-Integrity Coding Standard v1.2
-// =============================================================================
+// STCS001A.cs - execution cost model interface
 
 namespace Alaris.Strategy.Cost;
 
 /// <summary>
 /// Defines the contract for execution cost models.
 /// </summary>
-/// <remarks>
-/// <para>
-/// This interface abstracts the computation of transaction costs, enabling
-/// pluggable implementations ranging from simple constant fees to sophisticated
-/// brokerage-specific models (e.g., InteractiveBrokersFeeModel via Alaris.Lean).
-/// </para>
-/// <para>
-/// Implementations must compute costs deterministically given the same inputs,
-/// supporting reproducible backtesting and strategy validation.
-/// </para>
-/// </remarks>
+
 public interface STCS001A
 {
     /// <summary>

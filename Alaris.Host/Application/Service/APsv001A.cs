@@ -1,9 +1,4 @@
-// =============================================================================
-// APsv001A.cs - Backtest Session Lifecycle Management
-// Component: APsv001A | Category: Services | Variant: A (Primary)
-// =============================================================================
-// Manages backtest session lifecycle: create, list, run, delete.
-// =============================================================================
+// APsv001A.cs - Backtest session lifecycle management
 
 using System;
 using System.Collections.Generic;

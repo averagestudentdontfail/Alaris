@@ -1,10 +1,4 @@
-// =============================================================================
-// APcm001A.cs - Run Command
-// Component: APcm001A | Category: Commands | Variant: A (Primary)
-// =============================================================================
-// Implements 'alaris run --mode backtest|paper|live' command.
-// Wraps LEAN engine execution with appropriate configuration.
-// =============================================================================
+// APcm001A.cs - 'alaris run' command wrapping LEAN engine
 
 using System.ComponentModel;
 using System.Diagnostics;

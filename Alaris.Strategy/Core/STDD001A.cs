@@ -1,10 +1,4 @@
-// =============================================================================
-// STDD001A.cs - Dividend Ex-Date Detector
-// Component: STDD001A | Category: Core | Variant: A (Primary)
-// =============================================================================
-// Reference: Alaris.Governance/Structure.md § 4.2.6
-// Compliance: High-Integrity Coding Standard v1.2
-// =============================================================================
+// STDD001A.cs - dividend ex-date detector
 
 using Microsoft.Extensions.Logging;
 
@@ -13,36 +7,7 @@ namespace Alaris.Strategy.Core;
 /// <summary>
 /// Detects dividend ex-dates and evaluates early exercise risk for calendar spreads.
 /// </summary>
-/// <remarks>
-/// <para>
-/// <b>Mathematical Foundation (Merton 1973)</b>
-/// </para>
-/// 
-/// <para>
-/// For American calls on dividend-paying stocks, early exercise is optimal
-/// immediately before ex-date if:
-/// <code>
-/// D &gt; K × (1 - e^(-r(T - t_ex)))
-/// </code>
-/// where D is dividend amount, K is strike, r is risk-free rate, and T is expiry.
-/// </para>
-/// 
-/// <para>
-/// <b>Calendar Spread Risk</b>
-/// </para>
-/// 
-/// <para>
-/// If the short-leg call is exercised early, the calendar spread structure is
-/// destroyed, resulting in:
-/// - Loss of the expected theta decay
-/// - Unexpected position in underlying shares
-/// - Transaction costs from assignment/exercise
-/// </para>
-/// 
-/// <para>
-/// Reference: Merton (1973) "Theory of Rational Option Pricing"
-/// </para>
-/// </remarks>
+
 public sealed class STDD001A
 {
     private readonly ILogger<STDD001A>? _logger;
@@ -86,10 +51,7 @@ public sealed class STDD001A
     /// <summary>
     /// Calculates early exercise probability for American call near ex-date.
     /// </summary>
-    /// <remarks>
-    /// Uses Merton's (1973) condition: D &gt; K × (1 - e^(-r×τ))
-    /// where τ = T - t_ex is time from ex-date to expiry.
-    /// </remarks>
+    
     /// <param name="dividendAmount">Dividend amount per share.</param>
     /// <param name="strike">Option strike price.</param>
     /// <param name="riskFreeRate">Risk-free interest rate (annualised).</param>
@@ -245,9 +207,7 @@ public sealed class STDD001A
     }
 }
 
-// =============================================================================
 // Supporting Types
-// =============================================================================
 
 /// <summary>
 /// Represents a dividend event with ex-date and amount.

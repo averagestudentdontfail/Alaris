@@ -1,10 +1,4 @@
-// =============================================================================
-// STEJ001A.cs - Earnings Jump Risk Calibrator
-// Component: STEJ001A | Category: Core | Variant: A (Primary)
-// =============================================================================
-// Reference: Alaris.Governance/Structure.md § 4.2.5
-// Compliance: High-Integrity Coding Standard v1.2
-// =============================================================================
+// STEJ001A.cs - earnings jump risk calibrator
 
 using Microsoft.Extensions.Logging;
 
@@ -13,47 +7,7 @@ namespace Alaris.Strategy.Core;
 /// <summary>
 /// Calibrates and evaluates earnings jump risk from historical announcement data.
 /// </summary>
-/// <remarks>
-/// <para>
-/// <b>Mathematical Foundation</b>
-/// </para>
-/// 
-/// <para>
-/// Earnings announcements cause discrete jumps in stock prices. The standardised
-/// earnings surprise is defined as:
-/// <code>
-/// Z_E = |ΔS_{t_E}| / S_{t_E^-} / (σ_I × √T_E)
-/// </code>
-/// where ΔS is the overnight price change at earnings, and σ_I×√T_E is the implied move.
-/// </para>
-/// 
-/// <para>
-/// <b>Fat-Tailed Distribution</b>
-/// </para>
-/// 
-/// <para>
-/// The distribution of Z_E exhibits fat tails. We model it as a truncated mixture:
-/// <code>
-/// f(z) = λ × Normal(z; 0, 1) + (1-λ) × Laplace(z; 0, b)
-/// </code>
-/// The Laplace component captures outlier earnings moves (fat tails).
-/// </para>
-/// 
-/// <para>
-/// <b>Jump Risk Score</b>
-/// </para>
-/// 
-/// <para>
-/// The probability of an earnings move exceeding k times the implied move:
-/// <code>
-/// JRS = P(Z_E > k) = λ × Φ(-k) + (1-λ) × 0.5 × exp(-k/b)
-/// </code>
-/// </para>
-/// 
-/// <para>
-/// Reference: Dubinsky &amp; Johannes (2006) "Earnings Announcements and Equity Options"
-/// </para>
-/// </remarks>
+
 public sealed class STEJ001A
 {
     private readonly ILogger<STEJ001A>? _logger;
@@ -67,7 +21,6 @@ public sealed class STEJ001A
     /// Default Laplace scale parameter if insufficient data.
     /// </summary>
     private const double DefaultLaplaceScale = 0.40;
-
 
     // LoggerMessage delegates
     private static readonly Action<ILogger, int, double, double, Exception?> LogCalibration =
@@ -287,9 +240,7 @@ public sealed class STEJ001A
     }
 }
 
-// =============================================================================
 // Supporting Types
-// =============================================================================
 
 /// <summary>
 /// Calibrated earnings jump distribution parameters.

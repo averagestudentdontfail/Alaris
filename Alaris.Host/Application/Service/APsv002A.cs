@@ -1,10 +1,4 @@
-// =============================================================================
-// APsv002A.cs - Session Data Management Service
-// Component: APsv002A | Category: Services | Variant: A (Primary)
-// =============================================================================
-// Manages data acquisition and formatting for backtest sessions.
-// Downloads from Polygon and converts to LEAN format.
-// =============================================================================
+// APsv002A.cs - Session data download service (Polygon → LEAN format)
 
 using System;
 using System.Collections.Generic;

@@ -1,15 +1,4 @@
-// =============================================================================
-// EVsr001A.cs - Event Binary Serialization Adapter
-// Component: EVsr001A | Category: Serialization | Variant: A (Primary)
-// =============================================================================
-// Provides binary serialization for event envelopes using SBE format.
-// Maintains Rule 17 (Auditability) compliance with immutable serialized records.
-// =============================================================================
-// References:
-// - Alaris.Governance/Coding.md Rule 5 (Zero-Allocation Hot Paths)
-// - Alaris.Governance/Coding.md Rule 17 (Auditability)
-// - Alaris.Protocol/Schemas/Events.xml
-// =============================================================================
+// EVsr001A.cs - Event binary serialization adapter (SBE format)
 
 using System.Buffers.Binary;
 using Alaris.Infrastructure.Events.Core;
@@ -168,7 +157,6 @@ public static class EVsr001A
         return 301 + System.Text.Encoding.UTF8.GetByteCount(envelope.EventData);
     }
 
-    #region Helper Methods
 
     private static void WriteFixedString(Span<byte> buffer, string? value, int length)
     {
@@ -197,5 +185,4 @@ public static class EVsr001A
         return string.IsNullOrEmpty(value) ? null : value;
     }
 
-    #endregion
 }

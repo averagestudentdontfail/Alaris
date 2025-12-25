@@ -1,49 +1,4 @@
-// ============================================================================
-// Alaris.Simulation - SMSM001A.cs
-// Quarterly Earnings Announcement Simulation
-// ============================================================================
-// 
-// Component Code: SMSM001A
-// Domain:         SM (Simulation)
-// Category:       SM (Simulation Main)
-// Sequence:       001
-// Variant:        A (Production Implementation)
-//
-// Purpose:
-//   Demonstrates the complete Alaris system workflow during a quarterly earnings
-//   announcement, integrating:
-//   - Alaris.Double: Negative rate American option pricing (Healy 2021)
-//   - Alaris.Strategy: Earnings volatility calendar spread strategy (Atilgan 2014)
-//   - Alaris.Strategy.Cost: Execution cost modeling and liquidity validation
-//   - Alaris.Strategy.Hedge: Risk validation (Vega correlation, Gamma, Gap risk)
-//   - Leung & Santoli (2014): Pre-EA implied volatility model with jump calibration
-//   - Yang-Zhang (2000): Realized volatility estimation
-//   - Kelly Criterion: Fractional position sizing
-//
-// Academic References:
-//   - Healy (2021): "Pricing American Options Under Negative Rates"
-//   - Atilgan (2014): "Implied Volatility Spreads and Expected Market Returns"
-//   - Leung & Santoli (2014): "Accounting for Earnings Announcements in the
-//                              Pricing of Equity Options"
-//   - Yang & Zhang (2000): "Drift-Independent Volatility Estimation"
-//   - Kim (1990): "The Analytic Valuation of American Options"
-//
-// Compliance:
-//   Alaris High-Integrity Coding Standard v1.2
-//   - Rule 4:  No Recursion
-//   - Rule 7:  Null Safety
-//   - Rule 9:  Guard Clauses
-//   - Rule 10: Specific Exceptions
-//   - Rule 13: Function Complexity (60 lines max)
-//   - Rule 15: Fault Isolation (SafeLog pattern)
-//   - Rule 16: Deterministic Cleanup
-//
-// Analyzer Suppressions:
-//   - CA1303: Literal strings acceptable for console simulation output
-//   - CA5394: Deterministic Random acceptable for reproducible simulation
-//   - CA1031: Generic exception catch acceptable in Main entry point
-//
-// ============================================================================
+// SMSM001A.cs - quarterly earnings announcement simulation
 
 using Alaris.Double;
 using Alaris.Strategy.Bridge;
@@ -93,9 +48,7 @@ namespace Alaris.Simulation;
 /// </remarks>
 internal static class SMSM001A
 {
-    // ========================================================================
     // Simulation Configuration Constants
-    // ========================================================================
 
     /// <summary>Simulation symbol for the earnings announcement.</summary>
     private const string SimulationSymbol = "AAPL";
@@ -123,9 +76,7 @@ internal static class SMSM001A
     /// <summary>Typical earnings gap magnitude for calibration (3-5%).</summary>
     private const double EarningsGapMagnitude = 0.04;
 
-    // ========================================================================
     // Greek Validation Constants (Healy 2021 physical constraints)
-    // ========================================================================
 
     /// <summary>Maximum plausible absolute delta for an option.</summary>
     private const double MaxAbsDelta = 1.5;
@@ -136,9 +87,7 @@ internal static class SMSM001A
     /// <summary>Maximum plausible absolute vega (per 1% vol change).</summary>
     private const double MaxAbsVega = 1.0;
 
-    // ========================================================================
     // Entry Point
-    // ========================================================================
 
     /// <summary>
     /// Main entry point for the Alaris earnings announcement simulation.
@@ -172,9 +121,7 @@ internal static class SMSM001A
         }
     }
 
-    // ========================================================================
     // Simulation Orchestration
-    // ========================================================================
 
     /// <summary>
     /// Executes all simulation phases in sequence.
@@ -244,9 +191,7 @@ internal static class SMSM001A
         // Phase 13: Pin Risk Monitor Demo (STHD009A)
         DemonstratePinRisk(marketData.CurrentPrice, positiveRateSpread.Strike);
 
-        // ========================================================================
         // First-Principles Validation Phases (14-19)
-        // ========================================================================
 
         // Phase 14: First-Principles Double Boundary Validation
         DemonstrateFirstPrinciplesDoubleBoundary();
@@ -268,9 +213,7 @@ internal static class SMSM001A
             realisedVolatility, termResult.IV30, signalResult, positiveRateSpread);
     }
 
-    // ========================================================================
     // Phase 2: Market Data Generation (CORRECTED)
-    // ========================================================================
 
     /// <summary>
     /// Generates simulated market data for the earnings scenario.
@@ -489,9 +432,7 @@ internal static class SMSM001A
         return optionChain;
     }
 
-    // ========================================================================
     // Phase 5: Leung-Santoli Metrics (CORRECTED)
-    // ========================================================================
 
     /// <summary>
     /// Calculates Leung-Santoli pre-earnings IV metrics with proper calibration.
@@ -579,9 +520,7 @@ internal static class SMSM001A
         };
     }
 
-    // ========================================================================
     // Phase 8: Negative Rate Pricing (CORRECTED)
-    // ========================================================================
 
     /// <summary>
     /// Prices a calendar spread under negative rate regime with validated Greeks.
@@ -862,9 +801,7 @@ internal static class SMSM001A
     private static double NormalPdf(double x) => Alaris.Core.Math.CRMF001A.NormalPDF(x);
 
 
-    // ========================================================================
     // Phase 7: Standard Calendar Spread Pricing
-    // ========================================================================
 
     /// <summary>
     /// Prices a calendar spread under positive rate regime.
@@ -982,9 +919,7 @@ internal static class SMSM001A
         return (price, delta, gamma, theta, vega);
     }
 
-    // ========================================================================
     // Phase 9: Double Boundary Demonstration
-    // ========================================================================
 
     /// <summary>
     /// Demonstrates Alaris.Double pricing with Healy (2021) benchmark parameters.
@@ -1031,9 +966,7 @@ internal static class SMSM001A
         };
     }
 
-    // ========================================================================
     // Phase 11: Maturity Guard Demo (STMG001A)
-    // ========================================================================
 
     /// <summary>
     /// Demonstrates maturity guard entry/exit filtering based on DTE.
@@ -1067,9 +1000,7 @@ internal static class SMSM001A
         Console.WriteLine();
     }
 
-    // ========================================================================
     // Phase 12: Near-Expiry Double Boundary Demo (DBEX001A)
-    // ========================================================================
 
     /// <summary>
     /// Demonstrates near-expiry pricing with DBEX001A intrinsic fallback.
@@ -1109,9 +1040,7 @@ internal static class SMSM001A
         Console.WriteLine();
     }
 
-    // ========================================================================
     // Phase 13: Pin Risk Monitor Demo (STHD009A)
-    // ========================================================================
 
     /// <summary>
     /// Demonstrates pin risk monitoring for positions near strike.
@@ -1141,9 +1070,7 @@ internal static class SMSM001A
         Console.WriteLine();
     }
 
-    // ========================================================================
     // Phase 14: First-Principles Double Boundary Validation
-    // ========================================================================
 
     /// <summary>
     /// Demonstrates first-principles validation of double boundary constraints.
@@ -1218,9 +1145,7 @@ internal static class SMSM001A
         Console.WriteLine();
     }
 
-    // ========================================================================
     // Phase 15: Kalman-Filtered Volatility Demo
-    // ========================================================================
 
     /// <summary>
     /// Demonstrates Kalman-filtered volatility estimation with state equations.
@@ -1295,9 +1220,7 @@ internal static class SMSM001A
         Console.WriteLine();
     }
 
-    // ========================================================================
     // Phase 16: Neyman-Pearson Signal Detection
-    // ========================================================================
 
     /// <summary>
     /// Demonstrates Neyman-Pearson optimal signal detection framework.
@@ -1361,9 +1284,7 @@ internal static class SMSM001A
         Console.WriteLine();
     }
 
-    // ========================================================================
     // Phase 17: Queue-Theoretic Position Management
-    // ========================================================================
 
     /// <summary>
     /// Demonstrates queue-theoretic position management with Little's Law.
@@ -1431,9 +1352,7 @@ internal static class SMSM001A
         Console.WriteLine();
     }
 
-    // ========================================================================
     // Phase 18: Rule-Based Exit Monitor
-    // ========================================================================
 
     /// <summary>
     /// Demonstrates rule-based exit monitoring with stall detection.
@@ -1478,9 +1397,7 @@ internal static class SMSM001A
         Console.WriteLine();
     }
 
-    // ========================================================================
     // Phase 19: Workflow Integration Summary
-    // ========================================================================
 
     /// <summary>
     /// Displays complete workflow integration summary.
@@ -1535,9 +1452,7 @@ internal static class SMSM001A
         Console.WriteLine();
     }
 
-    // ========================================================================
     // Phase 10: Production Validation
-    // ========================================================================
 
     /// <summary>
     /// Executes the production validation phase including cost and hedging analysis.
@@ -1690,9 +1605,7 @@ internal static class SMSM001A
         return (frontIV, backIV);
     }
 
-    // ========================================================================
     // Auxiliary Calculations
-    // ========================================================================
 
     /// <summary>
     /// Calculates realised volatility using Yang-Zhang (2000) estimator.
@@ -1874,9 +1787,7 @@ internal static class SMSM001A
         };
     }
 
-    // ========================================================================
     // Display Methods
-    // ========================================================================
 
     /// <summary>
     /// Displays the market conditions for the simulation.
@@ -2170,9 +2081,7 @@ internal static class SMSM001A
         Console.WriteLine("╚══════════════════════════════════════════════════════════════════════════════╝");
     }
 
-    // ========================================================================
     // Formatting Helpers
-    // ========================================================================
 
     /// <summary>
     /// Formats a line for single-border box output.
@@ -2195,9 +2104,7 @@ internal static class SMSM001A
     }
 }
 
-// ============================================================================
 // Supporting Data Types
-// ============================================================================
 
 /// <summary>
 /// Represents a single price bar (OHLCV).

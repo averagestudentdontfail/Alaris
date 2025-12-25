@@ -1,10 +1,4 @@
-// =============================================================================
-// STRK004A.cs - Priority Queue Capital Allocator
-// Component: STRK004A | Category: Risk | Variant: A (Primary)
-// =============================================================================
-// Reference: Alaris.Governance/Structure.md § 4.3.4
-// Compliance: High-Integrity Coding Standard v1.2
-// =============================================================================
+// STRK004A.cs - priority queue capital allocator
 
 using Alaris.Core.HotPath;
 using Alaris.Strategy.Core;
@@ -15,64 +9,7 @@ namespace Alaris.Strategy.Risk;
 /// <summary>
 /// Implements priority queue capital allocation for heterogeneous opportunities.
 /// </summary>
-/// <remarks>
-/// <para>
-/// This allocator addresses the fundamental problem of capital allocation across
-/// concurrent betting opportunities with different edge characteristics. Unlike
-/// the homogeneous case (Little's Law), real opportunities have varying quality.
-/// </para>
-/// 
-/// <para>
-/// <b>Mathematical Foundation</b>
-/// </para>
-/// 
-/// <para>
-/// For multiple simultaneous opportunities with different edges, the Kelly criterion
-/// generalises to an optimisation problem. Given N opportunities with:
-/// - f_i = Kelly fraction for opportunity i
-/// - e_i = edge (expected excess return per unit bet)
-/// - σ²_i = variance of returns
-/// - ρ_ij = correlation between opportunities i and j
-/// </para>
-/// 
-/// <para>
-/// The optimal allocation maximises expected log-wealth growth:
-/// <code>
-/// max Σ f_i × e_i - 0.5 × Σ_i Σ_j f_i × f_j × σ_i × σ_j × ρ_ij
-/// </code>
-/// subject to: Σ f_i ≤ 1 (capital constraint)
-/// </para>
-/// 
-/// <para>
-/// <b>Simplification for Low Correlation</b>
-/// </para>
-/// 
-/// <para>
-/// When opportunities are sufficiently uncorrelated (calendar spreads on different
-/// underlyings), the problem decomposes to ranking by edge-adjusted priority:
-/// <code>
-/// Priority(i) = e_i / σ²_i = Kelly_i × edge_i / variance_i
-/// </code>
-/// This is the Sharpe-ratio-like "certainty equivalent" ordering.
-/// </para>
-/// 
-/// <para>
-/// <b>Allocation Algorithm</b>
-/// </para>
-/// 
-/// <para>
-/// 1. Sort all opportunities (open + candidate) by priority descending
-/// 2. Allocate fractional Kelly to highest priority until capital exhausted
-/// 3. For each opportunity, allocation is min(Kelly_i, remaining_capital)
-/// 4. New candidates must exceed the marginal priority of the lowest open position
-///    or provide sufficient improvement to warrant rebalancing
-/// </para>
-/// 
-/// <para>
-/// Reference: Bell &amp; Cover (1980) "Game-Theoretic Optimal Portfolios";
-/// Thorp (2006) "The Kelly Criterion in Blackjack Sports Betting and the Stock Market"
-/// </para>
-/// </remarks>
+
 public sealed class STRK004A
 {
     private readonly STRK001A _baseKelly;
@@ -200,32 +137,7 @@ public sealed class STRK004A
     /// <summary>
     /// Calculates the priority score for an opportunity.
     /// </summary>
-    /// <remarks>
-    /// <para>
-    /// Priority is derived from the certainty equivalent of the bet, which for
-    /// log-utility (Kelly criterion) is:
-    /// </para>
-    /// <code>
-    /// Priority = (Kelly fraction × Edge) / Variance = Edge² / Variance
-    /// </code>
-    /// <para>
-    /// This simplifies to:
-    /// </para>
-    /// <code>
-    /// Priority = f* × (p × b - q) / b
-    /// </code>
-    /// <para>
-    /// where f* is Kelly fraction, p is win probability, q is loss probability,
-    /// and b is the win/loss ratio.
-    /// </para>
-    /// <para>
-    /// For the Alaris calendar spread strategy, we use the IV/RV ratio as a
-    /// proxy for edge, and signal strength provides a quality multiplier:
-    /// </para>
-    /// <code>
-    /// Priority = (IV/RV - 1) × SignalMultiplier × TermStructureBonus
-    /// </code>
-    /// </remarks>
+    
     /// <param name="signal">Trading signal containing opportunity metrics.</param>
     /// <param name="historicalTrades">Historical trades for win rate estimation.</param>
     /// <returns>Priority score (higher is better).</returns>
@@ -274,15 +186,7 @@ public sealed class STRK004A
     /// <summary>
     /// Calculates variance penalty based on historical win rate uncertainty.
     /// </summary>
-    /// <remarks>
-    /// Lower win rates have higher variance in Kelly fraction estimation,
-    /// so we apply a discount. Formula derived from Bernoulli variance:
-    /// <code>
-    /// Var(p) = p(1-p)/n
-    /// Penalty = 1 / (1 + k × sqrt(Var(p)))
-    /// </code>
-    /// where k is a calibration constant.
-    /// </remarks>
+    
     private static double CalculateVariancePenalty(double winRate)
     {
         // Bernoulli variance maximised at p=0.5
@@ -478,10 +382,7 @@ public sealed class STRK004A
     /// <summary>
     /// Rebalances the entire portfolio to optimal queue allocation.
     /// </summary>
-    /// <remarks>
-    /// Called periodically or when significant priority changes occur.
-    /// Returns recommended changes to bring portfolio to optimal state.
-    /// </remarks>
+    
     /// <param name="portfolioValue">Total portfolio value.</param>
     /// <param name="openPositions">Currently open positions.</param>
     /// <param name="historicalTrades">Historical trades for priority calculation.</param>
@@ -550,9 +451,7 @@ public sealed class STRK004A
     }
 }
 
-// =============================================================================
 // Supporting Types
-// =============================================================================
 
 /// <summary>
 /// Represents an entry in the priority queue.

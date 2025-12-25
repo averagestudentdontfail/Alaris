@@ -1,6 +1,4 @@
-// =============================================================================
 // UniverseSelectionTests.cs - Unit Tests for STUN001A Universe Selection Model
-// =============================================================================
 
 using System;
 using System.Collections.Generic;
@@ -148,9 +146,7 @@ public sealed class STUN001ATests
     }
 }
 
-// =============================================================================
 // Stub class for testing - actual STUN001A requires LEAN framework
-// =============================================================================
 
 /// <summary>
 /// Stub STUN001A for unit testing without LEAN framework dependencies.
@@ -191,9 +187,7 @@ internal sealed class STUN001A
     public DTpr004A EarningsProvider => _earningsProvider;
 }
 
-// =============================================================================
 // Mock Implementations for Universe Selection Testing
-// =============================================================================
 
 internal class UniverseTestEarningsProvider : DTpr004A
 {

@@ -1,10 +1,4 @@
-// =============================================================================
-// STHD005A.cs - Production Signal Validator
-// Component: STHD005A | Category: Hedging | Variant: A (Primary)
-// =============================================================================
-// Reference: Alaris.Governance/Structure.md § 4.3.2
-// Compliance: High-Integrity Coding Standard v1.2
-// =============================================================================
+// STHD005A.cs - production signal validator
 
 using Alaris.Strategy.Core;
 using Alaris.Strategy.Cost;
@@ -20,18 +14,7 @@ namespace Alaris.Strategy.Hedge;
 /// <summary>
 /// Orchestrates all pre-trade validations for production deployment.
 /// </summary>
-/// <remarks>
-/// <para>
-/// This component integrates the four key validation components:
-/// 1. Execution cost validation (signal survives transaction costs)
-/// 2. Vega correlation analysis (front/back tenor independence)
-/// 3. Liquidity validation (defined risk assumption holds)
-/// 4. Gamma risk assessment (initial position parameters acceptable)
-/// </para>
-/// <para>
-/// A signal is production-ready only when ALL validations pass.
-/// </para>
-/// </remarks>
+
 public sealed class STHD005A
 {
     private readonly STCS006A _costValidator;

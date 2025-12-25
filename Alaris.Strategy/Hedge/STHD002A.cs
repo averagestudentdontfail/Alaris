@@ -1,28 +1,11 @@
-// =============================================================================
-// STHD002A.cs - Vega Correlation Result
-// Component: STHD002A | Category: Hedging | Variant: A (Primary)
-// =============================================================================
-// Reference: Alaris.Governance/Structure.md § 4.3.2
-// Compliance: High-Integrity Coding Standard v1.2
-// =============================================================================
+// STHD002A.cs - vega correlation result
 
 namespace Alaris.Strategy.Hedge;
 
 /// <summary>
 /// Represents the result of vega correlation analysis.
 /// </summary>
-/// <remarks>
-/// <para>
-/// This immutable record captures the correlation between front-month and
-/// back-month IV changes, enabling assessment of calendar spread vega risk.
-/// </para>
-/// <para>
-/// Interpretation guidelines:
-/// - Correlation &lt; 0.50: Strong independence, ideal for calendar spreads
-/// - Correlation 0.50-0.70: Acceptable with monitoring
-/// - Correlation &gt; 0.70: Elevated sympathetic collapse risk
-/// </para>
-/// </remarks>
+
 public sealed record STHD002A
 {
     /// <summary>
@@ -33,10 +16,7 @@ public sealed record STHD002A
     /// <summary>
     /// Gets the Pearson correlation coefficient.
     /// </summary>
-    /// <remarks>
-    /// Range: [-1, 1]. Values closer to 0 indicate independence.
-    /// May be NaN if insufficient data or zero variance.
-    /// </remarks>
+    
     public required double Correlation { get; init; }
 
     /// <summary>
@@ -77,10 +57,7 @@ public sealed record STHD002A
     /// <summary>
     /// Gets the margin below the threshold.
     /// </summary>
-    /// <remarks>
-    /// Positive values indicate the correlation is below threshold.
-    /// Negative values indicate threshold exceeded.
-    /// </remarks>
+    
     public double Margin => Threshold - Correlation;
 
     /// <summary>

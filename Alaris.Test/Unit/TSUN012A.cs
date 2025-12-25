@@ -194,7 +194,6 @@ public sealed class STIV006ATests
         result.Rationale.Should().Contain("recentering");
     }
 
-    #region Helper Methods
 
     private static List<STIV008A> CreateSampleChain(double spotPrice, double atmIV)
     {
@@ -234,5 +233,4 @@ public sealed class STIV006ATests
         };
     }
 
-    #endregion
 }

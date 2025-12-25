@@ -1,3 +1,5 @@
+// STCR003A.cs - implements the Yang-Zhang (2000) realized volatility estimator.  This estimat...
+
 using System.Buffers;
 using Alaris.Strategy.Bridge;
 using MathNet.Numerics.Statistics;
@@ -9,9 +11,7 @@ namespace Alaris.Strategy.Core;
 /// This estimator is an efficient method that uses OHLC data and accounts for opening jumps.
 /// Formula: RV² = σ_o² + k·σ_c² + (1-k)·σ_rs²
 /// </summary>
-/// <remarks>
-/// Optimized for Rule 5 (Zero-Allocation Hot Paths) using ArrayPool and Span&lt;T&gt;.
-/// </remarks>
+
 public sealed class STCR003AEstimator
 {
     private const int TradingDaysPerYear = 252;

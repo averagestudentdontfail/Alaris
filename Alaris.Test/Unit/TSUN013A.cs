@@ -1,16 +1,12 @@
-// =============================================================================
 // Phase3ComponentTests.cs - Unit Tests for Signal Processing Enhancements
 // Tests: STSD001A, STKF001A, STQT001A, STHD007B
-// =============================================================================
 
 using FluentAssertions;
 using Xunit;
 
 namespace Alaris.Test.Unit;
 
-// =============================================================================
 // STSD001A: Neyman-Pearson Signal Detection Tests
-// =============================================================================
 
 public sealed class SignalDetectionTests
 {
@@ -87,9 +83,7 @@ public sealed class SignalDetectionTests
     }
 }
 
-// =============================================================================
 // STKF001A: Kalman-Filtered Volatility Tests
-// =============================================================================
 
 public sealed class KalmanVolatilityTests
 {
@@ -146,9 +140,7 @@ public sealed class KalmanVolatilityTests
     }
 }
 
-// =============================================================================
 // STQT001A: Queue-Theoretic Position Management Tests
-// =============================================================================
 
 public sealed class QueueTheoryTests
 {
@@ -208,9 +200,7 @@ public sealed class QueueTheoryTests
     }
 }
 
-// =============================================================================
 // STHD007B: Rule-Based Exit Monitor Tests
-// =============================================================================
 
 public sealed class RuleBasedExitTests
 {

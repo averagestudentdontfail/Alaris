@@ -1,10 +1,4 @@
-// =============================================================================
-// APcm005A.cs - Backtest Command Group
-// Component: APcm005A | Category: Commands | Variant: A (Primary)
-// =============================================================================
-// Implements 'alaris backtest create|run|list|delete|view' commands.
-// Manages session-based backtest infrastructure.
-// =============================================================================
+// APcm005A.cs - Backtest command group (create/run/list/delete/view)
 
 using System;
 using System.ComponentModel;
@@ -26,9 +20,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Alaris.Host.Application.Command;
 
-// =============================================================================
 // Create Command
-// =============================================================================
 
 /// <summary>
 /// Settings for backtest create command.
@@ -216,9 +208,7 @@ public sealed class BacktestCreateCommand : AsyncCommand<BacktestCreateSettings>
     }
 }
 
-// =============================================================================
 // Prepare Command
-// =============================================================================
 
 public sealed class BacktestPrepareSettings : CommandSettings
 {
@@ -330,9 +320,7 @@ internal static class DependencyFactory
     }
 }
 
-// =============================================================================
 // Run Command
-// =============================================================================
 
 /// <summary>
 /// Settings for backtest run command.
@@ -499,9 +487,7 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
     }
 }
 
-// =============================================================================
 // List Command
-// =============================================================================
 
 /// <summary>
 /// Settings for backtest list command.
@@ -564,9 +550,7 @@ public sealed class BacktestListCommand : AsyncCommand<BacktestListSettings>
     }
 }
 
-// =============================================================================
 // Delete Command
-// =============================================================================
 
 /// <summary>
 /// Settings for backtest delete command.
@@ -626,9 +610,7 @@ public sealed class BacktestDeleteCommand : AsyncCommand<BacktestDeleteSettings>
     }
 }
 
-// =============================================================================
 // View Command
-// =============================================================================
 
 /// <summary>
 /// Settings for backtest view command.

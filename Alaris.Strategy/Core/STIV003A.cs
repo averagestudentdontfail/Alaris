@@ -1,3 +1,5 @@
+// STIV003A.cs - selects the optimal IV model based on market conditions, fit metrics, and reg...
+
 using Alaris.Core.HotPath;
 using Alaris.Strategy.Calendar;
 
@@ -6,14 +8,12 @@ namespace Alaris.Strategy.Core;
 /// <summary>
 /// Selects the optimal IV model based on market conditions, fit metrics, and regime.
 /// Implements automatic model selection with martingale condition enforcement.
-///
 /// Model Selection Criteria:
 ///   1. Regime detection (pre/post earnings, normal)
 ///   2. Fit quality (RMSE, MAE on calibration data)
 ///   3. Parsimony (AIC/BIC penalizing complexity)
 ///   4. Martingale constraint satisfaction
 ///   5. Out-of-sample validation
-///
 /// Available Models:
 ///   - Black-Scholes: Baseline, no parameters to calibrate
 ///   - Leung-Santoli: Pre-earnings with deterministic jump

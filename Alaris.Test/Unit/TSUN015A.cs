@@ -171,7 +171,6 @@ public sealed class STRK003ATests
         act.Should().Throw<ArgumentOutOfRangeException>();
     }
 
-    #region Helper Methods
 
     private static List<Trade> GenerateHistoricalTrades(int count, int avgHoldingDays)
     {
@@ -209,5 +208,4 @@ public sealed class STRK003ATests
         };
     }
 
-    #endregion
 }

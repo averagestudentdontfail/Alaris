@@ -1,11 +1,4 @@
-// =============================================================================
-// STCS006A.cs - Signal Cost Validator
-// Component: STCS006A | Category: Cost | Variant: A (Primary)
-// =============================================================================
-// Reference: Alaris.Governance/Structure.md § 4.3.2
-// Reference: Atilgan (2014) - IV/RV threshold validation post-costs
-// Compliance: High-Integrity Coding Standard v1.2
-// =============================================================================
+// STCS006A.cs - signal cost validator
 
 using Alaris.Strategy.Core;
 using Microsoft.Extensions.Logging;
@@ -20,24 +13,7 @@ namespace Alaris.Strategy.Cost;
 /// <summary>
 /// Validates that trading signals survive execution costs.
 /// </summary>
-/// <remarks>
-/// <para>
-/// This component addresses a critical pre-production requirement: verifying
-/// that the theoretical edge identified by signal generation persists after
-/// accounting for realistic transaction costs.
-/// </para>
-/// <para>
-/// The validation process:
-/// 1. Computes execution-adjusted spread costs
-/// 2. Recalculates effective IV/RV ratio incorporating costs
-/// 3. Validates against minimum threshold (default: 1.20 post-costs)
-/// 4. Assesses whether the position maintains defined risk properties
-/// </para>
-/// <para>
-/// Reference: Atilgan (2014) uses IV/RV ≥ 1.25 as entry threshold.
-/// Post-cost threshold of 1.20 provides a 5% cost buffer.
-/// </para>
-/// </remarks>
+
 public sealed class STCS006A
 {
     private readonly STCS001A _costModel;
@@ -68,27 +44,19 @@ public sealed class STCS006A
     /// <summary>
     /// Default minimum IV/RV ratio after costs.
     /// </summary>
-    /// <remarks>
-    /// Set 5% below the entry threshold (1.25) to allow for cost degradation
-    /// whilst maintaining profitability.
-    /// </remarks>
+    
     public const double DefaultMinimumPostCostRatio = 1.20;
 
     /// <summary>
     /// Default maximum acceptable slippage percentage.
     /// </summary>
-    /// <remarks>
-    /// Slippage exceeding 10% of theoretical debit indicates poor liquidity.
-    /// </remarks>
+    
     public const double DefaultMaximumSlippagePercent = 10.0;
 
     /// <summary>
     /// Default maximum execution cost as percentage of capital.
     /// </summary>
-    /// <remarks>
-    /// Total execution costs (fees + slippage) exceeding 5% of capital
-    /// significantly degrade expected returns.
-    /// </remarks>
+    
     public const double DefaultMaximumExecutionCostPercent = 5.0;
 
     /// <summary>
@@ -206,22 +174,7 @@ public sealed class STCS006A
     /// <param name="preCostRatio">The original IV/RV ratio from signal generation.</param>
     /// <param name="spreadCost">The computed spread execution cost.</param>
     /// <returns>The adjusted IV/RV ratio accounting for costs.</returns>
-    /// <remarks>
-    /// <para>
-    /// The cost adjustment follows this logic:
-    /// - The IV/RV ratio measures the premium of implied volatility over realised
-    /// - Execution costs effectively reduce the captured premium
-    /// - We model this as a proportional reduction based on cost percentage
-    /// </para>
-    /// <para>
-    /// Post-cost ratio = Pre-cost ratio × (1 - ExecutionCostPercent/100)
-    /// </para>
-    /// <para>
-    /// This is a conservative approximation. A more precise computation would
-    /// recompute expected P&amp;L under cost-adjusted entry prices, but this
-    /// requires additional market data (expected IV crush magnitude, holding period).
-    /// </para>
-    /// </remarks>
+    
     private static double ComputePostCostRatio(double preCostRatio, STCS004A spreadCost)
     {
         // Execution cost degrades the ratio proportionally

@@ -161,19 +161,7 @@ public sealed class STRK001A
     /// <summary>
     /// Calculates Kelly fraction adjusted for transaction costs.
     /// </summary>
-    /// <remarks>
-    /// <para>
-    /// The net-of-cost Kelly formula accounts for transaction costs that reduce
-    /// effective winnings:
-    /// </para>
-    /// <code>
-    /// f*_net = (p × (b - c/W) - q) / (b - c/W)
-    /// </code>
-    /// <para>
-    /// where c is round-trip cost (bid-ask spread × 2), W is average win amount.
-    /// This reduces position size when costs erode edge significantly.
-    /// </para>
-    /// </remarks>
+    
     /// <param name="winProbability">Historical win probability (0-1).</param>
     /// <param name="avgWin">Average winning trade amount.</param>
     /// <param name="avgLoss">Average losing trade amount (positive).</param>

@@ -14,9 +14,7 @@ namespace Alaris.Test.Unit;
 /// </summary>
 public class STIV004ATests
 {
-    // ========================================================================
     // ComputeTheoreticalIV Tests
-    // ========================================================================
 
     [Fact]
     public void ComputeTheoreticalIV_WhenNoEarningsJump_ReturnsBaseVolatility()
@@ -123,9 +121,7 @@ public class STIV004ATests
             .WithParameterName("timeToExpiry");
     }
 
-    // ========================================================================
     // ComputeMispricingSTCR004A Tests
-    // ========================================================================
 
     [Fact]
     public void ComputeMispricingSTCR004A_PositiveWhenMarketIVHigher()
@@ -168,9 +164,7 @@ public class STIV004ATests
         }
     }
 
-    // ========================================================================
     // ComputeExpectedIVCrush Tests
-    // ========================================================================
 
     [Fact]
     public void ComputeExpectedIVCrush_IsPositiveWithEarningsJump()
@@ -204,9 +198,7 @@ public class STIV004ATests
         crush7d.Should().BeGreaterThan(crush30d);
     }
 
-    // ========================================================================
     // ComputeIVCrushRatio Tests
-    // ========================================================================
 
     [Fact]
     public void ComputeIVCrushRatio_IsBetweenZeroAndOne()
@@ -223,9 +215,7 @@ public class STIV004ATests
         crushRatio.Should().BeInRange(0, 1, "IV crush ratio should be between 0 and 1");
     }
 
-    // ========================================================================
     // ExtractEarningsJumpVolatility Tests
-    // ========================================================================
 
     [Fact]
     public void ExtractEarningsJumpVolatility_RecoversOriginalSigmaE()
@@ -263,9 +253,7 @@ public class STIV004ATests
         sigmaE.Should().Be(0, "sigma_e should be 0 when market IV < base volatility");
     }
 
-    // ========================================================================
     // ComputeSTTM001A Tests
-    // ========================================================================
 
     [Fact]
     public void ComputeSTTM001A_ProducesInvertedStructure()

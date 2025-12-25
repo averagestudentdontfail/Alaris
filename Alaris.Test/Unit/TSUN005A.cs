@@ -1,7 +1,5 @@
-// =============================================================================
 // DataProviderTests.cs - Unit Tests for Data Providers (Mocked HTTP)
 // Tests: DTpr001A (Polygon), DTea001A (FMP), DTrf001A (Treasury)
-// =============================================================================
 
 using System;
 using System.Collections.Generic;

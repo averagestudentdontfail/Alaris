@@ -1,3 +1,5 @@
+// STPR004A.cs - levenberg-Marquardt optimizer implementation using MathNet.Numerics.
+
 using System;
 using System.Collections.Generic;
 using System.Linq;

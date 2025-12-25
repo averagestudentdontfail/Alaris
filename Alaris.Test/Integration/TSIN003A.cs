@@ -1,6 +1,4 @@
-// =============================================================================
 // DataBridgeTests.cs - Integration Tests for AlarisDataBridge (DTbr001A)
-// =============================================================================
 
 using System;
 using System.Collections.Generic;
@@ -196,9 +194,7 @@ public sealed class DTbr001ATests
     }
 }
 
-// =============================================================================
 // Mock Implementations for Data Bridge Testing
-// =============================================================================
 
 internal class BridgeTestMarketDataProvider : DTpr003A
 {

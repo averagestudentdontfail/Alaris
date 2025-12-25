@@ -1,7 +1,4 @@
-// =============================================================================
-// TSUN022A.cs - Trading Calendar Unit Tests
-// Component: TSUN022A | Category: Test | Variant: A (Primary)
-// =============================================================================
+// TSUN022A.cs - Trading calendar unit tests
 
 using Alaris.Strategy.Calendar;
 using FluentAssertions;
@@ -29,7 +26,6 @@ public sealed class TSUN022A : IDisposable
         _calendar.Dispose();
     }
 
-    #region Weekend Exclusion Tests
 
     /// <summary>
     /// Verifies weekends are not business days.
@@ -60,9 +56,7 @@ public sealed class TSUN022A : IDisposable
         _calendar.IsBusinessDay(friday).Should().BeTrue("Friday is a business day");
     }
 
-    #endregion
 
-    #region Holiday Exclusion Tests
 
     /// <summary>
     /// Verifies NYSE holidays are not business days.
@@ -77,9 +71,7 @@ public sealed class TSUN022A : IDisposable
         _calendar.IsBusinessDay(date).Should().BeFalse($"{holiday} should not be a business day");
     }
 
-    #endregion
 
-    #region Business Days Between Tests
 
     /// <summary>
     /// Verifies business days calculation excludes weekends.
@@ -119,9 +111,7 @@ public sealed class TSUN022A : IDisposable
         businessDays.Should().Be(0, "reversed dates should return zero");
     }
 
-    #endregion
 
-    #region Time to Expiry Tests
 
     /// <summary>
     /// Verifies time-to-expiry calculation with calendar is more accurate than approximation.
@@ -161,5 +151,4 @@ public sealed class TSUN022A : IDisposable
             "two weeks of business days should be approximately 10/252 years");
     }
 
-    #endregion
 }

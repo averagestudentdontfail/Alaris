@@ -1,10 +1,7 @@
-// =============================================================================
 // TSIN001A.cs - Integration Tests for Alaris.Double Complete Workflow
 // Component ID: TSIN001A
-// =============================================================================
 //
 // Mathematical Foundation
-// =======================
 // Reference: Healy (2021) "Pricing American Options Under Negative Rates"
 // Reference: Kim (1990) "The Analytic Valuation of American Options"
 //
@@ -36,7 +33,6 @@
 //
 // Parameters: K=100, r=-0.005, q=-0.01, σ=0.08
 //
-// =============================================================================
 
 using System;
 using System.Diagnostics;

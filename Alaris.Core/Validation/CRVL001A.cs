@@ -150,28 +150,24 @@ public sealed class BoundsViolationException : ArgumentException
 /// </summary>
 public static class AlgorithmBounds
 {
-    // ===== Volatility Bounds =====
     /// <summary>Minimum volatility: 0.1% annualized.</summary>
     public const double MinVolatility = 0.001;
 
     /// <summary>Maximum volatility: 500% annualized.</summary>
     public const double MaxVolatility = 5.0;
 
-    // ===== Time Bounds =====
     /// <summary>Minimum time to expiry: 1 trading day.</summary>
     public const double MinTimeToExpiry = 1.0 / 252.0;
 
     /// <summary>Maximum time to expiry: 30 years.</summary>
     public const double MaxTimeToExpiry = 30.0;
 
-    // ===== Price Bounds =====
     /// <summary>Minimum positive price.</summary>
     public const double MinPositivePrice = 1e-10;
 
     /// <summary>Maximum log-moneyness |ln(K/S)|.</summary>
     public const double MaxLogMoneyness = 3.0;
 
-    // ===== Iteration Bounds =====
     /// <summary>Newton-Raphson max iterations.</summary>
     public const int NewtonMaxIterations = 50;
 
@@ -187,7 +183,6 @@ public static class AlgorithmBounds
     /// <summary>Gauss-Legendre max chunks.</summary>
     public const int IntegrationMaxChunks = 1000;
 
-    // ===== Tolerance Bounds =====
     /// <summary>IV solver tolerance.</summary>
     public const double IVTolerance = 1e-8;
 
@@ -200,7 +195,6 @@ public static class AlgorithmBounds
     /// <summary>Minimum vega for Newton IV solver.</summary>
     public const double MinVegaForNewton = 1e-15;
 
-    // ===== Validation Methods =====
 
     /// <summary>Validates volatility is within bounds.</summary>
     public static void ValidateVolatility(double sigma, string paramName = "sigma")

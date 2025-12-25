@@ -23,7 +23,6 @@ public sealed class STBR001ATests : IDisposable
         Settings.instance().setEvaluationDate(_valuationDate);
     }
 
-    #region Regime Detection Tests
 
     [Theory]
     [InlineData(0.05, 0.02, false, PricingRegime.PositiveRates)]  // Put, positive rates
@@ -74,9 +73,7 @@ public sealed class STBR001ATests : IDisposable
         regime.Should().Be(PricingRegime.DoubleBoundary);
     }
 
-    #endregion
 
-    #region Positive Rate Pricing Tests
 
     [Fact]
     public async Task PriceOption_PositiveRates_CallOption()
@@ -129,9 +126,7 @@ public sealed class STBR001ATests : IDisposable
         result.Gamma.Should().BeGreaterThan(0.01); // ATM options have highest gamma
     }
 
-    #endregion
 
-    #region Negative Rate Pricing Tests
 
     [Fact]
     public async Task PriceOption_NegativeRates_DoubleBoundary_Put()
@@ -185,9 +180,7 @@ public sealed class STBR001ATests : IDisposable
         priceDifference.Should().BeLessThan(0.5); // Within $0.50
     }
 
-    #endregion
 
-    #region Calendar Spread Tests
 
     [Fact]
     public async Task PriceSTPR001A_PositiveRates_ValidSpread()
@@ -254,9 +247,7 @@ public sealed class STBR001ATests : IDisposable
         result.Invoking(r => r.Validate()).Should().NotThrow();
     }
 
-    #endregion
 
-    #region Implied Volatility Tests
 
     [Fact]
     public async Task CalculateImpliedVolatility_ConvergesCorrectly()
@@ -304,9 +295,7 @@ public sealed class STBR001ATests : IDisposable
             .Should().ThrowAsync<ArgumentException>();
     }
 
-    #endregion
 
-    #region Parameter Validation Tests
 
     [Fact]
     public async Task PriceOption_NullParameters_Throws()
@@ -349,9 +338,7 @@ public sealed class STBR001ATests : IDisposable
             .Should().ThrowAsync<ArgumentException>();
     }
 
-    #endregion
 
-    #region Helper Methods
 
     private STDT003As CreateStandardCallParameters()
     {
@@ -430,7 +417,6 @@ public sealed class STBR001ATests : IDisposable
         };
     }
 
-    #endregion
 
     public void Dispose()
     {

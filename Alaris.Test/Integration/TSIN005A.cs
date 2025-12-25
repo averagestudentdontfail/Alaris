@@ -1,4 +1,3 @@
-// =============================================================================
 // TSIN005A.cs - Integration Tests for Alaris.Application Services
 // Component ID: TSIN005A
 //
@@ -20,7 +19,6 @@
 //
 // References:
 //   - Alaris.Governance Session Naming § 2.1
-// =============================================================================
 
 using System;
 using System.Collections.Generic;
@@ -42,9 +40,7 @@ public sealed class TSIN005A : IAsyncLifetime
     private string _tempSessionsRoot = null!;
     private APsv001A _sessionService = null!;
 
-    // ========================================================================
     // Test Lifecycle
-    // ========================================================================
 
     public Task InitializeAsync()
     {
@@ -72,9 +68,7 @@ public sealed class TSIN005A : IAsyncLifetime
         return Task.CompletedTask;
     }
 
-    // ========================================================================
     // APsv001A.CreateAsync Tests
-    // ========================================================================
 
     /// <summary>
     /// CreateAsync should create a session with valid ID format.
@@ -225,9 +219,7 @@ public sealed class TSIN005A : IAsyncLifetime
             await _sessionService.CreateAsync(startDate, endDate));
     }
 
-    // ========================================================================
     // Session Sequence Numbering Tests
-    // ========================================================================
 
     /// <summary>
     /// Session sequence numbers should be monotonically increasing.
@@ -253,9 +245,7 @@ public sealed class TSIN005A : IAsyncLifetime
         seq3.Should().Be(3);
     }
 
-    // ========================================================================
     // APsv001A.GetAsync Tests
-    // ========================================================================
 
     /// <summary>
     /// GetAsync should return session by ID.
@@ -291,9 +281,7 @@ public sealed class TSIN005A : IAsyncLifetime
         result.Should().BeNull();
     }
 
-    // ========================================================================
     // APsv001A.ListAsync Tests
-    // ========================================================================
 
     /// <summary>
     /// ListAsync should return empty list when no sessions exist.
@@ -348,9 +336,7 @@ public sealed class TSIN005A : IAsyncLifetime
         sessions[2].SessionId.Should().Be(s1.SessionId);
     }
 
-    // ========================================================================
     // APsv001A.UpdateAsync Tests
-    // ========================================================================
 
     /// <summary>
     /// UpdateAsync should persist status changes.
@@ -392,9 +378,7 @@ public sealed class TSIN005A : IAsyncLifetime
         retrieved!.UpdatedAt.Should().BeAfter(originalUpdatedAt);
     }
 
-    // ========================================================================
     // APsv001A.DeleteAsync Tests
-    // ========================================================================
 
     /// <summary>
     /// DeleteAsync should remove session folder.
@@ -444,9 +428,7 @@ public sealed class TSIN005A : IAsyncLifetime
             await _sessionService.DeleteAsync("BT999A-20240101-20240331"));
     }
 
-    // ========================================================================
     // APsv001A Path Methods Tests
-    // ========================================================================
 
     /// <summary>
     /// GetDataPath should return correct data folder path.
@@ -484,9 +466,7 @@ public sealed class TSIN005A : IAsyncLifetime
         Directory.Exists(resultsPath).Should().BeTrue();
     }
 
-    // ========================================================================
     // APmd001A Model Tests
-    // ========================================================================
 
     /// <summary>
     /// Session model should be immutable (record type).
@@ -542,9 +522,7 @@ public sealed class TSIN005A : IAsyncLifetime
         stats.DurationSeconds.Should().Be(3600);
     }
 
-    // ========================================================================
     // SessionStatus Enum Tests
-    // ========================================================================
 
     /// <summary>
     /// SessionStatus should have all expected values.
@@ -572,9 +550,7 @@ public sealed class TSIN005A : IAsyncLifetime
         Enum.GetValues<SessionStatus>().Should().HaveCount(6);
     }
 
-    // ========================================================================
     // Session ID Format Tests
-    // ========================================================================
 
     /// <summary>
     /// Session ID should contain correct dates.
@@ -608,9 +584,7 @@ public sealed class TSIN005A : IAsyncLifetime
         session.SessionId.Should().MatchRegex(@"BT\d{3}A-");
     }
 
-    // ========================================================================
     // Concurrent Operations Tests
-    // ========================================================================
 
     /// <summary>
     /// Creating multiple sessions concurrently should work correctly.
@@ -637,9 +611,7 @@ public sealed class TSIN005A : IAsyncLifetime
         sessionIds.Distinct().Count().Should().Be(5);
     }
 
-    // ========================================================================
     // Helper Methods
-    // ========================================================================
 
     private static int ExtractSequence(string sessionId)
     {

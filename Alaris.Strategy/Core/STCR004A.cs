@@ -69,9 +69,7 @@ public sealed class STCR004A
     /// </summary>
     public double RealizedVolatility30 { get; set; }
 
-    // ============================================================================
     // Leung & Santoli (2014) Model Properties
-    // ============================================================================
 
     /// <summary>
     /// Gets or sets the calibrated earnings jump volatility (sigma_e) from historical EA moves.
@@ -122,9 +120,7 @@ public sealed class STCR004A
     /// </summary>
     public bool IsLeungSantoliCalibrated { get; set; }
 
-    // ============================================================================
     // Calendar Spread Position Properties
-    // ============================================================================
 
     /// <summary>
     /// Gets or sets the strike price for the calendar spread.

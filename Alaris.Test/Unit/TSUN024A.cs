@@ -1,4 +1,3 @@
-// =============================================================================
 // TSUN024A.cs - Mathematical Invariant Tests for IV Calculators
 // Component ID: TSUN024A
 //
@@ -16,7 +15,6 @@
 //   - Heston, S.L. (1993) "A Closed-Form Solution for Options with Stochastic Volatility"
 //   - Kou, S.G. (2002) "A Jump-Diffusion Model for Option Pricing"
 //   - Gatheral, J. (2006) "The Volatility Surface: A Practitioner's Guide"
-// =============================================================================
 
 using System;
 using System.Collections.Generic;
@@ -33,7 +31,6 @@ namespace Alaris.Test.Unit;
 /// </summary>
 public sealed class TSUN024A
 {
-    #region Common Test Data
 
     private static readonly double[] s_spots = { 80, 90, 100, 110, 120 };
     private static readonly double[] s_strikes = { 80, 90, 95, 100, 105, 110, 120 };
@@ -61,11 +58,8 @@ public sealed class TSUN024A
         DividendYield = 0.02
     };
 
-    #endregion
 
-    // ========================================================================
     // INVARIANT 1: Implied Volatility Must Always Be Positive
-    // ========================================================================
 
     /// <summary>
     /// For all valid inputs, computed IV must be strictly positive.
@@ -122,9 +116,7 @@ public sealed class TSUN024A
         }
     }
 
-    // ========================================================================
     // INVARIANT 2: ATM Implied Volatility Should Approximate σ
-    // ========================================================================
 
     /// <summary>
     /// At-the-money, short-term IV should be close to instantaneous volatility.
@@ -194,9 +186,7 @@ public sealed class TSUN024A
             $"Low-jump-intensity ATM IV should approximate σ={sigma:P0}");
     }
 
-    // ========================================================================
     // INVARIANT 3: Heston Converges to Black-Scholes as Vol-of-Vol → 0
-    // ========================================================================
 
     /// <summary>
     /// As sigma_v → 0, Heston should converge to Black-Scholes (flat smile).
@@ -249,9 +239,7 @@ public sealed class TSUN024A
         }
     }
 
-    // ========================================================================
     // INVARIANT 4: Kou Converges to Black-Scholes as Jump Intensity → 0
-    // ========================================================================
 
     /// <summary>
     /// As λ → 0, Kou JD should converge to Black-Scholes (diffusion only).
@@ -293,9 +281,7 @@ public sealed class TSUN024A
             "As λ→0, Kou IV should converge to diffusive σ");
     }
 
-    // ========================================================================
     // INVARIANT 5: IV Surface Monotonicity in Time for ATM
-    // ========================================================================
 
     /// <summary>
     /// ATM IV should generally decrease with time (term structure effect).
@@ -335,9 +321,7 @@ public sealed class TSUN024A
         }
     }
 
-    // ========================================================================
     // INVARIANT 6: Negative Correlation Produces Negative Skew
-    // ========================================================================
 
     /// <summary>
     /// With ρ < 0, OTM puts should have higher IV than OTM calls (negative skew).
@@ -379,9 +363,7 @@ public sealed class TSUN024A
             $"With ρ={rho}, skew (iv_put - iv_call) should be positive");
     }
 
-    // ========================================================================
     // INVARIANT 7: Downward Jump Bias Produces Negative Skew in Kou
-    // ========================================================================
 
     /// <summary>
     /// When p < 0.5 (more downward jumps), Kou should exhibit negative skew.
@@ -414,9 +396,7 @@ public sealed class TSUN024A
             "With p<0.5, OTM put IV should be >= OTM call IV");
     }
 
-    // ========================================================================
     // INVARIANT 8: Parameter Validation Catches Invalid Configurations
-    // ========================================================================
 
     /// <summary>
     /// Heston parameters violating Feller condition should fail validation.
@@ -477,9 +457,7 @@ public sealed class TSUN024A
         validation.IsValid.Should().BeFalse();
     }
 
-    // ========================================================================
     // INVARIANT 9: Characteristic Function Properties for Heston
-    // ========================================================================
 
     /// <summary>
     /// Characteristic function at u=0 should equal 1.
@@ -500,9 +478,7 @@ public sealed class TSUN024A
         phi.Imaginary.Should().BeApproximately(0.0, 1e-10);
     }
 
-    // ========================================================================
     // INVARIANT 10: Model Selection Respects Regime
-    // ========================================================================
 
     /// <summary>
     /// Pre-earnings regime should prefer Leung-Santoli or Kou (jump models).
@@ -538,9 +514,7 @@ public sealed class TSUN024A
             RecommendedModel.Kou);
     }
 
-    // ========================================================================
     // INVARIANT 11: Smile Width Scales with Vol-of-Vol (Heston)
-    // ========================================================================
 
     /// <summary>
     /// Higher vol-of-vol should produce wider smiles.
@@ -593,9 +567,7 @@ public sealed class TSUN024A
         }
     }
 
-    // ========================================================================
     // INVARIANT 12: Jump Intensity Increases Total Variance (Kou)
-    // ========================================================================
 
     /// <summary>
     /// Higher jump intensity should increase ATM IV (more variance).
@@ -641,9 +613,7 @@ public sealed class TSUN024A
             "High-jump-intensity ATM IV should exceed low-jump-intensity IV");
     }
 
-    // ========================================================================
     // INVARIANT 13: Numerical Stability at Extremes
-    // ========================================================================
 
     /// <summary>
     /// Models should not produce NaN or Infinity for extreme but valid inputs.
@@ -683,9 +653,7 @@ public sealed class TSUN024A
         }
     }
 
-    // ========================================================================
     // INVARIANT 14: Kappa Calculation for Martingale Condition (Kou)
-    // ========================================================================
 
     /// <summary>
     /// Symmetric Kou jumps should produce kappa ≈ 0.

@@ -1,7 +1,5 @@
-// =============================================================================
 // TSUN031A.cs - Unit Tests for STBR003A (Cached QuantLib Infrastructure)
 // Component ID: TSUN031A
-// =============================================================================
 //
 // Coverage:
 // - STBR003A: QuantLib infrastructure cache for Greek calculations
@@ -15,7 +13,6 @@
 // References:
 // - Alaris.Governance/Coding.md Rule 5 (Zero-Allocation Hot Paths)
 // - Alaris.Governance/Coding.md Rule 16 (Deterministic Cleanup)
-// =============================================================================
 
 using Xunit;
 using FluentAssertions;
@@ -38,7 +35,6 @@ public class TSUN031A : IDisposable
         _sut = new STBR003A();
     }
     
-    #region Pricing Tests
     
     /// <summary>
     /// Verifies that cached infrastructure produces non-zero prices for standard ATM options.
@@ -113,9 +109,7 @@ public class TSUN031A : IDisposable
             "put option value should decrease as spot increases");
     }
     
-    #endregion
     
-    #region Greek Tests
     
     /// <summary>
     /// Verifies that Delta for ATM put is approximately -0.5.
@@ -242,9 +236,7 @@ public class TSUN031A : IDisposable
         allGreeks.Rho.Should().BeApproximately(individualRho, 1e-6, "rho should match");
     }
     
-    #endregion
     
-    #region Guard Clause Tests
     
     /// <summary>
     /// Verifies that null parameters throw ArgumentNullException.
@@ -280,9 +272,7 @@ public class TSUN031A : IDisposable
         act.Should().Throw<ObjectDisposedException>();
     }
     
-    #endregion
     
-    #region Helpers
     
     private static STDT003As CreateStandardParameters()
     {
@@ -320,5 +310,4 @@ public class TSUN031A : IDisposable
         _disposed = true;
     }
     
-    #endregion
 }

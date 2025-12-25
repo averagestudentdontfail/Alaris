@@ -12,9 +12,7 @@ namespace Alaris.Test.Unit;
 /// </summary>
 public class IVModelTests
 {
-    // ========================================================================
     // STTM004A Tests
-    // ========================================================================
 
     [Fact]
     public void STTM004A_Create_ValidDates_ReturnsCorrectParameters()
@@ -94,9 +92,7 @@ public class IVModelTests
         result.IsValid.Should().BeTrue();
     }
 
-    // ========================================================================
     // Kou Model Tests
-    // ========================================================================
 
     [Fact]
     public void STIV002A_Parameters_Validate_ValidParameters_ReturnsValid()
@@ -216,9 +212,7 @@ public class IVModelTests
         termStructure.Should().HaveCount(5);
     }
 
-    // ========================================================================
     // Heston Model Tests
-    // ========================================================================
 
     [Fact]
     public void STIV001A_Parameters_SatisfiesFellerCondition_ValidParams_ReturnsTrue()
@@ -338,9 +332,7 @@ public class IVModelTests
         // Negative rho produces negative skew (higher IV for OTM puts)
     }
 
-    // ========================================================================
     // STTM002A Tests
-    // ========================================================================
 
     [Fact]
     public void STTM002A_Detect_PreEarnings_ReturnsPreSTTM002A()
@@ -414,9 +406,7 @@ public class IVModelTests
         adjustedIV.Should().Be(baseIV);
     }
 
-    // ========================================================================
     // MartingaleValidator Tests
-    // ========================================================================
 
     [Fact]
     public void MartingaleValidator_Validate_BlackScholes_AlwaysValid()
@@ -456,9 +446,7 @@ public class IVModelTests
         compensation.Should().BeApproximately(expectedCompensation, 0.0001);
     }
 
-    // ========================================================================
     // STIV003A Tests
-    // ========================================================================
 
     [Fact]
     public void STIV003A_SelectBestModel_PreEarnings_PrefersLeungSantoli()
@@ -551,9 +539,7 @@ public class IVModelTests
         result.BestEvaluation.FitMetrics.RMSE.Should().BeGreaterThanOrEqualTo(0);
     }
 
-    // ========================================================================
     // FitMetrics Tests
-    // ========================================================================
 
     [Fact]
     public void FitMetrics_Default_HasReasonableValues()
@@ -567,9 +553,7 @@ public class IVModelTests
         defaultMetrics.RSquared.Should().Be(0.0);
     }
 
-    // ========================================================================
     // ValidationResult Tests
-    // ========================================================================
 
     private static readonly string[] s_validationErrors = { "Error 1", "Error 2" };
 

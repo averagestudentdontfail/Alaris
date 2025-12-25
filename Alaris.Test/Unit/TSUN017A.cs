@@ -13,9 +13,7 @@ namespace Alaris.Test.Unit;
 /// </summary>
 public sealed class Phase2MediumPriorityTests
 {
-    // =========================================================================
     // STDD001A - Dividend Ex-Date Detector
-    // =========================================================================
 
     [Fact]
     public void STDD001A_FindExDatesInWindow_ReturnsMatchingDates()
@@ -72,9 +70,7 @@ public sealed class Phase2MediumPriorityTests
         risk.Should().Be(0.0);
     }
 
-    // =========================================================================
     // STHD009A - Pin Risk Monitor
-    // =========================================================================
 
     [Fact]
     public void STHD009A_IsInPinZone_AtStrike_ReturnsTrue()
@@ -127,9 +123,7 @@ public sealed class Phase2MediumPriorityTests
         result.RiskLevel.Should().BeOneOf(STHD011A.None, STHD011A.Low);
     }
 
-    // =========================================================================
     // STCR005A - Signal Freshness Monitor
-    // =========================================================================
 
     [Fact]
     public void STCR005A_CalculateFreshness_JustGenerated_ReturnsOne()
@@ -173,9 +167,7 @@ public sealed class Phase2MediumPriorityTests
         needsRevalidation.Should().BeTrue();
     }
 
-    // =========================================================================
     // STHD001A - VIX-Conditional Threshold
-    // =========================================================================
 
     [Fact]
     public void STHD001A_GetConditionalCorrelationThreshold_LowVIX_ReturnsBase()
@@ -197,9 +189,7 @@ public sealed class Phase2MediumPriorityTests
         threshold.Should().Be(0.85);
     }
 
-    // =========================================================================
     // STRK001A - Net-of-Cost Kelly
-    // =========================================================================
 
     [Fact]
     public void STRK001A_CalculateNetOfCostKelly_NoCost_ReturnsStandardKelly()

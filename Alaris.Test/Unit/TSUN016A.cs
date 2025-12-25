@@ -242,7 +242,6 @@ public sealed class STRK004ATests
         act.Should().Throw<ArgumentOutOfRangeException>();
     }
 
-    #region Helper Methods
 
     private static STCR004A CreateSignal(
         string symbol, 
@@ -303,5 +302,4 @@ public sealed class STRK004ATests
         return trades;
     }
 
-    #endregion
 }

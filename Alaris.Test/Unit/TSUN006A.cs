@@ -1,8 +1,6 @@
-// =============================================================================
 // DataValidatorTests.cs - Unit Tests for Data Quality Validators
 // Tests: DTqc001A (PriceReasonableness), DTqc002A (IvArbitrage),
 //        DTqc003A (VolumeOI), DTqc004A (EarningsDate)
-// =============================================================================
 
 using System;
 using System.Collections.Generic;

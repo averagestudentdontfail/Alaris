@@ -1,11 +1,4 @@
-// =============================================================================
-// PLBF001A.cs - Buffer Pool Manager for Zero-Allocation Serialization
-// Component: PLBF001A | Category: Buffers | Variant: A (Primary)
-// =============================================================================
-// References:
-// - Alaris.Governance/Coding.md Rule 5 (Zero-Allocation Hot Paths)
-// - ArrayPool<T> pattern for buffer reuse
-// =============================================================================
+// PLBF001A.cs - Buffer pool manager for zero-allocation serialization
 
 using System.Buffers;
 

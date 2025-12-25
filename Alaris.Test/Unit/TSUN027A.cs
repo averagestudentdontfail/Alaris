@@ -1,4 +1,3 @@
-// =============================================================================
 // TSUN027A.cs - Risk Component Unit Tests
 // Component ID: TSUN027A
 //
@@ -17,7 +16,6 @@
 // References:
 //   - Kelly, J.L. (1956) "A New Interpretation of Information Rate"
 //   - Thorp, E.O. (2008) "The Kelly Criterion in Blackjack, Sports Betting, and the Stock Market"
-// =============================================================================
 
 using System;
 using System.Collections.Generic;
@@ -34,7 +32,6 @@ namespace Alaris.Test.Unit;
 /// </summary>
 public sealed class TSUN027A
 {
-    #region Test Fixtures
 
     private static List<Trade> CreateWinningTradeHistory(int count, double avgWin)
     {
@@ -93,11 +90,8 @@ public sealed class TSUN027A
         };
     }
 
-    #endregion
 
-    // ========================================================================
     // STRK001A: Kelly Criterion Tests
-    // ========================================================================
 
     /// <summary>
     /// INVARIANT: Net-of-cost Kelly ≤ Standard Kelly (costs reduce optimal bet).
@@ -224,9 +218,7 @@ public sealed class TSUN027A
         act.Should().Throw<ArgumentOutOfRangeException>();
     }
 
-    // ========================================================================
     // STRK001A: Position Sizing from History Tests
-    // ========================================================================
 
     /// <summary>
     /// Insufficient trade history should return minimum position.
@@ -364,9 +356,7 @@ public sealed class TSUN027A
         act.Should().Throw<ArgumentException>();
     }
 
-    // ========================================================================
     // STRK002A: Position Size Validation Tests
-    // ========================================================================
 
     /// <summary>
     /// Valid position size should pass validation.
@@ -499,9 +489,7 @@ public sealed class TSUN027A
         position.RiskRewardRatio.Should().Be(0);
     }
 
-    // ========================================================================
     // STMG001A: Maturity Guard Tests
-    // ========================================================================
 
     /// <summary>
     /// Entry should be allowed above minimum maturity threshold.
@@ -645,9 +633,7 @@ public sealed class TSUN027A
         tte.Should().BeLessThanOrEqualTo(0);
     }
 
-    // ========================================================================
     // Trade Class Tests
-    // ========================================================================
 
     /// <summary>
     /// HoldingPeriod computed property should be correct.

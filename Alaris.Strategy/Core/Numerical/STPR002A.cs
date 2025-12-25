@@ -1,3 +1,5 @@
+// STPR002A.cs - adaptive numerical integration using MathNet.Numerics.  Production-grade impl...
+
 using System.Numerics;
 using MathNet.Numerics.Integration;
 
@@ -40,7 +42,6 @@ public static class STPR002A
 
     /// <summary>
     /// Integrates from a to infinity using Adaptive Truncation with Gauss-Legendre.
-    /// 
     /// Instead of mapping (a, inf) -> (-1, 1), we integrate in chunks [a, a+step], [a+step, a+2*step]...
     /// until the contribution of a chunk is smaller than the tolerance.
     /// Uses adaptive step sizing: step doubles when convergence accelerates.

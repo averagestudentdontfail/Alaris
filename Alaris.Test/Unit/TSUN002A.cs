@@ -1,10 +1,7 @@
-// =============================================================================
 // TSUN002A.cs - Unit Tests for DBSL002A (Kim Integral Solver)
 // Component ID: TSUN002A
-// =============================================================================
 //
 // Mathematical Foundation
-// =======================
 // Reference: Kim (1990) "The Analytic Valuation of American Options"
 // Reference: Healy (2021) "Pricing American Options Under Negative Rates" §5
 //
@@ -31,7 +28,6 @@
 // - FP-B' guarantees monotonic convergence
 // - Typical convergence: 3-5 iterations for ε < 10⁻⁶
 //
-// =============================================================================
 
 using System;
 using System.Linq;

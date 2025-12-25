@@ -1,4 +1,3 @@
-// =============================================================================
 // TSUN023A.cs - Alaris.Double Component Unit Tests
 // Component ID: TSUN023A
 //
@@ -14,7 +13,6 @@
 // References:
 //   - Hull (2018) "Options, Futures, and Other Derivatives", Ch. 19
 //   - Black & Scholes (1973) limiting behaviour analysis
-// =============================================================================
 
 using System;
 using Xunit;
@@ -29,18 +27,14 @@ namespace Alaris.Test.Unit;
 /// </summary>
 public sealed class TSUN023A
 {
-    #region Test Fixtures
 
     private static DBEX001A CreateDefaultHandler() => new DBEX001A();
 
     private static readonly double[] s_spots = { 80, 90, 95, 100, 105, 110, 120 };
     private const double Strike = 100.0;
 
-    #endregion
 
-    // ========================================================================
     // Intrinsic Value Tests
-    // ========================================================================
 
     /// <summary>
     /// INVARIANT: Call intrinsic = max(S - K, 0).
@@ -129,9 +123,7 @@ public sealed class TSUN023A
         act.Should().Throw<ArgumentOutOfRangeException>();
     }
 
-    // ========================================================================
     // Blending Weight Tests
-    // ========================================================================
 
     /// <summary>
     /// INVARIANT: Blending weight ∈ [0, 1].
@@ -210,9 +202,7 @@ public sealed class TSUN023A
         }
     }
 
-    // ========================================================================
     // Near-Expiry Detection Tests
-    // ========================================================================
 
     /// <summary>
     /// IsNearExpiry should detect near-expiry regime.
@@ -256,9 +246,7 @@ public sealed class TSUN023A
         isIntrinsic.Should().Be(expectedIntrinsic);
     }
 
-    // ========================================================================
     // BlendWithIntrinsic Tests
-    // ========================================================================
 
     /// <summary>
     /// INVARIANT: Blended value ≥ intrinsic value (no arbitrage).
@@ -345,9 +333,7 @@ public sealed class TSUN023A
         act.Should().Throw<ArgumentOutOfRangeException>();
     }
 
-    // ========================================================================
     // Near-Expiry Greeks Tests
-    // ========================================================================
 
     /// <summary>
     /// Delta approaches step function at expiry.
@@ -430,9 +416,7 @@ public sealed class TSUN023A
         }
     }
 
-    // ========================================================================
     // Validation Tests
-    // ========================================================================
 
     /// <summary>
     /// Validation should detect expired options.
@@ -473,9 +457,7 @@ public sealed class TSUN023A
         result.Recommendation.Should().Be(expected);
     }
 
-    // ========================================================================
     // Constructor Validation Tests
-    // ========================================================================
 
     /// <summary>
     /// Invalid thresholds should throw.

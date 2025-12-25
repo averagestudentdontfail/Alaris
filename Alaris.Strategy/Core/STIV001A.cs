@@ -1,3 +1,5 @@
+// STIV001A.cs - heston model parameters.
+
 using System.Numerics;
 using Alaris.Strategy.Calendar;
 using Alaris.Strategy.Core.Numerical;
@@ -140,27 +142,22 @@ public sealed class HestonParameters
 
 /// <summary>
 /// Implements the Heston (1993) stochastic volatility model for implied volatility.
-///
 /// Stock price dynamics under risk-neutral measure Q:
 ///     dS/S = (r - d)dt + sqrt(V)*dW_S
 ///     dV   = kappa*(theta - V)dt + sigma_v*sqrt(V)*dW_V
 ///     corr(dW_S, dW_V) = rho
-///
 /// Where:
 ///     V       = instantaneous variance
 ///     theta   = long-run variance (mean reversion level)
 ///     kappa   = mean reversion speed
 ///     sigma_v = volatility of volatility (vol-of-vol)
 ///     rho     = correlation between stock and variance
-///
 /// The model captures:
 ///   1. Volatility clustering (mean reversion)
 ///   2. Leverage effect (negative correlation)
 ///   3. Implied volatility smile/skew
-///
 /// Martingale condition: The drift (r-d) ensures discounted stock price is a martingale.
 /// Feller condition: 2*kappa*theta > sigma_v^2 ensures variance stays positive.
-///
 /// Reference: "A Closed-Form Solution for Options with Stochastic Volatility with
 /// Applications to Bond and Currency Options" S.L. Heston (1993), Review of Financial Studies
 /// </summary>

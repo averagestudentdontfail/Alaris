@@ -1,28 +1,11 @@
-// =============================================================================
-// STHD004A.cs - Gamma Risk Assessment Result
-// Component: STHD004A | Category: Hedging | Variant: A (Primary)
-// =============================================================================
-// Reference: Alaris.Governance/Structure.md § 4.3.2
-// Compliance: High-Integrity Coding Standard v1.2
-// =============================================================================
+// STHD004A.cs - gamma risk assessment result
 
 namespace Alaris.Strategy.Hedge;
 
 /// <summary>
 /// Represents the result of gamma risk assessment for a calendar spread.
 /// </summary>
-/// <remarks>
-/// <para>
-/// This immutable record captures the complete risk assessment, enabling
-/// informed decisions about position management and re-hedging.
-/// </para>
-/// <para>
-/// Key metrics:
-/// - Delta: Directional exposure (target: near zero)
-/// - Gamma: Convexity risk (negative for calendar spreads)
-/// - Moneyness: Position of underlying relative to strike
-/// </para>
-/// </remarks>
+
 public sealed record STHD004A
 {
     /// <summary>
@@ -63,11 +46,7 @@ public sealed record STHD004A
     /// <summary>
     /// Gets the moneyness ratio (Spot/Strike).
     /// </summary>
-    /// <remarks>
-    /// Value of 1.0 indicates at-the-money.
-    /// Values &gt; 1.0 indicate in-the-money for calls.
-    /// Values &lt; 1.0 indicate out-of-the-money for calls.
-    /// </remarks>
+    
     public required double Moneyness { get; init; }
 
     /// <summary>

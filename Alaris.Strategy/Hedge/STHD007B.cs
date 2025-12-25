@@ -1,10 +1,5 @@
-// =============================================================================
-// STHD007B.cs - Rule-Based Exit Monitor with Stall Detection
-// Component: STHD007B | Category: Hedging | Variant: B (Alternative)
-// =============================================================================
-// Reference: Alaris Phase 3 Specification (Revised)
-// Compliance: High-Integrity Coding Standard v1.2
-// =============================================================================
+// STHD007B.cs - rule-based exit monitor with stall detection
+
 // 
 // DESIGN RATIONALE:
 // The PD controller formulation was rejected because:
@@ -13,7 +8,6 @@
 // 3. Discrete decision - binary exit/hold, not continuous control signal
 // 
 // This component implements explicit rule-based logic with interpretable conditions.
-// =============================================================================
 
 using Microsoft.Extensions.Logging;
 
@@ -22,22 +16,7 @@ namespace Alaris.Strategy.Hedge;
 /// <summary>
 /// Rule-based exit monitor with stall detection for calendar spreads.
 /// </summary>
-/// <remarks>
-/// <para>
-/// This component extends threshold-based exit monitoring with explicit conditions
-/// for stall detection, time decay, and protective exits. Unlike a PD controller,
-/// the decision logic is transparent and the conditions are interpretable.
-/// </para>
-/// <para>
-/// Exit scenarios addressed:
-/// <list type="bullet">
-/// <item>Target capture: crush ≥ 100% of expected → exit</item>
-/// <item>Stall detection: significant capture + rate stalled → exit</item>
-/// <item>Protective exit: trade not working + time elapsed → exit</item>
-/// <item>Time decay: approaching expiry with partial profit → exit</item>
-/// </list>
-/// </para>
-/// </remarks>
+
 public sealed class STHD007B
 {
     private readonly ILogger<STHD007B>? _logger;
@@ -110,9 +89,7 @@ public sealed class STHD007B
     /// <returns>Exit signal with reason and diagnostics.</returns>
     public ExitSignal Evaluate(double crushCaptured, double daysElapsed, double daysRemaining)
     {
-        //=====================================================================
-        // RATE ESTIMATION
-        //=====================================================================
+        // Rate Estimation
 
         double rawRate = 0;
         if (_isInitialised)
@@ -129,9 +106,7 @@ public sealed class STHD007B
         _isInitialised = true;
         _updateCount++;
 
-        //=====================================================================
-        // RULE-BASED EXIT EVALUATION
-        //=====================================================================
+        // Rule-Based Exit Evaluation
 
         // Rule 1: Target capture - we got what we came for
         if (crushCaptured >= _params.TargetCrushRatio)
@@ -253,8 +228,6 @@ public sealed class STHD007B
         return preEaIV - baseVolatility;
     }
 
-    #region Private Methods
-
     private ExitSignal CreateExitSignal(
         ExitReason reason,
         string message,
@@ -320,18 +293,12 @@ public sealed class STHD007B
 #pragma warning restore CA1031
     }
 
-    #endregion
 }
 
 /// <summary>
 /// Exit monitor parameters with operational meaning.
 /// </summary>
-/// <remarks>
-/// Unlike PD gains, these parameters have clear interpretations:
-/// - StallRateThreshold: "How slow is stalled?" → noise floor of rate estimates
-/// - MaxWaitDays: "How long for non-working trade?" → business logic
-/// - MinDaysRemaining: "When does time decay dominate?" → gamma/theta tradeoffs
-/// </remarks>
+
 public readonly record struct ExitParameters(
     double TargetCrushRatio,
     double StallCrushThreshold,

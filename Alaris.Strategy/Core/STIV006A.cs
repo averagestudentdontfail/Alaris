@@ -1,10 +1,4 @@
-// =============================================================================
-// STIV006A.cs - Volatility Surface Interpolator
-// Component: STIV006A | Category: Core | Variant: A (Primary)
-// =============================================================================
-// Reference: Alaris.Governance/Structure.md § 4.2.3
-// Compliance: High-Integrity Coding Standard v1.2
-// =============================================================================
+// STIV006A.cs - volatility surface interpolator
 
 using Microsoft.Extensions.Logging;
 
@@ -13,49 +7,7 @@ namespace Alaris.Strategy.Core;
 /// <summary>
 /// Interpolates implied volatility across strikes using sticky-delta convention.
 /// </summary>
-/// <remarks>
-/// <para>
-/// <b>Mathematical Foundation</b>
-/// </para>
-/// 
-/// <para>
-/// The implied volatility surface σ(K, T) exhibits "smile" or "skew" patterns
-/// where IV varies with strike. For equity options, the typical pattern is:
-/// <code>
-/// σ(K) ≈ σ_ATM × (1 + ρ × ln(K/F) / (σ_ATM × √T))
-/// </code>
-/// where ρ &lt; 0 represents the negative correlation between spot and vol (leverage effect).
-/// </para>
-/// 
-/// <para>
-/// <b>Sticky-Delta Convention</b>
-/// </para>
-/// 
-/// <para>
-/// Under sticky-delta, the implied volatility for a given delta level remains
-/// constant as spot moves. This means:
-/// <code>
-/// σ(Δ = 0.25, t) = σ(Δ = 0.25, t')   for all t, t'
-/// </code>
-/// The strike corresponding to that delta changes, but the vol doesn't.
-/// </para>
-/// 
-/// <para>
-/// <b>Skew Parameterisation</b>
-/// </para>
-/// 
-/// <para>
-/// We use a simplified SABR-lite parameterisation:
-/// <code>
-/// σ(K) = σ_ATM + β_skew × (Δ_ATM - Δ(K))
-/// </code>
-/// where β_skew is the 25-delta risk reversal slope (typically negative for equities).
-/// </para>
-/// 
-/// <para>
-/// Reference: Gatheral (2006) "The Volatility Surface: A Practitioner's Guide"
-/// </para>
-/// </remarks>
+
 public sealed class STIV006A
 {
     private readonly ILogger<STIV006A>? _logger;
@@ -170,12 +122,7 @@ public sealed class STIV006A
     /// <summary>
     /// Calculates the IV change from spot movement (sticky-delta).
     /// </summary>
-    /// <remarks>
-    /// Under sticky-delta, when spot moves, the IV at the original strike changes:
-    /// <code>
-    /// Δσ = -β_skew × (ΔS/S) / (σ × √T)
-    /// </code>
-    /// </remarks>
+    
     /// <param name="parameters">Calibrated surface parameters.</param>
     /// <param name="originalStrike">Original strike price.</param>
     /// <param name="originalSpot">Spot price at position entry.</param>
@@ -308,9 +255,7 @@ public sealed class STIV006A
     }
 }
 
-// =============================================================================
 // Supporting Types
-// =============================================================================
 
 /// <summary>
 /// Calibrated volatility surface parameters.

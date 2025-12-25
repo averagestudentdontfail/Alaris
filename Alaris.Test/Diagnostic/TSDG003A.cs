@@ -1,7 +1,5 @@
-// =============================================================================
 // TSDG003A.cs - Algorithm Bounds and Constraint Validation
 // Component ID: TSDG003A
-// =============================================================================
 //
 // Mathematical bounds validation tests for double boundary algorithms.
 // Tests domain bounds, range bounds, monotonicity, and limiting behaviour.
@@ -12,7 +10,6 @@
 // - Rate regime: q < r < 0 (double boundary regime)
 // - Spot/strike ratios and extreme moneyness
 //
-// =============================================================================
 
 using Xunit;
 using FluentAssertions;
@@ -27,7 +24,6 @@ namespace Alaris.Test.Diagnostic;
 /// </summary>
 public sealed class TSDG003A
 {
-    #region Volatility Bounds Tests
 
     /// <summary>
     /// Minimum volatility bound is accepted.
@@ -131,9 +127,7 @@ public sealed class TSDG003A
         validate.Should().NotThrow();
     }
 
-    #endregion
 
-    #region Time to Expiry Bounds Tests
 
     /// <summary>
     /// Minimum time to expiry is accepted.
@@ -238,9 +232,7 @@ public sealed class TSDG003A
         validate.Should().NotThrow();
     }
 
-    #endregion
 
-    #region Rate Regime Tests
 
     /// <summary>
     /// Double boundary regime: q < r < 0 is valid.
@@ -262,9 +254,7 @@ public sealed class TSDG003A
         (dividend < rate && rate < 0).Should().BeTrue("Double boundary regime requires q < r < 0");
     }
 
-    #endregion
 
-    #region Spot/Strike Bounds Tests
 
     /// <summary>
     /// Valid spot prices are accepted.
@@ -325,9 +315,7 @@ public sealed class TSDG003A
         validate.Should().Throw<BoundsViolationException>();
     }
 
-    #endregion
 
-    #region TryValidate Tests
 
     /// <summary>
     /// TryValidate returns false for invalid inputs without throwing.
@@ -376,5 +364,4 @@ public sealed class TSDG003A
         validationError.Should().BeNull();
     }
 
-    #endregion
 }

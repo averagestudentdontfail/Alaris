@@ -1,11 +1,4 @@
-// =============================================================================
-// STUN001A.cs - Earnings Universe Selection Model
-// Component: STUN001A | Category: Universe | Variant: A (Primary)
-// =============================================================================
-// Reference: Alaris.Governance/Structure.md § 4.3.2
-// Reference: QuantConnect.Algorithm.Framework.Selection
-// Compliance: High-Integrity Coding Standard v1.2
-// =============================================================================
+// STUN001A.cs - Earnings-based universe selection for LEAN
 
 using System;
 using System.Collections.Generic;

@@ -1,7 +1,5 @@
-// =============================================================================
 // TSEE001A.cs - End-to-End Pipeline Tests
 // Component ID: TSEE001A
-// =============================================================================
 //
 // End-to-end workflow tests for complete signal-to-execution pipeline.
 // Tests full integration of data → signal generation → validation → sizing.
@@ -14,7 +12,6 @@
 // 5. DataGap_Recovery - Missing data handling
 // 6. MultiSymbol_Throughput - Batched process multiple symbols
 //
-// =============================================================================
 
 using Xunit;
 using FluentAssertions;
@@ -28,7 +25,6 @@ namespace Alaris.Test.Integration;
 /// </summary>
 public sealed class TSEE001A
 {
-    #region Test Infrastructure
 
     /// <summary>
     /// Creates a test signal with specified parameters.
@@ -52,9 +48,7 @@ public sealed class TSEE001A
         };
     }
 
-    #endregion
 
-    #region Scenario 1: HappyPath_SingleSymbol
 
     /// <summary>
     /// Complete pipeline with single equity: Signal → Validation → Sizing.
@@ -86,9 +80,7 @@ public sealed class TSEE001A
         volumePasses.Should().BeTrue("Volume above threshold");
     }
 
-    #endregion
 
-    #region Scenario 2: EarningsEvent_SignalGeneration
 
     /// <summary>
     /// Signal generation around earnings events with elevated IV.
@@ -118,9 +110,7 @@ public sealed class TSEE001A
         meetsThreshold.Should().BeTrue("Strong earnings premium");
     }
 
-    #endregion
 
-    #region Scenario 3: HighVolatility_PositionSizing
 
     /// <summary>
     /// Position sizing under VIX > 30 regime.
@@ -151,9 +141,7 @@ public sealed class TSEE001A
         adjustedRisk.Should().BeLessThanOrEqualTo(baseRisk);
     }
 
-    #endregion
 
-    #region Scenario 4: NearExpiry_BoundaryHandling
 
     /// <summary>
     /// Near-expiry (T < 3 DTE) edge case handling.
@@ -186,9 +174,7 @@ public sealed class TSEE001A
         }
     }
 
-    #endregion
 
-    #region Scenario 5: DataGap_Recovery
 
     /// <summary>
     /// Missing data handling - system gracefully handles gaps.
@@ -223,9 +209,7 @@ public sealed class TSEE001A
         canCalculateRatio.Should().BeFalse("Cannot calculate ratio without RV");
     }
 
-    #endregion
 
-    #region Scenario 6: MultiSymbol_Throughput
 
     /// <summary>
     /// Processing multiple symbols efficiently.
@@ -258,9 +242,7 @@ public sealed class TSEE001A
         validSignals.Should().NotBeNull();
     }
 
-    #endregion
 
-    #region Bounds Validation Integration
 
     /// <summary>
     /// Validates bounds are enforced across pipeline.
@@ -314,5 +296,4 @@ public sealed class TSEE001A
         validate.Should().Throw<BoundsViolationException>();
     }
 
-    #endregion
 }

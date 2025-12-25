@@ -1,9 +1,10 @@
+// STTM003A.cs - production-grade trading calendar for calculating business days and market ho...
+
 namespace Alaris.Strategy.Core;
 
 /// <summary>
 /// Production-grade trading calendar for calculating business days and market holidays.
 /// Supports US market holidays and can be extended for international markets.
-///
 /// For production systems, this should be integrated with a market data provider's
 /// holiday calendar feed to handle unexpected market closures.
 /// </summary>

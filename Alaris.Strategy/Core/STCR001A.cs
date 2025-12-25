@@ -215,9 +215,7 @@ public sealed class STCR001A
         signal.ExpectedMove = CalculateExpectedMove(optionChain, earningsDate, evaluationDate);
         signal.VolatilitySpread = CalculateVolatilitySpread(optionChain, evaluationDate);
 
-        // ================================================================
         // Leung & Santoli (2014) Model Calculations
-        // ================================================================
         CalculateLeungSantoliMetrics(signal, priceHistory, optionChain, earningsDate, evaluationDate, historicalEarningsDates);
 
         // Evaluate criteria

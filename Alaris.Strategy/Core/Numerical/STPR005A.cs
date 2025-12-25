@@ -1,18 +1,15 @@
+// STPR005A.cs - production-grade Differential Evolution optimizer for global optimization.  P...
+
 namespace Alaris.Strategy.Core.Numerical;
 
 /// <summary>
 /// Production-grade Differential Evolution optimizer for global optimization.
 /// Particularly effective for non-convex, multi-modal objective functions.
-///
 /// DE is a population-based stochastic optimization algorithm that:
 /// - Doesn't require gradient information
 /// - Handles non-smooth, non-convex objectives
 /// - Good at escaping local minima
 /// - Robust for calibrating jump-diffusion models
-///
-/// References:
-/// Storn and Price (1997) "Differential Evolution - A Simple and Efficient Heuristic
-/// for Global Optimization over Continuous Spaces"
 /// </summary>
 public sealed class STPR005A
 {

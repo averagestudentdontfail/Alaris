@@ -1,7 +1,5 @@
-// =============================================================================
 // TSUN032A.cs - Unit Tests for CRVL001A (AlgorithmBounds Validation)
 // Component ID: TSUN032A
-// =============================================================================
 //
 // Coverage:
 // - AlgorithmBounds.ValidateDoubleBoundaryInputs boundary conditions
@@ -15,7 +13,6 @@
 // - |ln(K/S)| ≤ 3 (moneyness bounds)
 // - r, q finite (rate validity)
 //
-// =============================================================================
 
 using Xunit;
 using FluentAssertions;
@@ -28,7 +25,6 @@ namespace Alaris.Test.Unit;
 /// </summary>
 public class TSUN032A
 {
-    #region ValidateDoubleBoundaryInputs Tests
 
     /// <summary>
     /// Valid inputs should not throw.
@@ -171,9 +167,7 @@ public class TSUN032A
         act.Should().Throw<BoundsViolationException>();
     }
 
-    #endregion
 
-    #region TryValidateDoubleBoundaryInputs Tests
 
     /// <summary>
     /// TryValidate returns true for valid inputs.
@@ -214,9 +208,7 @@ public class TSUN032A
         error.Should().Contain("volatility");
     }
 
-    #endregion
 
-    #region Individual Validator Tests
 
     /// <summary>
     /// Validates individual volatility bounds.
@@ -270,5 +262,4 @@ public class TSUN032A
         }
     }
 
-    #endregion
 }

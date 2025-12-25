@@ -1,10 +1,7 @@
-// =============================================================================
 // TSUN003A.cs - Unit Tests for DBEX001A (Near-Expiry Stability Handler)
 // Component ID: TSUN003A
-// =============================================================================
 //
 // Mathematical Foundation
-// =======================
 // Near-expiry stability handles the T→0 numerical singularity in option pricing.
 //
 // Key Equations:
@@ -27,7 +24,6 @@
 // ---------------------
 // V >= max(intrinsic, 0) always (no-arbitrage)
 //
-// =============================================================================
 
 using System;
 using Xunit;

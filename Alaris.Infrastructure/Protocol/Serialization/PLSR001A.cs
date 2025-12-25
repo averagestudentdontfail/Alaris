@@ -1,15 +1,4 @@
-// =============================================================================
-// PLSR001A.cs - Zero-Allocation Binary Serialization for Market Data
-// Component: PLSR001A | Category: Serialization | Variant: A (Primary)
-// =============================================================================
-// This provides hand-coded zero-allocation serialization following SBE patterns.
-// When SBE code generation is available, this can be replaced with generated code.
-// =============================================================================
-// References:
-// - FIX SBE Specification
-// - Alaris.Governance/Coding.md Rule 5 (Zero-Allocation Hot Paths)
-// - Alaris.Data/Model/DTmd001A.cs (source types)
-// =============================================================================
+// PLSR001A.cs - Zero-allocation binary serialization for market data
 
 using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
@@ -46,7 +35,6 @@ public static class PLSR001A
     // Header size
     private const int HeaderSize = 8;
 
-    #region PriceBar Encoding/Decoding
 
     /// <summary>
     /// Encodes a PriceBar to binary format.
@@ -106,9 +94,7 @@ public static class PLSR001A
         };
     }
 
-    #endregion
 
-    #region OptionContract Encoding/Decoding
 
     /// <summary>
     /// Encodes an OptionContract to binary format.
@@ -202,9 +188,7 @@ public static class PLSR001A
         return contract;
     }
 
-    #endregion
 
-    #region Helper Methods
 
     /// <summary>
     /// Converts decimal to fixed-point mantissa (8 decimal places).
@@ -246,10 +230,8 @@ public static class PLSR001A
         return Encoding.ASCII.GetString(buffer[..actualLength]);
     }
 
-    #endregion
 }
 
-#region Binary Data Structures
 
 /// <summary>
 /// Binary-optimized price bar data structure.
@@ -312,4 +294,3 @@ public struct OptionContractData
     public readonly DateTime Expiration => DateTime.UnixEpoch.AddDays(ExpirationDays);
 }
 
-#endregion

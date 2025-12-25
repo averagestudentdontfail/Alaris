@@ -1,9 +1,4 @@
-// =============================================================================
-// SecEdgarProviderTests.cs - Unit Tests for SEC EDGAR Provider
-// Component: TSDTea001B | Category: Unit Test | Variant: A (Primary)
-// =============================================================================
-// Reference: Alaris.Governance/Structure.md § 4.4
-// =============================================================================
+// TSUN018A.cs - SEC EDGAR provider tests
 
 using System;
 using System.Collections.Generic;
@@ -46,9 +41,7 @@ public sealed class SecEdgarProviderTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    // ========================================================================
     // Constructor Tests
-    // ========================================================================
 
     [Fact]
     public void Constructor_ThrowsOnNullHttpClient()
@@ -77,9 +70,7 @@ public sealed class SecEdgarProviderTests : IDisposable
             .Should().Contain("Alaris");
     }
 
-    // ========================================================================
     // GetHistoricalEarningsAsync Tests
-    // ========================================================================
 
     [Fact]
     public async Task GetHistoricalEarningsAsync_WithValidSymbol_ReturnsEarnings()
@@ -122,9 +113,7 @@ public sealed class SecEdgarProviderTests : IDisposable
         result.Should().BeEmpty();
     }
 
-    // ========================================================================
     // GetUpcomingEarningsAsync Tests
-    // ========================================================================
 
     [Fact]
     public async Task GetUpcomingEarningsAsync_WithEmptySymbol_ThrowsArgumentException()
@@ -134,9 +123,7 @@ public sealed class SecEdgarProviderTests : IDisposable
         await act.Should().ThrowAsync<ArgumentException>();
     }
 
-    // ========================================================================
     // GetSymbolsWithEarningsAsync Tests
-    // ========================================================================
 
     [Fact]
     public async Task GetSymbolsWithEarningsAsync_ReturnsEmpty()
@@ -151,9 +138,7 @@ public sealed class SecEdgarProviderTests : IDisposable
         result.Should().BeEmpty();
     }
 
-    // ========================================================================
     // GetCikForTickerAsync Tests
-    // ========================================================================
 
     [Fact]
     public async Task GetCikForTickerAsync_WithValidTicker_ReturnsCik()
@@ -191,9 +176,7 @@ public sealed class SecEdgarProviderTests : IDisposable
         result.Should().BeNull();
     }
 
-    // ========================================================================
     // Helper Methods
-    // ========================================================================
 
     private void SetupCikMapping(string ticker, long cik)
     {

@@ -317,10 +317,6 @@ public sealed class DBEX001A
     }
 }
 
-// =============================================================================
-// Supporting Types
-// =============================================================================
-
 /// <summary>
 /// Greeks calculated for near-expiry options with limiting behaviour.
 /// </summary>

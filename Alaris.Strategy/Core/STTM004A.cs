@@ -1,3 +1,5 @@
+// STTM004A.cs - comprehensive time parameter specification for IV models.  Handles time-to-ex...
+
 namespace Alaris.Strategy.Core;
 
 /// <summary>

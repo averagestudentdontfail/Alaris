@@ -1,10 +1,7 @@
-// =============================================================================
 // TSUN001A.cs - Unit Tests for DBAP001A (QD+ Approximation)
 // Component ID: TSUN001A
-// =============================================================================
 //
 // Mathematical Foundation
-// =======================
 // Reference: Healy (2021) "Pricing American Options Under Negative Rates" §4
 //
 // The QD+ approximation computes exercise boundaries S_u and S_l for American
@@ -38,7 +35,6 @@
 // K = 100, T = 10, r = -0.005, q = -0.01, σ = 0.08
 // Expected: S_u ≈ 69.62, S_l ≈ 58.72
 //
-// =============================================================================
 
 using System;
 using Xunit;

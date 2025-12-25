@@ -1,13 +1,5 @@
-// =============================================================================
-// STLN001A.cs - Alaris Earnings Volatility Trading Algorithm
-// Component: STLN001A | Category: Lean Integration | Variant: A (Primary)
-// =============================================================================
-// Reference: Alaris.Governance/Structure.md § 4.3.2
-// Reference: Atilgan (2014) - Earnings Calendar Spread Strategy
-// Reference: Leung & Santoli (2014) - Pre-Earnings IV Modeling
-// Reference: Healy (2021) - American Option Pricing Under Negative Rates
-// Compliance: High-Integrity Coding Standard v1.2
-// =============================================================================
+// STLN001A.cs - Alaris Earnings Volatility Trading Algorithm (LEAN integration)
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -84,9 +76,7 @@ public struct OptionParameters
 /// </remarks>
 public sealed class STLN001A : QCAlgorithm
 {
-    // =========================================================================
     // Configuration Constants (Atilgan 2014)
-    // =========================================================================
     
     /// <summary>Target days before earnings for entry.</summary>
     private const int DaysBeforeEarnings = 6;
@@ -109,9 +99,7 @@ public sealed class STLN001A : QCAlgorithm
     /// <summary>Default timeout for external API calls.</summary>
     private static readonly TimeSpan ApiTimeout = TimeSpan.FromSeconds(30);
 
-    // =========================================================================
     // Alaris Components (Instance-Based)
-    // =========================================================================
     
     // Data Infrastructure
     private AlarisDataBridge? _dataBridge;
@@ -152,9 +140,7 @@ public sealed class STLN001A : QCAlgorithm
     private readonly HashSet<Symbol> _activePositions = new();
     private readonly Dictionary<Symbol, DateTime> _positionEntryDates = new();
 
-    // =========================================================================
     // QCAlgorithm Lifecycle
-    // =========================================================================
     
     /// <summary>
     /// Initialises the algorithm at start.
@@ -162,9 +148,7 @@ public sealed class STLN001A : QCAlgorithm
     /// </summary>
     public override void Initialize()
     {
-        // =====================================================================
         // Basic Algorithm Configuration
-        // =====================================================================
         
         // Load configuration first to get backtest dates
         var config = BuildConfiguration();
@@ -218,9 +202,7 @@ public sealed class STLN001A : QCAlgorithm
             Log($"STLN001A: Pre-subscribed {testSymbols.Length} session symbols for backtest validation");
         }
         
-        // =====================================================================
         // Initialise Alaris Components
-        // =====================================================================
         
         InitialiseLogging();
         InitialiseDataProviders();
@@ -229,15 +211,11 @@ public sealed class STLN001A : QCAlgorithm
         InitialiseUniverseSelection();
         InitialiseAuditTrail();
         
-        // =====================================================================
         // Schedule Daily Evaluation
-        // =====================================================================
         
         ScheduleDailyEvaluation();
         
-        // =====================================================================
         // Log Initialisation Complete
-        // =====================================================================
         
         Log("═══════════════════════════════════════════════════════════════════");
         Log("STLN001A: Alaris Earnings Algorithm Initialised");
@@ -267,9 +245,7 @@ public sealed class STLN001A : QCAlgorithm
         base.OnEndOfAlgorithm();
     }
 
-    // =========================================================================
     // Initialisation Methods
-    // =========================================================================
     
     /// <summary>
     /// Initialises logging infrastructure.
@@ -551,9 +527,7 @@ public sealed class STLN001A : QCAlgorithm
         return System.IO.Directory.GetCurrentDirectory();
     }
 
-    // =========================================================================
     // Main Strategy Logic
-    // =========================================================================
     
     /// <summary>
     /// Main strategy evaluation logic.
@@ -668,9 +642,7 @@ public sealed class STLN001A : QCAlgorithm
         
         Log($"STLN001A: Evaluating {ticker}...");
         
-        // =====================================================================
         // Backtest Mode: Use LEAN's native data instead of external APIs
-        // =====================================================================
         
         if (!LiveMode)
         {
@@ -679,9 +651,7 @@ public sealed class STLN001A : QCAlgorithm
             return EvaluateSymbolBacktestMode(symbol);
         }
         
-        // =====================================================================
         // Live/Paper Mode: Use external APIs (Polygon, SEC EDGAR, etc.)
-        // =====================================================================
         
         // Phase 1: Market Data Acquisition
         
@@ -710,24 +680,18 @@ public sealed class STLN001A : QCAlgorithm
             return result;
         }
         
-        // =====================================================================
         // Phase 2: Realised Volatility Calculation
-        // =====================================================================
         
         var priceBars = ConvertToPriceBars(snapshot.HistoricalBars);
         var rv = _yangZhangEstimator!.Calculate(priceBars, 30, true);
         Log($"  {ticker}: 30-day RV = {rv:P2}");
         
-        // =====================================================================
         // Phase 3: Term Structure Analysis
-        // =====================================================================
         
         var termStructure = _termStructureAnalyzer!.Analyze(ConvertToTermStructurePoints(snapshot.OptionChain));
         Log($"  {ticker}: Term structure = {termStructure.GetIVAt(30):P2} / {termStructure.GetIVAt(60):P2} / {termStructure.GetIVAt(90):P2}");
         
-        // =====================================================================
         // Phase 4: Signal Generation
-        // =====================================================================
         
         var signal = _signalGenerator!.Generate(
             ticker,
@@ -743,9 +707,7 @@ public sealed class STLN001A : QCAlgorithm
             return result;
         }
         
-        // =====================================================================
         // Phase 5: Production Validation
-        // =====================================================================
         
         var validation = ValidateForProduction(signal, snapshot);
         
@@ -774,9 +736,7 @@ public sealed class STLN001A : QCAlgorithm
         
         Log($"  {ticker}: Passed all production validation checks");
         
-        // =====================================================================
         // Phase 6: Execution Pricing
-        // =====================================================================
         
         DTmd002A? spreadQuote;
         try
@@ -805,9 +765,7 @@ public sealed class STLN001A : QCAlgorithm
         
         Log($"  {ticker}: Spread quote = ${spreadQuote.SpreadMid:F2} (bid/ask: ${spreadQuote.SpreadBid:F2}/${spreadQuote.SpreadAsk:F2})");
         
-        // =====================================================================
         // Phase 7: Position Sizing
-        // =====================================================================
         
         var sizing = _positionSizer!.CalculateFromHistory(
             portfolioValue: (double)Portfolio.TotalPortfolioValue,
@@ -826,9 +784,7 @@ public sealed class STLN001A : QCAlgorithm
         
         Log($"  {ticker}: Position size = {finalContracts} contracts ({sizing.AllocationPercent:P2} of portfolio)");
         
-        // =====================================================================
         // Phase 8: Order Execution
-        // =====================================================================
         
         var orderResult = ExecuteCalendarSpread(
             symbol,
@@ -887,9 +843,7 @@ public sealed class STLN001A : QCAlgorithm
         // Use current simulation time from LEAN (not DateTime.UtcNow)
         var simulationDate = Time;
 
-        // =====================================================================
         // Step 1: Get historical bars from LEAN (no external API call)
-        // =====================================================================
         
         var historyBars = History<QuantConnect.Data.Market.TradeBar>(symbol, 45, Resolution.Daily);
         var barList = historyBars.ToList();
@@ -910,9 +864,7 @@ public sealed class STLN001A : QCAlgorithm
 
         Log($"  {ticker}: LEAN data - {barList.Count} bars, spot=${spotPrice:F2}");
 
-        // =====================================================================
         // Step 2: Get earnings data from SEC EDGAR (cached, works in backtest)
-        // =====================================================================
         
         EarningsEvent? nextEarnings = null;
         try
@@ -943,9 +895,7 @@ public sealed class STLN001A : QCAlgorithm
         var daysToEarnings = (nextEarnings.Date - simulationDate.Date).Days;
         Log($"  {ticker}: Next earnings {nextEarnings.Date:yyyy-MM-dd} ({daysToEarnings} days away)");
 
-        // =====================================================================
         // Step 3: Calculate Realised Volatility using LEAN bars
-        // =====================================================================
         
         var priceBars = barList.Select(b => new StrategyPriceBar
         {
@@ -960,9 +910,7 @@ public sealed class STLN001A : QCAlgorithm
         var rv = _yangZhangEstimator!.Calculate(priceBars, 30, true);
         Log($"  {ticker}: 30-day RV = {rv:P2}");
 
-        // =====================================================================
         // Step 4: Signal Generation (simplified for backtest)
-        // =====================================================================
         
         // Check if within target window for earnings
         if (daysToEarnings < 5 || daysToEarnings > 7)
@@ -983,9 +931,7 @@ public sealed class STLN001A : QCAlgorithm
             return result;
         }
 
-        // =====================================================================
         // Step 5: Backtest-mode order simulation (no real execution)
-        // =====================================================================
         
         // In backtest mode, we record the signal as generated but don't execute
         // Full execution would require options data which isn't available
@@ -1000,9 +946,7 @@ public sealed class STLN001A : QCAlgorithm
         return result;
     }
 
-    // =========================================================================
     // Helper Methods
-    // =========================================================================
     
     /// <summary>
     /// Checks if all components are properly initialised.
@@ -1269,9 +1213,7 @@ public sealed class STLN001A : QCAlgorithm
         }
     }
 
-    // =========================================================================
     // Supporting Types
-    // =========================================================================
     
     /// <summary>Result of symbol evaluation.</summary>
     private sealed class EvaluationResult
@@ -1289,9 +1231,7 @@ public sealed class STLN001A : QCAlgorithm
     }
 }
 
-// =============================================================================
 // LEAN Logger Adapter
-// =============================================================================
 
 /// <summary>
 /// Bridges Microsoft.Extensions.Logging to LEAN's logging system.
@@ -1365,9 +1305,7 @@ internal sealed class LeanLogger : ILogger
     }
 }
 
-// =============================================================================
 // Market Data Adapter
-// =============================================================================
 
 internal sealed class DataBridgeMarketDataAdapter : STDT001A
 {

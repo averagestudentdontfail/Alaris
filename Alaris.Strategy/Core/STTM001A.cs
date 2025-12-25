@@ -1,3 +1,5 @@
+// STTM001A.cs - analyzes the term structure of implied volatility.  Used to identify inverted...
+
 using System.Buffers;
 using MathNet.Numerics;
 using MathNet.Numerics.LinearRegression;
@@ -8,9 +10,7 @@ namespace Alaris.Strategy.Core;
 /// Analyzes the term structure of implied volatility.
 /// Used to identify inverted term structures that signal trading opportunities.
 /// </summary>
-/// <remarks>
-/// Optimized for Rule 5 (Zero-Allocation Hot Paths) using ArrayPool.
-/// </remarks>
+
 public sealed class STTM001A
 {
     /// <summary>

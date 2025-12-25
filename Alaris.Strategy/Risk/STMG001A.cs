@@ -1,10 +1,4 @@
-// =============================================================================
-// STMG001A.cs - Maturity Guard for Position Entry/Exit
-// Component: STMG001A | Category: Risk | Variant: A (Primary)
-// =============================================================================
-// Reference: Alaris.Governance/Structure.md § 3.4
-// Compliance: High-Integrity Coding Standard v1.2
-// =============================================================================
+// STMG001A.cs - maturity guard for position entry/exit
 
 using Alaris.Strategy.Calendar;
 using Microsoft.Extensions.Logging;
@@ -14,28 +8,7 @@ namespace Alaris.Strategy.Risk;
 /// <summary>
 /// Provides maturity-based position filtering to avoid near-expiry regime.
 /// </summary>
-/// <remarks>
-/// <para>
-/// <b>Mathematical Foundation</b>
-/// </para>
-/// 
-/// <para>
-/// As T → 0, the QD+ asymptotic expansion for double-boundary pricing becomes
-/// numerically unstable. To avoid this regime:
-/// </para>
-/// 
-/// <list type="bullet">
-/// <item>Minimum Entry Maturity: T ≥ 10/252 (≈2 weeks)</item>
-/// <item>Force Exit Maturity: T ≤ 5/252 (≈1 week)</item>
-/// <item>Warning Zone: 5/252 &lt; T &lt; 10/252</item>
-/// </list>
-/// 
-/// <para>
-/// For earnings calendar spreads with typical T = 7-14 days front leg,
-/// these thresholds provide adequate safety margin before the near-expiry
-/// handler (DBEX001A) threshold of T = 3/252.
-/// </para>
-/// </remarks>
+
 public sealed class STMG001A
 {
     /// <summary>
@@ -202,9 +175,7 @@ public sealed class STMG001A
     /// <param name="expiryDate">Option expiration date.</param>
     /// <param name="currentDate">Current evaluation date.</param>
     /// <returns>Time to expiry in years (trading days / 252).</returns>
-    /// <remarks>
-    /// Uses NYSE trading calendar if available, otherwise falls back to 5/7 approximation.
-    /// </remarks>
+    
     public double CalculateTimeToExpiry(DateTime expiryDate, DateTime currentDate)
     {
         // Use trading calendar if available for accurate business day count
@@ -257,9 +228,7 @@ public sealed class STMG001A
     }
 }
 
-// =============================================================================
 // Supporting Types
-// =============================================================================
 
 /// <summary>
 /// Result of maturity-based entry evaluation.

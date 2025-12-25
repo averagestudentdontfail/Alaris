@@ -1,10 +1,4 @@
-// =============================================================================
-// STHD006A.cs - Production Validation Result
-// Component: STHD006A | Category: Hedging | Variant: A (Primary)
-// =============================================================================
-// Reference: Alaris.Governance/Structure.md § 4.3.2
-// Compliance: High-Integrity Coding Standard v1.2
-// =============================================================================
+// STHD006A.cs - production validation result
 
 using Alaris.Strategy.Core;
 using Alaris.Strategy.Cost;
@@ -19,17 +13,7 @@ namespace Alaris.Strategy.Hedge;
 /// <summary>
 /// Represents the complete production validation result for a trading signal.
 /// </summary>
-/// <remarks>
-/// <para>
-/// This immutable record aggregates all validation results into a single
-/// decision point: is this signal ready for production execution?
-/// </para>
-/// <para>
-/// A signal is production-ready when:
-/// - BaseSignal.Strength is Recommended
-/// - All validation checks pass (cost, vega, liquidity, gamma)
-/// </para>
-/// </remarks>
+
 public sealed record STHD006A
 {
     /// <summary>
@@ -55,17 +39,13 @@ public sealed record STHD006A
     /// <summary>
     /// Gets the recommended number of contracts.
     /// </summary>
-    /// <remarks>
-    /// May be adjusted down from original signal if liquidity is insufficient.
-    /// </remarks>
+    
     public required int RecommendedContracts { get; init; }
 
     /// <summary>
     /// Gets whether the signal is ready for production execution.
     /// </summary>
-    /// <remarks>
-    /// Requires both a Recommended signal strength AND all validations passing.
-    /// </remarks>
+    
     public required bool ProductionReady { get; init; }
 
     /// <summary>

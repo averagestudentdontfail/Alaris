@@ -1,10 +1,4 @@
-// =============================================================================
-// STSD001A.cs - Neyman-Pearson Signal Detection Framework
-// Component: STSD001A | Category: Detection | Variant: A (Primary)
-// =============================================================================
-// Reference: Neyman-Pearson Lemma (1933), Alaris Phase 3 Specification
-// Compliance: High-Integrity Coding Standard v1.2
-// =============================================================================
+// STSD001A.cs - neyman-pearson signal detection framework
 
 using Microsoft.Extensions.Logging;
 
@@ -13,22 +7,7 @@ namespace Alaris.Strategy.Detection;
 /// <summary>
 /// Implements the Neyman-Pearson optimal signal detection framework.
 /// </summary>
-/// <remarks>
-/// <para>
-/// This component provides statistically optimal thresholds for signal detection
-/// based on the Neyman-Pearson lemma. Given calibrated distributions for profitable
-/// and unprofitable trade outcomes, it computes the likelihood ratio test threshold
-/// that minimises Type II errors (missed opportunities) subject to a constraint on
-/// Type I errors (bad trades).
-/// </para>
-/// <para>
-/// Mathematical foundation:
-/// For testing H₀: signal unprofitable vs H₁: signal profitable,
-/// the most powerful test at level α has rejection region:
-/// C = {x : L(θ₁; x) / L(θ₀; x) > k_α}
-/// where k_α is chosen such that P(X ∈ C | H₀) = α
-/// </para>
-/// </remarks>
+
 public sealed class STSD001A
 {
     private readonly ILogger<STSD001A>? _logger;
@@ -166,10 +145,7 @@ public sealed class STSD001A
     /// </summary>
     /// <param name="costRatio">Ratio of Type I error cost to Type II error cost (c_I / c_II).</param>
     /// <returns>The optimal IV/RV threshold.</returns>
-    /// <remarks>
-    /// For equal variances, threshold = (μ₀ + μ₁)/2 + σ²/(μ₁ - μ₀) × ln(ρ)
-    /// For unequal variances, uses full quadratic solution.
-    /// </remarks>
+    
     public double ComputeOptimalThreshold(double costRatio = 2.0)
     {
         if (costRatio <= 0)
@@ -293,8 +269,6 @@ public sealed class STSD001A
             Pi1: _pi1);
     }
 
-    #region Private Methods
-
     private double ComputeThresholdUnequelVariances(double costRatio)
     {
         // Full quadratic solution when σ₀ ≠ σ₁
@@ -389,7 +363,6 @@ public sealed class STSD001A
 #pragma warning restore CA1031
     }
 
-    #endregion
 }
 
 /// <summary>

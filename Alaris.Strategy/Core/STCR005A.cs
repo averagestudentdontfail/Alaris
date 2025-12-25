@@ -1,10 +1,4 @@
-// =============================================================================
-// STCR005A.cs - Signal Freshness Monitor
-// Component: STCR005A | Category: Core | Variant: A (Primary)
-// =============================================================================
-// Reference: Alaris.Governance/Structure.md § 4.2.7
-// Compliance: High-Integrity Coding Standard v1.2
-// =============================================================================
+// STCR005A.cs - signal freshness monitor
 
 using Microsoft.Extensions.Logging;
 
@@ -13,28 +7,7 @@ namespace Alaris.Strategy.Core;
 /// <summary>
 /// Monitors signal freshness and detects staleness requiring revalidation.
 /// </summary>
-/// <remarks>
-/// <para>
-/// <b>Mathematical Foundation</b>
-/// </para>
-/// 
-/// <para>
-/// Market conditions evolve over time. Signal staleness follows exponential decay:
-/// <code>
-/// Freshness(t) = e^(-λ × (t - t_signal))
-/// </code>
-/// where λ is the decay rate (default: λ = ln(2)/60 for 60-minute half-life).
-/// </para>
-/// 
-/// <para>
-/// <b>Staleness Threshold</b>
-/// </para>
-/// 
-/// <para>
-/// A signal requires revalidation when Freshness &lt; 0.5 (default).
-/// This corresponds to the half-life of the signal.
-/// </para>
-/// </remarks>
+
 public sealed class STCR005A
 {
     private readonly ILogger<STCR005A>? _logger;
@@ -77,10 +50,7 @@ public sealed class STCR005A
     /// <summary>
     /// Calculates the freshness score of a signal.
     /// </summary>
-    /// <remarks>
-    /// Freshness = e^(-λ × age) where λ = ln(2)/halfLife.
-    /// At age = halfLife, freshness = 0.5.
-    /// </remarks>
+    
     /// <param name="signalTime">Time when signal was generated.</param>
     /// <param name="currentTime">Current time.</param>
     /// <returns>Freshness score in [0, 1].</returns>
@@ -215,9 +185,7 @@ public sealed class STCR005A
     }
 }
 
-// =============================================================================
 // Supporting Types
-// =============================================================================
 
 /// <summary>
 /// Signal freshness evaluation result.

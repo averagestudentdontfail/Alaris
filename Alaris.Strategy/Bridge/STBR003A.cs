@@ -1,17 +1,6 @@
-// =============================================================================
-// STBR003A.cs - Cached QuantLib Infrastructure for Greek Calculations
-// Component: STBR003A | Category: Bridge | Variant: A (Primary)
-// =============================================================================
-// Optimisation History:
-// - 2025-12-25: Zero-allocation hot path (Rule 5)
-// =============================================================================
-// References:
-// - Alaris.Governance/Coding.md Rule 5 (Zero-Allocation Hot Paths)
-// - Alaris.Governance/Coding.md Rule 16 (Deterministic Cleanup)
-// =============================================================================
+// STBR003A.cs - cached quantlib infrastructure for greek calculations
 
 using Alaris.Strategy.Model;
-
 
 namespace Alaris.Strategy.Bridge;
 
@@ -19,24 +8,7 @@ namespace Alaris.Strategy.Bridge;
 /// Cached QuantLib infrastructure for American option pricing that enables reuse
 /// of QuantLib objects across Greek calculations via mutable SimpleQuote updates.
 /// </summary>
-/// <remarks>
-/// <para>
-/// Performance motivation: Each Greek calculation (Delta, Gamma, Vega, Theta, Rho)
-/// requires multiple option pricings with bumped parameters. Creating fresh QuantLib
-/// infrastructure for each pricing produces 14+ allocations per call, totaling
-/// 165+ allocations per option when calculating all Greeks.
-/// </para>
-/// <para>
-/// This cache maintains reusable QuantLib objects with mutable SimpleQuotes.
-/// Changing the underlying price, volatility, or rate updates the quote values
-/// without recreating the infrastructure, reducing allocations to ~15 per option
-/// (91% reduction).
-/// </para>
-/// <para>
-/// Thread safety: This class is NOT thread-safe. Each thread should use its own
-/// instance via ThreadLocal or object pooling.
-/// </para>
-/// </remarks>
+
 public sealed class STBR003A : IDisposable
 {
     // Mutable quotes for parameter updates

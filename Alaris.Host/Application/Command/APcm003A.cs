@@ -1,10 +1,4 @@
-// =============================================================================
-// APcm003A.cs - Data Command
-// Component: APcm003A | Category: Commands | Variant: A (Primary)
-// =============================================================================
-// Implements 'alaris data download' command for market data management.
-// Downloads data directly from Polygon API and converts to LEAN format.
-// =============================================================================
+// APcm003A.cs - 'alaris data download' command for Polygon data
 
 using System.ComponentModel;
 using System.Globalization;
@@ -424,8 +418,6 @@ public sealed class APcm003A : Command<DataSettings>
     }
 }
 
-#region Polygon API Response Models
-
 file sealed class PolygonAggregatesResponse
 {
     [JsonPropertyName("results")]
@@ -455,5 +447,3 @@ file sealed class PolygonBar
     [JsonPropertyName("v")]
     public double Volume { get; init; }
 }
-
-#endregion

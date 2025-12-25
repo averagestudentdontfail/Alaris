@@ -1,10 +1,4 @@
-// =============================================================================
-// APsv002B.cs - Screener Service
-// Component: APsv002B | Category: Services | Variant: B (Alternative)
-// =============================================================================
-// Automatic stock screener using Polygon API to generate symbol universe.
-// Used by session creation when no explicit symbols are provided.
-// =============================================================================
+// APsv002B.cs - Stock screener using Polygon for automatic universe generation
 
 using System;
 using System.Collections.Generic;
@@ -184,8 +178,6 @@ public sealed class APsv002B : IDisposable
     }
 }
 
-#region Polygon API Response Models
-
 file sealed class PolygonGroupedResponse
 {
     [JsonPropertyName("results")]
@@ -229,6 +221,3 @@ file sealed class PolygonGroupedResult
     [JsonPropertyName("n")]
     public int? NumberOfTransactions { get; init; }
 }
-
-#endregion
-

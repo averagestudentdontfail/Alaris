@@ -1,4 +1,3 @@
-// =============================================================================
 // TSUN029A.cs - Data Model and Provider Unit Tests
 // Component ID: TSUN029A
 //
@@ -16,7 +15,6 @@
 // References:
 //   - Alaris.Governance Structure.md § 4.3.3
 //   - Data quality validation patterns
-// =============================================================================
 
 using System;
 using System.Collections.Generic;
@@ -35,9 +33,7 @@ namespace Alaris.Test.Unit;
 /// </summary>
 public sealed class TSUN029A
 {
-    // ========================================================================
     // OptionContract Tests
-    // ========================================================================
 
     /// <summary>
     /// Option contract Mid price is average of Bid and Ask.
@@ -92,9 +88,7 @@ public sealed class TSUN029A
         contract.Spread.Should().BeGreaterThanOrEqualTo(0);
     }
 
-    // ========================================================================
     // OptionChainSnapshot Tests
-    // ========================================================================
 
     /// <summary>
     /// Option chain Calls filter returns only calls.
@@ -168,9 +162,7 @@ public sealed class TSUN029A
         }
     }
 
-    // ========================================================================
     // PriceBar Tests
-    // ========================================================================
 
     /// <summary>
     /// Price bar OHLC relationship: Low ≤ O,C ≤ High.
@@ -222,9 +214,7 @@ public sealed class TSUN029A
         bar.Volume.Should().BeGreaterThanOrEqualTo(0);
     }
 
-    // ========================================================================
     // EarningsEvent Tests
-    // ========================================================================
 
     /// <summary>
     /// Earnings event has valid timing values.
@@ -275,9 +265,7 @@ public sealed class TSUN029A
         earnings.FiscalQuarter.Should().MatchRegex(@"Q[1-4]");
     }
 
-    // ========================================================================
     // MarketDataSnapshot Tests
-    // ========================================================================
 
     /// <summary>
     /// Market data snapshot aggregates data correctly.
@@ -315,9 +303,7 @@ public sealed class TSUN029A
         }
     }
 
-    // ========================================================================
     // DataQualityResult Tests
-    // ========================================================================
 
     /// <summary>
     /// Validation status enum values.
@@ -363,9 +349,7 @@ public sealed class TSUN029A
         result.Warnings.Should().Contain("Warning 1");
     }
 
-    // ========================================================================
     // Provider Interface Contract Tests (with Mock Implementations)
-    // ========================================================================
 
     /// <summary>
     /// Market data provider returns historical bars.
@@ -506,9 +490,7 @@ public sealed class TSUN029A
             await provider.GetSpotPriceAsync("AAPL", cts.Token));
     }
 
-    // ========================================================================
     // Helper Methods
-    // ========================================================================
 
     private static OptionContract CreateTestOptionContract(
         decimal bid = 5.00m,
@@ -620,9 +602,7 @@ public sealed class TSUN029A
     }
 }
 
-// =============================================================================
 // Mock Provider Implementations (In-Language Mocking)
-// =============================================================================
 
 /// <summary>
 /// Mock market data provider for testing.

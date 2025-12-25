@@ -1,13 +1,4 @@
-// =============================================================================
-// EVIF001B.cs - File-Based Persistent Event Store (Binary Protocol)
-// Component: EVIF001B | Category: Infrastructure | Variant: B (Persistent)
-// =============================================================================
-// Binary append-only file storage with crash recovery and sequence persistence.
-// Production replacement for EVIF001A (in-memory) using SBE-style binary format.
-// =============================================================================
-// Rule 17 (Audibility): Events are never modified or deleted.
-// Rule 5 (Zero-Allocation): Uses Span<byte> for serialization.
-// =============================================================================
+// EVIF001B.cs - File-based persistent event store (binary protocol)
 
 using System.Buffers;
 using System.Buffers.Binary;
@@ -245,7 +236,6 @@ public sealed class EVIF001B : EVCR002A, IDisposable
         return result.OrderBy(e => e.SequenceNumber).ToList();
     }
 
-    #region Binary Serialization
 
     private static byte[] SerializeEnvelope(EVCR003A envelope)
     {
@@ -368,7 +358,6 @@ public sealed class EVIF001B : EVCR002A, IDisposable
         };
     }
 
-    #endregion
 
     private async IAsyncEnumerable<EVCR003A> ReadEventsAsync(
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)

@@ -1,27 +1,11 @@
-// =============================================================================
-// STCS004A.cs - Calendar Spread Execution Cost Result
-// Component: STCS004A | Category: Cost | Variant: A (Primary)
-// =============================================================================
-// Reference: Alaris.Governance/Structure.md § 4.3.2
-// Compliance: High-Integrity Coding Standard v1.2
-// =============================================================================
+// STCS004A.cs - calendar spread execution cost result
 
 namespace Alaris.Strategy.Cost;
 
 /// <summary>
 /// Represents the combined execution cost for a calendar spread.
 /// </summary>
-/// <remarks>
-/// <para>
-/// A calendar spread consists of two legs:
-/// - Front leg: Sell near-term option (receives premium, pays slippage on bid)
-/// - Back leg: Buy far-term option (pays premium, pays slippage on ask)
-/// </para>
-/// <para>
-/// The net debit/credit is adjusted by execution costs to compute the
-/// true entry cost of the position.
-/// </para>
-/// </remarks>
+
 public sealed record STCS004A
 {
     /// <summary>
@@ -37,25 +21,13 @@ public sealed record STCS004A
     /// <summary>
     /// Gets the theoretical spread debit (mid-price based).
     /// </summary>
-    /// <remarks>
-    /// Computed as: BackMidPrice - FrontMidPrice.
-    /// Positive value indicates a debit spread.
-    /// </remarks>
+    
     public required double TheoreticalDebit { get; init; }
 
     /// <summary>
     /// Gets the execution-adjusted spread debit.
     /// </summary>
-    /// <remarks>
-    /// <para>
-    /// Accounts for bid-ask slippage on both legs:
-    /// - Buy back-month at ask (higher cost)
-    /// - Sell front-month at bid (lower proceeds)
-    /// </para>
-    /// <para>
-    /// ExecutionDebit = BackAsk - FrontBid
-    /// </para>
-    /// </remarks>
+    
     public required double ExecutionDebit { get; init; }
 
     /// <summary>
@@ -96,10 +68,7 @@ public sealed record STCS004A
     /// <summary>
     /// Gets the slippage as a percentage of theoretical debit.
     /// </summary>
-    /// <remarks>
-    /// This metric indicates how much execution costs degrade the theoretical edge.
-    /// A value exceeding 5-10% may indicate insufficient liquidity.
-    /// </remarks>
+    
     public double SlippagePercent => TheoreticalDebit > 0
         ? (ExecutionDebit - TheoreticalDebit) / TheoreticalDebit * 100.0
         : 0.0;
@@ -107,10 +76,7 @@ public sealed record STCS004A
     /// <summary>
     /// Gets the total dollar amount required to enter the position.
     /// </summary>
-    /// <remarks>
-    /// Includes the execution-adjusted debit plus all transaction costs.
-    /// This is the true capital outlay for the position.
-    /// </remarks>
+    
     public double TotalCapitalRequired =>
         (ExecutionDebit * Contracts * ContractMultiplier) + TotalFees;
 
@@ -123,10 +89,7 @@ public sealed record STCS004A
     /// <summary>
     /// Gets the execution cost as a percentage of theoretical capital.
     /// </summary>
-    /// <remarks>
-    /// Used to assess whether the signal edge survives transaction costs.
-    /// Typical threshold: &lt; 5% for viable strategies.
-    /// </remarks>
+    
     public double ExecutionCostPercent => TheoreticalCapitalRequired > 0
         ? TotalExecutionCost / TheoreticalCapitalRequired * 100.0
         : 0.0;

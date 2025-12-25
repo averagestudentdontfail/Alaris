@@ -1,4 +1,3 @@
-// =============================================================================
 // TSUN028A.cs - Simulation Data Type and Constant Tests
 // Component ID: TSUN028A
 //
@@ -16,7 +15,6 @@
 // References:
 //   - Healy (2021) physical Greek constraints
 //   - TradingCalendarDefaults constants
-// =============================================================================
 
 using System;
 using System.Collections.Generic;
@@ -32,9 +30,7 @@ namespace Alaris.Test.Unit;
 /// </summary>
 public sealed class TSUN028A
 {
-    // ========================================================================
     // Trading Calendar Constants Tests
-    // ========================================================================
 
     /// <summary>
     /// Trading days per year constant should be 252.
@@ -98,9 +94,7 @@ public sealed class TSUN028A
         recoveredDte.Should().Be(originalDte);
     }
 
-    // ========================================================================
     // Greek Validation Bounds Tests (from Healy 2021)
-    // ========================================================================
 
     /// <summary>
     /// Delta bounds for single options: |Δ| ≤ 1.0 (1.5 with tolerance).
@@ -167,9 +161,7 @@ public sealed class TSUN028A
         isValid.Should().Be(expectedValid);
     }
 
-    // ========================================================================
     // Simulation Configuration Constants Tests
-    // ========================================================================
 
     /// <summary>
     /// Standard risk-free rate for positive regime is ~5.25%.
@@ -243,9 +235,7 @@ public sealed class TSUN028A
             "Typical earnings gaps are 2-8% for large-cap equities");
     }
 
-    // ========================================================================
     // PriceBar Data Structure Tests
-    // ========================================================================
 
     /// <summary>
     /// PriceBar should have valid OHLC relationship: L ≤ O,C ≤ H.
@@ -292,9 +282,7 @@ public sealed class TSUN028A
         bar.Volume.Should().BeGreaterThanOrEqualTo(0);
     }
 
-    // ========================================================================
     // Term Structure Inversion Tests (Atilgan 2014 Criteria)
-    // ========================================================================
 
     /// <summary>
     /// Inverted term structure: front IV > back IV.
@@ -335,9 +323,7 @@ public sealed class TSUN028A
         slope.Should().BeApproximately(-0.001, 0.0001);
     }
 
-    // ========================================================================
     // Algorithm Configuration Constants Tests
-    // ========================================================================
 
     /// <summary>
     /// Days before earnings for entry (Atilgan 2014).
@@ -423,9 +409,7 @@ public sealed class TSUN028A
         PortfolioAllocationLimit.Should().BeGreaterThan(0.50m);
     }
 
-    // ========================================================================
     // IV/RV Ratio Tests (Atilgan 2014 Signal)
-    // ========================================================================
 
     /// <summary>
     /// IV/RV ratio threshold for Recommended signal.

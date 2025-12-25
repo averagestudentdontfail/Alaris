@@ -1,10 +1,4 @@
-// =============================================================================
-// STHD007A.cs - IV-Based Early Exit Monitor
-// Component: STHD007A | Category: Hedging | Variant: A (Primary)
-// =============================================================================
-// Reference: Alaris.Governance/Structure.md § 4.3.2
-// Compliance: High-Integrity Coding Standard v1.2
-// =============================================================================
+// STHD007A.cs - iv-based early exit monitor
 
 using Microsoft.Extensions.Logging;
 
@@ -13,19 +7,7 @@ namespace Alaris.Strategy.Hedge;
 /// <summary>
 /// Monitors implied volatility to trigger early exits when IV crushes faster than expected.
 /// </summary>
-/// <remarks>
-/// <para>
-/// Calendar spreads profit from IV crush after earnings. When IV crushes significantly
-/// faster than the Leung &amp; Santoli model predicts, early exit captures profit and
-/// frees capital for subsequent opportunities.
-/// </para>
-/// <para>
-/// Exit triggers:
-/// - IV drops below expected post-earnings level prematurely
-/// - IV crush exceeds threshold percentage of expected crush
-/// - Time-based exit approaches with minimal remaining theta
-/// </para>
-/// </remarks>
+
 public sealed class STHD007A
 {
     private readonly ILogger<STHD007A>? _logger;
@@ -216,10 +198,7 @@ public sealed class STHD007A
     /// </summary>
     /// <param name="crushRatio">Ratio of actual to expected IV crush.</param>
     /// <returns>Estimated profit capture percentage.</returns>
-    /// <remarks>
-    /// Calendar spread profit is approximately linear with IV crush for small moves.
-    /// This is a simplified estimation; actual P&amp;L depends on vega and gamma.
-    /// </remarks>
+    
     private static double EstimateProfitCapture(double crushRatio)
     {
         // Clamp to [0, 1] range

@@ -1,10 +1,7 @@
-// =============================================================================
 // TSUN021A.cs - First-Principles Validation Tests for Double Boundary Pricer
 // Component ID: TSUN021A
-// =============================================================================
 //
 // Mathematical Foundation
-// =======================
 // This test suite validates the Double Boundary pricer using mathematical
 // invariants that must hold for ANY correct implementation, independent of
 // reference values from Healy (2021).
@@ -33,7 +30,6 @@
 // 6. Monotonicity:
 //    - Boundaries should vary smoothly with maturity
 //
-// =============================================================================
 
 using System;
 using Xunit;
@@ -52,7 +48,6 @@ public sealed class TSUN021A
     private const double ValueMatchingTolerance = 1e-1;     // Tolerance for value matching
     private const double NumericalEpsilon = 1e-10;          // Numerical epsilon
 
-    #region Boundary Ordering Constraints (A1, A2, A3)
 
     /// <summary>
     /// Validates A1, A2, A3 constraints hold for arbitrary parameters in double boundary regime.
@@ -141,9 +136,7 @@ public sealed class TSUN021A
         }
     }
 
-    #endregion
 
-    #region Lambda Characteristic Equation
 
     /// <summary>
     /// Validates lambda roots satisfy the characteristic equation (Healy Eq. 9).
@@ -204,9 +197,7 @@ public sealed class TSUN021A
         // The Vieta's formulas verification above confirms correctness
     }
 
-    #endregion
 
-    #region Limiting Behaviour
 
     /// <summary>
     /// As T → 0, the upper boundary should approach the strike K.
@@ -298,9 +289,7 @@ public sealed class TSUN021A
         }
     }
 
-    #endregion
 
-    #region Intrinsic Value Floor
 
     /// <summary>
     /// For a put at the boundary, option value equals intrinsic value (smooth pasting).
@@ -343,9 +332,7 @@ public sealed class TSUN021A
             "intrinsic value at lower boundary should exceed upper boundary");
     }
 
-    #endregion
 
-    #region Monotonicity with Parameters
 
     /// <summary>
     /// Higher volatility should generally widen the boundary spread.
@@ -434,9 +421,7 @@ public sealed class TSUN021A
         }
     }
 
-    #endregion
 
-    #region European Comparison via Black-Scholes
 
     /// <summary>
     /// Verifies Black-Scholes put formula implementation for negative rates.
@@ -499,9 +484,7 @@ public sealed class TSUN021A
         }
     }
 
-    #endregion
 
-    #region Regime Detection
 
     /// <summary>
     /// Verifies correct regime detection for various rate combinations.
@@ -542,9 +525,7 @@ public sealed class TSUN021A
         }
     }
 
-    #endregion
 
-    #region Consistency Under Refinement
 
     /// <summary>
     /// Kim refinement should not dramatically alter QD+ boundaries.
@@ -580,9 +561,7 @@ public sealed class TSUN021A
         refinedResult.IsValid.Should().BeTrue();
     }
 
-    #endregion
 
-    #region Smooth Pasting Conditions (A4-A5)
 
     /// <summary>
     /// Tests smooth pasting condition A5: ∂V/∂S = -1 at exercise boundaries for puts.
@@ -684,9 +663,7 @@ public sealed class TSUN021A
             "intrinsic at lower boundary should exceed upper");
     }
 
-    #endregion
 
-    #region Extreme Parameter Stress Tests
 
     /// <summary>
     /// Tests numerical stability with very high volatility (σ = 100%).
@@ -851,9 +828,7 @@ public sealed class TSUN021A
         resultBelow.UpperBoundary.Should().BeLessThan(100.0);
     }
 
-    #endregion
 
-    #region Minimum Boundary Separation
 
     /// <summary>
     /// Tests that boundaries maintain minimum separation based on volatility.
@@ -947,9 +922,7 @@ public sealed class TSUN021A
         }
     }
 
-    #endregion
 
-    #region Helper Methods
 
     /// <summary>
     /// Calculates European put price using Black-Scholes formula.
@@ -1003,5 +976,4 @@ public sealed class TSUN021A
         return sign * y;
     }
 
-    #endregion
 }

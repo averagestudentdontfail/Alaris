@@ -1,14 +1,4 @@
-// =============================================================================
-// TSUN030A.cs - Binary Serialization Unit Tests
-// Component: TSUN030A | Category: Unit Tests | Variant: A (Primary)
-// =============================================================================
-// Tests for FIX SBE binary serialization across Protocol, Data, Events, and
-// Application layers. Validates round-trip encoding/decoding correctness.
-// =============================================================================
-// References:
-// - Alaris.Governance/Coding.md Rule 5 (Zero-Allocation Hot Paths)
-// - FIX SBE Specification
-// =============================================================================
+// TSUN030A.cs - Binary serialization unit tests
 
 using System;
 using System.Collections.Generic;
@@ -31,7 +21,6 @@ namespace Alaris.Test.Unit;
 /// </summary>
 public sealed class TSUN030A
 {
-    #region Protocol Layer (PLSR001A) Tests
 
     [Fact]
     public void PriceBarData_RoundTrip_PreservesAllFields()
@@ -112,9 +101,7 @@ public sealed class TSUN030A
         result.Should().BeApproximately(value, 0.000000005m);
     }
 
-    #endregion
 
-    #region Data Layer (DTsr001A) Tests
 
     [Fact]
     public void PriceBar_RoundTrip_PreservesAllFields()
@@ -279,9 +266,7 @@ public sealed class TSUN030A
         decoded.Contracts[1].Right.Should().Be(OptionRight.Put);
     }
 
-    #endregion
 
-    #region Events Layer (EVsr001A) Tests
 
     [Fact]
     public void EventEnvelope_RoundTrip_PreservesAllFields()
@@ -339,9 +324,7 @@ public sealed class TSUN030A
         estimatedSize.Should().BeGreaterOrEqualTo(actualSize - 10); // Allow small variance for UTF8 vs ASCII
     }
 
-    #endregion
 
-    #region Application Layer (APsr001A) Tests
 
     [Fact]
     public void SessionMetadata_RoundTrip_PreservesAllFields()
@@ -398,9 +381,7 @@ public sealed class TSUN030A
         estimatedSize.Should().BeGreaterOrEqualTo(actualSize);
     }
 
-    #endregion
 
-    #region Buffer Pool Tests
 
     [Fact]
     public void RentBuffer_ReturnsBufferOfAtLeastRequestedSize()
@@ -432,5 +413,4 @@ public sealed class TSUN030A
         act.Should().Throw<ArgumentOutOfRangeException>();
     }
 
-    #endregion
 }

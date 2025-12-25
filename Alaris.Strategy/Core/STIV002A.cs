@@ -1,3 +1,5 @@
+// STIV002A.cs - kou model parameters.
+
 using Alaris.Strategy.Calendar;
 using Alaris.Strategy.Core.Numerical;
 
@@ -122,24 +124,19 @@ public sealed class KouParameters
 
 /// <summary>
 /// Implements the Kou (2002) double-exponential jump-diffusion model for implied volatility.
-///
 /// The model extends Black-Scholes with Poisson jumps where jump sizes follow a
 /// double-exponential (asymmetric Laplace) distribution, capturing:
 ///   1. Asymmetric jump sizes (upward vs downward moves)
 ///   2. Leptokurtic returns (fat tails)
 ///   3. Implied volatility skew
-///
 /// Stock price dynamics under risk-neutral measure Q:
 ///     dS/S = (r - d - lambda*kappa)dt + sigma*dW + d(sum(V_i - 1))
-///
 /// Where:
 ///     sigma  = diffusion volatility
 ///     lambda = jump intensity (jumps per year)
 ///     V_i    = jump multiplier with double-exponential distribution
 ///     kappa  = E[V-1] = p*eta1/(eta1-1) + (1-p)*eta2/(eta2+1) - 1
-///
 /// The (r - d - lambda*kappa) drift ensures the martingale condition.
-///
 /// Reference: "A Jump-Diffusion Model for Option Pricing"
 /// S.G. Kou (2002), Management Science
 /// </summary>

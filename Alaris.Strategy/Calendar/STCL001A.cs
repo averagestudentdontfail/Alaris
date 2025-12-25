@@ -1,10 +1,4 @@
-// =============================================================================
-// STCL001A.cs - Trading Calendar Service (NYSE)
-// Component: STCL001A | Category: Calendar | Variant: A (Primary)
-// =============================================================================
-// Reference: Alaris.Governance/Structure.md § 3.4
-// Compliance: High-Integrity Coding Standard v1.2
-// =============================================================================
+// STCL001A.cs - trading calendar service (nyse)
 
 namespace Alaris.Strategy.Calendar;
 
@@ -40,31 +34,7 @@ public interface ITradingCalendar
 /// <summary>
 /// NYSE trading calendar implementation using QuantLib.
 /// </summary>
-/// <remarks>
-/// <para>
-/// This service wraps QuantLib's UnitedStates NYSE calendar to provide
-/// accurate business day calculations that exclude:
-/// </para>
-/// 
-/// <list type="bullet">
-/// <item>Weekends (Saturday, Sunday)</item>
-/// <item>New Year's Day</item>
-/// <item>Martin Luther King Jr. Day</item>
-/// <item>Presidents' Day</item>
-/// <item>Good Friday</item>
-/// <item>Memorial Day</item>
-/// <item>Juneteenth (from 2022)</item>
-/// <item>Independence Day</item>
-/// <item>Labor Day</item>
-/// <item>Thanksgiving Day</item>
-/// <item>Christmas Day</item>
-/// </list>
-/// 
-/// <para>
-/// The calendar is thread-safe for read operations but not for modification.
-/// A single instance should be shared across the application.
-/// </para>
-/// </remarks>
+
 public sealed class STCL001A : ITradingCalendar, IDisposable
 {
     private readonly UnitedStates _calendar;
@@ -141,13 +111,7 @@ public sealed class STCL001A : ITradingCalendar, IDisposable
 /// <summary>
 /// Default trading calendar provider and utilities.
 /// </summary>
-/// <remarks>
-/// This class provides:
-/// <list type="bullet">
-/// <item>Singleton NYSE calendar instance for DI fallback</item>
-/// <item>Static DTE-to-years conversion using 252 trading days/year</item>
-/// </list>
-/// </remarks>
+
 public static class TradingCalendarDefaults
 {
     private static readonly Lazy<ITradingCalendar> LazyInstance = new(
@@ -162,10 +126,7 @@ public static class TradingCalendarDefaults
     /// <summary>
     /// Gets the default NYSE trading calendar instance.
     /// </summary>
-    /// <remarks>
-    /// This singleton instance should be used when dependency injection
-    /// is not available. Prefer constructor injection where possible.
-    /// </remarks>
+    
     public static ITradingCalendar Instance => LazyInstance.Value;
 
     /// <summary>
@@ -173,10 +134,7 @@ public static class TradingCalendarDefaults
     /// </summary>
     /// <param name="daysToExpiry">Trading days until expiration.</param>
     /// <returns>Time to expiry in years (DTE / 252).</returns>
-    /// <remarks>
-    /// Use this for consistent DTE conversion across all strategy components.
-    /// Assumes DTE is already in trading days (not calendar days).
-    /// </remarks>
+    
     public static double DteToYears(int daysToExpiry)
     {
         return Math.Max(0, daysToExpiry / TradingDaysPerYear);

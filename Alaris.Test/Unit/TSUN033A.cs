@@ -1,14 +1,11 @@
-// =============================================================================
 // TSUN033A.cs - Unit Tests for Persistent Event Stores (EVIF001B, EVIF002B)
 // Component ID: TSUN033A
-// =============================================================================
 //
 // Coverage:
 // - EVIF001B file-based event store persistence
 // - EVIF002B file-based audit logger persistence
 // - Crash recovery and sequence persistence
 //
-// =============================================================================
 
 using System.IO;
 using Xunit;
@@ -56,7 +53,6 @@ public sealed class TSUN033A : IDisposable
         _disposed = true;
     }
 
-    #region EVIF001B Tests
 
     /// <summary>
     /// Append and retrieve event successfully.
@@ -195,9 +191,7 @@ public sealed class TSUN033A : IDisposable
         fromSeq2[0].SequenceNumber.Should().Be(2);
     }
 
-    #endregion
 
-    #region EVIF002B Tests
 
     /// <summary>
     /// Log and retrieve audit entry.
@@ -296,9 +290,7 @@ public sealed class TSUN033A : IDisposable
             () => logger.LogAsync(null!));
     }
 
-    #endregion
 
-    #region Helpers
 
     private static AuditEntry CreateAuditEntry(
         string entityType, string entityId, string action, string initiatedBy)
@@ -315,9 +307,7 @@ public sealed class TSUN033A : IDisposable
         };
     }
 
-    #endregion
 
-    #region Test Event
 
     /// <summary>
     /// Test event for unit tests.
@@ -331,5 +321,4 @@ public sealed class TSUN033A : IDisposable
         public string? CorrelationId => null;
     }
 
-    #endregion
 }

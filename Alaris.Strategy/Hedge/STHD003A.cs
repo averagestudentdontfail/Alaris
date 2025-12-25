@@ -1,10 +1,4 @@
-// =============================================================================
-// STHD003A.cs - Gamma Risk Manager
-// Component: STHD003A | Category: Hedging | Variant: A (Primary)
-// =============================================================================
-// Reference: Alaris.Governance/Structure.md § 4.3.2
-// Compliance: High-Integrity Coding Standard v1.2
-// =============================================================================
+// STHD003A.cs - gamma risk manager
 
 using Microsoft.Extensions.Logging;
 
@@ -13,23 +7,7 @@ namespace Alaris.Strategy.Hedge;
 /// <summary>
 /// Monitors and manages gamma risk for calendar spread positions.
 /// </summary>
-/// <remarks>
-/// <para>
-/// Calendar spreads have negative gamma: they profit when the underlying
-/// stays near the strike but lose when it moves significantly. This component
-/// monitors delta drift and gamma exposure, triggering re-hedging when
-/// thresholds are breached.
-/// </para>
-/// <para>
-/// Key scenarios:
-/// - Underlying moves away from strike → Delta increases → Position becomes directional
-/// - Pre-earnings gap risk → Potential for significant overnight movement
-/// - Time decay asymmetry → Front leg decays faster, delta profile shifts
-/// </para>
-/// <para>
-/// This addresses the "set and forget" error by enforcing active position management.
-/// </para>
-/// </remarks>
+
 public sealed class STHD003A
 {
     private readonly ILogger<STHD003A>? _logger;
@@ -53,26 +31,19 @@ public sealed class STHD003A
     /// <summary>
     /// Default delta threshold triggering re-centering.
     /// </summary>
-    /// <remarks>
-    /// When absolute delta exceeds 0.10, the position has become directionally
-    /// biased and should be re-centred at the current ATM strike.
-    /// </remarks>
+    
     public const double DefaultDeltaThreshold = 0.10;
 
     /// <summary>
     /// Default gamma threshold for warnings.
     /// </summary>
-    /// <remarks>
-    /// Gamma more negative than -0.05 indicates elevated convexity risk.
-    /// </remarks>
+    
     public const double DefaultGammaThreshold = -0.05;
 
     /// <summary>
     /// Default moneyness alert threshold.
     /// </summary>
-    /// <remarks>
-    /// When underlying moves more than 3% from strike, risk profile changes materially.
-    /// </remarks>
+    
     public const double DefaultMoneynessThreshold = 0.03;
 
     /// <summary>
@@ -261,9 +232,7 @@ public sealed class STHD003A
     /// <param name="contracts">Number of spread contracts.</param>
     /// <param name="sharesPerContract">Shares per option contract (typically 100).</param>
     /// <returns>Number of shares to trade for delta neutrality.</returns>
-    /// <remarks>
-    /// Negative result indicates sell shares; positive indicates buy shares.
-    /// </remarks>
+    
     public static int ComputeDeltaHedge(double spreadDelta, int contracts, int sharesPerContract = 100)
     {
         // To neutralise: trade opposite of current delta exposure

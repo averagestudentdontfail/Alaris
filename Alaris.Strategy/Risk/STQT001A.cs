@@ -1,10 +1,4 @@
-// =============================================================================
-// STQT001A.cs - Queue-Theoretic Position Management
-// Component: STQT001A | Category: Risk | Variant: A (Primary)
-// =============================================================================
-// Reference: Little's Law (1961), M/G/1 Queue Theory, Alaris Phase 3 Spec
-// Compliance: High-Integrity Coding Standard v1.2
-// =============================================================================
+// STQT001A.cs - queue-theoretic position management
 
 using Microsoft.Extensions.Logging;
 
@@ -13,18 +7,7 @@ namespace Alaris.Strategy.Risk;
 /// <summary>
 /// Implements queue-theoretic analysis for position management.
 /// </summary>
-/// <remarks>
-/// <para>
-/// This component extends the basic Little's Law (L = λW) approach with:
-/// - M/G/1/K blocking probability analysis
-/// - Gittins-index proxy for position ejection decisions
-/// - Weighted Fair Queueing (WFQ) for signal prioritisation
-/// </para>
-/// <para>
-/// Queue model: Signals arrive as Poisson(λ), service time (holding period)
-/// follows general distribution G with mean 1/μ and CV c_S.
-/// </para>
-/// </remarks>
+
 public sealed class STQT001A
 {
     private readonly ILogger<STQT001A>? _logger;
@@ -64,8 +47,6 @@ public sealed class STQT001A
         _estimatedServiceCV = 0.5;
     }
 
-    #region M/G/1 Queue Analysis
-
     /// <summary>
     /// Computes the mean queue length using the Pollaczek-Khinchine formula.
     /// </summary>
@@ -73,10 +54,7 @@ public sealed class STQT001A
     /// <param name="serviceRate">Position service rate μ = 1/E[S].</param>
     /// <param name="serviceCV">Coefficient of variation of service time.</param>
     /// <returns>Mean number of positions in system.</returns>
-    /// <remarks>
-    /// Pollaczek-Khinchine: L = ρ + ρ²(1 + c_S²) / [2(1 - ρ)]
-    /// where ρ = λ/μ is utilisation.
-    /// </remarks>
+    
     public static double ComputeMeanQueueLength(double arrivalRate, double serviceRate, double serviceCV)
     {
         if (serviceRate <= 0)
@@ -111,9 +89,7 @@ public sealed class STQT001A
     /// <param name="maxCapacity">Maximum capacity K.</param>
     /// <param name="utilisation">System utilisation ρ = λ/μ.</param>
     /// <returns>Probability of blocking the next arrival.</returns>
-    /// <remarks>
-    /// For M/M/1/K: P_K = (1-ρ)ρ^K / (1 - ρ^{K+1})
-    /// </remarks>
+    
     public double ComputeBlockingProbability(int currentPositions, int maxCapacity, double? utilisation = null)
     {
         double rho = utilisation ?? (_estimatedArrivalRate / _estimatedServiceRate);
@@ -154,9 +130,7 @@ public sealed class STQT001A
     /// <param name="holdingCost">Cost per position-day (capital cost).</param>
     /// <param name="maxSearch">Maximum capacity to consider.</param>
     /// <returns>Optimal capacity K*.</returns>
-    /// <remarks>
-    /// Minimises: Cost(K) = c_block × λ × P_K + c_hold × L(K)
-    /// </remarks>
+    
     public int ComputeOptimalCapacity(
         double arrivalRate,
         double meanHoldingTime,
@@ -195,10 +169,6 @@ public sealed class STQT001A
         return optimalK;
     }
 
-    #endregion
-
-    #region Gittins Index Proxy
-
     /// <summary>
     /// Computes the Gittins-index proxy for a position.
     /// </summary>
@@ -206,10 +176,7 @@ public sealed class STQT001A
     /// <param name="remainingDays">Days remaining until expected exit.</param>
     /// <param name="currentPnL">Current unrealised P&amp;L.</param>
     /// <returns>Priority score for position (higher = more valuable to keep).</returns>
-    /// <remarks>
-    /// Gittins index: G = E[Σ R(t)] / E[τ]
-    /// Proxy: Priority = (ExpectedProfit - CurrentLoss) / RemainingDays
-    /// </remarks>
+    
     public static double ComputeGittinsProxy(double expectedProfit, double remainingDays, double currentPnL = 0)
     {
         if (remainingDays <= 0)
@@ -260,10 +227,6 @@ public sealed class STQT001A
         return -1; // Reject new signal instead
     }
 
-    #endregion
-
-    #region Weighted Fair Queueing
-
     /// <summary>
     /// Computes the virtual finish time for WFQ scheduling.
     /// </summary>
@@ -271,9 +234,7 @@ public sealed class STQT001A
     /// <param name="capitalRequired">Capital requirement (size).</param>
     /// <param name="arrivalTime">Signal arrival virtual time.</param>
     /// <returns>Virtual finish time for scheduling.</returns>
-    /// <remarks>
-    /// WFQ: F_i = max(V(a_i), F_{i-1}) + s_i / w_i
-    /// </remarks>
+    
     public double ComputeVirtualFinishTime(int signalStrength, double capitalRequired, double? arrivalTime = null)
     {
         double weight = signalStrength switch
@@ -309,10 +270,6 @@ public sealed class STQT001A
             .Select(s => s with { VirtualFinishTime = ComputeVirtualFinishTime(s.Strength, s.CapitalRequired) })
             .OrderBy(s => s.VirtualFinishTime);
     }
-
-    #endregion
-
-    #region Parameter Estimation
 
     /// <summary>
     /// Updates arrival rate estimate using exponential smoothing.
@@ -368,10 +325,6 @@ public sealed class STQT001A
             MeanQueueLength: meanQueue);
     }
 
-    #endregion
-
-    #region Private Methods
-
     private static double ComputeMeanQueueLengthWithCapacity(double rho, int capacity)
     {
         // Approximate mean queue length for M/M/1/K
@@ -406,7 +359,6 @@ public sealed class STQT001A
 #pragma warning restore CA1031
     }
 
-    #endregion
 }
 
 /// <summary>

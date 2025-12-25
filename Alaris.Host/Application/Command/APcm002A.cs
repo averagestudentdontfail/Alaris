@@ -1,10 +1,4 @@
-// =============================================================================
-// APcm002A.cs - Config Command
-// Component: APcm002A | Category: Commands | Variant: A (Primary)
-// =============================================================================
-// Manages Alaris configuration files (appsettings.jsonc, appsettings.local.jsonc).
-// Commands: show (display), set (modify), validate (check integrity)
-// =============================================================================
+// APcm002A.cs - Configuration command (show/set/validate appsettings)
 
 using System.ComponentModel;
 using System.Text.Json;

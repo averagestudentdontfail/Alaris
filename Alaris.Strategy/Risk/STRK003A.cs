@@ -1,10 +1,4 @@
-// =============================================================================
-// STRK003A.cs - Concurrent Position Reserve Manager
-// Component: STRK003A | Category: Risk | Variant: A (Primary)
-// =============================================================================
-// Reference: Alaris.Governance/Structure.md § 4.3.4
-// Compliance: High-Integrity Coding Standard v1.2
-// =============================================================================
+// STRK003A.cs - concurrent position reserve manager
 
 using Alaris.Strategy.Core;
 using Microsoft.Extensions.Logging;
@@ -14,23 +8,7 @@ namespace Alaris.Strategy.Risk;
 /// <summary>
 /// Implements reserve-adjusted Kelly position sizing for concurrent positions.
 /// </summary>
-/// <remarks>
-/// <para>
-/// During earnings season clustering (Feb/Apr/Jul/Oct), 15-20 signals may
-/// arrive within a week. This component adjusts Kelly allocations to reserve
-/// capital for subsequent opportunities, preventing capital starvation.
-/// </para>
-/// <para>
-/// Key mechanisms:
-/// - Little's Law estimation of expected concurrent positions
-/// - Reserve buffer for variance in position clustering
-/// - Dynamic quality thresholds when capital utilisation is high
-/// </para>
-/// <para>
-/// Reference: Thorp (2006) "The Kelly Criterion in Blackjack Sports Betting
-/// and the Stock Market" - simultaneous Kelly betting framework.
-/// </para>
-/// </remarks>
+
 public sealed class STRK003A
 {
     private readonly STRK001A _baseKelly;
@@ -82,10 +60,7 @@ public sealed class STRK003A
     /// <param name="arrivalRate">Average number of signals per trading day.</param>
     /// <param name="averageHoldingPeriod">Average holding period in trading days.</param>
     /// <returns>Expected number of concurrent positions.</returns>
-    /// <remarks>
-    /// Little's Law: L = λ × W, where L is average number in system,
-    /// λ is arrival rate, and W is average time in system.
-    /// </remarks>
+    
     /// <exception cref="ArgumentOutOfRangeException">
     /// Thrown when arrivalRate or averageHoldingPeriod is non-positive.
     /// </exception>

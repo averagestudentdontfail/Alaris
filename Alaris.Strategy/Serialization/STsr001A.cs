@@ -1,14 +1,4 @@
-// =============================================================================
-// STsr001A.cs - Strategy Binary Serialization Adapter
-// Component: STsr001A | Category: Serialization | Variant: A (Primary)
-// =============================================================================
-// Provides binary serialization for strategy hot path structures.
-// Optimized for zero-allocation pricing parameter transfers.
-// =============================================================================
-// References:
-// - Alaris.Governance/Coding.md Rule 5 (Zero-Allocation Hot Paths)
-// - Alaris.Protocol/Serialization/PLSR001A.cs
-// =============================================================================
+// STsr001A.cs - strategy binary serialization adapter
 
 using System.Buffers.Binary;
 using Alaris.Infrastructure.Protocol.Serialization;
@@ -19,17 +9,10 @@ namespace Alaris.Strategy.Serialization;
 /// Binary serialization adapter for strategy hot path structures.
 /// Component ID: STsr001A
 /// </summary>
-/// <remarks>
-/// Provides zero-allocation binary encoding for pricing parameters and term structure
-/// points used in inner loops during signal generation and pricing calculations.
-/// 
-/// Layout optimized for cache locality with fixed offsets.
-/// </remarks>
+
 public static class STsr001A
 {
     private const byte FormatVersion = 1;
-
-    #region Pricing Parameters Serialization
 
     /// <summary>
     /// Struct for binary-encoded pricing parameters (STDT003As equivalent).
@@ -152,10 +135,6 @@ public static class STsr001A
             optionType);
     }
 
-    #endregion
-
-    #region Term Structure Point Serialization
-
     /// <summary>
     /// Struct for binary-encoded term structure point.
     /// </summary>
@@ -238,5 +217,4 @@ public static class STsr001A
         return offset;
     }
 
-    #endregion
 }

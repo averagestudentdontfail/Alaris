@@ -1,10 +1,4 @@
-// =============================================================================
-// APcm004A.cs - Universe Generator Command
-// Component: APcm004A | Category: Commands | Variant: A (Primary)
-// =============================================================================
-// Implements 'alaris universe generate' command for pre-generating universe
-// files from Polygon data for backtesting.
-// =============================================================================
+// APcm004A.cs - 'alaris universe generate' command for Polygon universe files
 
 using System.ComponentModel;
 using System.Globalization;
@@ -415,8 +409,6 @@ public sealed class APcm004A : Command<UniverseSettings>
     }
 }
 
-#region Polygon API Response Models
-
 file sealed class PolygonGroupedResponse
 {
     [JsonPropertyName("results")]
@@ -450,4 +442,3 @@ file sealed class PolygonGroupedResult
     public double Volume { get; init; }
 }
 
-#endregion

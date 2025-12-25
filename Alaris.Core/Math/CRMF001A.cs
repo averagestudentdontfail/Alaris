@@ -7,8 +7,6 @@ namespace Alaris.Core.Math;
 /// </summary>
 public static class CRMF001A
 {
-    #region Constants
-
     /// <summary>
     /// Machine epsilon for double precision (2.22e-16).
     /// </summary>
@@ -54,10 +52,6 @@ public static class CRMF001A
     /// </summary>
     public const int TradingDaysPerYear = 252;
 
-    #endregion
-
-    #region Error Function
-
     /// <summary>
     /// Error function erf(x) using Abramowitz and Stegun formula 7.1.26.
     /// </summary>
@@ -97,10 +91,6 @@ public static class CRMF001A
         return sign * y;
     }
 
-    #endregion
-
-    #region Normal Distribution
-
     /// <summary>
     /// Standard normal cumulative distribution function Φ(x).
     /// </summary>
@@ -127,10 +117,6 @@ public static class CRMF001A
     {
         return InvSqrtTwoPi * System.Math.Exp(-0.5 * x * x);
     }
-
-    #endregion
-
-    #region Black-Scholes Primitives
 
     /// <summary>
     /// Black-Scholes d1 parameter.
@@ -295,10 +281,6 @@ public static class CRMF001A
         }
     }
 
-    #endregion
-
-    #region Validation Helpers
-
     /// <summary>
     /// Validates that a volatility value is within bounds.
     /// </summary>
@@ -338,6 +320,4 @@ public static class CRMF001A
     {
         return (int)System.Math.Round(tau * TradingDaysPerYear);
     }
-
-    #endregion
 }

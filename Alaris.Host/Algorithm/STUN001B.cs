@@ -1,10 +1,4 @@
-// =============================================================================
-// STUN001B.cs - Polygon-Based Universe Selection Model
-// Component: STUN001B | Category: Universe | Variant: B (Alternative)
-// =============================================================================
-// Alternative universe selector that reads from pre-generated Polygon files
-// instead of requiring LEAN's fundamental data subscription.
-// =============================================================================
+// STUN001B.cs - Polygon-based universe selection using pre-generated files
 
 using System;
 using System.Collections.Generic;

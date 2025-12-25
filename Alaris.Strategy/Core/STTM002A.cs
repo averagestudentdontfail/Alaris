@@ -1,3 +1,5 @@
+// STTM002A.cs - defines earnings-related regimes for IV modeling.
+
 namespace Alaris.Strategy.Core;
 
 /// <summary>

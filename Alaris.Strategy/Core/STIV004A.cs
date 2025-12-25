@@ -1,21 +1,20 @@
+// STIV004A.cs - implements the Leung &amp; Santoli (2014) pre-earnings announcement implied v...
+
 using Alaris.Strategy.Calendar;
 
 namespace Alaris.Strategy.Core;
 
 /// <summary>
 /// Implements the Leung &amp; Santoli (2014) pre-earnings announcement implied volatility model.
-///
 /// The model accounts for scheduled earnings jumps in option pricing by incorporating
 /// a deterministic-time random jump in the stock price dynamics. The pre-EA implied
 /// volatility follows:
 ///     I(t; K, T) = sqrt(sigma^2 + sigma_e^2 / (T - t))
-///
 /// Where:
 ///     sigma   = base (diffusion) volatility
 ///     sigma_e = earnings jump volatility (calibrated from historical EA moves)
 ///     T       = option expiration time
 ///     t       = current time (must be before EA date T_e)
-///
 /// Reference: "Accounting for Earnings Announcements in the Pricing of Equity Options"
 /// Tim Leung &amp; Marco Santoli (2014), Journal of Derivatives
 /// </summary>

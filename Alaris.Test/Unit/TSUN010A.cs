@@ -22,9 +22,7 @@ public class STIV005ATests
         _calibrator = new STIV005A();
     }
 
-    // ========================================================================
     // CalibrateFromMoves Tests
-    // ========================================================================
 
     [Fact]
     public void CalibrateFromMoves_WithValidData_ReturnsCorrectSigmaE()
@@ -92,9 +90,7 @@ public class STIV005ATests
         sigmaE.Should().BeLessOrEqualTo(1.0);
     }
 
-    // ========================================================================
     // Calibrate Tests (with price data)
-    // ========================================================================
 
     [Fact]
     public void Calibrate_WithValidPricesAndDates_ReturnsValidCalibration()
@@ -155,9 +151,7 @@ public class STIV005ATests
         act.Should().Throw<ArgumentNullException>();
     }
 
-    // ========================================================================
     // STTM001AEstimator Tests
-    // ========================================================================
 
     [Fact]
     public void STTM001AEstimator_WithValidInvertedSTTM001A_ReturnsSigmaE()
@@ -224,9 +218,7 @@ public class STIV005ATests
         sigmaE.Should().BeNull();
     }
 
-    // ========================================================================
     // BaseVolatilityEstimator Tests
-    // ========================================================================
 
     [Fact]
     public void BaseVolatilityEstimator_WithValidInputs_ReturnsBaseVolatility()
@@ -278,9 +270,7 @@ public class STIV005ATests
         sigma.Should().BeNull();
     }
 
-    // ========================================================================
     // Helper Methods
-    // ========================================================================
 
     private static List<PriceBar> CreateSamplePriceData()
     {

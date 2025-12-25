@@ -1,11 +1,4 @@
-// =============================================================================
-// STCS005A.cs - Constant Fee Model
-// Component: STCS005A | Category: Cost | Variant: A (Primary)
-// =============================================================================
-// Reference: Alaris.Governance/Structure.md § 4.3.2
-// Reference: QuantConnect.Lean.Common.Orders.Fees.ConstantFeeModel
-// Compliance: High-Integrity Coding Standard v1.2
-// =============================================================================
+// STCS005A.cs - constant fee model
 
 using Microsoft.Extensions.Logging;
 
@@ -14,21 +7,7 @@ namespace Alaris.Strategy.Cost;
 /// <summary>
 /// Implements a constant per-contract fee model for option execution costs.
 /// </summary>
-/// <remarks>
-/// <para>
-/// This brokerage-agnostic model applies a fixed fee per contract, suitable for:
-/// - Initial strategy validation before brokerage integration
-/// - Conservative cost estimation with configurable fees
-/// - Backtesting scenarios where exact brokerage fees are not required
-/// </para>
-/// <para>
-/// The model computes slippage by assuming fills occur at bid (sell) or ask (buy)
-/// rather than mid-price, providing realistic execution cost estimates.
-/// </para>
-/// <para>
-/// Reference: Modelled after QuantConnect's ConstantFeeModel pattern.
-/// </para>
-/// </remarks>
+
 public sealed class STCS005A : STCS001A
 {
     private readonly ILogger<STCS005A>? _logger;
@@ -52,26 +31,19 @@ public sealed class STCS005A : STCS001A
     /// <summary>
     /// Default commission fee per contract (conservative estimate).
     /// </summary>
-    /// <remarks>
-    /// Based on typical retail option commission: $0.65/contract.
-    /// IBKR tiered ranges from $0.15 to $0.70 depending on volume and premium.
-    /// </remarks>
+    
     public const double DefaultFeePerContract = 0.65;
 
     /// <summary>
     /// Default exchange fee per contract.
     /// </summary>
-    /// <remarks>
-    /// Exchange fees vary by exchange and order type. Using CBOE average.
-    /// </remarks>
+    
     public const double DefaultExchangeFee = 0.30;
 
     /// <summary>
     /// Default regulatory fee per contract.
     /// </summary>
-    /// <remarks>
-    /// Includes SEC, FINRA, and ORF fees (typically small).
-    /// </remarks>
+    
     public const double DefaultRegulatoryFee = 0.02;
 
     /// <summary>

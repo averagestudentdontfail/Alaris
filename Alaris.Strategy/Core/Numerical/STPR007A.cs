@@ -1,13 +1,4 @@
-// STPR007A.cs - Brent's Method Root Finder
-// Component: STPR007A | Category: Numerical | Variant: A (Primary)
-// =============================================================================
-// Brent's method combines bisection safety with superlinear convergence.
-// Replaces Newton-Bisection cascade in IV solvers.
-// =============================================================================
-// References:
-// - Brent (1973) "Algorithms for Minimization Without Derivatives"
-// - Press et al. (2007) "Numerical Recipes" Chapter 9.3
-// =============================================================================
+// STPR007A.cs - Brent's method root finder
 
 #pragma warning disable IDE0047 // Remove unnecessary parentheses
 #pragma warning disable IDE0048 // Add parentheses for clarity
@@ -18,13 +9,7 @@ namespace Alaris.Strategy.Core.Numerical;
 /// Brent's method root-finding algorithm.
 /// Combines bisection, secant, and inverse quadratic interpolation.
 /// </summary>
-/// <remarks>
-/// Brent's method is the gold standard for derivative-free root finding:
-/// - Guaranteed convergence (like bisection)
-/// - Superlinear convergence for smooth functions
-/// - No derivative required (unlike Newton-Raphson)
-/// - Self-adaptive: switches between methods automatically
-/// </remarks>
+
 public static class STPR007A
 {
     private const int DefaultMaxIterations = 100;

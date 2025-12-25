@@ -1,10 +1,4 @@
-// =============================================================================
-// STCS008A.cs - Liquidity Validator
-// Component: STCS008A | Category: Cost | Variant: A (Primary)
-// =============================================================================
-// Reference: Alaris.Governance/Structure.md § 4.3.2
-// Compliance: High-Integrity Coding Standard v1.2
-// =============================================================================
+// STCS008A.cs - liquidity validator
 
 using Microsoft.Extensions.Logging;
 
@@ -13,23 +7,7 @@ namespace Alaris.Strategy.Cost;
 /// <summary>
 /// Validates that position sizing is appropriate given instrument liquidity.
 /// </summary>
-/// <remarks>
-/// <para>
-/// This component addresses the critical assumption that "Max Loss = Debit Paid"
-/// holds for calendar spread positions. This assumption is only valid when the
-/// back-month option has sufficient liquidity to exit under stress conditions.
-/// </para>
-/// <para>
-/// Validation criteria:
-/// - Position-to-Volume ratio: Ensures the position can be exited within
-///   a reasonable fraction of daily volume.
-/// - Position-to-OpenInterest ratio: Ensures the position does not represent
-///   an outsized share of market interest, which would impact exit prices.
-/// </para>
-/// <para>
-/// Institutional thresholds: ≤5% of daily volume, ≤2% of open interest.
-/// </para>
-/// </remarks>
+
 public sealed class STCS008A
 {
     private readonly ILogger<STCS008A>? _logger;
@@ -52,19 +30,13 @@ public sealed class STCS008A
     /// <summary>
     /// Default maximum position-to-volume ratio.
     /// </summary>
-    /// <remarks>
-    /// 5% of average daily volume ensures the position can be exited
-    /// without significantly impacting market prices.
-    /// </remarks>
+    
     public const double DefaultMaxVolumeRatio = 0.05;
 
     /// <summary>
     /// Default maximum position-to-open-interest ratio.
     /// </summary>
-    /// <remarks>
-    /// 2% of open interest prevents becoming a significant market participant
-    /// whose exit could move prices adversely.
-    /// </remarks>
+    
     public const double DefaultMaxOpenInterestRatio = 0.02;
 
     /// <summary>

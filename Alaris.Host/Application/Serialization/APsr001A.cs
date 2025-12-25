@@ -1,14 +1,4 @@
-// =============================================================================
-// APsr001A.cs - Session Binary Serialization Adapter
-// Component: APsr001A | Category: Serialization | Variant: A (Primary)
-// =============================================================================
-// Provides binary serialization for session metadata using SBE format.
-// Supplements existing JSON serialization for backward compatibility.
-// =============================================================================
-// References:
-// - Alaris.Governance/Coding.md Rule 5 (Zero-Allocation Hot Paths)
-// - Alaris.Protocol/Schemas/Session.xml
-// =============================================================================
+// APsr001A.cs - Binary (SBE) serialization for session metadata
 
 using System.Buffers.Binary;
 using Alaris.Host.Application.Model;
@@ -158,8 +148,6 @@ public static class APsr001A
         };
     }
 
-    #region Helper Methods
-
     private static void WriteFixedString(Span<byte> buffer, string? value, int length)
     {
         buffer[..length].Clear();
@@ -180,6 +168,5 @@ public static class APsr001A
 
         return System.Text.Encoding.UTF8.GetString(buffer[..actualLength]);
     }
-
-    #endregion
 }
+

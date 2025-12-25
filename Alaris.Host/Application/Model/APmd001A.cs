@@ -1,9 +1,4 @@
-// =============================================================================
-// APmd001A.cs - Backtest Session Model
-// Component: APmd001A | Category: Models | Variant: A (Primary)
-// =============================================================================
-// Represents a backtest session with isolated data, universe, and results.
-// =============================================================================
+// APmd001A.cs - Backtest session model with isolated data and results
 
 using System;
 using System.Collections.Generic;
