@@ -46,8 +46,6 @@ jobs:
           for project in \
             Alaris.Double/Alaris.Double.csproj \
             Alaris.Strategy/Alaris.Strategy.csproj \
-            Alaris.Events/Alaris.Events.csproj \
-            Alaris.Data/Alaris.Data.csproj \
             Alaris.Simulation/Alaris.Simulation.csproj \
             Alaris.Quantlib/Alaris.Quantlib.csproj \
             Alaris.Test/Alaris.Test.csproj; do
@@ -84,7 +82,7 @@ jobs:
           # Build only core Alaris projects with strict analysis
           # Excludes: Alaris.Quantlib (SWIG-generated), Alaris.Lean (external), 
           #           Alaris.Test (depends on Lean/Quantlib transitively)
-          for project in Alaris.Double Alaris.Strategy Alaris.Events Alaris.Data Alaris.Simulation; do
+          for project in Alaris.Double Alaris.Strategy Alaris.Simulation; do
             if [ -d "$project" ]; then
               echo "=== Analyzing $project ==="
               dotnet build "$project" --configuration Release \
