@@ -59,12 +59,8 @@ public sealed class APsv002A : IDisposable
         var dailyPath = System.IO.Path.Combine(sessionDataPath, "equity", "usa", "daily");
         Directory.CreateDirectory(dailyPath);
 
-        // Path: session/data/earnings
-        var earningsPath = System.IO.Path.Combine(sessionDataPath, "earnings");
-        if (_earningsClient != null)
-        {
-            Directory.CreateDirectory(earningsPath);
-        }
+        // NOTE: Earnings data comes from 'alaris earnings bootstrap' command
+        // using cache-first pattern in DTea001C. Not downloaded here.
 
         // Path: session/data/options
         var optionsPath = System.IO.Path.Combine(sessionDataPath, "options");
@@ -74,7 +70,6 @@ public sealed class APsv002A : IDisposable
             .StartAsync(async ctx =>
             {
                 var taskData = ctx.AddTask($"[green]Downloading Price Data ({total} symbols)...[/]");
-                var taskEarnings = _earningsClient != null ? ctx.AddTask($"[green]Downloading Earnings Data...[/]") : null;
                 var taskOptions = ctx.AddTask($"[green]Downloading Options Data...[/]");
                 var taskRates = _treasuryClient != null ? ctx.AddTask($"[green]Downloading Interest Rates...[/]") : null;
                 
@@ -83,12 +78,6 @@ public sealed class APsv002A : IDisposable
                     current++;
                     taskData.Description = $"[green]Downloading prices for {symbol} ({current}/{total})...[/]";
                     taskData.Value = (double)current / total * 100;
-
-                    if (taskEarnings != null)
-                    {
-                        taskEarnings.Description = $"[green]Downloading earnings for {symbol} ({current}/{total})...[/]";
-                        taskEarnings.Value = (double)current / total * 100;
-                    }
 
                     // Price Data
                     try
@@ -107,25 +96,6 @@ public sealed class APsv002A : IDisposable
                     catch (Exception ex)
                     {
                         _logger?.LogError(ex, "Failed to download prices for {Symbol}", symbol);
-                    }
-
-                    // Earnings Data - NASDAQ Calendar (provides future dates)
-                    if (_earningsClient != null)
-                    {
-                        try
-                        {
-                            var earnings = await _earningsClient.GetHistoricalEarningsAsync(symbol, 730); // 2 years back
-                            if (earnings.Count > 0)
-                            {
-                                var jsonPath = System.IO.Path.Combine(earningsPath, $"{symbol.ToLowerInvariant()}.json");
-                                var json = JsonSerializer.Serialize(earnings, JsonOptions);
-                                await File.WriteAllTextAsync(jsonPath, json);
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger?.LogError(ex, "Failed to download earnings for {Symbol}", symbol);
-                        }
                     }
 
                     // Options Data - Download historical chain for session start date

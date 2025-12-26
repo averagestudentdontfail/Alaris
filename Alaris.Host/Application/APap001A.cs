@@ -5,6 +5,8 @@ using Spectre.Console.Cli;
 using Alaris.Host.Application.Command;
 using Alaris.Host.Application.Service;
 using Alaris.Host.Application.Model;
+using Alaris.Host.Application.Cli.Commands;
+using Alaris.Host.Application.Cli.Infrastructure;
 using System.IO;
 
 namespace Alaris.Host.Application;
@@ -60,20 +62,72 @@ public static class APap001A
                 .WithDescription("View session details");
             backtest.AddCommand<BacktestDeleteCommand>("delete")
                 .WithDescription("Delete a session");
+            backtest.AddCommand<Alaris.Host.Application.Cli.Commands.Backtest.CLbt002A>("analyze")
+                .WithDescription("Analyze backtest results")
+                .WithExample("backtest", "analyze", "BT001A-20240101-20251231");
         });
 
         config.AddCommand<APcm002A>("config")
             .WithDescription("View or modify Alaris configuration");
-        config.AddCommand<APcm003A>("data")
-            .WithDescription("Download and manage market data");
+        
+        // Data commands (Polygon prices + options)
+        config.AddBranch("data", data =>
+        {
+            data.SetDescription("Download and manage market data");
+            data.AddCommand<Alaris.Host.Application.Cli.Commands.Data.CLdt001A>("bootstrap")
+                .WithDescription("Download prices and options for a session")
+                .WithExample("data", "bootstrap", "BT001A-20240101-20251231");
+            data.AddCommand<Alaris.Host.Application.Cli.Commands.Data.CLdt002A>("status")
+                .WithDescription("Show data coverage and freshness");
+            data.AddCommand<Alaris.Host.Application.Cli.Commands.Data.CLdt003A>("validate")
+                .WithDescription("Validate data integrity for a session")
+                .WithExample("data", "validate", "BT001A-20240101-20251231");
+        });
         config.AddCommand<APcm004A>("universe")
             .WithDescription("Generate and manage universe files");
-        config.AddBranch("bootstrap", bootstrap =>
+        
+        // Earnings commands (cache-first pattern)
+        config.AddBranch("earnings", earnings =>
         {
-            bootstrap.SetDescription("Bootstrap static data for backtesting");
-            bootstrap.AddCommand<BootstrapEarningsCommand>("earnings")
-                .WithDescription("Download earnings calendar to cache files");
+            earnings.SetDescription("Manage earnings calendar data");
+            earnings.AddCommand<BootstrapEarningsCommand>("bootstrap")
+                .WithDescription("Download earnings calendar to cache files")
+                .WithExample("earnings", "bootstrap", "--start", "2023-01-01", "--end", "2025-01-01");
+            earnings.AddCommand<Alaris.Host.Application.Cli.Commands.Earnings.CLer002A>("upcoming")
+                .WithDescription("Show upcoming earnings announcements")
+                .WithExample("earnings", "upcoming", "--days", "7");
+            earnings.AddCommand<Alaris.Host.Application.Cli.Commands.Earnings.CLer003A>("check")
+                .WithDescription("Check earnings cache coverage for a session")
+                .WithExample("earnings", "check", "BT001A-20240101-20251231");
         });
+
+        // Trade commands
+        config.AddBranch("trade", trade =>
+        {
+            trade.SetDescription("Live trading commands");
+            trade.AddCommand<Alaris.Host.Application.Cli.Commands.Trade.CLtr002A>("status")
+                .WithDescription("Show current positions and trading state");
+            trade.AddCommand<Alaris.Host.Application.Cli.Commands.Trade.CLtr003A>("signals")
+                .WithDescription("Show pending and active signals");
+        });
+
+        // Strategy commands
+        config.AddBranch("strategy", strategy =>
+        {
+            strategy.SetDescription("Strategy inspection commands");
+            strategy.AddCommand<Alaris.Host.Application.Cli.Commands.Strategy.CLst001A>("list")
+                .WithDescription("List available strategies");
+            strategy.AddCommand<Alaris.Host.Application.Cli.Commands.Strategy.CLst002A>("info")
+                .WithDescription("Show strategy parameters and thresholds")
+                .WithExample("strategy", "info", "--name", "earnings-vol");
+            strategy.AddCommand<Alaris.Host.Application.Cli.Commands.Strategy.CLst003A>("evaluate")
+                .WithDescription("Evaluate a symbol for trading signals")
+                .WithExample("strategy", "evaluate", "AAPL");
+        });
+
+        // Version command
+        config.AddCommand<CLvr001A>("version")
+            .WithDescription("Show version and system information");
     }
 
     // Interactive TUI Mode
