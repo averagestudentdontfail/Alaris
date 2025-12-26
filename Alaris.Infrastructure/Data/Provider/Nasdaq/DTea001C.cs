@@ -2,8 +2,11 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -39,18 +42,29 @@ public sealed class NasdaqEarningsProvider : DTpr004A
 {
     private readonly INasdaqCalendarApi _api;
     private readonly ILogger<NasdaqEarningsProvider> _logger;
+    private readonly string? _cacheDataPath;
+
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        WriteIndented = true,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    };
 
     /// <summary>
     /// Initialises a new instance of the <see cref="NasdaqEarningsProvider"/> class.
     /// </summary>
     /// <param name="api">NASDAQ Calendar Refit API client.</param>
     /// <param name="logger">Logger instance.</param>
+    /// <param name="cacheDataPath">Optional cache data path for backtest mode.</param>
     public NasdaqEarningsProvider(
         INasdaqCalendarApi api,
-        ILogger<NasdaqEarningsProvider> logger)
+        ILogger<NasdaqEarningsProvider> logger,
+        string? cacheDataPath = null)
     {
         _api = api ?? throw new ArgumentNullException(nameof(api));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _cacheDataPath = cacheDataPath ?? Environment.GetEnvironmentVariable("ALARIS_SESSION_DATA");
     }
 
     /// <inheritdoc/>
@@ -201,12 +215,36 @@ public sealed class NasdaqEarningsProvider : DTpr004A
     }
 
     /// <summary>
-    /// Gets earnings events for a specific date using Refit interface.
+    /// Gets earnings events for a specific date, checking cache first.
     /// </summary>
+    /// <remarks>
+    /// Cache-first pattern:
+    /// 1. Check {session}/earnings/nasdaq/{date}.json
+    /// 2. If cached → Load from file (backtest mode)
+    /// 3. If live → Call NASDAQ API
+    /// </remarks>
     private async Task<IReadOnlyList<EarningsEvent>> GetEarningsForDateAsync(
         DateTime date,
         CancellationToken cancellationToken)
     {
+        // 1. Check for cached data (backtest mode)
+        if (!string.IsNullOrEmpty(_cacheDataPath))
+        {
+            string cachePath = Path.Combine(
+                _cacheDataPath,
+                "earnings",
+                "nasdaq",
+                $"{date:yyyy-MM-dd}.json");
+
+            if (File.Exists(cachePath))
+            {
+                _logger.LogDebug("Loading earnings for {Date:yyyy-MM-dd} from cache", date);
+                return await LoadFromCacheAsync(cachePath, cancellationToken);
+            }
+        }
+
+        // 2. Live mode: Call NASDAQ API
+        _logger.LogDebug("Fetching earnings for {Date:yyyy-MM-dd} from NASDAQ API", date);
         string dateString = date.ToString("yyyy-MM-dd");
         NasdaqEarningsResponse response = await _api.GetEarningsAsync(dateString, cancellationToken);
 
@@ -221,6 +259,85 @@ public sealed class NasdaqEarningsProvider : DTpr004A
             .ToList();
 
         _logger.LogDebug("Fetched {Count} earnings for {Date:yyyy-MM-dd}", earnings.Count, date);
+        return earnings;
+    }
+
+    /// <summary>
+    /// Loads cached earnings data from JSON file.
+    /// </summary>
+    private async Task<IReadOnlyList<EarningsEvent>> LoadFromCacheAsync(
+        string cachePath,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using FileStream stream = File.OpenRead(cachePath);
+            CachedEarningsDay? cached = await JsonSerializer.DeserializeAsync<CachedEarningsDay>(
+                stream,
+                JsonOptions,
+                cancellationToken);
+
+            return (IReadOnlyList<EarningsEvent>?)cached?.Earnings ?? Array.Empty<EarningsEvent>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to load earnings cache from {Path}", cachePath);
+            return Array.Empty<EarningsEvent>();
+        }
+    }
+
+    /// <summary>
+    /// Saves earnings data to JSON cache file for future backtests.
+    /// </summary>
+    public async Task SaveToCacheAsync(
+        DateTime date,
+        IReadOnlyList<EarningsEvent> earnings,
+        string outputPath,
+        CancellationToken cancellationToken)
+    {
+        string nasdaqPath = Path.Combine(outputPath, "earnings", "nasdaq");
+        Directory.CreateDirectory(nasdaqPath);
+
+        string cachePath = Path.Combine(nasdaqPath, $"{date:yyyy-MM-dd}.json");
+
+        var cached = new CachedEarningsDay
+        {
+            Date = date,
+            FetchedAt = DateTime.UtcNow,
+            Earnings = earnings.ToList()
+        };
+
+        await using FileStream stream = File.Create(cachePath);
+        await JsonSerializer.SerializeAsync(stream, cached, JsonOptions, cancellationToken);
+
+        _logger.LogDebug("Saved {Count} earnings to cache for {Date:yyyy-MM-dd}", earnings.Count, date);
+    }
+
+    /// <summary>
+    /// Fetches and caches earnings for a specific date (bootstrap mode).
+    /// </summary>
+    public async Task<IReadOnlyList<EarningsEvent>> FetchAndCacheAsync(
+        DateTime date,
+        string outputPath,
+        CancellationToken cancellationToken)
+    {
+        string dateString = date.ToString("yyyy-MM-dd");
+        NasdaqEarningsResponse response = await _api.GetEarningsAsync(dateString, cancellationToken);
+
+        List<EarningsEvent> earnings;
+        if (response.Data?.Rows == null || response.Data.Rows.Count == 0)
+        {
+            earnings = new List<EarningsEvent>();
+        }
+        else
+        {
+            earnings = response.Data.Rows
+                .Where(row => !string.IsNullOrWhiteSpace(row.Symbol))
+                .Select(row => MapToEarningsEvent(row, date))
+                .ToList();
+        }
+
+        await SaveToCacheAsync(date, earnings, outputPath, cancellationToken);
         return earnings;
     }
 
@@ -282,4 +399,14 @@ public sealed class NasdaqEarningsProvider : DTpr004A
         
         return null;
     }
+}
+
+/// <summary>
+/// Cached earnings data for a single day.
+/// </summary>
+public sealed class CachedEarningsDay
+{
+    public DateTime Date { get; init; }
+    public DateTime FetchedAt { get; init; }
+    public IReadOnlyList<EarningsEvent> Earnings { get; init; } = Array.Empty<EarningsEvent>();
 }

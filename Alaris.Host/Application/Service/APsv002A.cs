@@ -6,7 +6,9 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Globalization;
+using System.Net.Http;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Alaris.Infrastructure.Data.Provider.Nasdaq; // For NasdaqEarningsProvider
 using Alaris.Infrastructure.Data.Provider.Polygon; // For PolygonApiClient
@@ -191,6 +193,108 @@ public sealed class APsv002A : IDisposable
             
         // Copy system files (should be quick)
         CopySystemFiles(sessionDataPath);
+    }
+
+    /// <summary>
+    /// Bootstrap earnings calendar data from NASDAQ API to local cache files.
+    /// Rate-limited to 1 request per second to avoid anti-bot blocking.
+    /// </summary>
+    /// <param name="startDate">Start date for calendar data.</param>
+    /// <param name="endDate">End date for calendar data.</param>
+    /// <param name="outputPath">Output directory for cached files.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Number of days downloaded.</returns>
+    public async Task<int> BootstrapEarningsCalendarAsync(
+        DateTime startDate,
+        DateTime endDate,
+        string outputPath,
+        CancellationToken cancellationToken = default)
+    {
+        if (_earningsClient == null)
+        {
+            throw new InvalidOperationException("Earnings client not configured");
+        }
+
+        string nasdaqPath = System.IO.Path.Combine(outputPath, "earnings", "nasdaq");
+        Directory.CreateDirectory(nasdaqPath);
+
+        int totalWeekdays = 0;
+        int downloadedDays = 0;
+        int skippedDays = 0;
+
+        // Count total weekdays
+        for (DateTime d = startDate; d <= endDate; d = d.AddDays(1))
+        {
+            if (d.DayOfWeek != DayOfWeek.Saturday && d.DayOfWeek != DayOfWeek.Sunday)
+            {
+                totalWeekdays++;
+            }
+        }
+
+        _logger?.LogInformation(
+            "Bootstrap earnings calendar: {Start:yyyy-MM-dd} to {End:yyyy-MM-dd} ({Total} weekdays)",
+            startDate, endDate, totalWeekdays);
+
+        await AnsiConsole.Progress()
+            .AutoClear(false)
+            .Columns(
+                new TaskDescriptionColumn(),
+                new ProgressBarColumn(),
+                new PercentageColumn(),
+                new RemainingTimeColumn(),
+                new SpinnerColumn())
+            .StartAsync(async ctx =>
+            {
+                var task = ctx.AddTask("Downloading Earnings Calendar", maxValue: totalWeekdays);
+
+                for (DateTime date = startDate; date <= endDate; date = date.AddDays(1))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    // Skip weekends
+                    if (date.DayOfWeek == DayOfWeek.Saturday || date.DayOfWeek == DayOfWeek.Sunday)
+                    {
+                        continue;
+                    }
+
+                    string cachePath = System.IO.Path.Combine(nasdaqPath, $"{date:yyyy-MM-dd}.json");
+
+                    // Skip if already cached
+                    if (File.Exists(cachePath))
+                    {
+                        skippedDays++;
+                        task.Increment(1);
+                        continue;
+                    }
+
+                    try
+                    {
+                        // Rate limit: 1 request per second
+                        await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
+
+                        var earnings = await _earningsClient.FetchAndCacheAsync(
+                            date, outputPath, cancellationToken);
+
+                        downloadedDays++;
+                        task.Description = $"Downloaded {date:yyyy-MM-dd} ({earnings.Count} events)";
+                        task.Increment(1);
+                    }
+                    catch (HttpRequestException ex)
+                    {
+                        _logger?.LogWarning(
+                            ex,
+                            "Failed to fetch {Date:yyyy-MM-dd}, will retry on next run",
+                            date);
+                        task.Increment(1);
+                    }
+                }
+            });
+
+        _logger?.LogInformation(
+            "Earnings bootstrap complete: {Downloaded} downloaded, {Skipped} skipped (already cached)",
+            downloadedDays, skippedDays);
+
+        return downloadedDays;
     }
 
     public void Dispose()

@@ -68,6 +68,12 @@ public static class APap001A
             .WithDescription("Download and manage market data");
         config.AddCommand<APcm004A>("universe")
             .WithDescription("Generate and manage universe files");
+        config.AddBranch("bootstrap", bootstrap =>
+        {
+            bootstrap.SetDescription("Bootstrap static data for backtesting");
+            bootstrap.AddCommand<BootstrapEarningsCommand>("earnings")
+                .WithDescription("Download earnings calendar to cache files");
+        });
     }
 
     // Interactive TUI Mode
