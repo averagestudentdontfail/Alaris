@@ -1,14 +1,14 @@
+// DTrf001A.cs - Treasury Direct API risk-free rate provider
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
-using System.Net.Http.Json;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Alaris.Infrastructure.Data.Provider;
+using Alaris.Infrastructure.Data.Http.Contracts;
 
 namespace Alaris.Infrastructure.Data.Provider.Treasury;
 
@@ -17,37 +17,43 @@ namespace Alaris.Infrastructure.Data.Provider.Treasury;
 /// Component ID: DTrf001A
 /// </summary>
 /// <remarks>
-/// Provides risk-free rates using official US Treasury data.
+/// <para>
+/// Provides risk-free rates using official US Treasury data
+/// via Refit declarative interface (ITreasuryDirectApi).
 /// Implements DTpr005A (Risk-Free Rate Provider interface).
-/// 
+/// </para>
+/// <para>
 /// API: https://www.treasurydirect.gov/TA_WS/securities
 /// Cost: FREE (official US government API)
 /// Data: Daily treasury yields (3-month T-bill recommended for options)
 /// No authentication required
-/// 
+/// </para>
+/// <para>
 /// Usage:
 /// - 3-month T-bill rate used as risk-free rate (r parameter)
 /// - Updated daily
 /// - No rate limits on official API
+/// </para>
+/// <para>
+/// Resilience provided by Microsoft.Extensions.Http.Resilience standard handler.
+/// </para>
 /// </remarks>
 public sealed class TreasuryDirectRateProvider : DTpr005A
 {
-    private readonly HttpClient _httpClient;
+    private readonly ITreasuryDirectApi _api;
     private readonly ILogger<TreasuryDirectRateProvider> _logger;
-    private const string BaseUrl = "https://www.treasurydirect.gov/TA_WS/securities/";
 
     /// <summary>
     /// Initializes a new instance of the <see cref="TreasuryDirectRateProvider"/> class.
     /// </summary>
-    /// <param name="httpClient">HTTP client.</param>
+    /// <param name="api">Treasury Direct Refit API client.</param>
     /// <param name="logger">Logger instance.</param>
     public TreasuryDirectRateProvider(
-        HttpClient httpClient,
+        ITreasuryDirectApi api,
         ILogger<TreasuryDirectRateProvider> logger)
     {
-        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+        _api = api ?? throw new ArgumentNullException(nameof(api));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        // Do not set BaseAddress on shared HttpClient
     }
 
     /// <inheritdoc/>
@@ -57,17 +63,16 @@ public sealed class TreasuryDirectRateProvider : DTpr005A
 
         try
         {
-            // Get today's date
-            var today = DateTime.UtcNow.Date;
-            
-            // Treasury API endpoint: search?type=Bill&dateFieldName=issueDate&startDate=YYYY-MM-DD
-            // Look back up to 7 days to handle weekends/holidays
-            var startDate = today.AddDays(-7);
-            var url = $"{BaseUrl}search?type=Bill&dateFieldName=issueDate&startDate={startDate:yyyy-MM-dd}&endDate={today:yyyy-MM-dd}&format=json";
+            DateTime today = DateTime.UtcNow.Date;
+            DateTime startDate = today.AddDays(-7);
 
-            var securities = await _httpClient.GetFromJsonAsync<TreasurySecurity[]>(
-                url,
-                cancellationToken: cancellationToken);
+            TreasurySecurityDto[] securities = await _api.SearchSecuritiesAsync(
+                securityType: "Bill",
+                dateFieldName: "issueDate",
+                startDate: startDate.ToString("yyyy-MM-dd"),
+                endDate: today.ToString("yyyy-MM-dd"),
+                format: "json",
+                cancellationToken);
 
             if (securities == null || securities.Length == 0)
             {
@@ -77,7 +82,7 @@ public sealed class TreasuryDirectRateProvider : DTpr005A
             }
 
             // Find most recent 3-month T-bill (91-day maturity)
-            var threeMonthBill = securities
+            TreasurySecurityDto? threeMonthBill = securities
                 .Where(s => s.Term != null && s.Term.Contains("91"))
                 .OrderByDescending(s => s.IssueDate)
                 .FirstOrDefault();
@@ -87,16 +92,16 @@ public sealed class TreasuryDirectRateProvider : DTpr005A
                 _logger.LogWarning("No 3-month T-bills found in recent auctions");
                 
                 // Use any bill as fallback
-                var anyBill = securities
+                TreasurySecurityDto anyBill = securities
                     .OrderByDescending(s => s.IssueDate)
                     .First();
                 
-                var fallbackRate = ParseRate(anyBill.InterestRate);
+                decimal fallbackRate = ParseRate(anyBill.InterestRate);
                 _logger.LogInformation("Using fallback rate from {Term}: {Rate:P4}", anyBill.Term, fallbackRate);
                 return fallbackRate;
             }
 
-            var rate = ParseRate(threeMonthBill.InterestRate);
+            decimal rate = ParseRate(threeMonthBill.InterestRate);
             
             _logger.LogInformation(
                 "Current 3-month T-bill rate: {Rate:P4} (issue date: {IssueDate:yyyy-MM-dd})",
@@ -131,16 +136,13 @@ public sealed class TreasuryDirectRateProvider : DTpr005A
 
         try
         {
-            if (!_httpClient.DefaultRequestHeaders.Contains("User-Agent"))
-            {
-                _httpClient.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (compatible; AlarisTradingSystem/1.0)");
-            }
-
-            var url = $"{BaseUrl}search?type=Bill&dateFieldName=issueDate&startDate={startDate:yyyy-MM-dd}&endDate={endDate:yyyy-MM-dd}&format=json";
-
-            var securities = await _httpClient.GetFromJsonAsync<TreasurySecurity[]>(
-                url,
-                cancellationToken: cancellationToken);
+            TreasurySecurityDto[] securities = await _api.SearchSecuritiesAsync(
+                securityType: "Bill",
+                dateFieldName: "issueDate",
+                startDate: startDate.ToString("yyyy-MM-dd"),
+                endDate: endDate.ToString("yyyy-MM-dd"),
+                format: "json",
+                cancellationToken);
 
             if (securities == null || securities.Length == 0)
             {
@@ -149,7 +151,7 @@ public sealed class TreasuryDirectRateProvider : DTpr005A
             }
 
             // Group by issue date, prefer 3-month bills
-            var ratesByDate = securities
+            Dictionary<DateTime, decimal> ratesByDate = securities
                 .Where(s => !string.IsNullOrWhiteSpace(s.InterestRate))
                 .GroupBy(s => s.IssueDate.Date)
                 .ToDictionary(
@@ -157,7 +159,7 @@ public sealed class TreasuryDirectRateProvider : DTpr005A
                     g =>
                     {
                         // Prefer 3-month bill if available (Term usually '13-Week' or similar, strict check '91')
-                        var preferred = g.FirstOrDefault(s => s.Term != null && s.Term.Contains("91"))
+                        TreasurySecurityDto preferred = g.FirstOrDefault(s => s.Term != null && s.Term.Contains("91"))
                             ?? g.First();
                         return ParseRate(preferred.InterestRate!);
                     });
@@ -168,7 +170,7 @@ public sealed class TreasuryDirectRateProvider : DTpr005A
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogError(ex, "HTTP error fetching historical T-bill rates from {Url}", $"{BaseUrl}search?...");
+            _logger.LogError(ex, "HTTP error fetching historical T-bill rates");
             throw; // Fail fast, do not use fake data
         }
         catch (JsonException ex)
@@ -189,39 +191,13 @@ public sealed class TreasuryDirectRateProvider : DTpr005A
             return 0m;
         }
 
-        var cleaned = new string(rateString.Where(c => char.IsDigit(c) || c == '.' || c == '-').ToArray());
+        string cleaned = new(rateString.Where(c => char.IsDigit(c) || c == '.' || c == '-').ToArray());
 
-        if (!decimal.TryParse(cleaned, out var rate))
+        if (!decimal.TryParse(cleaned, out decimal rate))
         {
             return 0m;
         }
 
         return rate / 100m;
     }
-
-    // Fallback rates removed - fail-fast principle
-    // Historical data must come from Treasury Direct API, not fabricated constants.
 }
-
-
-file sealed class TreasurySecurity
-{
-    [JsonPropertyName("cusip")]
-    public string? Cusip { get; init; }
-
-    [JsonPropertyName("issueDate")]
-    public DateTime IssueDate { get; init; }
-
-    [JsonPropertyName("maturityDate")]
-    public DateTime MaturityDate { get; init; }
-
-    [JsonPropertyName("interestRate")]
-    public string? InterestRate { get; init; }
-
-    [JsonPropertyName("term")]
-    public string? Term { get; init; }
-
-    [JsonPropertyName("type")]
-    public string? Type { get; init; }
-}
-

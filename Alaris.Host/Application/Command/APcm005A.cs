@@ -12,11 +12,14 @@ using Spectre.Console;
 using Spectre.Console.Cli;
 
 using Alaris.Infrastructure.Data.Provider.Polygon;
-using Alaris.Infrastructure.Data.Provider.SEC;
+using Alaris.Infrastructure.Data.Provider.Nasdaq;
 using Alaris.Infrastructure.Data.Provider.Treasury;
+using Alaris.Infrastructure.Data.Http.Contracts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics.CodeAnalysis;
+using System.Net.Http.Headers;
+using Refit;
 
 namespace Alaris.Host.Application.Command;
 
@@ -287,27 +290,53 @@ internal static class DependencyFactory
     public static APsv002A CreateAPsv002A()
     {
         var config = GetConfig();
-        var httpClient = GetHttpClient();
         var loggerFactory = GetLoggerFactory();
         
+        // Create Refit clients for each API
+        var polygonApi = CreatePolygonApi();
+        var nasdaqApi = CreateNasdaqApi();
+        var treasuryApi = CreateTreasuryApi();
+        
         var polygonClient = new PolygonApiClient(
-            httpClient, 
+            polygonApi, 
             config, 
             loggerFactory.CreateLogger<PolygonApiClient>());
 
-        var secClient = new SecEdgarProvider(
-            httpClient,
-            loggerFactory.CreateLogger<SecEdgarProvider>());
+        var earningsClient = new NasdaqEarningsProvider(
+            nasdaqApi,
+            loggerFactory.CreateLogger<NasdaqEarningsProvider>());
 
         var treasuryClient = new TreasuryDirectRateProvider(
-            httpClient,
+            treasuryApi,
             loggerFactory.CreateLogger<TreasuryDirectRateProvider>());
 
         return new APsv002A(
             polygonClient, 
-            secClient,
+            earningsClient,
             treasuryClient,
             loggerFactory.CreateLogger<APsv002A>());
+    }
+    
+    private static IPolygonApi CreatePolygonApi()
+    {
+        var httpClient = new HttpClient { BaseAddress = new Uri("https://api.polygon.io") };
+        httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Alaris/1.0 (Quantitative Trading System)");
+        return RestService.For<IPolygonApi>(httpClient);
+    }
+    
+    private static INasdaqCalendarApi CreateNasdaqApi()
+    {
+        var httpClient = new HttpClient { BaseAddress = new Uri("https://api.nasdaq.com") };
+        httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+        httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        return RestService.For<INasdaqCalendarApi>(httpClient);
+    }
+    
+    private static ITreasuryDirectApi CreateTreasuryApi()
+    {
+        var httpClient = new HttpClient { BaseAddress = new Uri("https://www.treasurydirect.gov/TA_WS/securities") };
+        httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Alaris/1.0 (Quantitative Trading System)");
+        return RestService.For<ITreasuryDirectApi>(httpClient);
     }
     
     [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "Services persist for command duration")]

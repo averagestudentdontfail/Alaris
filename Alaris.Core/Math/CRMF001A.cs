@@ -282,6 +282,122 @@ public static class CRMF001A
     }
 
     /// <summary>
+    /// Computes Black-Scholes implied volatility using Newton-Raphson method.
+    /// </summary>
+    /// <param name="S">Spot price.</param>
+    /// <param name="K">Strike price.</param>
+    /// <param name="tau">Time to expiry in years.</param>
+    /// <param name="r">Risk-free rate.</param>
+    /// <param name="q">Dividend yield.</param>
+    /// <param name="marketPrice">Market price of the option.</param>
+    /// <param name="isCall">True for call, false for put.</param>
+    /// <param name="tolerance">Convergence tolerance (default 1e-7).</param>
+    /// <param name="maxIterations">Maximum iterations (default 100).</param>
+    /// <returns>Implied volatility, or NaN if not converged.</returns>
+    /// <remarks>
+    /// Uses Newton-Raphson: σ_{n+1} = σ_n - (C(σ_n) - C_market) / Vega(σ_n)
+    /// 
+    /// References:
+    /// - Orlando G, Taglialatela G. A review on implied volatility calculation. 
+    ///   Journal of Computational and Applied Mathematics. 2017;320:202-20.
+    /// </remarks>
+    public static double BSImpliedVolatility(
+        double S, double K, double tau, double r, double q,
+        double marketPrice, bool isCall,
+        double tolerance = 1e-7,
+        int maxIterations = 100)
+    {
+        // Validate inputs
+        if (marketPrice <= 0 || S <= 0 || K <= 0 || tau <= 0)
+        {
+            return double.NaN;
+        }
+
+        // Check intrinsic value bounds
+        double intrinsic = isCall 
+            ? System.Math.Max((S * System.Math.Exp(-q * tau)) - (K * System.Math.Exp(-r * tau)), 0)
+            : System.Math.Max((K * System.Math.Exp(-r * tau)) - (S * System.Math.Exp(-q * tau)), 0);
+        
+        if (marketPrice < intrinsic)
+        {
+            return double.NaN; // Price below intrinsic value - no valid IV
+        }
+        
+        // Initial guess: Brenner-Subrahmanyam approximation
+        // σ ≈ √(2π/T) * C / S
+        double sigma = System.Math.Sqrt(2 * System.Math.PI / tau) * marketPrice / S;
+        sigma = ClampVolatility(sigma);
+        
+        for (int i = 0; i < maxIterations; i++)
+        {
+            double price = BSPrice(S, K, tau, sigma, r, q, isCall);
+            double vega = BSVega(S, K, tau, sigma, r, q);
+            
+            if (vega < MachineEpsilon)
+            {
+                // Vega too small - try bisection fallback
+                return BSImpliedVolatilityBisection(S, K, tau, r, q, marketPrice, isCall, tolerance);
+            }
+            
+            double priceDiff = price - marketPrice;
+            
+            if (System.Math.Abs(priceDiff) < tolerance)
+            {
+                return sigma;
+            }
+            
+            double newSigma = sigma - (priceDiff / vega);
+            
+            // Ensure sigma stays in valid range
+            if (newSigma <= 0 || newSigma > MaxVolatility)
+            {
+                // Use bisection fallback
+                return BSImpliedVolatilityBisection(S, K, tau, r, q, marketPrice, isCall, tolerance);
+            }
+            
+            sigma = newSigma;
+        }
+        
+        // Did not converge
+        return double.NaN;
+    }
+
+    /// <summary>
+    /// Bisection fallback for IV calculation when Newton-Raphson fails.
+    /// </summary>
+    private static double BSImpliedVolatilityBisection(
+        double S, double K, double tau, double r, double q,
+        double marketPrice, bool isCall,
+        double tolerance = 1e-7,
+        int maxIterations = 100)
+    {
+        double low = MinVolatility;
+        double high = MaxVolatility;
+        
+        for (int i = 0; i < maxIterations; i++)
+        {
+            double mid = (low + high) / 2;
+            double price = BSPrice(S, K, tau, mid, r, q, isCall);
+            
+            if (System.Math.Abs(price - marketPrice) < tolerance)
+            {
+                return mid;
+            }
+            
+            if (price < marketPrice)
+            {
+                low = mid;
+            }
+            else
+            {
+                high = mid;
+            }
+        }
+        
+        return (low + high) / 2; // Return best estimate
+    }
+
+    /// <summary>
     /// Validates that a volatility value is within bounds.
     /// </summary>
     /// <param name="sigma">Volatility to validate.</param>

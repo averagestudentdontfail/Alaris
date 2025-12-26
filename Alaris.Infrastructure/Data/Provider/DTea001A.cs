@@ -1,14 +1,15 @@
+// DTea001A.cs - Financial Modeling Prep earnings calendar provider
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
-using System.Net.Http.Json;
-using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using Alaris.Infrastructure.Data.Model;
+using Alaris.Infrastructure.Data.Http.Contracts;
 
 namespace Alaris.Infrastructure.Data.Provider.FMP;
 
@@ -17,42 +18,47 @@ namespace Alaris.Infrastructure.Data.Provider.FMP;
 /// Component ID: DTea001A
 /// </summary>
 /// <remarks>
-/// Implements DTpr004A (Earnings Calendar Provider interface) using FMP free tier (250 calls/day).
-/// 
+/// <para>
+/// Implements DTpr004A (Earnings Calendar Provider interface) using FMP free tier (250 calls/day)
+/// via Refit declarative interface (IFinancialModelingPrepApi).
+/// </para>
+/// <para>
 /// API Documentation: https://financialmodelingprep.com/developer/docs/#Earnings-Calendar
 /// Endpoint: /v3/earnings-calendar
-/// 
+/// </para>
+/// <para>
 /// Free tier provides:
 /// - Earnings dates (confirmed and estimated)
 /// - EPS estimates and actuals
 /// - Fiscal quarter information
 /// - Up to 250 API calls per day
+/// </para>
+/// <para>
+/// Resilience provided by Microsoft.Extensions.Http.Resilience standard handler.
+/// </para>
 /// </remarks>
 public sealed class FinancialModelingPrepProvider : DTpr004A
 {
-    private readonly HttpClient _httpClient;
+    private readonly IFinancialModelingPrepApi _api;
     private readonly ILogger<FinancialModelingPrepProvider> _logger;
     private readonly string _apiKey;
-    private const string BaseUrl = "https://financialmodelingprep.com/api";
 
     /// <summary>
     /// Initializes a new instance of the <see cref="FinancialModelingPrepProvider"/> class.
     /// </summary>
-    /// <param name="httpClient">HTTP client.</param>
+    /// <param name="api">FMP Refit API client.</param>
     /// <param name="configuration">Configuration containing API key.</param>
     /// <param name="logger">Logger instance.</param>
     public FinancialModelingPrepProvider(
-        HttpClient httpClient,
+        IFinancialModelingPrepApi api,
         IConfiguration configuration,
         ILogger<FinancialModelingPrepProvider> logger)
     {
-        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+        _api = api ?? throw new ArgumentNullException(nameof(api));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         _apiKey = configuration["FMP:ApiKey"]
             ?? throw new InvalidOperationException("FMP API key not configured");
-
-        _httpClient.BaseAddress = new Uri(BaseUrl);
     }
 
     /// <inheritdoc/>
@@ -68,15 +74,15 @@ public sealed class FinancialModelingPrepProvider : DTpr004A
             "Fetching upcoming earnings for {Symbol} ({Days} days ahead)",
             symbol, daysAhead);
 
-        var startDate = DateTime.UtcNow.Date;
-        var endDate = startDate.AddDays(daysAhead);
+        DateTime startDate = DateTime.UtcNow.Date;
+        DateTime endDate = startDate.AddDays(daysAhead);
 
-        var allEarnings = await GetEarningsInDateRangeAsync(
+        IReadOnlyList<EarningsEvent> allEarnings = await GetEarningsInDateRangeAsync(
             startDate,
             endDate,
             cancellationToken);
 
-        var symbolEarnings = allEarnings
+        List<EarningsEvent> symbolEarnings = allEarnings
             .Where(e => string.Equals(e.Symbol, symbol, StringComparison.OrdinalIgnoreCase))
             .OrderBy(e => e.Date)
             .ToList();
@@ -101,14 +107,12 @@ public sealed class FinancialModelingPrepProvider : DTpr004A
             "Fetching historical earnings for {Symbol} ({Days} days back)",
             symbol, lookbackDays);
 
-        // FMP historical earnings endpoint: /v3/historical/earning_calendar/{symbol}
-        var url = $"/v3/historical/earning_calendar/{symbol}?apikey={_apiKey}";
-
         try
         {
-            var response = await _httpClient.GetFromJsonAsync<FmpEarningsEvent[]>(
-                url,
-                cancellationToken: cancellationToken);
+            FmpEarningsEvent[] response = await _api.GetHistoricalEarningsAsync(
+                symbol,
+                _apiKey,
+                cancellationToken);
 
             if (response == null || response.Length == 0)
             {
@@ -116,9 +120,9 @@ public sealed class FinancialModelingPrepProvider : DTpr004A
                 return Array.Empty<EarningsEvent>();
             }
 
-            var cutoffDate = DateTime.UtcNow.Date.AddDays(-lookbackDays);
+            DateTime cutoffDate = DateTime.UtcNow.Date.AddDays(-lookbackDays);
 
-            var earnings = response
+            List<EarningsEvent> earnings = response
                 .Where(e => e.Date >= cutoffDate)
                 .Select(e => MapToEarningsEvent(e, symbol))
                 .OrderByDescending(e => e.Date)
@@ -147,9 +151,9 @@ public sealed class FinancialModelingPrepProvider : DTpr004A
             "Fetching symbols with earnings from {StartDate:yyyy-MM-dd} to {EndDate:yyyy-MM-dd}",
             startDate, endDate);
 
-        var earnings = await GetEarningsInDateRangeAsync(startDate, endDate, cancellationToken);
+        IReadOnlyList<EarningsEvent> earnings = await GetEarningsInDateRangeAsync(startDate, endDate, cancellationToken);
 
-        var symbols = earnings
+        List<string> symbols = earnings
             .Select(e => e.Symbol)
             .Distinct()
             .OrderBy(s => s)
@@ -160,21 +164,20 @@ public sealed class FinancialModelingPrepProvider : DTpr004A
     }
 
     /// <summary>
-    /// Gets all earnings events in a date range.
+    /// Gets all earnings events in a date range using Refit interface.
     /// </summary>
     private async Task<IReadOnlyList<EarningsEvent>> GetEarningsInDateRangeAsync(
         DateTime startDate,
         DateTime endDate,
         CancellationToken cancellationToken)
     {
-        // FMP earnings calendar endpoint: /v3/earnings-calendar
-        var url = $"/v3/earnings-calendar?from={startDate:yyyy-MM-dd}&to={endDate:yyyy-MM-dd}&apikey={_apiKey}";
-
         try
         {
-            var response = await _httpClient.GetFromJsonAsync<FmpEarningsEvent[]>(
-                url,
-                cancellationToken: cancellationToken);
+            FmpEarningsEvent[] response = await _api.GetEarningsCalendarAsync(
+                startDate.ToString("yyyy-MM-dd"),
+                endDate.ToString("yyyy-MM-dd"),
+                _apiKey,
+                cancellationToken);
 
             if (response == null || response.Length == 0)
             {
@@ -184,7 +187,7 @@ public sealed class FinancialModelingPrepProvider : DTpr004A
                 return Array.Empty<EarningsEvent>();
             }
 
-            var earnings = response
+            List<EarningsEvent> earnings = response
                 .Select(e => MapToEarningsEvent(e, e.Symbol))
                 .ToList();
 
@@ -206,7 +209,7 @@ public sealed class FinancialModelingPrepProvider : DTpr004A
     private static EarningsEvent MapToEarningsEvent(FmpEarningsEvent fmpEvent, string symbol)
     {
         // Parse timing from FMP time field (e.g., "bmo" = before market open, "amc" = after market close)
-        var timing = fmpEvent.Time?.ToLowerInvariant() switch
+        EarningsTiming timing = fmpEvent.Time?.ToLowerInvariant() switch
         {
             "bmo" => EarningsTiming.BeforeMarketOpen,
             "amc" => EarningsTiming.AfterMarketClose,
@@ -228,35 +231,3 @@ public sealed class FinancialModelingPrepProvider : DTpr004A
         };
     }
 }
-
-
-internal sealed class FmpEarningsEvent
-{
-    [JsonPropertyName("symbol")]
-    public required string Symbol { get; init; }
-
-    [JsonPropertyName("date")]
-    public required DateTime Date { get; init; }
-
-    [JsonPropertyName("fiscalQuarter")]
-    public string? FiscalQuarter { get; init; }
-
-    [JsonPropertyName("fiscalYear")]
-    public int? FiscalYear { get; init; }
-
-    [JsonPropertyName("time")]
-    public string? Time { get; init; }
-
-    [JsonPropertyName("epsEstimate")]
-    public decimal? EpsEstimate { get; init; }
-
-    [JsonPropertyName("eps")]
-    public decimal? Eps { get; init; }
-
-    [JsonPropertyName("revenueEstimate")]
-    public decimal? RevenueEstimate { get; init; }
-
-    [JsonPropertyName("revenue")]
-    public decimal? Revenue { get; init; }
-}
-

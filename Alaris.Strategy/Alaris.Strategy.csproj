@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -37,7 +37,7 @@
     <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
     
     <!-- Logging infrastructure -->
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.3" />
     
     <!-- NOTE: FluentAssertions and xUnit are intentionally NOT included here.
          They are testing libraries and should only be referenced by test projects. -->

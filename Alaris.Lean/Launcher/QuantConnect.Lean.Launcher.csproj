@@ -5,14 +5,14 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>QuantConnect.Lean.Launcher</RootNamespace>
     <AssemblyName>QuantConnect.Lean.Launcher</AssemblyName>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <AnalysisMode>AllEnabledByDefault</AnalysisMode>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <OutputPath>bin\$(Configuration)\</OutputPath>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <ServerGarbageCollection>true</ServerGarbageCollection>
     <Description>QuantConnect LEAN Engine: Launcher Project - Main startup executable for live and backtesting</Description>
-    <NoWarn>CA1062</NoWarn>
+    <NoWarn>CA1062;NU1201;NU1510;NU1902;NU1903;NU1904</NoWarn>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugType>full</DebugType>

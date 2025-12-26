@@ -20,7 +20,7 @@ This document establishes operational procedures, monitoring requirements, risk 
 | Component | Purpose | Uptime SLA | Recovery Time |
 |-----------|---------|------------|---------------|
 | Polygon API | Historical + daily data | 99.5% | 15 minutes |
-| FMP Earnings | Earnings calendar | 99.0% | 1 hour |
+| NASDAQ Earnings | Earnings calendar | 99.0% (undocumented) | 1 hour |
 | IBKR Gateway | Order execution | 99.9% | 5 minutes |
 | Alaris.Data | Data validation | 99.9% | 1 minute |
 | Lean Engine | Strategy orchestration | 99.9% | 2 minutes |
@@ -41,7 +41,7 @@ This document establishes operational procedures, monitoring requirements, risk 
 
 **Credentials & API Keys:**
 - [ ] Polygon API key obtained and validated
-- [ ] FMP API key obtained (free tier)
+- [ ] NASDAQ API verified (no key required, browser headers set)
 - [ ] IBKR paper trading account created ($500+ equity)
 - [ ] IBKR API permissions enabled
 - [ ] All credentials stored in secure key vault (not in code)

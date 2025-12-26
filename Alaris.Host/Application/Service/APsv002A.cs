@@ -8,7 +8,7 @@ using System.Linq;
 using System.Globalization;
 using System.Text;
 using System.Threading.Tasks;
-using Alaris.Infrastructure.Data.Provider.SEC; // For SecEdgarProvider
+using Alaris.Infrastructure.Data.Provider.Nasdaq; // For NasdaqEarningsProvider
 using Alaris.Infrastructure.Data.Provider.Polygon; // For PolygonApiClient
 using Alaris.Infrastructure.Data.Provider.Treasury; // For TreasuryDirectRateProvider
 using Alaris.Infrastructure.Data.Model; // For PriceBar
@@ -26,19 +26,19 @@ namespace Alaris.Host.Application.Service;
 public sealed class APsv002A : IDisposable
 {
     private readonly PolygonApiClient _polygonClient;
-    private readonly SecEdgarProvider? _secClient;
+    private readonly NasdaqEarningsProvider? _earningsClient;
     private readonly TreasuryDirectRateProvider? _treasuryClient;
     private readonly ILogger<APsv002A>? _logger;
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
     public APsv002A(
         PolygonApiClient polygonClient, 
-        SecEdgarProvider? secClient, 
+        NasdaqEarningsProvider? earningsClient, 
         TreasuryDirectRateProvider? treasuryClient,
         ILogger<APsv002A>? logger = null)
     {
         _polygonClient = polygonClient ?? throw new ArgumentNullException(nameof(polygonClient));
-        _secClient = secClient;
+        _earningsClient = earningsClient;
         _treasuryClient = treasuryClient;
         _logger = logger;
     }
@@ -59,7 +59,7 @@ public sealed class APsv002A : IDisposable
 
         // Path: session/data/earnings
         var earningsPath = System.IO.Path.Combine(sessionDataPath, "earnings");
-        if (_secClient != null)
+        if (_earningsClient != null)
         {
             Directory.CreateDirectory(earningsPath);
         }
@@ -72,7 +72,7 @@ public sealed class APsv002A : IDisposable
             .StartAsync(async ctx =>
             {
                 var taskData = ctx.AddTask($"[green]Downloading Price Data ({total} symbols)...[/]");
-                var taskEarnings = _secClient != null ? ctx.AddTask($"[green]Downloading Earnings Data...[/]") : null;
+                var taskEarnings = _earningsClient != null ? ctx.AddTask($"[green]Downloading Earnings Data...[/]") : null;
                 var taskOptions = ctx.AddTask($"[green]Downloading Options Data...[/]");
                 var taskRates = _treasuryClient != null ? ctx.AddTask($"[green]Downloading Interest Rates...[/]") : null;
                 
@@ -107,12 +107,12 @@ public sealed class APsv002A : IDisposable
                         _logger?.LogError(ex, "Failed to download prices for {Symbol}", symbol);
                     }
 
-                    // Earnings Data - STRICTLY NO INFERENCE
-                    if (_secClient != null)
+                    // Earnings Data - NASDAQ Calendar (provides future dates)
+                    if (_earningsClient != null)
                     {
                         try
                         {
-                            var earnings = await _secClient.GetHistoricalEarningsAsync(symbol, 730); // 2 years back
+                            var earnings = await _earningsClient.GetHistoricalEarningsAsync(symbol, 730); // 2 years back
                             if (earnings.Count > 0)
                             {
                                 var jsonPath = System.IO.Path.Combine(earningsPath, $"{symbol.ToLowerInvariant()}.json");
@@ -195,9 +195,7 @@ public sealed class APsv002A : IDisposable
 
     public void Dispose()
     {
-        // _polygonClient might not be disposable, but if it was...
-        // _secClient IS disposable
-        _secClient?.Dispose();
+        // NasdaqEarningsProvider does not require explicit disposal
     }
 
     /// <summary>

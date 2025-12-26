@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Threading;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -13,6 +14,7 @@ using QuantConnect.Brokerages;
 using QuantConnect.Data;
 using QuantConnect.Orders;
 using QuantConnect.Securities.Option;
+using Refit;
 
 using StrategyPriceBar = Alaris.Strategy.Bridge.PriceBar;
 using StrategyOptionChain = Alaris.Strategy.Model.STDT002A;
@@ -23,8 +25,9 @@ using Alaris.Infrastructure.Data.Model;
 using Alaris.Infrastructure.Data.Provider;
 using Alaris.Infrastructure.Data.Provider.Polygon;
 using Alaris.Infrastructure.Data.Provider.FMP;
-using Alaris.Infrastructure.Data.Provider.SEC;
+using Alaris.Infrastructure.Data.Provider.Nasdaq;
 using Alaris.Infrastructure.Data.Provider.Treasury;
+using Alaris.Infrastructure.Data.Http.Contracts;
 using Alaris.Infrastructure.Data.Quality;
 using Alaris.Infrastructure.Events;
 using Alaris.Strategy.Bridge;
@@ -283,20 +286,30 @@ public sealed class STLN001A : QCAlgorithm
         // Load configuration
         var configuration = BuildConfiguration();
         
-        // Initialise market data provider (Polygon)
+        // Initialise market data provider (Polygon) with Refit
+        var polygonHttpClient = new HttpClient { BaseAddress = new Uri("https://api.polygon.io"), Timeout = ApiTimeout };
+        polygonHttpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Alaris/1.0 (Quantitative Trading System)");
+        IPolygonApi polygonApi = RestService.For<IPolygonApi>(polygonHttpClient);
         _marketDataProvider = new PolygonApiClient(
-            _httpClient,
+            polygonApi,
             configuration,
             _loggerFactory!.CreateLogger<PolygonApiClient>());
         
-        // Initialise earnings provider (SEC EDGAR - free, uses per-ticker queries)
-        _earningsProvider = new SecEdgarProvider(
-            _httpClient,
-            _loggerFactory!.CreateLogger<SecEdgarProvider>());
+        // Initialise earnings provider (NASDAQ - free, no rate limits) with Refit
+        var nasdaqHttpClient = new HttpClient { BaseAddress = new Uri("https://api.nasdaq.com"), Timeout = ApiTimeout };
+        nasdaqHttpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+        nasdaqHttpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        INasdaqCalendarApi nasdaqApi = RestService.For<INasdaqCalendarApi>(nasdaqHttpClient);
+        _earningsProvider = new NasdaqEarningsProvider(
+            nasdaqApi,
+            _loggerFactory!.CreateLogger<NasdaqEarningsProvider>());
         
-        // Initialise risk-free rate provider (Treasury Direct)
+        // Initialise risk-free rate provider (Treasury Direct) with Refit
+        var treasuryHttpClient = new HttpClient { BaseAddress = new Uri("https://www.treasurydirect.gov/TA_WS/securities"), Timeout = ApiTimeout };
+        treasuryHttpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Alaris/1.0 (Quantitative Trading System)");
+        ITreasuryDirectApi treasuryApi = RestService.For<ITreasuryDirectApi>(treasuryHttpClient);
         _riskFreeRateProvider = new TreasuryDirectRateProvider(
-            _httpClient,
+            treasuryApi,
             _loggerFactory!.CreateLogger<TreasuryDirectRateProvider>());
         
         // Initialise execution quote provider (IBKR Snapshots)

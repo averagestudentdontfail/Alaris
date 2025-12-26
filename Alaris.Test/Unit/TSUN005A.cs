@@ -1,38 +1,35 @@
-// DataProviderTests.cs - Unit Tests for Data Providers (Mocked HTTP)
+// TSUN005A.cs - Unit Tests for Data Providers (Mocked Refit Interfaces)
 // Tests: DTpr001A (Polygon), DTea001A (FMP), DTrf001A (Treasury)
 
 using System;
 using System.Collections.Generic;
-using System.Net;
-using System.Net.Http;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using NSubstitute;
 using Alaris.Infrastructure.Data.Provider.Polygon;
 using Alaris.Infrastructure.Data.Provider.FMP;
 using Alaris.Infrastructure.Data.Provider.Treasury;
+using Alaris.Infrastructure.Data.Http.Contracts;
 
 namespace Alaris.Test.Unit;
 
 /// <summary>
 /// Unit tests for PolygonApiClient (DTpr001A).
-/// Uses mock HTTP handler for deterministic testing.
+/// Uses mocked Refit interface for deterministic testing.
 /// </summary>
-public sealed class DTpr001ATests : IDisposable
+public sealed class DTpr001ATests
 {
-    private readonly MockHttpMessageHandler _mockHandler;
-    private readonly HttpClient _httpClient;
+    private readonly IPolygonApi _mockApi;
     private readonly IConfiguration _configuration;
     private readonly ILogger<PolygonApiClient> _logger;
 
     public DTpr001ATests()
     {
-        _mockHandler = new MockHttpMessageHandler();
-        _httpClient = new HttpClient(_mockHandler) { BaseAddress = new Uri("https://api.polygon.io") };
+        _mockApi = Substitute.For<IPolygonApi>();
         _configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
@@ -42,30 +39,27 @@ public sealed class DTpr001ATests : IDisposable
         _logger = new LoggerFactory().CreateLogger<PolygonApiClient>();
     }
 
-    public void Dispose()
-    {
-        _httpClient.Dispose();
-        _mockHandler.Dispose();
-        GC.SuppressFinalize(this);
-    }
-
     [Fact]
     public async Task GetHistoricalBarsAsync_ValidResponse_ReturnsBars()
     {
         // Arrange
-        var response = new
+        PolygonAggregatesResponse response = new()
         {
-            results = new[]
+            Results = new[]
             {
-                new { t = 1704067200000L, o = 100.0m, h = 102.0m, l = 99.0m, c = 101.0m, v = 1000000L }
+                new PolygonBar { Timestamp = 1704067200000L, Open = 100.0m, High = 102.0m, Low = 99.0m, Close = 101.0m, Volume = 1000000 }
             }
         };
-        _mockHandler.SetResponse(HttpStatusCode.OK, JsonSerializer.Serialize(response));
+        _mockApi.GetDailyBarsAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(response));
 
-        var client = new PolygonApiClient(_httpClient, _configuration, _logger);
+        PolygonApiClient client = new(_mockApi, _configuration, _logger);
 
         // Act
-        var bars = await client.GetHistoricalBarsAsync("AAPL", DateTime.Today.AddDays(-7), DateTime.Today);
+        IReadOnlyList<Alaris.Infrastructure.Data.Model.PriceBar> bars = await client.GetHistoricalBarsAsync("AAPL", DateTime.Today.AddDays(-7), DateTime.Today);
 
         // Assert
         bars.Should().HaveCount(1);
@@ -77,13 +71,17 @@ public sealed class DTpr001ATests : IDisposable
     public async Task GetHistoricalBarsAsync_EmptyResponse_ReturnsEmptyList()
     {
         // Arrange
-        var response = new { results = Array.Empty<object>() };
-        _mockHandler.SetResponse(HttpStatusCode.OK, JsonSerializer.Serialize(response));
+        PolygonAggregatesResponse response = new() { Results = Array.Empty<PolygonBar>() };
+        _mockApi.GetDailyBarsAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(response));
 
-        var client = new PolygonApiClient(_httpClient, _configuration, _logger);
+        PolygonApiClient client = new(_mockApi, _configuration, _logger);
 
         // Act
-        var bars = await client.GetHistoricalBarsAsync("INVALID", DateTime.Today.AddDays(-7), DateTime.Today);
+        IReadOnlyList<Alaris.Infrastructure.Data.Model.PriceBar> bars = await client.GetHistoricalBarsAsync("INVALID", DateTime.Today.AddDays(-7), DateTime.Today);
 
         // Assert
         bars.Should().BeEmpty();
@@ -93,16 +91,19 @@ public sealed class DTpr001ATests : IDisposable
     public async Task GetSpotPriceAsync_ValidResponse_ReturnsPrice()
     {
         // Arrange
-        var response = new
+        PolygonAggregatesResponse response = new()
         {
-            results = new[] { new { t = 1704067200000L, o = 100.0m, h = 102.0m, l = 99.0m, c = 150.50m, v = 1000000L } }
+            Results = new[] { new PolygonBar { Timestamp = 1704067200000L, Open = 100.0m, High = 102.0m, Low = 99.0m, Close = 150.50m, Volume = 1000000 } }
         };
-        _mockHandler.SetResponse(HttpStatusCode.OK, JsonSerializer.Serialize(response));
+        _mockApi.GetPreviousDayAsync(
+            Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<string>(),
+            Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(response));
 
-        var client = new PolygonApiClient(_httpClient, _configuration, _logger);
+        PolygonApiClient client = new(_mockApi, _configuration, _logger);
 
         // Act
-        var price = await client.GetSpotPriceAsync("AAPL");
+        decimal price = await client.GetSpotPriceAsync("AAPL");
 
         // Assert
         price.Should().Be(150.50m);
@@ -112,21 +113,25 @@ public sealed class DTpr001ATests : IDisposable
     public async Task GetAverageVolume30DayAsync_CalculatesAverage()
     {
         // Arrange - 3 bars to average
-        var response = new
+        PolygonAggregatesResponse response = new()
         {
-            results = new[]
+            Results = new[]
             {
-                new { t = 1704067200000L, o = 100m, h = 102m, l = 99m, c = 101m, v = 1000000L },
-                new { t = 1704153600000L, o = 101m, h = 103m, l = 100m, c = 102m, v = 2000000L },
-                new { t = 1704240000000L, o = 102m, h = 104m, l = 101m, c = 103m, v = 3000000L }
+                new PolygonBar { Timestamp = 1704067200000L, Open = 100m, High = 102m, Low = 99m, Close = 101m, Volume = 1000000 },
+                new PolygonBar { Timestamp = 1704153600000L, Open = 101m, High = 103m, Low = 100m, Close = 102m, Volume = 2000000 },
+                new PolygonBar { Timestamp = 1704240000000L, Open = 102m, High = 104m, Low = 101m, Close = 103m, Volume = 3000000 }
             }
         };
-        _mockHandler.SetResponse(HttpStatusCode.OK, JsonSerializer.Serialize(response));
+        _mockApi.GetDailyBarsAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(response));
 
-        var client = new PolygonApiClient(_httpClient, _configuration, _logger);
+        PolygonApiClient client = new(_mockApi, _configuration, _logger);
 
         // Act
-        var avgVolume = await client.GetAverageVolume30DayAsync("AAPL");
+        decimal avgVolume = await client.GetAverageVolume30DayAsync("AAPL");
 
         // Assert
         avgVolume.Should().Be(2000000m); // (1M + 2M + 3M) / 3
@@ -136,28 +141,27 @@ public sealed class DTpr001ATests : IDisposable
     public void Constructor_MissingApiKey_ThrowsException()
     {
         // Arrange
-        var emptyConfig = new ConfigurationBuilder().Build();
+        IConfiguration emptyConfig = new ConfigurationBuilder().Build();
 
         // Act & Assert
-        var act = () => new PolygonApiClient(_httpClient, emptyConfig, _logger);
+        Action act = () => _ = new PolygonApiClient(_mockApi, emptyConfig, _logger);
         act.Should().Throw<InvalidOperationException>().WithMessage("*API key*");
     }
 }
 
 /// <summary>
 /// Unit tests for FinancialModelingPrepProvider (DTea001A).
+/// Uses mocked Refit interface for deterministic testing.
 /// </summary>
-public sealed class DTea001ATests : IDisposable
+public sealed class DTea001ATests
 {
-    private readonly MockHttpMessageHandler _mockHandler;
-    private readonly HttpClient _httpClient;
+    private readonly IFinancialModelingPrepApi _mockApi;
     private readonly IConfiguration _configuration;
     private readonly ILogger<FinancialModelingPrepProvider> _logger;
 
     public DTea001ATests()
     {
-        _mockHandler = new MockHttpMessageHandler();
-        _httpClient = new HttpClient(_mockHandler) { BaseAddress = new Uri("https://financialmodelingprep.com/api") };
+        _mockApi = Substitute.For<IFinancialModelingPrepApi>();
         _configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
@@ -167,49 +171,44 @@ public sealed class DTea001ATests : IDisposable
         _logger = new LoggerFactory().CreateLogger<FinancialModelingPrepProvider>();
     }
 
-    public void Dispose()
-    {
-        _httpClient.Dispose();
-        _mockHandler.Dispose();
-        GC.SuppressFinalize(this);
-    }
-
     [Fact]
     public async Task GetHistoricalEarningsAsync_ValidResponse_ReturnsEarnings()
     {
         // Arrange
-        var response = new[]
+        FmpEarningsEvent[] response = new[]
         {
-            new { symbol = "AAPL", date = "2024-10-25", fiscalQuarter = "Q4", fiscalYear = 2024, time = "amc", eps = 1.45m, epsEstimate = 1.40m }
+            new FmpEarningsEvent { Symbol = "AAPL", Date = DateTime.Today.AddDays(-30), FiscalQuarter = "Q4", FiscalYear = 2024, Time = "amc", Eps = 1.45m, EpsEstimate = 1.40m }
         };
-        _mockHandler.SetResponse(HttpStatusCode.OK, JsonSerializer.Serialize(response));
+        _mockApi.GetHistoricalEarningsAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(response));
 
-        var provider = new FinancialModelingPrepProvider(_httpClient, _configuration, _logger);
+        FinancialModelingPrepProvider provider = new(_mockApi, _configuration, _logger);
 
-        // Act - Note: The provider's GetHistoricalEarningsAsync filters by date range
-        // The mock response may not match the filtering criteria, so we test for no-exception behavior
-        Func<Task> act = async () => await provider.GetHistoricalEarningsAsync("AAPL", lookbackDays: 365);
+        // Act
+        IReadOnlyList<Alaris.Infrastructure.Data.Model.EarningsEvent> earnings = await provider.GetHistoricalEarningsAsync("AAPL", lookbackDays: 365);
 
-        // Assert - Should not throw, returns filtered results
-        await act.Should().NotThrowAsync();
+        // Assert
+        earnings.Should().HaveCount(1);
+        earnings[0].Symbol.Should().Be("AAPL");
     }
 
     [Fact]
     public async Task GetSymbolsWithEarningsAsync_ReturnsDistinctSymbols()
     {
         // Arrange
-        var response = new[]
+        FmpEarningsEvent[] response = new[]
         {
-            new { symbol = "AAPL", date = "2025-01-28", time = "amc" },
-            new { symbol = "MSFT", date = "2025-01-28", time = "bmo" },
-            new { symbol = "AAPL", date = "2025-01-28", time = "amc" } // Duplicate
+            new FmpEarningsEvent { Symbol = "AAPL", Date = DateTime.Today.AddDays(5), Time = "amc" },
+            new FmpEarningsEvent { Symbol = "MSFT", Date = DateTime.Today.AddDays(5), Time = "bmo" },
+            new FmpEarningsEvent { Symbol = "AAPL", Date = DateTime.Today.AddDays(5), Time = "amc" } // Duplicate
         };
-        _mockHandler.SetResponse(HttpStatusCode.OK, JsonSerializer.Serialize(response));
+        _mockApi.GetEarningsCalendarAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(response));
 
-        var provider = new FinancialModelingPrepProvider(_httpClient, _configuration, _logger);
+        FinancialModelingPrepProvider provider = new(_mockApi, _configuration, _logger);
 
         // Act
-        var symbols = await provider.GetSymbolsWithEarningsAsync(DateTime.Today, DateTime.Today.AddDays(30));
+        IReadOnlyList<string> symbols = await provider.GetSymbolsWithEarningsAsync(DateTime.Today, DateTime.Today.AddDays(30));
 
         // Assert
         symbols.Should().HaveCount(2);
@@ -221,51 +220,46 @@ public sealed class DTea001ATests : IDisposable
     public void Constructor_MissingApiKey_ThrowsException()
     {
         // Arrange
-        var emptyConfig = new ConfigurationBuilder().Build();
+        IConfiguration emptyConfig = new ConfigurationBuilder().Build();
 
         // Act & Assert
-        var act = () => new FinancialModelingPrepProvider(_httpClient, emptyConfig, _logger);
+        Action act = () => _ = new FinancialModelingPrepProvider(_mockApi, emptyConfig, _logger);
         act.Should().Throw<InvalidOperationException>().WithMessage("*API key*");
     }
 }
 
 /// <summary>
 /// Unit tests for TreasuryDirectRateProvider (DTrf001A).
+/// Uses mocked Refit interface for deterministic testing.
 /// </summary>
-public sealed class DTrf001ATests : IDisposable
+public sealed class DTrf001ATests
 {
-    private readonly MockHttpMessageHandler _mockHandler;
-    private readonly HttpClient _httpClient;
+    private readonly ITreasuryDirectApi _mockApi;
     private readonly ILogger<TreasuryDirectRateProvider> _logger;
 
     public DTrf001ATests()
     {
-        _mockHandler = new MockHttpMessageHandler();
-        _httpClient = new HttpClient(_mockHandler) { BaseAddress = new Uri("https://www.treasurydirect.gov/TA_WS/securities") };
+        _mockApi = Substitute.For<ITreasuryDirectApi>();
         _logger = new LoggerFactory().CreateLogger<TreasuryDirectRateProvider>();
-    }
-
-    public void Dispose()
-    {
-        _httpClient.Dispose();
-        _mockHandler.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     [Fact]
     public async Task GetCurrentRateAsync_ValidResponse_ReturnsParsedRate()
     {
-        // Arrange - Treasury API returns array directly (not wrapped)
-        var response = new[]
+        // Arrange
+        TreasurySecurityDto[] response = new[]
         {
-            new { cusip = "912796XY0", issueDate = DateTime.Today.AddDays(-1).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), maturityDate = DateTime.Today.AddDays(90).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), term = "91 Day", interestRate = "5.25", type = "Bill" }
+            new TreasurySecurityDto { Cusip = "912796XY0", IssueDate = DateTime.Today.AddDays(-1), MaturityDate = DateTime.Today.AddDays(90), Term = "91 Day", InterestRate = "5.25", SecurityType = "Bill" }
         };
-        _mockHandler.SetResponse(HttpStatusCode.OK, JsonSerializer.Serialize(response));
+        _mockApi.SearchSecuritiesAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(response));
 
-        var provider = new TreasuryDirectRateProvider(_httpClient, _logger);
+        TreasuryDirectRateProvider provider = new(_mockApi, _logger);
 
         // Act
-        var rate = await provider.GetCurrentRateAsync();
+        decimal rate = await provider.GetCurrentRateAsync();
 
         // Assert
         rate.Should().Be(0.0525m); // 5.25% converted to decimal
@@ -275,9 +269,12 @@ public sealed class DTrf001ATests : IDisposable
     public async Task GetCurrentRateAsync_NoData_ThrowsException()
     {
         // Arrange - Empty array response
-        _mockHandler.SetResponse(HttpStatusCode.OK, "[]");
+        _mockApi.SearchSecuritiesAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Array.Empty<TreasurySecurityDto>()));
 
-        var provider = new TreasuryDirectRateProvider(_httpClient, _logger);
+        TreasuryDirectRateProvider provider = new(_mockApi, _logger);
 
         // Act & Assert - Fail fast, no fallback data substitution
         Func<Task> act = () => provider.GetCurrentRateAsync();
@@ -288,48 +285,25 @@ public sealed class DTrf001ATests : IDisposable
     [Fact]
     public async Task GetHistoricalRatesAsync_ValidResponse_ReturnsRatesByDate()
     {
-        // Arrange - Treasury API returns array directly without wrapper
-        var response = new[]
+        // Arrange
+        TreasurySecurityDto[] response = new[]
         {
-            new { cusip = "912796XY0", issueDate = "2025-01-02", term = "91 Day", interestRate = "5.20" },
-            new { cusip = "912796XZ0", issueDate = "2025-01-09", term = "91 Day", interestRate = "5.25" }
+            new TreasurySecurityDto { Cusip = "912796XY0", IssueDate = DateTime.Parse("2025-01-02", System.Globalization.CultureInfo.InvariantCulture), Term = "91 Day", InterestRate = "5.20" },
+            new TreasurySecurityDto { Cusip = "912796XZ0", IssueDate = DateTime.Parse("2025-01-09", System.Globalization.CultureInfo.InvariantCulture), Term = "91 Day", InterestRate = "5.25" }
         };
-        _mockHandler.SetResponse(HttpStatusCode.OK, JsonSerializer.Serialize(response));
+        _mockApi.SearchSecuritiesAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(response));
 
-        var provider = new TreasuryDirectRateProvider(_httpClient, _logger);
+        TreasuryDirectRateProvider provider = new(_mockApi, _logger);
 
         // Act
-        var rates = await provider.GetHistoricalRatesAsync(DateTime.Today.AddDays(-30), DateTime.Today);
+        IReadOnlyDictionary<DateTime, decimal> rates = await provider.GetHistoricalRatesAsync(DateTime.Today.AddDays(-30), DateTime.Today);
 
         // Assert
         rates.Should().HaveCount(2);
         rates[DateTime.Parse("2025-01-02", System.Globalization.CultureInfo.InvariantCulture)].Should().Be(0.0520m);
         rates[DateTime.Parse("2025-01-09", System.Globalization.CultureInfo.InvariantCulture)].Should().Be(0.0525m);
-    }
-}
-
-/// <summary>
-/// Mock HTTP message handler for testing HTTP-based providers.
-/// </summary>
-internal sealed class MockHttpMessageHandler : HttpMessageHandler
-{
-    private HttpStatusCode _statusCode = HttpStatusCode.OK;
-    private string _content = "{}";
-
-    public void SetResponse(HttpStatusCode statusCode, string content)
-    {
-        _statusCode = statusCode;
-        _content = content;
-    }
-
-    protected override Task<HttpResponseMessage> SendAsync(
-        HttpRequestMessage request,
-        CancellationToken cancellationToken)
-    {
-        var response = new HttpResponseMessage(_statusCode)
-        {
-            Content = new StringContent(_content, System.Text.Encoding.UTF8, "application/json")
-        };
-        return Task.FromResult(response);
     }
 }
