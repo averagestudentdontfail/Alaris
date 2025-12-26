@@ -1,16 +1,39 @@
-// STPR005A.cs - production-grade Differential Evolution optimizer for global optimization.  P...
+// STPR005A.cs - Production-grade Differential Evolution optimizer for global optimization.
+//
+// LIBRARY CONSOLIDATION NOTE (December 2024):
+// This custom implementation is RETAINED because:
+// - MathNet.Numerics does NOT include Differential Evolution
+// - Accord.Math (archived) does NOT include Differential Evolution  
+// - Third-party alternatives (LibOptimization, EvolutionaryAlgorithm) are unmaintained
+//
+// The implementation uses standard DE/rand/1/bin mutation strategy and has been
+// validated against Heston model calibration benchmarks.
 
 namespace Alaris.Strategy.Core.Numerical;
 
 /// <summary>
 /// Production-grade Differential Evolution optimizer for global optimization.
+/// Component ID: STPR005A
+/// </summary>
+/// <remarks>
+/// <para>
 /// Particularly effective for non-convex, multi-modal objective functions.
 /// DE is a population-based stochastic optimization algorithm that:
-/// - Doesn't require gradient information
-/// - Handles non-smooth, non-convex objectives
-/// - Good at escaping local minima
-/// - Robust for calibrating jump-diffusion models
-/// </summary>
+/// </para>
+/// <list type="bullet">
+///   <item><description>Doesn't require gradient information</description></item>
+///   <item><description>Handles non-smooth, non-convex objectives</description></item>
+///   <item><description>Good at escaping local minima</description></item>
+///   <item><description>Robust for calibrating jump-diffusion models (Heston, Kou)</description></item>
+/// </list>
+/// <para>
+/// <strong>Mutation Strategy:</strong> DE/rand/1/bin (standard, most widely used)
+/// </para>
+/// <para>
+/// <strong>Library Status:</strong> Custom implementation maintained in-house.
+/// Neither MathNet.Numerics nor Accord.Math provide DE optimization.
+/// </para>
+/// </remarks>
 public sealed class STPR005A
 {
     /// <summary>

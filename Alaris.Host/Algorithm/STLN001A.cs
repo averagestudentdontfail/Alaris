@@ -16,6 +16,8 @@ using QuantConnect.Securities.Option;
 
 using StrategyPriceBar = Alaris.Strategy.Bridge.PriceBar;
 using StrategyOptionChain = Alaris.Strategy.Model.STDT002A;
+using AlarisTimeProvider = Alaris.Core.Time.ITimeProvider;
+using Alaris.Core.Time;
 using Alaris.Infrastructure.Data.Bridge;
 using Alaris.Infrastructure.Data.Model;
 using Alaris.Infrastructure.Data.Provider;
@@ -135,6 +137,9 @@ public sealed class STLN001A : QCAlgorithm
     
     // HTTP Client (shared)
     private HttpClient? _httpClient;
+    
+    // Time Provider (backtest-aware)
+    private AlarisTimeProvider? _timeProvider;
     
     // State Tracking
     private readonly HashSet<Symbol> _activePositions = new();
@@ -298,13 +303,21 @@ public sealed class STLN001A : QCAlgorithm
         _executionQuoteProvider = new InteractiveBrokersSnapshotProvider(
             _loggerFactory!.CreateLogger<InteractiveBrokersSnapshotProvider>());
         
-        // Create data quality validators
+        // Create time provider for backtest-aware validation
+        // Use LEAN's Time property as the simulated time source
+        _timeProvider = new BacktestTimeProvider(() => Time);
+        
+        // Create data quality validators with time provider
         var validators = new DTqc002A[]
         {
-            new PriceReasonablenessValidator(_loggerFactory!.CreateLogger<PriceReasonablenessValidator>()),
+            new PriceReasonablenessValidator(
+                _loggerFactory!.CreateLogger<PriceReasonablenessValidator>(),
+                _timeProvider),
             new IvArbitrageValidator(_loggerFactory!.CreateLogger<IvArbitrageValidator>()),
             new VolumeOpenInterestValidator(_loggerFactory!.CreateLogger<VolumeOpenInterestValidator>()),
-            new EarningsDateValidator(_loggerFactory!.CreateLogger<EarningsDateValidator>())
+            new EarningsDateValidator(
+                _loggerFactory!.CreateLogger<EarningsDateValidator>(),
+                _timeProvider)
         };
         
         // Create unified data bridge

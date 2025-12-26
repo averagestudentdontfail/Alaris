@@ -128,8 +128,8 @@ public static class STPR003A
         }
 
         // Numerical integration from slightly above 0 to infinity using adaptive quadrature
-        // UPDATED: Start at 1e-8 to avoid singularity at phi=0
-        (double integralValue, double _) = STPR002A.IntegrateToInfinity(
+        // Uses STPR002C unified facade for automatic AVX2 dispatch
+        (double integralValue, double _) = STPR002C.IntegrateToInfinity(
             Integrand,
             1e-8,
             absoluteTolerance: 1e-8,

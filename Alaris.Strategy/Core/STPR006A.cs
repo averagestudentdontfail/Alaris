@@ -67,8 +67,8 @@ public static class STPR006A
             return (Complex.Exp(-iV * logStrike) * charFunc / denominator).Real;
         }
 
-        // Numerical integration
-        (double integralValue, double _) = STPR002A.IntegrateToInfinity(
+        // Numerical integration using STPR002C unified facade for automatic AVX2 dispatch
+        (double integralValue, double _) = STPR002C.IntegrateToInfinity(
             Integrand,
             0,
             absoluteTolerance: 1e-6,

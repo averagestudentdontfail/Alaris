@@ -1,6 +1,8 @@
 using System;
 using System.Linq;
 using Microsoft.Extensions.Logging;
+using NodaTime;
+using Alaris.Core.Time;
 using Alaris.Infrastructure.Data.Model;
 
 namespace Alaris.Infrastructure.Data.Quality;
@@ -19,6 +21,7 @@ namespace Alaris.Infrastructure.Data.Quality;
 public sealed class PriceReasonablenessValidator : DTqc002A
 {
     private readonly ILogger<PriceReasonablenessValidator> _logger;
+    private readonly ITimeProvider _timeProvider;
 
     /// <inheritdoc/>
     public string ComponentId => "DTqc001A";
@@ -26,16 +29,21 @@ public sealed class PriceReasonablenessValidator : DTqc002A
     /// <summary>
     /// Initializes a new instance of the <see cref="PriceReasonablenessValidator"/> class.
     /// </summary>
-    public PriceReasonablenessValidator(ILogger<PriceReasonablenessValidator> _logger)
+    /// <param name="logger">The logger instance.</param>
+    /// <param name="timeProvider">The time provider for backtest-aware time operations.</param>
+    public PriceReasonablenessValidator(
+        ILogger<PriceReasonablenessValidator> logger,
+        ITimeProvider timeProvider)
     {
-        this._logger = _logger ?? throw new ArgumentNullException(nameof(_logger));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     /// <inheritdoc/>
     public DataQualityResult Validate(MarketDataSnapshot snapshot)
     {
         var warnings = new System.Collections.Generic.List<string>();
-        var now = DateTime.UtcNow;
+        Instant now = _timeProvider.Now;
 
         // Check 1: Spot price change reasonableness
         if (snapshot.HistoricalBars.Count > 0)
@@ -99,8 +107,8 @@ public sealed class PriceReasonablenessValidator : DTqc002A
         }
 
         // Check 3: Data freshness
-        var dataAge = now - snapshot.Timestamp;
-        if (dataAge > TimeSpan.FromHours(1))
+        Duration dataAge = now - _timeProvider.ToInstant(snapshot.Timestamp);
+        if (dataAge > Duration.FromHours(1))
         {
             return new DataQualityResult
             {
@@ -337,6 +345,7 @@ public sealed class VolumeOpenInterestValidator : DTqc002A
 public sealed class EarningsDateValidator : DTqc002A
 {
     private readonly ILogger<EarningsDateValidator> _logger;
+    private readonly ITimeProvider _timeProvider;
 
     /// <inheritdoc/>
     public string ComponentId => "DTqc004A";
@@ -344,9 +353,14 @@ public sealed class EarningsDateValidator : DTqc002A
     /// <summary>
     /// Initializes a new instance of the <see cref="EarningsDateValidator"/> class.
     /// </summary>
-    public EarningsDateValidator(ILogger<EarningsDateValidator> logger)
+    /// <param name="logger">The logger instance.</param>
+    /// <param name="timeProvider">The time provider for backtest-aware time operations.</param>
+    public EarningsDateValidator(
+        ILogger<EarningsDateValidator> logger,
+        ITimeProvider timeProvider)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     /// <inheritdoc/>
@@ -366,11 +380,12 @@ public sealed class EarningsDateValidator : DTqc002A
             };
         }
 
-        var now = DateTime.UtcNow.Date;
+        LocalDate today = _timeProvider.Today;
         var earnings = snapshot.NextEarnings;
 
         // Check 1: Earnings date is in the future
-        if (earnings.Date < now)
+        LocalDate earningsDate = _timeProvider.ToLocalDate(earnings.Date);
+        if (earningsDate < today)
         {
             return new DataQualityResult
             {
@@ -382,17 +397,18 @@ public sealed class EarningsDateValidator : DTqc002A
         }
 
         // Check 2: Earnings date is within reasonable window
-        var daysAhead = (earnings.Date - now).TotalDays;
+        int daysAhead = Period.Between(today, earningsDate).Days;
         if (daysAhead > 90)
         {
             warnings.Add($"Earnings date is {daysAhead:F0} days ahead (>90 days)");
         }
 
         // Check 3: Data freshness
-        var dataAge = now - earnings.FetchedAt.Date;
-        if (dataAge.TotalDays > 7)
+        LocalDate fetchedDate = _timeProvider.ToLocalDate(earnings.FetchedAt);
+        int dataAgeDays = Period.Between(fetchedDate, today).Days;
+        if (dataAgeDays > 7)
         {
-            warnings.Add($"Earnings data is {dataAge.TotalDays:F0} days old");
+            warnings.Add($"Earnings data is {dataAgeDays} days old");
         }
 
         // Check 4: Historical consistency

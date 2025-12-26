@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using Xunit;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
+using Alaris.Core.Time;
 using Alaris.Infrastructure.Data.Model;
 using Alaris.Infrastructure.Data.Quality;
 
@@ -20,11 +21,13 @@ public class DTqc001ATests
 {
     private readonly PriceReasonablenessValidator _validator;
     private readonly ILogger<PriceReasonablenessValidator> _logger;
+    private readonly ITimeProvider _timeProvider;
 
     public DTqc001ATests()
     {
         _logger = new LoggerFactory().CreateLogger<PriceReasonablenessValidator>();
-        _validator = new PriceReasonablenessValidator(_logger);
+        _timeProvider = new LiveTimeProvider();
+        _validator = new PriceReasonablenessValidator(_logger, _timeProvider);
     }
 
     [Fact]
@@ -420,11 +423,13 @@ public class DTqc004ATests
 {
     private readonly EarningsDateValidator _validator;
     private readonly ILogger<EarningsDateValidator> _logger;
+    private readonly ITimeProvider _timeProvider;
 
     public DTqc004ATests()
     {
         _logger = new LoggerFactory().CreateLogger<EarningsDateValidator>();
-        _validator = new EarningsDateValidator(_logger);
+        _timeProvider = new LiveTimeProvider();
+        _validator = new EarningsDateValidator(_logger, _timeProvider);
     }
 
     [Fact]
