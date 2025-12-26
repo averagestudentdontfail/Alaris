@@ -1,4 +1,4 @@
-// ITimeProvider.cs - time provider abstraction for live/backtest modes
+// CRTM001A.cs - ITimeProvider interface for backtest-aware time operations
 
 using NodaTime;
 

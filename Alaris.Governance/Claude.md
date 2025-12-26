@@ -4,6 +4,18 @@
 
 ```
 Alaris/
+├── Alaris.Core/             Core Primitives & Time Management
+│   ├── Math/
+│   │   └── CRMF001A.cs         (Math Functions)
+│   ├── Time/               [NEW - NodaTime Integration]
+│   │   ├── CRTM001A.cs         (ITimeProvider Interface)
+│   │   ├── CRTM002A.cs         (LiveTimeProvider - Production)
+│   │   ├── CRTM003A.cs         (BacktestTimeProvider - Simulation)
+│   │   └── CRTM004A.cs         (DI Registration Extensions)
+│   ├── Pooling/            (ArrayPool Utilities)
+│   ├── Validation/         (Guard Clauses)
+│   └── Vectorized/         (SIMD Operations)
+│
 ├── Alaris.Double/          Negative Rate American Option Pricing
 │   ├── DBAP001A.cs         (Quasi-Analytic Approximation - QD+)
 │   ├── DBAP002A.cs         (Double Boundary Approximation)
