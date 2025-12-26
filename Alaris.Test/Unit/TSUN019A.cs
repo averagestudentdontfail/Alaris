@@ -233,4 +233,6 @@ internal class UniverseTestEarningsProvider : DTpr004A
     {
         return Task.FromResult(s_defaultSymbols);
     }
+
+    public void EnableCacheOnlyMode() { }
 }

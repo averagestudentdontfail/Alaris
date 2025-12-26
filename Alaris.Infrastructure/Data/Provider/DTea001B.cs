@@ -193,6 +193,13 @@ public sealed class SecEdgarProvider : DTpr004A, IDisposable
         return Task.FromResult<IReadOnlyList<string>>(Array.Empty<string>());
     }
 
+    /// <inheritdoc/>
+    public void EnableCacheOnlyMode()
+    {
+        // SEC EDGAR is already cache-aware via ALARIS_SESSION_DATA, no additional action needed
+        _logger.LogDebug("EnableCacheOnlyMode called on SecEdgarProvider (cache already enabled)");
+    }
+
     /// <summary>
     /// Gets the CIK number for a stock ticker.
     /// </summary>

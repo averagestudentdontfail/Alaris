@@ -12,7 +12,7 @@ using QuantConnect.Data.UniverseSelection;
 using Microsoft.Extensions.Logging;
 using Alaris.Infrastructure.Data.Provider;
 
-namespace Alaris.Host.Algorithm.Universe;
+namespace Alaris.Algorithm.Universe;
 
 /// <summary>
 /// Polygon-based universe selection model that uses pre-generated universe files.
@@ -245,44 +245,27 @@ public sealed class STUN001B : UniverseSelectionModel
             var startDate = date.AddDays(_daysBeforeEarningsMin);
             var endDate = date.AddDays(_daysBeforeEarningsMax);
 
-            // Query top stocks individually (SEC EDGAR doesn't support batch)
-            // Limit to top 100 by dollar volume to manage API rate limits
-            var topStocks = _cachedUniverse.Take(100).ToList();
-            
-            algorithm.Debug($"STUN001B: Checking {topStocks.Count} stocks for earnings between {startDate:MM-dd} and {endDate:MM-dd}");
+            algorithm.Debug($"STUN001B: Checking for earnings between {startDate:MM-dd} and {endDate:MM-dd}");
 
-            var foundCount = 0;
-            foreach (var stock in topStocks)
+            // Use batch query instead of per-symbol loop (prevents 100+ API calls)
+            var symbolsWithEarnings = _earningsProvider.GetSymbolsWithEarningsAsync(
+                startDate, endDate, CancellationToken.None)
+                .GetAwaiter().GetResult();
+
+            // Filter to symbols in our universe
+            var universeSet = new HashSet<string>(
+                _cachedUniverse.Select(u => u.Ticker),
+                StringComparer.OrdinalIgnoreCase);
+
+            foreach (var symbol in symbolsWithEarnings)
             {
-                try
+                if (universeSet.Contains(symbol))
                 {
-                    // Get historical earnings (SEC 8-K Item 2.02 filings)
-                    // This returns ACTUAL filing dates from the past
-                    var historicalEarnings = _earningsProvider.GetHistoricalEarningsAsync(
-                        stock.Ticker,
-                        lookbackDays: 730, // 2 years of history
-                        CancellationToken.None)
-                        .GetAwaiter().GetResult();
-
-                    // Check if any historical earnings fall in our target window
-                    // This works for backtesting because we're checking dates that "already happened"
-                    var hasEarningsInWindow = historicalEarnings.Any(e => 
-                        e.Date >= startDate && e.Date <= endDate);
-
-                    if (hasEarningsInWindow)
-                    {
-                        _cachedEarningsSymbols.Add(stock.Ticker);
-                        foundCount++;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    // Log but continue - individual failures shouldn't stop the process
-                    algorithm.Debug($"STUN001B: Error checking {stock.Ticker}: {ex.Message}");
+                    _cachedEarningsSymbols.Add(symbol.ToUpperInvariant());
                 }
             }
 
-            algorithm.Debug($"STUN001B: Found {foundCount} symbols with earnings in {startDate:MM-dd} to {endDate:MM-dd}");
+            algorithm.Debug($"STUN001B: Found {_cachedEarningsSymbols.Count} symbols with earnings in {startDate:MM-dd} to {endDate:MM-dd}");
         }
         catch (Exception ex)
         {

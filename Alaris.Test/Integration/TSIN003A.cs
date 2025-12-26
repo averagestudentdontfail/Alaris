@@ -327,6 +327,8 @@ internal class BridgeTestEarningsProvider : DTpr004A
     {
         return Task.FromResult(s_defaultSymbols);
     }
+
+    public virtual void EnableCacheOnlyMode() { }
 }
 
 internal class BridgeTestEarningsProviderWithDelay : BridgeTestEarningsProvider

@@ -163,6 +163,13 @@ public sealed class FinancialModelingPrepProvider : DTpr004A
         return symbols;
     }
 
+    /// <inheritdoc/>
+    public void EnableCacheOnlyMode()
+    {
+        // FMP is a paid API provider, cache-only mode not applicable
+        _logger.LogDebug("EnableCacheOnlyMode called on FMP provider (no-op)");
+    }
+
     /// <summary>
     /// Gets all earnings events in a date range using Refit interface.
     /// </summary>

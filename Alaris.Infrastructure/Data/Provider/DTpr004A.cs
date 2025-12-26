@@ -45,4 +45,9 @@ public interface DTpr004A
         DateTime startDate,
         DateTime endDate,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Enables cache-only mode (disables API calls). Call for backtests.
+    /// </summary>
+    void EnableCacheOnlyMode();
 }

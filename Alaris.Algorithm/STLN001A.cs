@@ -35,13 +35,13 @@ using Alaris.Strategy.Risk;
 using Alaris.Strategy.Core;
 using Alaris.Strategy.Cost;
 using Alaris.Strategy.Hedge;
-using Alaris.Host.Algorithm.Universe;
+using Alaris.Algorithm.Universe;
 using Alaris.Infrastructure.Events.Infrastructure;
 
 using QCOptionRight = QuantConnect.OptionRight;
 using AlarisOptionRight = Alaris.Infrastructure.Data.Model.OptionRight;
 
-namespace Alaris.Host.Algorithm;
+namespace Alaris.Algorithm;
 
 public struct OptionParameters
 {
@@ -304,6 +304,12 @@ public sealed class STLN001A : QCAlgorithm
             nasdaqApi,
             _loggerFactory!.CreateLogger<NasdaqEarningsProvider>());
         
+        // Enable cache-only mode for backtests (prevents 403 errors from NASDAQ)
+        if (!LiveMode)
+        {
+            _earningsProvider.EnableCacheOnlyMode();
+            Log("STLN001A: Earnings provider set to cache-only mode (backtest)");
+        }
         // Initialise risk-free rate provider (Treasury Direct) with Refit
         var treasuryHttpClient = new HttpClient { BaseAddress = new Uri("https://www.treasurydirect.gov/TA_WS/securities"), Timeout = ApiTimeout };
         treasuryHttpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Alaris/1.0 (Quantitative Trading System)");

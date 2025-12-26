@@ -43,6 +43,7 @@ public sealed class NasdaqEarningsProvider : DTpr004A
     private readonly INasdaqCalendarApi _api;
     private readonly ILogger<NasdaqEarningsProvider> _logger;
     private readonly string? _cacheDataPath;
+    private bool _cacheOnlyMode;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -65,6 +66,15 @@ public sealed class NasdaqEarningsProvider : DTpr004A
         _api = api ?? throw new ArgumentNullException(nameof(api));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _cacheDataPath = cacheDataPath ?? Environment.GetEnvironmentVariable("ALARIS_SESSION_DATA");
+    }
+
+    /// <summary>
+    /// Enables cache-only mode (no API calls). Use for backtests to prevent 403 errors.
+    /// </summary>
+    public void EnableCacheOnlyMode()
+    {
+        _cacheOnlyMode = true;
+        _logger.LogInformation("NasdaqEarningsProvider: Cache-only mode enabled (no API calls)");
     }
 
     /// <inheritdoc/>
@@ -241,6 +251,19 @@ public sealed class NasdaqEarningsProvider : DTpr004A
                 _logger.LogDebug("Loading earnings for {Date:yyyy-MM-dd} from cache", date);
                 return await LoadFromCacheAsync(cachePath, cancellationToken);
             }
+            
+            // Cache-only mode: skip API call on cache miss (prevents 403 in backtests)
+            if (_cacheOnlyMode)
+            {
+                _logger.LogDebug("Cache miss for {Date:yyyy-MM-dd}, skipping (cache-only mode)", date);
+                return Array.Empty<EarningsEvent>();
+            }
+        }
+        else if (_cacheOnlyMode)
+        {
+            // No cache path and cache-only mode = skip entirely
+            _logger.LogDebug("No cache path, skipping {Date:yyyy-MM-dd} (cache-only mode)", date);
+            return Array.Empty<EarningsEvent>();
         }
 
         // 2. Live mode: Call NASDAQ API

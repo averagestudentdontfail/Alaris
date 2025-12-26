@@ -748,6 +748,8 @@ internal sealed class MockEarningsProvider : DTpr004A
         cancellationToken.ThrowIfCancellationRequested();
         return Task.FromResult<IReadOnlyList<string>>(DefaultSymbols);
     }
+
+    public void EnableCacheOnlyMode() { }
 }
 
 /// <summary>

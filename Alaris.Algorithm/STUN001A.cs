@@ -14,7 +14,7 @@ using QuantConnect.Data.UniverseSelection;
 using Microsoft.Extensions.Logging;
 using Alaris.Infrastructure.Data.Provider;
 
-namespace Alaris.Host.Algorithm.Universe;
+namespace Alaris.Algorithm.Universe;
 
 /// <summary>
 /// Universe selection model that filters for symbols with upcoming earnings.
