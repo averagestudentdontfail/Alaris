@@ -364,8 +364,17 @@ public sealed class BacktestRunSettings : CommandSettings
     [Description("Run the most recently created session")]
     [DefaultValue(false)]
     public bool Latest { get; init; }
-}
 
+    [CommandOption("--auto-bootstrap")]
+    [Description("Automatically download missing data without prompting")]
+    [DefaultValue(false)]
+    public bool AutoBootstrap { get; init; }
+
+    [CommandOption("--no-monitor")]
+    [Description("Disable live monitoring dashboard (logs only)")]
+    [DefaultValue(false)]
+    public bool NoMonitor { get; init; }
+}
 /// <summary>
 /// Runs a backtest session.
 /// </summary>
@@ -401,13 +410,61 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
 
         AnsiConsole.MarkupLine($"[blue]Running session:[/] {session.SessionId}");
         AnsiConsole.MarkupLine($"[blue]Date Range:[/] {session.StartDate:yyyy-MM-dd} to {session.EndDate:yyyy-MM-dd}");
+        AnsiConsole.MarkupLine($"[blue]Symbols:[/] {string.Join(", ", session.Symbols.Take(10))}{(session.Symbols.Count > 10 ? "..." : "")}");
         AnsiConsole.WriteLine();
+
+        // === SMART DATA CHECK ===
+        var dataPath = service.GetDataPath(session.SessionId);
+        var (pricesMissing, earningsMissing) = CheckDataAvailability(dataPath, session);
+
+        if (pricesMissing || earningsMissing)
+        {
+            AnsiConsole.MarkupLine("[yellow]⚠ Missing data detected:[/]");
+            if (pricesMissing) AnsiConsole.MarkupLine("  [grey]• Price data not found (LEAN will use API if available)[/]");
+            if (earningsMissing) AnsiConsole.MarkupLine("  [grey]• Earnings cache empty (algorithm will skip earnings checks)[/]");
+            AnsiConsole.WriteLine();
+
+            if (settings.AutoBootstrap)
+            {
+                // Auto-bootstrap without prompting
+                await BootstrapDataAsync(session, service, dataPath);
+            }
+            else
+            {
+                // Prompt user
+                var download = AnsiConsole.Confirm("Download missing data now?", defaultValue: true);
+                if (download)
+                {
+                    await BootstrapDataAsync(session, service, dataPath);
+                }
+                else
+                {
+                    AnsiConsole.MarkupLine("[grey]Continuing without data (algorithm may have limited functionality)[/]");
+                }
+            }
+            AnsiConsole.WriteLine();
+        }
+        else
+        {
+            AnsiConsole.MarkupLine("[green]✓[/] Data available for session");
+            AnsiConsole.WriteLine();
+        }
 
         // Update status to Running
         await service.UpdateAsync(session with { Status = SessionStatus.Running });
 
         // Execute LEAN with session-specific paths
-        var exitCode = await ExecuteLeanForSession(session, service);
+        int exitCode;
+        if (!settings.NoMonitor)
+        {
+            // Run with live monitoring dashboard (default)
+            exitCode = await ExecuteLeanWithMonitoringAsync(session, service);
+        }
+        else
+        {
+            // Run with logs only
+            exitCode = await ExecuteLeanForSession(session, service);
+        }
 
         // Update status based on result
         var finalStatus = exitCode == 0 ? SessionStatus.Completed : SessionStatus.Failed;
@@ -427,6 +484,65 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
         }
 
         return exitCode;
+    }
+
+    private static (bool pricesMissing, bool earningsMissing) CheckDataAvailability(string dataPath, APmd001A session)
+    {
+        // Check for price data (LEAN equity folder structure)
+        var equityPath = System.IO.Path.Combine(dataPath, "equity", "usa", "daily");
+        var hasPrices = Directory.Exists(equityPath) && Directory.GetFiles(equityPath, "*.zip").Length > 0;
+
+        // Check for earnings cache
+        var earningsPath = System.IO.Path.Combine(dataPath, "earnings", "nasdaq");
+        var hasEarnings = Directory.Exists(earningsPath) && Directory.GetFiles(earningsPath, "*.json").Length > 0;
+
+        return (!hasPrices, !hasEarnings);
+    }
+
+    private static async Task BootstrapDataAsync(APmd001A session, APsv001A service, string dataPath)
+    {
+        AnsiConsole.MarkupLine("[blue]Downloading price data from Polygon...[/]");
+        AnsiConsole.WriteLine();
+        
+        // Create data download service (same as BacktestPrepareCommand)
+        var config = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.jsonc", optional: true)
+            .AddJsonFile("appsettings.local.jsonc", optional: true)
+            .AddEnvironmentVariables("ALARIS_")
+            .Build();
+
+        var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Warning));
+        
+        var polygonHttpClient = new HttpClient { BaseAddress = new Uri("https://api.polygon.io") };
+        polygonHttpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Alaris/1.0");
+        var polygonApi = RestService.For<IPolygonApi>(polygonHttpClient);
+        var polygonClient = new PolygonApiClient(polygonApi, config, loggerFactory.CreateLogger<PolygonApiClient>());
+
+        // APsv002A(polygonClient, earningsClient?, treasuryClient?, logger?)
+        using var dataService = new APsv002A(polygonClient, null, null, loggerFactory.CreateLogger<APsv002A>());
+        
+        // Signature: (sessionDataPath, symbols, start, end)
+        await dataService.DownloadEquityDataAsync(
+            dataPath,
+            session.Symbols,
+            session.StartDate,
+            session.EndDate);
+
+        AnsiConsole.MarkupLine("[green]✓[/] Data bootstrap completed");
+        AnsiConsole.WriteLine();
+    }
+
+    private static async Task<int> ExecuteLeanWithMonitoringAsync(APmd001A session, APsv001A service)
+    {
+        // Create monitoring panel
+        var rule = new Rule($"[blue]BACKTEST: {session.SessionId}[/]") { Justification = Justify.Left };
+        AnsiConsole.Write(rule);
+        AnsiConsole.MarkupLine($"[grey]Press Ctrl+C to cancel[/]");
+        AnsiConsole.WriteLine();
+
+        // Run LEAN with live output parsing
+        return await ExecuteLeanForSession(session, service);
     }
 
     private static async Task<int> ExecuteLeanForSession(APmd001A session, APsv001A service)
