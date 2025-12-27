@@ -683,7 +683,7 @@ public sealed class STLN001A : QCAlgorithm
             return EvaluateSymbolBacktestMode(symbol);
         }
         
-        // Live/Paper Mode: Use external APIs (Polygon, SEC EDGAR, etc.)
+        // Live/Paper Mode: Use external APIs (Polygon, NASDAQ, etc.)
         
         // Phase 1: Market Data Acquisition
         
@@ -863,7 +863,7 @@ public sealed class STLN001A : QCAlgorithm
 
     /// <summary>
     /// Evaluates a symbol in backtest mode using LEAN's native data.
-    /// Does not call external APIs - uses History API and cached SEC EDGAR data.
+    /// Does not call external APIs - uses History API and cached earnings data.
     /// </summary>
     /// <param name="symbol">The symbol to evaluate.</param>
     /// <returns>Evaluation result.</returns>
@@ -896,7 +896,7 @@ public sealed class STLN001A : QCAlgorithm
 
         Log($"  {ticker}: LEAN data - {barList.Count} bars, spot=${spotPrice:F2}");
 
-        // Step 2: Get earnings data from SEC EDGAR (cached, works in backtest)
+        // Step 2: Get earnings data from cache (NASDAQ provider in cache-only mode)
         
         EarningsEvent? nextEarnings = null;
         try
@@ -920,7 +920,7 @@ public sealed class STLN001A : QCAlgorithm
 
         if (nextEarnings == null)
         {
-            Log($"  {ticker}: No upcoming earnings found in SEC EDGAR");
+            Log($"  {ticker}: No upcoming earnings found in cache");
             return result;
         }
 
