@@ -23,7 +23,7 @@ public interface STBR002A
     /// </summary>
     /// <param name="parameters">Option pricing parameters.</param>
     /// <returns>Complete pricing information including Greeks.</returns>
-    public Task<OptionPricing> PriceOption(STDT003As parameters);
+    public Task<OptionPricing> PriceOption(STDT003A parameters);
 
     /// <summary>
     /// Prices a calendar spread (long back month, short front month).
@@ -33,12 +33,12 @@ public interface STBR002A
     public Task<STPR001APricing> PriceSTPR001A(STPR001AParameters parameters);
 
     /// <summary>
-    /// Calculates implied volatility from market price using bisection method.
+    /// Calculates implied volatility from market price using deterministic methods.
     /// </summary>
     /// <param name="marketPrice">Observed market price.</param>
     /// <param name="parameters">Option parameters (except IV).</param>
     /// <returns>Implied volatility.</returns>
-    public Task<double> CalculateImpliedVolatility(double marketPrice, STDT003As parameters);
+    public Task<double> CalculateImpliedVolatility(double marketPrice, STDT003A parameters);
 }
 
 /// <summary>

@@ -114,8 +114,8 @@ public sealed class STLN001A : QCAlgorithm
     private DTpr002A? _executionQuoteProvider;
     
     // Strategy Components
-    private STCR003AEstimator? _yangZhangEstimator;
-    private STTM001AAnalyzer? _termStructureAnalyzer;
+    private STCR003A? _yangZhangEstimator;
+    private STTM001A? _termStructureAnalyzer;
     private STCR001A? _signalGenerator;
     private DataBridgeMarketDataAdapter? _marketDataAdapter;
     private STRK001A? _positionSizer;
@@ -364,10 +364,10 @@ public sealed class STLN001A : QCAlgorithm
     private void InitialiseStrategyComponents()
     {
         // Yang-Zhang realised volatility estimator
-        _yangZhangEstimator = new STCR003AEstimator();
+        _yangZhangEstimator = new STCR003A();
         
         // Term structure analyser
-        _termStructureAnalyzer = new STTM001AAnalyzer();
+        _termStructureAnalyzer = new STTM001A();
         
         // Signal generator (requires market data adapter)
         _marketDataAdapter = new DataBridgeMarketDataAdapter(_dataBridge!);

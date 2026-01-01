@@ -122,11 +122,12 @@ public sealed class STSD001A
         }
 
         // Compute distribution parameters
+        const double MinSigma = 1e-6;
         _mu0 = unprofitable.Average();
-        _sigma0 = ComputeStandardDeviation(unprofitable, _mu0);
+        _sigma0 = Math.Max(MinSigma, ComputeStandardDeviation(unprofitable, _mu0));
 
         _mu1 = profitable.Average();
-        _sigma1 = ComputeStandardDeviation(profitable, _mu1);
+        _sigma1 = Math.Max(MinSigma, ComputeStandardDeviation(profitable, _mu1));
 
         // Compute prior probabilities
         int total = outcomes.Count;

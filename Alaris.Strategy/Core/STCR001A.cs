@@ -14,8 +14,8 @@ namespace Alaris.Strategy.Core;
 public sealed class STCR001A
 {
     private readonly STDT001A _marketData;
-    private readonly STCR003AEstimator _yangZhang;
-    private readonly STTM001AAnalyzer _termAnalyzer;
+    private readonly STCR003A _yangZhang;
+    private readonly STTM001A _termAnalyzer;
     private readonly STIV005A _earningsCalibrator;
     private readonly ILogger<STCR001A>? _logger;
 
@@ -77,8 +77,8 @@ public sealed class STCR001A
     /// <param name="logger">Optional logger instance.</param>
     public STCR001A(
         STDT001A marketData,
-        STCR003AEstimator yangZhang,
-        STTM001AAnalyzer termAnalyzer,
+        STCR003A yangZhang,
+        STTM001A termAnalyzer,
         STIV005A? earningsCalibrator = null,
         ILogger<STCR001A>? logger = null)
     {
@@ -208,8 +208,15 @@ public sealed class STCR001A
             ? (signal.ImpliedVolatility30 / signal.RealizedVolatility30)
             : 0;
 
-        // Calculate average volume
-        signal.AverageVolume = (long)priceHistory.TakeLast(30).Average(p => p.Volume);
+        // Calculate average volume (Index-based loop for performance)
+        long totalVolume = 0;
+        int volumeStart = Math.Max(0, priceHistory.Count - 30);
+        int volumeCount = priceHistory.Count - volumeStart;
+        for (int i = volumeStart; i < priceHistory.Count; i++)
+        {
+            totalVolume += priceHistory[i].Volume;
+        }
+        signal.AverageVolume = volumeCount > 0 ? totalVolume / volumeCount : 0;
 
         // Calculate expected move and volatility spread
         signal.ExpectedMove = CalculateExpectedMove(optionChain, earningsDate, evaluationDate);
@@ -241,74 +248,71 @@ public sealed class STCR001A
         DateTime evaluationDate,
         IReadOnlyList<DateTime>? historicalEarningsDates)
     {
-        // First attempt: Calibrate sigma_e from historical earnings moves
-        if (historicalEarningsDates != null && historicalEarningsDates.Count >= 4)
+        if (TryCalibrateFromHistory(signal, priceHistory, historicalEarningsDates))
         {
-            EarningsJumpCalibration calibration = _earningsCalibrator.Calibrate(
-                signal.Symbol,
-                priceHistory,
-                historicalEarningsDates);
-
-            if (calibration.IsValid && calibration.SigmaE.HasValue)
-            {
-                signal.EarningsJumpVolatility = calibration.SigmaE.Value;
-                signal.HistoricalEarningsCount = calibration.SampleCount;
-                signal.IsLeungSantoliCalibrated = true;
-
-                // Use realized volatility as base volatility estimate
-                signal.BaseVolatility = signal.RealizedVolatility30;
-
-                // Compute theoretical IV and related metrics
-                ComputeTheoreticalMetrics(signal, optionChain, earningsDate, evaluationDate);
-
-                SafeLog(() => LogLeungSantoliMetrics(
-                    _logger!,
-                    signal.Symbol,
-                    signal.EarningsJumpVolatility,
-                    signal.TheoreticalIV,
-                    signal.IVMispricingSTCR004A,
-                    null));
-                return;
-            }
+            ComputeTheoreticalMetrics(signal, optionChain, earningsDate, evaluationDate);
+            SafeLog(() => LogLeungSantoliMetrics(_logger!, signal.Symbol, signal.EarningsJumpVolatility, signal.TheoreticalIV, signal.IVMispricingSTCR004A, null));
+            return;
         }
 
-        // Fallback: Extract sigma_e from term structure using L&S estimator (Section 5.2)
+        if (TryCalibrateFromTermStructure(signal, optionChain, evaluationDate))
+        {
+            ComputeTheoreticalMetrics(signal, optionChain, earningsDate, evaluationDate);
+            SafeLog(() => LogLeungSantoliMetrics(_logger!, signal.Symbol, signal.EarningsJumpVolatility, signal.TheoreticalIV, signal.IVMispricingSTCR004A, null));
+        }
+    }
+
+    private bool TryCalibrateFromHistory(STCR004A signal, List<PriceBar> priceHistory, IReadOnlyList<DateTime>? historicalEarningsDates)
+    {
+        if (historicalEarningsDates == null || historicalEarningsDates.Count < 4)
+        {
+            return false;
+        }
+
+        EarningsJumpCalibration calibration = _earningsCalibrator.Calibrate(signal.Symbol, priceHistory, historicalEarningsDates);
+        if (!calibration.IsValid || !calibration.SigmaE.HasValue)
+        {
+            return false;
+        }
+
+        signal.EarningsJumpVolatility = calibration.SigmaE.Value;
+        signal.HistoricalEarningsCount = calibration.SampleCount;
+        signal.IsLeungSantoliCalibrated = true;
+        signal.BaseVolatility = signal.RealizedVolatility30;
+        return true;
+    }
+
+    private bool TryCalibrateFromTermStructure(STCR004A signal, STDT002A optionChain, DateTime evaluationDate)
+    {
         List<STTM001APoint> termPoints = ExtractSTTM001APoints(optionChain, evaluationDate);
-        if (termPoints.Count >= 2)
+        if (termPoints.Count < 2)
         {
-            STTM001APoint nearTerm = termPoints.OrderBy(p => p.DaysToExpiry).First();
-            STTM001APoint farTerm = termPoints.OrderBy(p => p.DaysToExpiry).Skip(1).First();
-
-            double? sigmaE = STIV005A.STTM001AEstimator(
-                nearTerm.ImpliedVolatility,
-                nearTerm.DaysToExpiry,
-                farTerm.ImpliedVolatility,
-                farTerm.DaysToExpiry);
-
-            double? baseVol = STIV005A.BaseVolatilityEstimator(
-                nearTerm.ImpliedVolatility,
-                nearTerm.DaysToExpiry,
-                farTerm.ImpliedVolatility,
-                farTerm.DaysToExpiry);
-
-            if (sigmaE.HasValue && sigmaE.Value > 0)
-            {
-                signal.EarningsJumpVolatility = sigmaE.Value;
-                signal.BaseVolatility = baseVol ?? signal.RealizedVolatility30;
-                signal.IsLeungSantoliCalibrated = true;
-                signal.HistoricalEarningsCount = 0; // Term structure derived
-
-                ComputeTheoreticalMetrics(signal, optionChain, earningsDate, evaluationDate);
-
-                SafeLog(() => LogLeungSantoliMetrics(
-                    _logger!,
-                    signal.Symbol,
-                    signal.EarningsJumpVolatility,
-                    signal.TheoreticalIV,
-                    signal.IVMispricingSTCR004A,
-                    null));
-            }
+            return false;
         }
+
+        // Find min and second min dte - ZERO ALLOC
+        IReadOnlyList<STTM001APoint> points = termPoints;
+        STTM001APoint? nearTerm = CRFN001A.FindMinBy(points, p => p.DaysToExpiry);
+        STTM001APoint? farTerm = CRFN001A.FindMinBy(points, p => p.DaysToExpiry, p => p != nearTerm);
+
+        if (nearTerm == null || farTerm == null)
+        {
+            return false;
+        }
+
+        double? sigmaE = STIV005A.STTM001AEstimator(nearTerm.ImpliedVolatility, nearTerm.DaysToExpiry, farTerm.ImpliedVolatility, farTerm.DaysToExpiry);
+        double? baseVol = STIV005A.BaseVolatilityEstimator(nearTerm.ImpliedVolatility, nearTerm.DaysToExpiry, farTerm.ImpliedVolatility, farTerm.DaysToExpiry);
+
+        if (sigmaE.HasValue && sigmaE.Value > 0)
+        {
+            signal.EarningsJumpVolatility = sigmaE.Value;
+            signal.BaseVolatility = baseVol ?? signal.RealizedVolatility30;
+            signal.IsLeungSantoliCalibrated = true;
+            signal.HistoricalEarningsCount = 0;
+            return true;
+        }
+
+        return false;
     }
 
     /// <summary>

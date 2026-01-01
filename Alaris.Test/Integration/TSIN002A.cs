@@ -18,10 +18,10 @@ namespace Alaris.Test.Integration;
 public class StrategyIntegrationTests
 {
     [Fact]
-    public void STCR003AEstimator_CalculatesVolatilityCorrectly()
+    public void STCR003A_CalculatesVolatilityCorrectly()
     {
         // Arrange
-        var estimator = new STCR003AEstimator();
+        var estimator = new STCR003A();
         var priceBars = GenerateSamplePriceBars(50);
 
         // Act
@@ -33,10 +33,10 @@ public class StrategyIntegrationTests
     }
 
     [Fact]
-    public void STCR003AEstimator_CalculatesRollingVolatility()
+    public void STCR003A_CalculatesRollingVolatility()
     {
         // Arrange
-        var estimator = new STCR003AEstimator();
+        var estimator = new STCR003A();
         var priceBars = GenerateSamplePriceBars(100);
 
         // Act
@@ -49,10 +49,10 @@ public class StrategyIntegrationTests
     }
 
     [Fact]
-    public void STTM001AAnalyzer_IdentifiesInvertedStructure()
+    public void STTM001A_IdentifiesInvertedStructure()
     {
         // Arrange
-        var analyzer = new STTM001AAnalyzer();
+        var analyzer = new STTM001A();
         
         // Use steeper inversion to meet -0.00406 threshold (from Atilgan 2014)
         var points = new List<STTM001APoint>
@@ -73,10 +73,10 @@ public class StrategyIntegrationTests
     }
 
     [Fact]
-    public void STTM001AAnalyzer_IdentifiesNormalStructure()
+    public void STTM001A_IdentifiesNormalStructure()
     {
         // Arrange
-        var analyzer = new STTM001AAnalyzer();
+        var analyzer = new STTM001A();
         var points = new List<STTM001APoint>
         {
             new() { DaysToExpiry = 10, ImpliedVolatility = 0.25, Strike = 100 },
@@ -99,8 +99,8 @@ public class StrategyIntegrationTests
     {
         // Arrange
         var mockMarketData = new MockMarketDataProvider();
-        var yangZhang = new STCR003AEstimator();
-        var termAnalyzer = new STTM001AAnalyzer();
+        var yangZhang = new STCR003A();
+        var termAnalyzer = new STTM001A();
         var generator = new STCR001A(mockMarketData, yangZhang, termAnalyzer);
 
         var earningsDate = new DateTime(2024, 1, 25);
@@ -170,8 +170,8 @@ public class StrategyIntegrationTests
     {
         // Arrange
         var mockMarketData = new MockMarketDataProvider();
-        var yangZhang = new STCR003AEstimator();
-        var termAnalyzer = new STTM001AAnalyzer();
+        var yangZhang = new STCR003A();
+        var termAnalyzer = new STTM001A();
         var signalGenerator = new STCR001A(mockMarketData, yangZhang, termAnalyzer);
         var mockPricing = new MockPricingEngine();
         var sizer = new STRK001A();
@@ -203,7 +203,7 @@ public class StrategyIntegrationTests
 
         using var engine = new STBR001A();
 
-        var parameters = new STDT003As
+        var parameters = new STDT003A
         {
             UnderlyingPrice = 150.0,
             Strike = 150.0,
@@ -234,7 +234,7 @@ public class StrategyIntegrationTests
 
         using var engine = new STBR001A();
 
-        var parameters = new STDT003As
+        var parameters = new STDT003A
         {
             UnderlyingPrice = 100.0,
             Strike = 100.0,
@@ -325,8 +325,8 @@ public class StrategyIntegrationTests
     {
         // Arrange - Use native types
         var mockMarketData = new MockMarketDataProvider();
-        var yangZhang = new STCR003AEstimator();
-        var termAnalyzer = new STTM001AAnalyzer();
+        var yangZhang = new STCR003A();
+        var termAnalyzer = new STTM001A();
         var signalGenerator = new STCR001A(mockMarketData, yangZhang, termAnalyzer);
 
         // Use real STBR001A instead of mock
@@ -539,7 +539,7 @@ internal class MockMarketDataProvider : STDT001A
 
 internal class MockPricingEngine : STBR002A
 {
-    public Task<OptionPricing> PriceOption(STDT003As parameters)
+    public Task<OptionPricing> PriceOption(STDT003A parameters)
     {
         return Task.FromResult(new OptionPricing
         {
@@ -586,7 +586,7 @@ internal class MockPricingEngine : STBR002A
         });
     }
 
-    public Task<double> CalculateImpliedVolatility(double marketPrice, STDT003As parameters)
+    public Task<double> CalculateImpliedVolatility(double marketPrice, STDT003A parameters)
     {
         return Task.FromResult(0.30);
     }

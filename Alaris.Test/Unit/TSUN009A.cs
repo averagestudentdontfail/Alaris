@@ -341,9 +341,9 @@ public sealed class STBR001ATests : IDisposable
 
 
 
-    private STDT003As CreateStandardCallParameters()
+    private STDT003A CreateStandardCallParameters()
     {
-        return new STDT003As
+        return new STDT003A
         {
             UnderlyingPrice = 100.0,
             Strike = 100.0,
@@ -356,9 +356,9 @@ public sealed class STBR001ATests : IDisposable
         };
     }
 
-    private STDT003As CreateStandardPutParameters()
+    private STDT003A CreateStandardPutParameters()
     {
-        return new STDT003As
+        return new STDT003A
         {
             UnderlyingPrice = 100.0,
             Strike = 100.0,
@@ -371,10 +371,10 @@ public sealed class STBR001ATests : IDisposable
         };
     }
 
-    private STDT003As CreateHealyPutParameters()
+    private STDT003A CreateHealyPutParameters()
     {
         // Healy (2021) benchmark parameters
-        return new STDT003As
+        return new STDT003A
         {
             UnderlyingPrice = 100.0,
             Strike = 100.0,
@@ -387,9 +387,9 @@ public sealed class STBR001ATests : IDisposable
         };
     }
 
-    private STDT003As CreateHealyCallParameters()
+    private STDT003A CreateHealyCallParameters()
     {
-        return new STDT003As
+        return new STDT003A
         {
             UnderlyingPrice = 100.0,
             Strike = 100.0,

@@ -12,7 +12,7 @@ namespace Alaris.Strategy.Core;
 /// Formula: RV² = σ_o² + k·σ_c² + (1-k)·σ_rs²
 /// </summary>
 
-public sealed class STCR003AEstimator
+public sealed class STCR003A
 {
     private const int TradingDaysPerYear = 252;
 

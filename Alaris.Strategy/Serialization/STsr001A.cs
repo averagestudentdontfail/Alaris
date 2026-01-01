@@ -15,7 +15,7 @@ public static class STsr001A
     private const byte FormatVersion = 1;
 
     /// <summary>
-    /// Struct for binary-encoded pricing parameters (STDT003As equivalent).
+    /// Struct for binary-encoded pricing parameters (STDT003A equivalent).
     /// </summary>
     public readonly struct PricingParamsData
     {

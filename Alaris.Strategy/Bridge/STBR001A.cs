@@ -4,6 +4,7 @@
 // This is a complete native implementation that replaces all QuantLib dependencies
 // with native Alaris pricing engines (CREN002A for standard FD, DBAP002A for double boundary).
 
+using Alaris.Core.Math;
 using Alaris.Core.Options;
 using Alaris.Core.Pricing;
 using Alaris.Core.Time;
@@ -36,11 +37,11 @@ public sealed class STBR001A : STBR002A, IDisposable
             new EventId(2, nameof(LogPricingSTPR001A)),
             "Pricing calendar spread: Regime={Regime}, Type={Type}, Strike={Strike}, Front={FrontDte}, Back={BackDte}");
 
-    private static readonly Action<ILogger, int, double, Exception?> LogImpliedVolatilityConverged =
-        LoggerMessage.Define<int, double>(
+    private static readonly Action<ILogger, double, Exception?> LogImpliedVolatilityCalculated =
+        LoggerMessage.Define<double>(
             LogLevel.Debug,
-            new EventId(3, nameof(LogImpliedVolatilityConverged)),
-            "Implied volatility calculation converged in {Iterations} iterations: IV={Iv:F4}");
+            new EventId(3, nameof(LogImpliedVolatilityCalculated)),
+            "Implied volatility calculation complete: IV={Iv:F4}");
 
     private static readonly Action<ILogger, Exception?> LogErrorPricing =
         LoggerMessage.Define(
@@ -49,8 +50,7 @@ public sealed class STBR001A : STBR002A, IDisposable
             "Error pricing option");
 
     // Constants for numerical calculations
-    private const int MaxIVIterations = 100;
-    private const double IVTolerance = 1e-6;
+
 
     /// <summary>
     /// Initializes a new instance of the STBR001A with spectral collocation engine.
@@ -97,7 +97,7 @@ public sealed class STBR001A : STBR002A, IDisposable
     /// <summary>
     /// Prices a single American option using the native pricing engine.
     /// </summary>
-    public Task<OptionPricing> PriceOption(STDT003As parameters)
+    public Task<OptionPricing> PriceOption(STDT003A parameters)
     {
         ArgumentNullException.ThrowIfNull(parameters);
         parameters.Validate();
@@ -197,8 +197,8 @@ public sealed class STBR001A : STBR002A, IDisposable
             CalculateDaysToExpiry(parameters.ValuationDate, parameters.BackExpiry), null));
 
         // Price both legs of the spread
-        OptionPricing frontPricing = await PriceOption(CreateSTDT003As(parameters, parameters.FrontExpiry)).ConfigureAwait(false);
-        OptionPricing backPricing = await PriceOption(CreateSTDT003As(parameters, parameters.BackExpiry)).ConfigureAwait(false);
+        OptionPricing frontPricing = await PriceOption(CreateSTDT003A(parameters, parameters.FrontExpiry)).ConfigureAwait(false);
+        OptionPricing backPricing = await PriceOption(CreateSTDT003A(parameters, parameters.BackExpiry)).ConfigureAwait(false);
 
         // Calculate spread metrics
         double spreadCost = backPricing.Price - frontPricing.Price;
@@ -209,9 +209,9 @@ public sealed class STBR001A : STBR002A, IDisposable
     }
 
     /// <summary>
-    /// Calculates implied volatility from market price using bisection method.
+    /// Calculates implied volatility from market price using high-order Householder method.
     /// </summary>
-    public async Task<double> CalculateImpliedVolatility(double marketPrice, STDT003As parameters)
+    public Task<double> CalculateImpliedVolatility(double marketPrice, STDT003A parameters)
     {
         ArgumentNullException.ThrowIfNull(parameters);
 
@@ -220,61 +220,28 @@ public sealed class STBR001A : STBR002A, IDisposable
             throw new ArgumentException("Market price must be positive", nameof(marketPrice));
         }
 
-        // Use bisection method to find IV
-        double volLow = 0.01;  // 1% vol
-        double volHigh = 5.0;   // 500% vol (extreme)
-        double volMid = 0;
-        int iterations = 0;
-
-        while (iterations < MaxIVIterations && (volHigh - volLow) > IVTolerance)
+        return Task.Run(() =>
         {
-            volMid = (volLow + volHigh) / 2.0;
+            double iv = CRMF001A.BSImpliedVolatility(
+                parameters.UnderlyingPrice,
+                parameters.Strike,
+                parameters.TimeToExpiry(),
+                parameters.RiskFreeRate,
+                parameters.DividendYield,
+                marketPrice,
+                parameters.OptionType == OptionType.Call);
 
-            STDT003As testParams = new STDT003As
-            {
-                UnderlyingPrice = parameters.UnderlyingPrice,
-                Strike = parameters.Strike,
-                Expiry = parameters.Expiry,
-                ImpliedVolatility = volMid,
-                RiskFreeRate = parameters.RiskFreeRate,
-                DividendYield = parameters.DividendYield,
-                OptionType = parameters.OptionType,
-                ValuationDate = parameters.ValuationDate
-            };
-
-            OptionPricing pricing = await PriceOption(testParams).ConfigureAwait(false);
-            double priceDiff = pricing.Price - marketPrice;
-
-            if (Math.Abs(priceDiff) < IVTolerance)
-            {
-                break;
-            }
-
-            if (priceDiff > 0)
-            {
-                // Model price too high, reduce volatility
-                volHigh = volMid;
-            }
-            else
-            {
-                // Model price too low, increase volatility
-                volLow = volMid;
-            }
-
-            iterations++;
-        }
-
-        SafeLog(() => LogImpliedVolatilityConverged(_logger!, iterations, volMid, null));
-
-        return volMid;
+            SafeLog(() => LogImpliedVolatilityCalculated(_logger!, iv, null));
+            return iv;
+        });
     }
 
     /// <summary>
     /// Creates option parameters from calendar spread parameters for a specific expiry.
     /// </summary>
-    private static STDT003As CreateSTDT003As(STPR001AParameters parameters, CRTM005A expiry)
+    private static STDT003A CreateSTDT003A(STPR001AParameters parameters, CRTM005A expiry)
     {
-        return new STDT003As
+        return new STDT003A
         {
             UnderlyingPrice = parameters.UnderlyingPrice,
             Strike = parameters.Strike,
@@ -326,7 +293,7 @@ public sealed class STBR001A : STBR002A, IDisposable
         // Create params for back option at front expiry
         CRTM005A frontExpiryDate = parameters.FrontExpiry;
 
-        STDT003As backAtFrontExpiry = new STDT003As
+        STDT003A backAtFrontExpiry = new STDT003A
         {
             UnderlyingPrice = parameters.Strike, // ATM at expiry
             Strike = parameters.Strike,

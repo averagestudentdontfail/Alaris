@@ -183,19 +183,3 @@ public sealed class STTM001AAnalysis
     /// </summary>
     public bool MeetsTradingCriterion => Slope <= -0.00406;
 }
-
-/// <summary>
-/// Helper class for term structure analysis.
-/// </summary>
-public sealed class STTM001AAnalyzer
-{
-    private readonly STTM001A _termStructure = new();
-
-    /// <summary>
-    /// Analyzes term structure points.
-    /// </summary>
-    public STTM001AAnalysis Analyze(IReadOnlyList<STTM001APoint> points)
-    {
-        return _termStructure.Analyze(points);
-    }
-}

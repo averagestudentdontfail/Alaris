@@ -1,5 +1,5 @@
 // STDT003A.cs - Option pricing parameters model
-// Component ID: STDT003As
+// Component ID: STDT003A
 //
 // This model uses native Alaris types instead of QuantLib types.
 // Migration: QuantLib.Date → CRTM005A, QuantLib.Option.Type → OptionType
@@ -12,7 +12,7 @@ namespace Alaris.Strategy.Model;
 /// <summary>
 /// Parameters required for pricing a single option contract.
 /// </summary>
-public sealed class STDT003As
+public sealed class STDT003A
 {
     /// <summary>
     /// Gets or sets the current price of the underlying security.

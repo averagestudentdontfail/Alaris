@@ -106,50 +106,10 @@ public sealed class STIV005A
         ArgumentNullException.ThrowIfNull(historicalPrices);
         ArgumentNullException.ThrowIfNull(earningsDates);
 
-        // Build a dictionary for fast date lookup
-        Dictionary<DateTime, PriceBar> priceByDate = historicalPrices
-            .GroupBy(p => p.Date.Date)
-            .ToDictionary(g => g.Key, g => g.First());
-
-        // Calculate log-returns for each earnings date
         List<double> earningsLogReturns = new List<double>();
         List<double> absoluteMoves = new List<double>();
 
-        foreach (DateTime earningsDate in earningsDates.OrderByDescending(d => d))
-        {
-            // Find the price bar for earnings date and the day before
-            if (!priceByDate.TryGetValue(earningsDate.Date, out PriceBar? earningsBar))
-            {
-                continue;
-            }
-
-            // Look for previous trading day (up to 5 days back to handle weekends/holidays)
-            PriceBar? prevBar = null;
-            for (int i = 1; i <= 5; i++)
-            {
-                DateTime prevDate = earningsDate.AddDays(-i).Date;
-                if (priceByDate.TryGetValue(prevDate, out prevBar))
-                {
-                    break;
-                }
-            }
-
-            if (prevBar == null || prevBar.Close <= 0 || earningsBar.Close <= 0)
-            {
-                continue;
-            }
-
-            // Calculate log-return: Z_e = log(S_t+1 / S_t)
-            double logReturn = Math.Log(earningsBar.Close / prevBar.Close);
-            earningsLogReturns.Add(logReturn);
-            absoluteMoves.Add(Math.Abs(logReturn));
-
-            // Limit to lookback period
-            if (earningsLogReturns.Count >= DefaultLookbackQuarters)
-            {
-                break;
-            }
-        }
+        ExtractReturns(historicalPrices, earningsDates, earningsLogReturns, absoluteMoves);
 
         SafeLog(() => LogCalibrating(_logger!, symbol, earningsLogReturns.Count, null));
 
@@ -165,13 +125,98 @@ public sealed class STIV005A
             };
         }
 
-        // Compute sigma_e as standard deviation of log-returns
-        double mean = earningsLogReturns.Average();
-        double sumSquaredDeviations = earningsLogReturns.Sum(x => (x - mean) * (x - mean));
-        double variance = sumSquaredDeviations / (earningsLogReturns.Count - 1); // Sample variance
-        double sigmaE = Math.Sqrt(variance);
+        return ComputeCalibration(symbol, earningsLogReturns, absoluteMoves);
+    }
 
-        // Clamp to reasonable range
+    private void ExtractReturns(
+        IReadOnlyList<PriceBar> historicalPrices,
+        IReadOnlyList<DateTime> earningsDates,
+        List<double> earningsLogReturns,
+        List<double> absoluteMoves)
+    {
+        // Optimization: Use a temporary dictionary but avoid GroupBy/Linq
+        // Or if historicalPrices is sorted, we can use binary search
+        var priceByDate = new Dictionary<DateTime, PriceBar>(historicalPrices.Count);
+        for (int i = 0; i < historicalPrices.Count; i++)
+        {
+            DateTime date = historicalPrices[i].Date.Date;
+            if (!priceByDate.ContainsKey(date))
+            {
+                priceByDate.Add(date, historicalPrices[i]);
+            }
+        }
+
+        // Process earnings dates (newest first)
+        // Sort earnings dates descending if not already
+        Span<DateTime> sortedDates = earningsDates.ToArray();
+        sortedDates.Sort((a, b) => b.CompareTo(a));
+
+        foreach (DateTime earningsDate in sortedDates)
+        {
+            if (earningsLogReturns.Count >= DefaultLookbackQuarters)
+            {
+                break;
+            }
+
+            if (!priceByDate.TryGetValue(earningsDate.Date, out PriceBar? earningsBar))
+            {
+                continue;
+            }
+
+            // Find previous trading day
+            PriceBar? prevBar = null;
+            for (int i = 1; i <= 5; i++)
+            {
+                DateTime prevDate = earningsDate.AddDays(-i).Date;
+                if (priceByDate.TryGetValue(prevDate, out prevBar))
+                {
+                    break;
+                }
+            }
+
+            if (prevBar == null || prevBar.Close <= 0 || earningsBar.Close <= 0)
+            {
+                continue;
+            }
+
+            double logReturn = Math.Log(earningsBar.Close / prevBar.Close);
+            earningsLogReturns.Add(logReturn);
+            absoluteMoves.Add(Math.Abs(logReturn));
+        }
+    }
+
+    private EarningsJumpCalibration ComputeCalibration(string symbol, List<double> returns, List<double> absMoves)
+    {
+        int count = returns.Count;
+        double sum = 0;
+        for (int i = 0; i < count; i++)
+        {
+            sum += returns[i];
+        }
+        double mean = sum / count;
+
+        double sumSqDev = 0;
+        double maxAbs = 0;
+        double minAbs = absMoves.Count > 0 ? absMoves[0] : 0;
+
+        for (int i = 0; i < count; i++)
+        {
+            double diff = returns[i] - mean;
+            sumSqDev += diff * diff;
+            
+            double abs = absMoves[i];
+            if (abs > maxAbs)
+            {
+                maxAbs = abs;
+            }
+            if (abs < minAbs)
+            {
+                minAbs = abs;
+            }
+        }
+
+        double variance = sumSqDev / (count - 1);
+        double sigmaE = Math.Sqrt(variance);
         sigmaE = Math.Clamp(sigmaE, MinSigmaE, MaxSigmaE);
 
         SafeLog(() => LogCalibrationResult(_logger!, symbol, sigmaE, null));
@@ -180,13 +225,13 @@ public sealed class STIV005A
         {
             Symbol = symbol,
             SigmaE = sigmaE,
-            SampleCount = earningsLogReturns.Count,
+            SampleCount = count,
             MeanLogReturn = mean,
-            MedianAbsoluteMove = ComputeMedian(absoluteMoves),
-            MaxAbsoluteMove = absoluteMoves.Max(),
-            MinAbsoluteMove = absoluteMoves.Min(),
+            MedianAbsoluteMove = ComputeMedian(absMoves),
+            MaxAbsoluteMove = maxAbs,
+            MinAbsoluteMove = minAbs,
             IsValid = true,
-            HistoricalMoves = earningsLogReturns.ToArray()
+            HistoricalMoves = returns.ToArray()
         };
     }
 
