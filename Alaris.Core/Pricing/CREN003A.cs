@@ -121,20 +121,36 @@ public enum PricingMethod
 /// </remarks>
 public sealed class CREN003A : IAmericanOptionEngine
 {
+    private readonly CREN004A _spectralEngine;
     private readonly CREN002A _fdEngine;
+    private readonly CREX001A _nearExpiryHandler;
+    private readonly bool _enforceInvariants;
 
     /// <summary>
-    /// Initialises the unified pricing engine.
+    /// Initialises the unified pricing engine with spectral as default.
+    /// </summary>
+    /// <param name="scheme">Spectral scheme (Fast/Accurate/HighPrecision).</param>
+    /// <param name="enforceInvariants">Whether to enforce American >= European and >= Intrinsic.</param>
+    public CREN003A(SpectralScheme scheme = SpectralScheme.Accurate, bool enforceInvariants = true)
+    {
+        _spectralEngine = new CREN004A(scheme);
+        _fdEngine = new CREN002A();
+        _nearExpiryHandler = new CREX001A();
+        _enforceInvariants = enforceInvariants;
+    }
+
+    /// <summary>
+    /// Initialises the unified pricing engine with legacy FD-only mode.
     /// </summary>
     /// <param name="timeSteps">Number of time steps for FD method.</param>
     /// <param name="spotSteps">Number of spot steps for FD method.</param>
-    public CREN003A(int timeSteps = 100, int spotSteps = 200)
+    public CREN003A(int timeSteps, int spotSteps)
     {
+        _spectralEngine = new CREN004A(SpectralScheme.Accurate);
         _fdEngine = new CREN002A(timeSteps, spotSteps);
         _nearExpiryHandler = new CREX001A();
+        _enforceInvariants = true;
     }
-
-    private readonly CREX001A _nearExpiryHandler;
 
     /// <inheritdoc/>
     public double Price(double spot, double strike, double timeToExpiry, double riskFreeRate, double dividendYield, double volatility, OptionType optionType)
@@ -150,12 +166,60 @@ public sealed class CREN003A : IAmericanOptionEngine
                 return CREX001A.CalculateIntrinsic(spot, strike, isCall);
             }
 
-            // Blending zone: compute FD price and blend with intrinsic
-            double fdPrice = _fdEngine.Price(spot, strike, timeToExpiry, riskFreeRate, dividendYield, volatility, optionType);
-            return _nearExpiryHandler.BlendWithIntrinsic(fdPrice, spot, strike, isCall, timeToExpiry);
+            // Blending zone: compute spectral price and blend with intrinsic
+            double spectralPrice = _spectralEngine.Price(spot, strike, timeToExpiry, riskFreeRate, dividendYield, volatility, optionType);
+            double blended = _nearExpiryHandler.BlendWithIntrinsic(spectralPrice, spot, strike, isCall, timeToExpiry);
+            return EnforceInvariants(blended, spot, strike, timeToExpiry, riskFreeRate, dividendYield, volatility, isCall);
         }
 
-        return _fdEngine.Price(spot, strike, timeToExpiry, riskFreeRate, dividendYield, volatility, optionType);
+        // Use spectral engine as primary
+        double price = _spectralEngine.Price(spot, strike, timeToExpiry, riskFreeRate, dividendYield, volatility, optionType);
+
+        // Enforce mathematical invariants if enabled
+        return EnforceInvariants(price, spot, strike, timeToExpiry, riskFreeRate, dividendYield, volatility, isCall);
+    }
+
+    /// <summary>
+    /// Enforces mathematical invariants: American >= European and American >= Intrinsic.
+    /// </summary>
+    private double EnforceInvariants(double price, double spot, double strike, double tau, double r, double q, double sigma, bool isCall)
+    {
+        if (!_enforceInvariants)
+        {
+            return price;
+        }
+
+        // Invariant 1: American >= Intrinsic
+        double intrinsic = isCall ? System.Math.Max(0, spot - strike) : System.Math.Max(0, strike - spot);
+        price = System.Math.Max(price, intrinsic);
+
+        // Invariant 2: American >= European
+        double european = BlackScholesEuropean(spot, strike, tau, r, q, sigma, isCall);
+        price = System.Math.Max(price, european);
+
+        return price;
+    }
+
+    private static double BlackScholesEuropean(double spot, double strike, double tau, double r, double q, double sigma, bool isCall)
+    {
+        if (tau <= 0)
+        {
+            return isCall ? System.Math.Max(0, spot - strike) : System.Math.Max(0, strike - spot);
+        }
+
+        double sqrtT = System.Math.Sqrt(tau);
+        double d1 = (System.Math.Log(spot / strike) + ((r - q + (0.5 * sigma * sigma)) * tau)) / (sigma * sqrtT);
+        double d2 = d1 - (sigma * sqrtT);
+
+        double discountS = System.Math.Exp(-q * tau);
+        double discountK = System.Math.Exp(-r * tau);
+
+        if (isCall)
+        {
+            return (spot * discountS * Math.CRMF001A.NormalCDF(d1)) - (strike * discountK * Math.CRMF001A.NormalCDF(d2));
+        }
+
+        return (strike * discountK * Math.CRMF001A.NormalCDF(-d2)) - (spot * discountS * Math.CRMF001A.NormalCDF(-d1));
     }
 
     /// <inheritdoc/>
@@ -170,7 +234,7 @@ public sealed class CREN003A : IAmericanOptionEngine
             return greeks.Delta;
         }
 
-        return _fdEngine.Delta(spot, strike, timeToExpiry, riskFreeRate, dividendYield, volatility, optionType);
+        return _spectralEngine.Delta(spot, strike, timeToExpiry, riskFreeRate, dividendYield, volatility, optionType);
     }
 
     /// <inheritdoc/>
@@ -185,7 +249,7 @@ public sealed class CREN003A : IAmericanOptionEngine
             return greeks.Gamma;
         }
 
-        return _fdEngine.Gamma(spot, strike, timeToExpiry, riskFreeRate, dividendYield, volatility, optionType);
+        return _spectralEngine.Gamma(spot, strike, timeToExpiry, riskFreeRate, dividendYield, volatility, optionType);
     }
 
     /// <inheritdoc/>
@@ -200,7 +264,7 @@ public sealed class CREN003A : IAmericanOptionEngine
             return greeks.Theta;
         }
 
-        return _fdEngine.Theta(spot, strike, timeToExpiry, riskFreeRate, dividendYield, volatility, optionType);
+        return _spectralEngine.Theta(spot, strike, timeToExpiry, riskFreeRate, dividendYield, volatility, optionType);
     }
 
     /// <inheritdoc/>
@@ -215,7 +279,7 @@ public sealed class CREN003A : IAmericanOptionEngine
             return greeks.Vega;
         }
 
-        return _fdEngine.Vega(spot, strike, timeToExpiry, riskFreeRate, dividendYield, volatility, optionType);
+        return _spectralEngine.Vega(spot, strike, timeToExpiry, riskFreeRate, dividendYield, volatility, optionType);
     }
 
     /// <inheritdoc/>

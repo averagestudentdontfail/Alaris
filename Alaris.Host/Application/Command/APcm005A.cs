@@ -125,12 +125,12 @@ public sealed class BacktestCreateCommand : AsyncCommand<BacktestCreateSettings>
             }
 
             AnsiConsole.WriteLine();
-            AnsiConsole.MarkupLine("[grey]Next steps:[/]");
+            AnsiConsole.MarkupLine("[grey]Next step:[/]");
+            AnsiConsole.MarkupLine($"  Run backtest: [cyan]alaris backtest run {session.SessionId}[/]");
             if (settings.SkipDownload)
             {
-                AnsiConsole.MarkupLine($"  1. Download data: [cyan]alaris backtest prepare {session.SessionId}[/]");
+                AnsiConsole.MarkupLine("[grey]  (Data will be auto-downloaded when running)[/]");
             }
-            AnsiConsole.MarkupLine($"  2. Run backtest:  [cyan]alaris backtest run {session.SessionId}[/]");
 
             return 0;
         }

@@ -61,22 +61,29 @@ public class CRMF002ATests
         // Act
         var (λ1, λ2) = CRMF002A.SolveCharacteristic(r, q, σ);
 
-        // Assert: Under q < r < 0, λ1 changes character
-        // λ1 should be positive but potentially < 1
-        Assert.True(λ1 > 0, $"λ1 should be > 0, but was {λ1}");
-        Assert.True(λ2 < 0, $"λ2 should be < 0, but was {λ2}");
+        // Assert: Characteristic equation has two real roots
+        // λ1 > λ2 by convention (as per SolveCharacteristic implementation)
+        Assert.True(λ1 > λ2, $"λ1={λ1} should be > λ2={λ2}");
+        
+        // Note: For negative r, the product of roots is λ1*λ2 = -2r/σ² = 2|r|/σ² > 0
+        // This means both roots have the same sign. Combined with sum being positive
+        // (for typical σ), both roots can be positive in negative rate regimes.
 
-        // Validate roots
+        // Validate roots satisfy characteristic equation
         Assert.True(CRMF002A.ValidateRoot(r, q, σ, λ1, Tolerance));
         Assert.True(CRMF002A.ValidateRoot(r, q, σ, λ2, Tolerance));
     }
 
     [Theory]
-    [InlineData(-0.004, -0.006, 0.30)]  // Healy regime
-    [InlineData(-0.01, -0.015, 0.30)]   // Deeper negative (increased σ for real roots)
-    [InlineData(-0.002, -0.005, 0.30)]  // Mild negative (increased σ for real roots)
+    [InlineData(-0.004, -0.006, 0.30)]  // Healy regime: q < r < 0
+    [InlineData(-0.01, -0.02, 0.40)]    // Deeper negative: use higher σ for real roots
+    [InlineData(-0.002, -0.004, 0.25)]  // Mild negative: q < r < 0
     public void SolveCharacteristic_NegativeRates_RootsSatisfyEquation(double r, double q, double σ)
     {
+        // For real roots, discriminant must be >= 0:
+        // disc = b² - 4ac = (r-q-σ²/2)² + 2σ²r
+        // With r < 0, need |r-q-σ²/2|² > 2σ²|r| which is satisfied for larger σ
+        
         // Act
         var (λ1, λ2) = CRMF002A.SolveCharacteristic(r, q, σ);
 

@@ -15,12 +15,12 @@ namespace Alaris.Strategy.Bridge;
 
 /// <summary>
 /// Unified pricing engine that automatically selects between Alaris native engines
-/// based on interest rate regime. Supports both positive and negative interest rates.
+/// based on interest rate regime. Uses spectral collocation as default for performance.
 /// </summary>
 public sealed class STBR001A : STBR002A, IDisposable
 {
     private readonly ILogger<STBR001A>? _logger;
-    private readonly CREN002A _nativeEngine;
+    private readonly CREN003A _nativeEngine;
     private bool _disposed;
 
     // LoggerMessage delegates
@@ -53,15 +53,14 @@ public sealed class STBR001A : STBR002A, IDisposable
     private const double IVTolerance = 1e-6;
 
     /// <summary>
-    /// Initializes a new instance of the STBR001A.
+    /// Initializes a new instance of the STBR001A with spectral collocation engine.
     /// </summary>
     /// <param name="logger">Optional logger for diagnostics.</param>
-    /// <param name="timeSteps">Number of FD time steps (default: 100).</param>
-    /// <param name="spotSteps">Number of FD spot grid points (default: 200).</param>
-    public STBR001A(ILogger<STBR001A>? logger = null, int timeSteps = 100, int spotSteps = 200)
+    /// <param name="scheme">Spectral scheme (Fast/Accurate/HighPrecision). Default: Accurate.</param>
+    public STBR001A(ILogger<STBR001A>? logger = null, SpectralScheme scheme = SpectralScheme.Accurate)
     {
         _logger = logger;
-        _nativeEngine = new CREN002A(timeSteps, spotSteps);
+        _nativeEngine = new CREN003A(scheme);
     }
 
     /// <summary>

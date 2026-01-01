@@ -52,10 +52,10 @@ public static class APap001A
             backtest.SetDescription("Manage backtest sessions");
             backtest.AddCommand<BacktestCreateCommand>("create")
                 .WithDescription("Create a new backtest session");
-            backtest.AddCommand<BacktestPrepareCommand>("prepare")
-                .WithDescription("Download data for an existing session");
             backtest.AddCommand<BacktestRunCommand>("run")
-                .WithDescription("Run a backtest session");
+                .WithDescription("Run a backtest (auto-downloads missing data)")
+                .WithExample("backtest", "run")
+                .WithExample("backtest", "run", "--auto-bootstrap");
             backtest.AddCommand<BacktestListCommand>("list")
                 .WithDescription("List all backtest sessions");
             backtest.AddCommand<BacktestViewCommand>("view")

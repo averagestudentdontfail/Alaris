@@ -60,7 +60,24 @@ The naming format consists of four segments:
 
 ### 4.3 Category Codes
 
-#### 4.3.1 Double Boundary (DB)
+#### 4.3.1 Core (CR)
+| Code | Category | Description |
+|------|----------|-------------|
+| `EN` | Engine | Pricing engines (FD, unified, QD+). |
+| `AP` | Approximation | Quasi-analytic boundary approximation. |
+| `SL` | Solver | Numerical solvers (Kim integral, two-stage). |
+| `EX` | Expiry | Near-expiry numerical stability. |
+| `RE` | Regime | Rate regime classification. |
+| `MF` | Math Functions | Core mathematical utilities (BS, IV, CDF). |
+| `TS` | Term Structure | Yield curves and volatility surfaces. |
+| `TM` | Time | Date, period, day counter types. |
+| `OP` | Options | Option types, payoffs, exercise. |
+| `VT` | Vectorized | SIMD/AVX2 vectorized operations. |
+
+#### 4.3.2 Double Boundary (DB) - DEPRECATED
+> [!WARNING]
+> The `Alaris.Double` project has been deprecated. Components have been migrated to `Alaris.Core/Pricing/` with `CR*` naming convention.
+
 | Code | Category | Description |
 |------|----------|-------------|
 | `AP` | Approximation | Analytic and quasi-analytic approximation methods. |
@@ -124,15 +141,55 @@ The naming format consists of four segments:
 ## 5. Component Registry
 The following table lists the primary components and their academic references.
 
-### 5.1 Alaris.Double
+### 5.1 Alaris.Core
+
+#### 5.1.1 Pricing Subdirectory (Alaris.Core/Pricing/)
 | Component Code | Class Name | Description | Reference |
 |----------------|------------|-------------|-----------|
-| `DBAP001A` | `QuasiAnalyticApproximation` | QD+ Approximation | Healy (2021) § 4 |
-| `DBAP002A` | `DoubleBoundaryApproximation` | Boundary Approximation | Healy (2021) § 5 |
-| `DBSL001A` | `DoubleBoundarySolver` | Boundary Solver | Healy (2021) § 5.3 |
-| `DBSL002A` | `DoubleBoundaryKimSolver` | Integral Solver | Kim (1990) |
-| `DBEN001A` | `DoubleBoundaryEngine` | Pricing Engine | Healy (2021) |
-| `DBEX001A` | `NearExpiryStabilityHandler` | T→0 Numerical Stability | Blending model/intrinsic |
+| `CREN001A` | `CREN001A` | Base Crank-Nicolson FD pricing engine | Wilmott (2006) |
+| `CREN002A` | `CREN002A` | Enhanced FD engine (ASINH grid, Gamma=0 BC) | Healy (2021) § 3 |
+| `CREN003A` | `CREN003A` | Unified American option pricing engine | Integrates Spectral + FD |
+| `CREN004A` | `CREN004A` | Spectral collocation American pricing engine | Andersen-Lake-Offengenden (2016) |
+| `CRAP001A` | `CRAP001A` | QD+ boundary approximation (Super-Halley) | Healy (2021) § 4 |
+| `CRSL001A` | `CRSL001A` | Two-stage solver (QD+ → Kim) | Healy (2021) § 5 |
+| `CRSL002A` | `CRSL002A` | Kim integral equation solver (FP-B') | Kim (1990) |
+| `CREX001A` | `CREX001A` | Near-expiry numerical stability handler | T→0 blending |
+| `CRRE001A` | `CRRE001A` | Rate regime classifier (Standard/DoubleBoundary) | Healy (2021) § 2 |
+
+#### 5.1.2 Math Subdirectory (Alaris.Core/Math/)
+| Component Code | Class Name | Description | Reference |
+|----------------|------------|-------------|-----------|
+| `CRMF001A` | `CRMF001A` | BS pricing, IV (Householder(3) + Brent), Greeks | Black-Scholes (1973) |
+| `CRMF002A` | `CRMF002A` | Characteristic equation solver (Super-Halley + Brent) | Healy (2021) |
+| `CRCH001A` | `CRCH001A` | Chebyshev nodes, barycentric interpolation, Clenshaw | Trefethen (2000) |
+| `CRGQ001A` | `CRGQ001A` | Gauss-Legendre, Gauss-Laguerre, Gauss-Hermite, Tanh-Sinh quadrature | Davis & Rabinowitz (1984) |
+
+#### 5.1.3 Other Core Components
+| Component Code | Class Name | Description | Reference |
+|----------------|------------|-------------|-----------|
+| `CRTM005A` | `CRTM005A` | AlarisDate struct (QuantLib-compatible) | ISO 8601 |
+| `CRTM006A` | `CRTM006A` | Period struct | QuantLib Period |
+| `CRTM007A` | `CRTM007A` | IDayCounter (Actual/365, 360, 30/360) | ISDA conventions |
+| `CRTS001A` | `CRTS001A` | IYieldCurve, FlatForwardCurve | Hull (2018) |
+| `CRTS002A` | `CRTS002A` | IVolatilitySurface, FlatVolatilitySurface | Gatheral (2006) |
+| `CROP001A` | `CROP001A` | OptionType, PlainVanillaPayoff | Option types |
+| `CROP002A` | `CROP002A` | AmericanExercise, VanillaOption | Exercise types |
+| `CROP004A` | `CROP004A` | DividendSchedule (Spot/Escrowed) | Merton (1973) |
+
+### 5.2 Alaris.Double (DEPRECATED)
+
+> [!WARNING]
+> These components have been migrated to `Alaris.Core/Pricing/` with `CR*` naming.
+> The `Alaris.Double` project has been removed from the solution.
+
+| Component Code | Migrated To | Description |
+|----------------|-------------|-------------|
+| `DBAP001A` | `CRAP001A` | QD+ Approximation |
+| `DBSL001A` | `CRSL001A` | Two-stage solver |
+| `DBSL002A` | `CRSL002A` | Kim integral solver |
+| `DBEX001A` | `CREX001A` | Near-expiry handler |
+| `DBEN001A` | Removed | QuantLib-dependent engine (deprecated) |
+| `DBAP002A` | Removed | Superseded by CREN003A |
 
 ### 5.2 Alaris.Strategy
 
@@ -251,10 +308,11 @@ The following table lists the primary components and their academic references.
 | `TSDG001A-002A` | `TSDG001A-002A.cs` | Diagnostic tests | Mathematical constraint validation |
 | `TSBM001A` | `TSBM001A.cs` | Benchmark tests | Performance vs Healy (2021) |
 
-**Test Statistics** (2025-12-11):
-- Total test cases: 749
-- Test lines: 14,861
-- Production:Test ratio: 2.1:1
+**Test Statistics** (2026-01-01):
+- Total test cases: 1001
+- Test lines: ~15,000
+- Production:Test ratio: 2.0:1
+- QuantLib dependency: ELIMINATED
 
 
 ## 6. Compliance
