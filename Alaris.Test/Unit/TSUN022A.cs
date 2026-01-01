@@ -12,20 +12,9 @@ namespace Alaris.Test.Unit;
 /// <remarks>
 /// Tests validate that the calendar correctly excludes weekends and holidays.
 /// </remarks>
-public sealed class TSUN022A : IDisposable
+public sealed class TSUN022A
 {
-    private readonly STCL001A _calendar;
-
-    public TSUN022A()
-    {
-        _calendar = new STCL001A();
-    }
-
-    public void Dispose()
-    {
-        _calendar.Dispose();
-    }
-
+    private readonly STCL001A _calendar = new();
 
     /// <summary>
     /// Verifies weekends are not business days.

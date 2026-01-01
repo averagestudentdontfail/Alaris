@@ -38,6 +38,7 @@
 
   <!-- Project references -->
   <ItemGroup>
+    <ProjectReference Include="../Alaris.Core/Alaris.Core.csproj" />
     <ProjectReference Include="../Alaris.Quantlib/Alaris.Quantlib.csproj" />
     <ProjectReference Include="../Alaris.Double/Alaris.Double.csproj" />
     <ProjectReference Include="../Alaris.Strategy/Alaris.Strategy.csproj" />

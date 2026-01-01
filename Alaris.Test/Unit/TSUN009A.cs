@@ -3,6 +3,8 @@ using FluentAssertions;
 using Alaris.Strategy.Bridge;
 using Alaris.Strategy.Model;
 using Alaris.Strategy.Pricing;
+using Alaris.Core.Time;
+using Alaris.Core.Options;
 
 namespace Alaris.Test.Unit;
 
@@ -13,14 +15,13 @@ namespace Alaris.Test.Unit;
 public sealed class STBR001ATests : IDisposable
 {
     private readonly STBR001A _engine;
-    private readonly Date _valuationDate;
+    private readonly CRTM005A _valuationDate;
     private bool _disposed;
 
     public STBR001ATests()
     {
         _engine = new STBR001A();
-        _valuationDate = new Date(15, Month.January, 2024);
-        Settings.instance().setEvaluationDate(_valuationDate);
+        _valuationDate = new CRTM005A(15, CRTM005AMonth.January, 2024);
     }
 
 
@@ -176,7 +177,7 @@ public sealed class STBR001ATests : IDisposable
         var resultNegative = await _engine.PriceOption(paramsSlightlyNegative);
 
         // Assert: Prices should be very close at regime boundary
-        var priceDifference = Math.Abs(resultPositive.Price - resultNegative.Price);
+        var priceDifference = System.Math.Abs(resultPositive.Price - resultNegative.Price);
         priceDifference.Should().BeLessThan(0.5); // Within $0.50
     }
 
@@ -346,11 +347,11 @@ public sealed class STBR001ATests : IDisposable
         {
             UnderlyingPrice = 100.0,
             Strike = 100.0,
-            Expiry = _valuationDate.Add(new Period(30, TimeUnit.Days)),
+            Expiry = _valuationDate.AddDays(30),
             ImpliedVolatility = 0.25,
             RiskFreeRate = 0.05,
             DividendYield = 0.02,
-            OptionType = Option.Type.Call,
+            OptionType = OptionType.Call,
             ValuationDate = _valuationDate
         };
     }
@@ -361,11 +362,11 @@ public sealed class STBR001ATests : IDisposable
         {
             UnderlyingPrice = 100.0,
             Strike = 100.0,
-            Expiry = _valuationDate.Add(new Period(30, TimeUnit.Days)),
+            Expiry = _valuationDate.AddDays(30),
             ImpliedVolatility = 0.25,
             RiskFreeRate = 0.05,
             DividendYield = 0.02,
-            OptionType = Option.Type.Put,
+            OptionType = OptionType.Put,
             ValuationDate = _valuationDate
         };
     }
@@ -377,11 +378,11 @@ public sealed class STBR001ATests : IDisposable
         {
             UnderlyingPrice = 100.0,
             Strike = 100.0,
-            Expiry = _valuationDate.Add(new Period(365, TimeUnit.Days)), // 1 year
+            Expiry = _valuationDate.AddDays(365), // 1 year
             ImpliedVolatility = 0.08,
             RiskFreeRate = -0.005,
             DividendYield = -0.010,
-            OptionType = Option.Type.Put,
+            OptionType = OptionType.Put,
             ValuationDate = _valuationDate
         };
     }
@@ -392,11 +393,11 @@ public sealed class STBR001ATests : IDisposable
         {
             UnderlyingPrice = 100.0,
             Strike = 100.0,
-            Expiry = _valuationDate.Add(new Period(365, TimeUnit.Days)),
+            Expiry = _valuationDate.AddDays(365),
             ImpliedVolatility = 0.08,
             RiskFreeRate = -0.005,
             DividendYield = -0.010,
-            OptionType = Option.Type.Call,
+            OptionType = OptionType.Call,
             ValuationDate = _valuationDate
         };
     }
@@ -407,12 +408,12 @@ public sealed class STBR001ATests : IDisposable
         {
             UnderlyingPrice = 150.0,
             Strike = 150.0,
-            FrontExpiry = _valuationDate.Add(new Period(30, TimeUnit.Days)),
-            BackExpiry = _valuationDate.Add(new Period(60, TimeUnit.Days)),
+            FrontExpiry = _valuationDate.AddDays(30),
+            BackExpiry = _valuationDate.AddDays(60),
             ImpliedVolatility = 0.30,
             RiskFreeRate = 0.05,
             DividendYield = 0.02,
-            OptionType = Option.Type.Call,
+            OptionType = OptionType.Call,
             ValuationDate = _valuationDate
         };
     }
@@ -431,7 +432,7 @@ public sealed class STBR001ATests : IDisposable
             if (disposing)
             {
                 _engine?.Dispose();
-                _valuationDate?.Dispose();
+                // CRTM005A is a struct, no disposal needed
             }
             _disposed = true;
         }

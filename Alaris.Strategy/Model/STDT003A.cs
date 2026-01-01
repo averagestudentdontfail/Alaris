@@ -1,3 +1,12 @@
+// STDT003A.cs - Option pricing parameters model
+// Component ID: STDT003As
+//
+// This model uses native Alaris types instead of QuantLib types.
+// Migration: QuantLib.Date → CRTM005A, QuantLib.Option.Type → OptionType
+
+using Alaris.Core.Options;
+using Alaris.Core.Time;
+
 namespace Alaris.Strategy.Model;
 
 /// <summary>
@@ -18,7 +27,7 @@ public sealed class STDT003As
     /// <summary>
     /// Gets or sets the expiration date.
     /// </summary>
-    public Date Expiry { get; set; } = new();
+    public CRTM005A Expiry { get; set; }
 
     /// <summary>
     /// Gets or sets the implied volatility (annual).
@@ -38,12 +47,21 @@ public sealed class STDT003As
     /// <summary>
     /// Gets or sets the option type (Call or Put).
     /// </summary>
-    public Option.Type OptionType { get; set; }
+    public OptionType OptionType { get; set; }
 
     /// <summary>
     /// Gets or sets the valuation date (pricing date).
     /// </summary>
-    public Date ValuationDate { get; set; } = new();
+    public CRTM005A ValuationDate { get; set; }
+
+    /// <summary>
+    /// Calculates time to expiry in years.
+    /// </summary>
+    /// <returns>Time to expiry in years using Actual/365 fixed convention.</returns>
+    public double TimeToExpiry()
+    {
+        return DayCounters.Actual365Fixed.YearFraction(ValuationDate, Expiry);
+    }
 
     /// <summary>
     /// Validates the parameters for option pricing.
@@ -66,12 +84,12 @@ public sealed class STDT003As
             throw new ArgumentException("Implied volatility cannot be negative.", nameof(ImpliedVolatility));
         }
 
-        if (Expiry is null)
+        if (Expiry.SerialNumber == 0)
         {
             throw new ArgumentException("Expiry date must be set.", nameof(Expiry));
         }
 
-        if (ValuationDate is null)
+        if (ValuationDate.SerialNumber == 0)
         {
             throw new ArgumentException("Valuation date must be set.", nameof(ValuationDate));
         }

@@ -14,8 +14,8 @@
     <Description>Core mathematical primitives with documented bounds for Alaris system</Description>
     <Authors>Kiran K. Nath</Authors>
     <Version>1.0.0</Version>
-    <!-- Suppress XML documentation warnings -->
-    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <!-- Suppress XML documentation warnings and conflicting parentheses style rules -->
+    <NoWarn>$(NoWarn);CS1591;IDE0047;IDE0048</NoWarn>
   </PropertyGroup>
 
   <!-- NuGet Package Dependencies -->

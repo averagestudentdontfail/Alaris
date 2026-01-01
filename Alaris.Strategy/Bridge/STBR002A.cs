@@ -1,3 +1,11 @@
+// STBR002A.cs - Option pricing bridge interface
+// Component ID: STBR002A
+//
+// Migrated from QuantLib types to native Alaris types.
+// Date → CRTM005A, Option.Type → OptionType
+
+using Alaris.Core.Options;
+using Alaris.Core.Time;
 using Alaris.Strategy.Model;
 using Alaris.Strategy.Pricing;
 
@@ -5,12 +13,12 @@ namespace Alaris.Strategy.Bridge;
 
 /// <summary>
 /// Interface for pricing options using advanced models including negative rates.
-/// Implementations use the DBEN001A for accurate American option pricing.
+/// Implementations use the native Alaris pricing engine for accurate American option pricing.
 /// </summary>
 public interface STBR002A
 {
     /// <summary>
-    /// Prices a single American option using the double boundary engine.
+    /// Prices a single American option.
     /// Supports both positive and negative interest rates.
     /// </summary>
     /// <param name="parameters">Option pricing parameters.</param>
@@ -51,12 +59,12 @@ public sealed class STPR001AParameters
     /// <summary>
     /// Gets or sets the front month (short) expiration date.
     /// </summary>
-    public Date FrontExpiry { get; set; } = new();
+    public CRTM005A FrontExpiry { get; set; }
 
     /// <summary>
     /// Gets or sets the back month (long) expiration date.
     /// </summary>
-    public Date BackExpiry { get; set; } = new();
+    public CRTM005A BackExpiry { get; set; }
 
     /// <summary>
     /// Gets or sets the implied volatility to use for pricing.
@@ -76,12 +84,28 @@ public sealed class STPR001AParameters
     /// <summary>
     /// Gets the option type (Call or Put).
     /// </summary>
-    public Option.Type OptionType { get; init; }
+    public OptionType OptionType { get; init; }
 
     /// <summary>
     /// Gets the valuation date.
     /// </summary>
-    public Date ValuationDate { get; init; } = new();
+    public CRTM005A ValuationDate { get; init; }
+
+    /// <summary>
+    /// Calculates time to front expiry in years.
+    /// </summary>
+    public double TimeToFrontExpiry()
+    {
+        return DayCounters.Actual365Fixed.YearFraction(ValuationDate, FrontExpiry);
+    }
+
+    /// <summary>
+    /// Calculates time to back expiry in years.
+    /// </summary>
+    public double TimeToBackExpiry()
+    {
+        return DayCounters.Actual365Fixed.YearFraction(ValuationDate, BackExpiry);
+    }
 
     /// <summary>
     /// Validates the calendar spread parameters.
@@ -104,12 +128,9 @@ public sealed class STPR001AParameters
         }
 
         // Back month must expire after front month
-        if (BackExpiry is not null && FrontExpiry is not null)
+        if (BackExpiry.SerialNumber <= FrontExpiry.SerialNumber)
         {
-            if (BackExpiry.serialNumber() <= FrontExpiry.serialNumber())
-            {
-                throw new ArgumentException("Back month must expire after front month");
-            }
+            throw new ArgumentException("Back month must expire after front month");
         }
     }
 }

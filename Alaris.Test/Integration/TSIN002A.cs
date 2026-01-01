@@ -6,6 +6,8 @@ using Alaris.Strategy.Bridge;
 using Alaris.Strategy.Model;
 using Alaris.Strategy.Pricing;
 using Alaris.Strategy.Risk;
+using Alaris.Core.Time;
+using Alaris.Core.Options;
 
 namespace Alaris.Test.Integration;
 
@@ -196,9 +198,8 @@ public class StrategyIntegrationTests
     [Fact]
     public async Task STBR001A_IntegrationTest_PositiveRates()
     {
-        // Arrange
-        var valuationDate = new Date(15, Month.January, 2024);
-        Settings.instance().setEvaluationDate(valuationDate);
+        // Arrange - Use native types
+        var valuationDate = new CRTM005A(15, CRTM005AMonth.January, 2024);
 
         using var engine = new STBR001A();
 
@@ -206,11 +207,11 @@ public class StrategyIntegrationTests
         {
             UnderlyingPrice = 150.0,
             Strike = 150.0,
-            Expiry = valuationDate.Add(new Period(30, TimeUnit.Days)),
+            Expiry = valuationDate.AddDays(30),
             ImpliedVolatility = 0.30,
             RiskFreeRate = 0.05,
             DividendYield = 0.02,
-            OptionType = Option.Type.Call,
+            OptionType = OptionType.Call,
             ValuationDate = valuationDate
         };
 
@@ -228,9 +229,8 @@ public class StrategyIntegrationTests
     [Fact]
     public async Task STBR001A_IntegrationTest_NegativeRates()
     {
-        // Arrange: Healy (2021) parameters
-        var valuationDate = new Date(15, Month.January, 2024);
-        Settings.instance().setEvaluationDate(valuationDate);
+        // Arrange: Healy (2021) parameters using native types
+        var valuationDate = new CRTM005A(15, CRTM005AMonth.January, 2024);
 
         using var engine = new STBR001A();
 
@@ -238,11 +238,11 @@ public class StrategyIntegrationTests
         {
             UnderlyingPrice = 100.0,
             Strike = 100.0,
-            Expiry = valuationDate.Add(new Period(365, TimeUnit.Days)),
+            Expiry = valuationDate.AddDays(365),
             ImpliedVolatility = 0.08,
             RiskFreeRate = -0.005,
             DividendYield = -0.010,
-            OptionType = Option.Type.Put,
+            OptionType = OptionType.Put,
             ValuationDate = valuationDate
         };
 
@@ -260,9 +260,8 @@ public class StrategyIntegrationTests
     [Fact]
     public async Task STBR001A_STPR001A_PositiveRates()
     {
-        // Arrange
-        var valuationDate = new Date(15, Month.January, 2024);
-        Settings.instance().setEvaluationDate(valuationDate);
+        // Arrange - Use native types
+        var valuationDate = new CRTM005A(15, CRTM005AMonth.January, 2024);
 
         using var engine = new STBR001A();
 
@@ -270,12 +269,12 @@ public class StrategyIntegrationTests
         {
             UnderlyingPrice = 150.0,
             Strike = 150.0,
-            FrontExpiry = valuationDate.Add(new Period(30, TimeUnit.Days)),
-            BackExpiry = valuationDate.Add(new Period(60, TimeUnit.Days)),
+            FrontExpiry = valuationDate.AddDays(30),
+            BackExpiry = valuationDate.AddDays(60),
             ImpliedVolatility = 0.30,
             RiskFreeRate = 0.05,
             DividendYield = 0.02,
-            OptionType = Option.Type.Call,
+            OptionType = OptionType.Call,
             ValuationDate = valuationDate
         };
 
@@ -293,9 +292,8 @@ public class StrategyIntegrationTests
     [Fact]
     public async Task STBR001A_STPR001A_NegativeRates()
     {
-        // Arrange
-        var valuationDate = new Date(15, Month.January, 2024);
-        Settings.instance().setEvaluationDate(valuationDate);
+        // Arrange - Use native types
+        var valuationDate = new CRTM005A(15, CRTM005AMonth.January, 2024);
 
         using var engine = new STBR001A();
 
@@ -303,12 +301,12 @@ public class StrategyIntegrationTests
         {
             UnderlyingPrice = 100.0,
             Strike = 100.0,
-            FrontExpiry = valuationDate.Add(new Period(30, TimeUnit.Days)),
-            BackExpiry = valuationDate.Add(new Period(60, TimeUnit.Days)),
+            FrontExpiry = valuationDate.AddDays(30),
+            BackExpiry = valuationDate.AddDays(60),
             ImpliedVolatility = 0.08,
             RiskFreeRate = -0.005,
             DividendYield = -0.010,
-            OptionType = Option.Type.Put,
+            OptionType = OptionType.Put,
             ValuationDate = valuationDate
         };
 
@@ -325,10 +323,7 @@ public class StrategyIntegrationTests
     [Fact]
     public async Task STCT001A_WithSTBR001A_FullWorkflow()
     {
-        // Arrange
-        var valuationDate = new Date(24, Month.January, 2024);
-        Settings.instance().setEvaluationDate(valuationDate);
-
+        // Arrange - Use native types
         var mockMarketData = new MockMarketDataProvider();
         var yangZhang = new STCR003AEstimator();
         var termAnalyzer = new STTM001AAnalyzer();
@@ -375,8 +370,8 @@ public class StrategyIntegrationTests
         {
             var open = basePrice + random.NextDouble() * 5 - 2.5;
             var close = open + random.NextDouble() * 3 - 1.5;
-            var high = Math.Max(open, close) + random.NextDouble() * 2;
-            var low = Math.Min(open, close) - random.NextDouble() * 2;
+            var high = System.Math.Max(open, close) + random.NextDouble() * 2;
+            var low = System.Math.Min(open, close) - random.NextDouble() * 2;
 
             bars.Add(new PriceBar
             {
@@ -500,8 +495,8 @@ internal class MockMarketDataProvider : STDT001A
         {
             var open = basePrice + random.NextDouble() * 2 - 1;
             var close = open + random.NextDouble() * 2 - 1;
-            var high = Math.Max(open, close) + random.NextDouble();
-            var low = Math.Min(open, close) - random.NextDouble();
+            var high = System.Math.Max(open, close) + random.NextDouble();
+            var low = System.Math.Min(open, close) - random.NextDouble();
 
             bars.Add(new PriceBar
             {

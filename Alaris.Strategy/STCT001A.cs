@@ -132,13 +132,13 @@ public sealed class STCT001A
         {
             UnderlyingPrice = signal.ExpectedMove, // This should be actual price from market data
             Strike = signal.ExpectedMove, // This should be ATM strike
-            FrontExpiry = ConvertToQuantlibDate(frontExpiry),
-            BackExpiry = ConvertToQuantlibDate(backExpiry),
+            FrontExpiry = Alaris.Core.Time.CRTM005A.FromDateTime(frontExpiry),
+            BackExpiry = Alaris.Core.Time.CRTM005A.FromDateTime(backExpiry),
             ImpliedVolatility = signal.ImpliedVolatility30,
             RiskFreeRate = 0.05, // Should come from market data
             DividendYield = 0.0, // Should come from market data
-            OptionType = Option.Type.Call,
-            ValuationDate = ConvertToQuantlibDate(evaluationDate)
+            OptionType = Alaris.Core.Options.OptionType.Call,
+            ValuationDate = Alaris.Core.Time.CRTM005A.FromDateTime(evaluationDate)
         };
     }
 
@@ -166,13 +166,6 @@ public sealed class STCT001A
     {
         // Typically 28-35 days after front month
         return frontExpiry.AddDays(30);
-    }
-
-    private Date ConvertToQuantlibDate(DateTime date)
-    {
-        // SWIG-generated Date constructor: Date(int day, Month month, int year)
-        Month month = (Month)date.Month;
-        return new Date(date.Day, month, date.Year);
     }
 
     /// <summary>
