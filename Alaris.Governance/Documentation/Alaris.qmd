@@ -3,6 +3,10 @@ title: "Alaris Mathematical Standard"
 subtitle: "Option Pricing and Strategy Specification"
 date: "January 2026"
 version: "2.0"
+bibliography: References.bib
+csl: Finance.csl
+metadata-files:
+  - Quarto.yaml
 ---
 
 # Alaris Mathematical Standard
@@ -12,40 +16,29 @@ version: "2.0"
 **Applicability:** Earnings Volatility Calendar Spread Strategy  
 
 ## Table of Contents
-
-1. Rule Summary
-2. Scope
-3. Conventions
-4. Option Pricing Framework
-5. Rate Regime Classification
-6. Spectral Collocation Engine
-7. Implied Volatility Computation
-8. Trading Signal Generation
-9. Position Sizing
-10. Fault Detection
-11. References
+\tableofcontents
 
 ---
 
 ## 1. Rule Summary
 
 ### Option Pricing
-1. **American ≥ European**: American option price shall exceed European price.
-2. **American ≥ Intrinsic**: American option price shall exceed intrinsic value.
-3. **Regime Selection**: Use spectral collocation for σ ≤ 100%; fallback to FD otherwise.
+1. **American $\geq$ European**: American option price shall exceed European price.
+2. **American $\geq$ Intrinsic**: American option price shall exceed intrinsic value.
+3. **Regime Selection**: Use spectral collocation for $\sigma \leq 100\%$; fallback to FD otherwise.
 
 ### Signal Generation
-4. **IV/RV Ratio**: Signal requires IV/RV ≥ 1.25.
-5. **Term Structure**: Signal requires slope ≤ -0.00406.
-6. **Liquidity**: Signal requires 30-day avg volume ≥ 1,500,000.
+4. **IV/RV Ratio**: Signal requires IV/RV $\geq 1.25$.
+5. **Term Structure**: Signal requires slope $\leq -0.00406$.
+6. **Liquidity**: Signal requires 30-day avg volume $\geq 1,500,000$.
 
 ### Position Sizing
-7. **Kelly Fraction**: Use κ = 0.02 (Recommended) or 0.01 (Consider).
-8. **Liquidity Limit**: Position ≤ 5% of daily volume, ≤ 2% of open interest.
+7. **Kelly Fraction**: Use $\kappa = 0.02$ (Recommended) or 0.01 (Consider).
+8. **Liquidity Limit**: Position $\leq 5\%$ of daily volume, $\leq 2\%$ of open interest.
 
 ### Fault Detection
-9. **Delta Drift**: Halt if |Δ_net| > 0.10.
-10. **Vega Correlation**: Reject if |ρ_FB| > 0.70.
+9. **Delta Drift**: Halt if $|\Delta_{\text{net}}| > 0.10$.
+10. **Vega Correlation**: Reject if $|\rho_{\text{FB}}| > 0.70$.
 11. **Cost Survival**: Reject if post-cost IV/RV < 1.20.
 
 ---
@@ -68,27 +61,27 @@ This standard defines mathematical constraints for:
 | **Should** | Preference; violation triggers warning |
 | $S$ | Spot price |
 | $K$ | Strike price |
-| $τ$ | Time to maturity (years) |
+| $\tau$ | Time to maturity (years) |
 | $r$ | Risk-free rate |
 | $q$ | Dividend yield |
-| $σ$ | Volatility |
+| $\sigma$ | Volatility |
 
 ---
 
 ## 4. Option Pricing Framework
 
-### Rule 1 (American ≥ European)
+### Rule 1 (American $\geq$ European)
 The American option price shall satisfy:
-$$V_{\text{American}}(S, K, τ) ≥ V_{\text{European}}(S, K, τ)$$
+$$V_{\text{American}}(S, K, \tau) \geq V_{\text{European}}(S, K, \tau)$$
 
-### Rule 2 (American ≥ Intrinsic)
+### Rule 2 (American $\geq$ Intrinsic)
 The American option price shall satisfy:
-$$V_{\text{Put}}(S, K, τ) ≥ (K - S)^+$$
-$$V_{\text{Call}}(S, K, τ) ≥ (S - K)^+$$
+$$V_{\text{Put}}(S, K, \tau) \geq (K - S)^+$$
+$$V_{\text{Call}}(S, K, \tau) \geq (S - K)^+$$
 
 ### Rule 3 (Early Exercise Premium)
 The American value decomposes as:
-$$V(τ, S) = v(τ, S) + \mathcal{P}(τ, S)$$
+$$V(\tau, S) = v(\tau, S) + \mathcal{P}(\tau, S)$$
 
 where $v$ is European value and $\mathcal{P}$ is early exercise premium.
 
@@ -97,20 +90,20 @@ where $v$ is European value and $\mathcal{P}$ is early exercise premium.
 ## 5. Rate Regime Classification
 
 ### Standard Regime
-**Condition:** $r ≥ 0$ or $r ≥ q$
+**Condition:** $r \geq 0$ or $r \geq q$
 
-**Boundary:** Single upper boundary $B(τ)$ satisfying:
-$$\lim_{τ \to ∞} B(τ) = K \cdot \frac{λ_-}{λ_- - 1}$$
+**Boundary:** Single upper boundary $B(\tau)$ satisfying:
+$$\lim_{\tau \to \infty} B(\tau) = K \cdot \frac{\lambda_-}{\lambda_- - 1}$$
 
-where $λ_-$ is the negative root of:
-$$\frac{1}{2}σ^2λ^2 + (r - q - \frac{σ^2}{2})λ - r = 0$$
+where $\lambda_-$ is the negative root of:
+$$\frac{1}{2}\sigma^2\lambda^2 + (r - q - \frac{\sigma^2}{2})\lambda - r = 0$$
 
 ### Double Boundary Regime
 **Condition:** $q < r < 0$
 
-**Exercise Region:** $\{S : Y(τ) ≤ S ≤ B(τ)\}$
+**Exercise Region:** $\{S : Y(\tau) \leq S \leq B(\tau)\}$
 
-**Implementation:** FP-B' stabilised iteration (Healy 2021).
+**Implementation:** FP-B' stabilised iteration [@healy2021].
 
 ---
 
@@ -121,9 +114,9 @@ The unified engine (CREN003A) shall select method as follows:
 
 | Condition | Method | Component |
 |-----------|--------|-----------|
-| σ ≤ 1.0 | Spectral | CREN004A |
-| σ > 1.0 | Finite Difference | CREN002A |
-| q < r < 0 | FD (double boundary) | CREN002A |
+| $\sigma \leq 1.0$ | Spectral | CREN004A |
+| $\sigma > 1.0$ | Finite Difference | CREN002A |
+| $q < r < 0$ | FD (double boundary) | CREN002A |
 
 ### Spectral Schemes
 
@@ -135,18 +128,18 @@ The unified engine (CREN003A) shall select method as follows:
 
 ### Chebyshev Nodes
 Nodes distributed as:
-$$ξ_j = \cos\left(\frac{(2j-1)π}{2N}\right), \quad j = 1, \ldots, N$$
+$$\xi_j = \cos\left(\frac{(2j-1)\pi}{2N}\right), \quad j = 1, \ldots, N$$
 
 ### Convergence
 Spectral convergence for analytic boundaries:
-$$|B_N(τ) - B(τ)| = O(e^{-cN})$$
+$$|B_N(\tau) - B(\tau)| = O(e^{-cN})$$
 
 ### Error Characterisation
 
 | Moneyness | Max Deviation | Direction |
 |-----------|---------------|-----------|
 | OTM (S/K < 0.9) | < 0.1 | Spectral lower |
-| ATM (S/K ≈ 1) | < 0.02 | Matched |
+| ATM (S/K $\approx$ 1) | < 0.02 | Matched |
 | ITM (S/K > 1.1) | 0.2 - 1.0 | Spectral higher |
 
 **Note:** ITM deviation is systematic (conservative for short premium).
@@ -156,14 +149,14 @@ $$|B_N(τ) - B(τ)| = O(e^{-cN})$$
 ## 7. Implied Volatility Computation
 
 ### Algorithm
-1. **Initial Guess:** Corrado-Miller (1996) approximation
+1. **Initial Guess:** Corrado-Miller [@corrado1996] approximation
 2. **Refinement:** Householder(3) iteration (cubic convergence)
 3. **Fallback:** Brent's method (guaranteed convergence)
 
 ### Householder(3) Formula
-$$σ_{n+1} = σ_n - \frac{f(σ_n)}{f'(σ_n)} \cdot \left(1 + \frac{f·f''}{2(f')^2}\right)$$
+$$\sigma_{n+1} = \sigma_n - \frac{f(\sigma_n)}{f'(\sigma_n)} \cdot \left(1 + \frac{f\cdot f''}{2(f')^2}\right)$$
 
-where $f(σ) = V_{\text{BS}}(σ) - V_{\text{market}}$.
+where $f(\sigma) = V_{\text{BS}}(\sigma) - V_{\text{market}}$.
 
 ### Convergence
 Typical: 2 iterations (vs 3-5 for Newton).
@@ -178,19 +171,19 @@ Typical: 2 iterations (vs 3-5 for Newton).
 
 ### Rule 4 (IV/RV Ratio)
 A signal requires:
-$$\frac{σ_I^{30}}{σ_R^{30}} ≥ 1.25$$
+$$\frac{\sigma_I^{30}}{\sigma_R^{30}} \geq 1.25$$
 
-where $σ_I^{30}$ is 30-day implied volatility and $σ_R^{30}$ is Yang-Zhang realised volatility.
+where $\sigma_I^{30}$ is 30-day implied volatility and $\sigma_R^{30}$ is Yang-Zhang realised volatility.
 
 ### Rule 5 (Term Structure)
 A signal requires:
-$$∇_τ σ_I ≤ -0.00406$$
+$$\nabla_\tau \sigma_I \leq -0.00406$$
 
 (Negative slope indicates front-month premium.)
 
 ### Rule 6 (Liquidity)
 A signal requires:
-$$\bar{V}^{30} ≥ 1,500,000$$
+$$\bar{V}^{30} \geq 1,500,000$$
 
 where $\bar{V}^{30}$ is 30-day average daily volume.
 
@@ -203,7 +196,7 @@ where $\bar{V}^{30}$ is 30-day average daily volume.
 | Otherwise | Avoid |
 
 ### Yang-Zhang Estimator
-$$σ_{YZ}^2 = σ_o^2 + kσ_c^2 + (1-k)σ_{RS}^2$$
+$$\sigma_{YZ}^2 = \sigma_o^2 + k\sigma_c^2 + (1-k)\sigma_{RS}^2$$
 
 where $k = 0.34 / (1.34 + \frac{n+1}{n-1})$.
 
@@ -213,11 +206,11 @@ where $k = 0.34 / (1.34 + \frac{n+1}{n-1})$.
 
 ### Rule 7 (Kelly Fraction)
 Position size shall be:
-$$f_{\text{actual}} = κ \cdot f^*$$
+$$f_{\text{actual}} = \kappa \cdot f^*$$
 
-where $f^* = \frac{μ}{σ^2}$ is full Kelly and:
+where $f^* = \frac{\mu}{\sigma^2}$ is full Kelly and:
 
-| Signal | κ |
+| Signal | $\kappa$ |
 |--------|---|
 | Recommended | 0.02 |
 | Consider | 0.01 |
@@ -225,7 +218,7 @@ where $f^* = \frac{μ}{σ^2}$ is full Kelly and:
 
 ### Rule 8 (Liquidity Limits)
 Position shall satisfy:
-$$\frac{n}{V_{\text{daily}}} ≤ 0.05 \quad \text{and} \quad \frac{n}{OI} ≤ 0.02$$
+$$\frac{n}{V_{\text{daily}}} \leq 0.05 \quad \text{and} \quad \frac{n}{OI} \leq 0.02$$
 
 ---
 
@@ -233,15 +226,15 @@ $$\frac{n}{V_{\text{daily}}} ≤ 0.05 \quad \text{and} \quad \frac{n}{OI} ≤ 0.
 
 ### Rule 9 (Delta Drift)
 Halt trading if:
-$$|Δ_{\text{net}}| > 0.10$$
+$$|\Delta_{\text{net}}| > 0.10$$
 
 ### Rule 10 (Vega Correlation)
 Reject trade if front-back IV correlation exceeds threshold:
-$$|ρ_{FB}| > 0.70$$
+$$|\rho_{FB}| > 0.70$$
 
 ### Rule 11 (Cost Survival)
 Reject trade if post-cost ratio insufficient:
-$$\frac{σ_I}{σ_R} \cdot \left(1 - \frac{C_{\text{exec}}}{V_{\text{position}}}\right) < 1.20$$
+$$\frac{\sigma_I}{\sigma_R} \cdot \left(1 - \frac{C_{\text{exec}}}{V_{\text{position}}}\right) < 1.20$$
 
 ### Circuit Breakers
 
@@ -270,12 +263,8 @@ $$\frac{σ_I}{σ_R} \cdot \left(1 - \frac{C_{\text{exec}}}{V_{\text{position}}}\
 
 ## 12. References
 
-1. Andersen L, Lake M, Offengenden D. High-performance American option pricing. *J Comput Finance*. 2016.
-2. Healy JV. Pricing American options under negative rates. 2021.
-3. Atilgan Y, Bali TG, Demirtas KO. Implied volatility spreads and expected returns. *J Business*. 2014.
-4. Yang D, Zhang Q. Drift-independent volatility estimation. *J Business*. 2000.
-5. Corrado CJ, Miller TW. A note on implied volatility estimation. *J Banking Finance*. 1996.
-6. Kelly JL. A new interpretation of information rate. *Bell System Tech J*. 1956.
+::: {#refs}
+:::
 
 ---
 

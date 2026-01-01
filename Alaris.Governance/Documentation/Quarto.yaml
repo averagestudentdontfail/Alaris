@@ -4,7 +4,7 @@ project:
 
 # Render only the mathematical specification by default
 render:
-  - Alaris-Mathematical-Specification.qmd
+  - Alaris.qmd
 
 format:
   html:
