@@ -22,7 +22,6 @@
 
   <!-- Project References -->
   <ItemGroup>
-    <ProjectReference Include="..\Alaris.Double\Alaris.Double.csproj" />
     <ProjectReference Include="..\Alaris.Strategy\Alaris.Strategy.csproj" />
     <ProjectReference Include="..\Alaris.Infrastructure\Alaris.Infrastructure.csproj" />
   </ItemGroup>

@@ -1,6 +1,6 @@
 // SMSM001A.cs - quarterly earnings announcement simulation
 
-using Alaris.Double;
+using Alaris.Core.Pricing;
 using Alaris.Strategy.Bridge;
 using Alaris.Strategy.Calendar;
 using Alaris.Strategy.Core;
@@ -52,6 +52,9 @@ internal static class SMSM001A
 
     /// <summary>Simulation symbol for the earnings announcement.</summary>
     private const string SimulationSymbol = "AAPL";
+
+    /// <summary>Static pricing engine for simulation.</summary>
+    private static readonly CREN003A PricingEngine = new CREN003A();
 
     /// <summary>Portfolio value for position sizing calculations.</summary>
     private const double PortfolioValue = 100_000.00;
@@ -636,8 +639,7 @@ internal static class SMSM001A
         if (isCall && div < rate && rate < 0)
         {
             // Price the corresponding put
-            DBAP002A putApprox = new DBAP002A(spot, strike, timeToExpiry, rate, div, vol, isCall: false);
-            double putPrice = putApprox.ApproximateValue();
+            double putPrice = PricingEngine.Price(spot, strike, timeToExpiry, rate, div, vol, Alaris.Core.Options.OptionType.Put);
 
             // Apply put-call parity: C = P + S·exp(-qT) - K·exp(-rT)
             double forwardFactor = Math.Exp(-div * timeToExpiry);
@@ -646,9 +648,8 @@ internal static class SMSM001A
         }
         else
         {
-            // Use DBAP002A directly for puts or other regimes
-            DBAP002A approx = new DBAP002A(spot, strike, timeToExpiry, rate, div, vol, isCall);
-            price = approx.ApproximateValue();
+            // Use CRAP001A directly for puts or other regimes
+            price = PricingEngine.Price(spot, strike, timeToExpiry, rate, div, vol, isCall ? Alaris.Core.Options.OptionType.Call : Alaris.Core.Options.OptionType.Put);
         }
 
         // Adaptive step sizes proportional to spot and volatility
@@ -659,19 +660,7 @@ internal static class SMSM001A
         // Helper function to price with put-call parity if needed
         double PriceOption(double s, double k, double t, double r, double q, double v, bool call)
         {
-            if (call && q < r && r < 0)
-            {
-                DBAP002A putA = new DBAP002A(s, k, t, r, q, v, isCall: false);
-                double putP = putA.ApproximateValue();
-                double ff = Math.Exp(-q * t);
-                double df = Math.Exp(-r * t);
-                return putP + (s * ff) - (k * df);
-            }
-            else
-            {
-                DBAP002A a = new DBAP002A(s, k, t, r, q, v, call);
-                return a.ApproximateValue();
-            }
+            return PricingEngine.Price(s, k, t, r, q, v, call ? Alaris.Core.Options.OptionType.Call : Alaris.Core.Options.OptionType.Put);
         }
 
         // Delta: central difference with adaptive step
@@ -934,14 +923,12 @@ internal static class SMSM001A
         double div = -0.010;   // -1.0% (q < r for double boundary)
         double vol = 0.20;     // 20%
 
-        // Create double boundary approximation (QD+ method)
-        DBAP002A putApprox = new DBAP002A(spot, strike, maturity, rate, div, vol, isCall: false);
-        double putPrice = putApprox.ApproximateValue();
+        // Price using unified engine (spectral)
+        double putPrice = PricingEngine.Price(spot, strike, maturity, rate, div, vol, Alaris.Core.Options.OptionType.Put);
 
-        // Get boundaries using DBAP002A.CalculateBoundaries()
-        BoundaryResult boundaryResult = putApprox.CalculateBoundaries();
-        double upperBoundary = boundaryResult.UpperBoundary;
-        double lowerBoundary = boundaryResult.LowerBoundary;
+        // Get boundaries using CRAP001A.CalculateBoundaries()
+        CRAP001A boundaryCalc = new CRAP001A(spot, strike, maturity, rate, div, vol, isCall: false);
+        (double upperBoundary, double lowerBoundary) = boundaryCalc.CalculateBoundaries();
 
         // Validate physical constraints (Healy Appendix A)
         bool a1Pass = upperBoundary > 0 && lowerBoundary > 0;
@@ -1029,10 +1016,9 @@ internal static class SMSM001A
         for (int i = 0; i < maturities.Length; i++)
         {
             double T = maturities[i];
-            DBAP002A approx = new DBAP002A(spot, strike, T, rate, div, vol, isCall: false);
-            double price = approx.ApproximateValue();
+            double price = PricingEngine.Price(spot, strike, T, rate, div, vol, Alaris.Core.Options.OptionType.Put);
             double intrinsic = Math.Max(0, strike - spot);
-            string method = T < 0.012 ? "DBEX001A (intrinsic)" : "QD+";
+            string method = T < 0.012 ? "Near-expiry" : "Spectral";
 
             Console.WriteLine($"  {labels[i],-12} {price,8:F4}  {intrinsic,8:F4}   {method}");
         }
@@ -1111,31 +1097,30 @@ internal static class SMSM001A
         Console.WriteLine($"  Parameters: S={spot}, K={strike}, T={maturity}, r={rate*100:F1}%, q={div*100:F1}%, σ={vol*100:F0}%");
         Console.WriteLine();
 
-        // Solve for boundaries
-        DBSL001A solver = new DBSL001A(spot, strike, maturity, rate, div, vol, isCall: false, collocationPoints: 50, useRefinement: false);
-        DoubleBoundaryResult result = solver.Solve();
+        // Solve for boundaries using CRAP001A
+        CRAP001A boundaryCalc = new CRAP001A(spot, strike, maturity, rate, div, vol, isCall: false);
+        (double upperBoundary, double lowerBoundary) = boundaryCalc.CalculateBoundaries();
 
         Console.WriteLine("  VALIDATION RESULTS:");
         Console.WriteLine("  ────────────────────────────────────────────────────────");
 
         // A1: Positive boundaries
-        bool a1Upper = result.UpperBoundary > 0;
-        bool a1Lower = result.LowerBoundary > 0;
-        Console.WriteLine($"    A1: S_u = {result.UpperBoundary:F2} > 0: {(a1Upper ? "✓ PASS" : "✗ FAIL")}");
-        Console.WriteLine($"        S_l = {result.LowerBoundary:F2} > 0: {(a1Lower ? "✓ PASS" : "✗ FAIL")}");
+        bool a1Upper = upperBoundary > 0;
+        bool a1Lower = lowerBoundary > 0;
+        Console.WriteLine($"    A1: S_u = {upperBoundary:F2} > 0: {(a1Upper ? "✓ PASS" : "✗ FAIL")}");
+        Console.WriteLine($"        S_l = {lowerBoundary:F2} > 0: {(a1Lower ? "✓ PASS" : "✗ FAIL")}");
 
         // A2: Ordering
-        bool a2 = result.UpperBoundary > result.LowerBoundary;
-        Console.WriteLine($"    A2: S_u > S_l ({result.UpperBoundary:F2} > {result.LowerBoundary:F2}): {(a2 ? "✓ PASS" : "✗ FAIL")}");
+        bool a2 = upperBoundary > lowerBoundary;
+        Console.WriteLine($"    A2: S_u > S_l ({upperBoundary:F2} > {lowerBoundary:F2}): {(a2 ? "✓ PASS" : "✗ FAIL")}");
 
         // A3: Below strike
-        bool a3Upper = result.UpperBoundary < strike;
-        bool a3Lower = result.LowerBoundary < strike;
+        bool a3Upper = upperBoundary < strike;
+        bool a3Lower = lowerBoundary < strike;
         Console.WriteLine($"    A3: S_u < K: {(a3Upper ? "✓ PASS" : "✗ FAIL")}, S_l < K: {(a3Lower ? "✓ PASS" : "✗ FAIL")}");
 
         // A4/A5: Value matching and smooth pasting (numerically)
-        DBAP002A approx = new DBAP002A(spot, strike, maturity, rate, div, vol, isCall: false);
-        double price = approx.ApproximateValue();
+        double price = PricingEngine.Price(spot, strike, maturity, rate, div, vol, Alaris.Core.Options.OptionType.Put);
         double intrinsic = Math.Max(0, strike - spot);
         bool priceValid = price >= intrinsic;
         Console.WriteLine($"    Price floor: P={price:F4} ≥ max(K-S,0)={intrinsic:F4}: {(priceValid ? "✓ PASS" : "✗ FAIL")}");

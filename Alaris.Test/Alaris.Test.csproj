@@ -39,8 +39,6 @@
   <!-- Project references -->
   <ItemGroup>
     <ProjectReference Include="../Alaris.Core/Alaris.Core.csproj" />
-    <ProjectReference Include="../Alaris.Quantlib/Alaris.Quantlib.csproj" />
-    <ProjectReference Include="../Alaris.Double/Alaris.Double.csproj" />
     <ProjectReference Include="../Alaris.Strategy/Alaris.Strategy.csproj" />
     <ProjectReference Include="../Alaris.Infrastructure/Alaris.Infrastructure.csproj" />
     <ProjectReference Include="../Alaris.Host/Alaris.Host.csproj" />
