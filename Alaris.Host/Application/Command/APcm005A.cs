@@ -452,9 +452,9 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
         fsm.Fire(BacktestEvent.CheckData);
 
         var dataPath = service.GetDataPath(session.SessionId);
-        var (pricesMissing, earningsMissing) = CheckDataAvailability(dataPath, session);
+        var (pricesMissing, earningsMissing, optionsMissing) = CheckDataAvailability(dataPath, session);
 
-        if (pricesMissing || earningsMissing)
+        if (pricesMissing || earningsMissing || optionsMissing)
         {
             // FSM: DataChecking → DataBootstrapping
             fsm.Fire(BacktestEvent.DataMissing);
@@ -462,6 +462,7 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
             AnsiConsole.MarkupLine("[yellow]⚠ Missing data detected:[/]");
             if (pricesMissing) AnsiConsole.MarkupLine("  [grey]• Price data not found[/]");
             if (earningsMissing) AnsiConsole.MarkupLine("  [grey]• Earnings cache empty[/]");
+            if (optionsMissing) AnsiConsole.MarkupLine("  [grey]• Options data empty (mandatory)[/]");
             AnsiConsole.WriteLine();
 
             if (settings.AutoBootstrap)
@@ -501,10 +502,10 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
                 }
                 else
                 {
-                    AnsiConsole.MarkupLine("[grey]Continuing without data (algorithm may have limited functionality)[/]");
-                    // Still transition to DataReady (user chose to proceed)
-                    fsm.Fire(BacktestEvent.BootstrapComplete);
-                    fsm.Fire(BacktestEvent.DataReady);
+                    AnsiConsole.MarkupLine("[red]Cannot proceed without mandatory market data.[/]");
+                    AnsiConsole.MarkupLine("[grey]Strategy requires historical options data with IV for backtesting.[/]");
+                    fsm.Fire(BacktestEvent.BootstrapFailed);
+                    return 1;
                 }
             }
             AnsiConsole.WriteLine();
@@ -565,7 +566,7 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
         return exitCode;
     }
 
-    private static (bool pricesMissing, bool earningsMissing) CheckDataAvailability(string dataPath, APmd001A session)
+    private static (bool pricesMissing, bool earningsMissing, bool optionsMissing) CheckDataAvailability(string dataPath, APmd001A session)
     {
         // Check for price data (LEAN equity folder structure)
         var equityPath = System.IO.Path.Combine(dataPath, "equity", "usa", "daily");
@@ -575,7 +576,11 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
         var earningsPath = System.IO.Path.Combine(dataPath, "earnings", "nasdaq");
         var hasEarnings = Directory.Exists(earningsPath) && Directory.GetFiles(earningsPath, "*.json").Length > 0;
 
-        return (!hasPrices, !hasEarnings);
+        // Check for options data (mandatory for strategy)
+        var optionsPath = System.IO.Path.Combine(dataPath, "options");
+        var hasOptions = Directory.Exists(optionsPath) && Directory.GetFiles(optionsPath, "*.json").Length > 0;
+
+        return (!hasPrices, !hasEarnings, !hasOptions);
     }
 
     private static async Task BootstrapDataAsync(APmd001A session, APsv001A service, string dataPath)
