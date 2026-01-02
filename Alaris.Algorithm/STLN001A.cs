@@ -24,7 +24,6 @@ using Alaris.Infrastructure.Data.Bridge;
 using Alaris.Infrastructure.Data.Model;
 using Alaris.Infrastructure.Data.Provider;
 using Alaris.Infrastructure.Data.Provider.Polygon;
-using Alaris.Infrastructure.Data.Provider.FMP;
 using Alaris.Infrastructure.Data.Provider.Nasdaq;
 using Alaris.Infrastructure.Data.Provider.Treasury;
 using Alaris.Infrastructure.Data.Http.Contracts;
@@ -376,7 +375,6 @@ public sealed class STLN001A : QCAlgorithm
             _yangZhangEstimator,
             _termStructureAnalyzer,
             earningsCalibrator: null,  // Use default calibration
-            syntheticIVGenerator: null,  // Use default synthetic IV generator for backtest mode
             logger: _loggerFactory!.CreateLogger<STCR001A>());
         
         // Position sizer (Kelly criterion)
@@ -898,18 +896,23 @@ public sealed class STLN001A : QCAlgorithm
         Log($"  {ticker}: LEAN data - {barList.Count} bars, spot=${spotPrice:F2}");
 
         // Step 2: Get earnings data from cache (NASDAQ provider in cache-only mode)
+        // Pass simulation date as anchor so we search for earnings relative to backtest time
         
         EarningsEvent? nextEarnings = null;
         try
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-            var historicalEarnings = _earningsProvider!.GetHistoricalEarningsAsync(
+            
+            // Search for earnings: 2 years before simulation AND up to 90 days after
+            // This finds both historical (for Leung-Santoli) and upcoming (for signals)
+            var earnings = _earningsProvider!.GetHistoricalEarningsAsync(
                 ticker,
-                lookbackDays: 730,
+                simulationDate.AddDays(90), // Anchor to 90 days AFTER simulation (to capture future earnings)
+                820, // Look back from the anchor (730 + 90)
                 cts.Token).GetAwaiter().GetResult();
 
             // Find the next earnings AFTER current simulation date
-            nextEarnings = historicalEarnings
+            nextEarnings = earnings
                 .Where(e => e.Date > simulationDate.Date)
                 .OrderBy(e => e.Date)
                 .FirstOrDefault();

@@ -39,6 +39,16 @@ public interface DTpr004A
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Gets historical earnings events for a symbol, anchored to a specific date.
+    /// Use in backtest mode with simulation date as anchor.
+    /// </summary>
+    Task<IReadOnlyList<EarningsEvent>> GetHistoricalEarningsAsync(
+        string symbol,
+        DateTime anchorDate,
+        int lookbackDays = 730,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gets all symbols with earnings in date range.
     /// </summary>
     Task<IReadOnlyList<string>> GetSymbolsWithEarningsAsync(

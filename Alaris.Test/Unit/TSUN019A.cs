@@ -229,6 +229,9 @@ internal class UniverseTestEarningsProvider : DTpr004A
         return Task.FromResult<IReadOnlyList<EarningsEvent>>(earnings);
     }
 
+    public Task<IReadOnlyList<EarningsEvent>> GetHistoricalEarningsAsync(string symbol, DateTime anchorDate, int lookbackDays = 730, CancellationToken cancellationToken = default)
+        => GetHistoricalEarningsAsync(symbol, lookbackDays, cancellationToken);
+
     public Task<IReadOnlyList<string>> GetSymbolsWithEarningsAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
     {
         return Task.FromResult(s_defaultSymbols);

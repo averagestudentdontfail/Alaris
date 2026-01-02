@@ -17,7 +17,6 @@ public sealed class STCR001A
     private readonly STCR003A _yangZhang;
     private readonly STTM001A _termAnalyzer;
     private readonly STIV005A _earningsCalibrator;
-    private readonly STIV020A _syntheticIVGenerator;
     private readonly ILogger<STCR001A>? _logger;
 
     // LoggerMessage delegates
@@ -63,12 +62,6 @@ public sealed class STCR001A
             new EventId(7, nameof(LogLeungSantoliMetrics)),
             "L&S model for {Symbol}: sigmaE={SigmaE:P2}, theoreticalIV={TheoreticalIV:P2}, mispricing={Mispricing:P2}");
 
-    private static readonly Action<ILogger, string, Exception?> LogUsingSyntheticIV =
-        LoggerMessage.Define<string>(
-            LogLevel.Information,
-            new EventId(8, nameof(LogUsingSyntheticIV)),
-            "Using synthetic IV (L&S model) for {Symbol} - no market options data available");
-
     // Strategy thresholds from research
     private const double MinIvRvRatio = 1.25;
     private const double MaxTermSlope = -0.00406;
@@ -81,21 +74,18 @@ public sealed class STCR001A
     /// <param name="yangZhang">Yang-Zhang volatility estimator.</param>
     /// <param name="termAnalyzer">Term structure analyzer.</param>
     /// <param name="earningsCalibrator">Optional L&amp;S earnings jump calibrator.</param>
-    /// <param name="syntheticIVGenerator">Optional synthetic IV generator for backtest mode.</param>
     /// <param name="logger">Optional logger instance.</param>
     public STCR001A(
         STDT001A marketData,
         STCR003A yangZhang,
         STTM001A termAnalyzer,
         STIV005A? earningsCalibrator = null,
-        STIV020A? syntheticIVGenerator = null,
         ILogger<STCR001A>? logger = null)
     {
         _marketData = marketData ?? throw new ArgumentNullException(nameof(marketData));
         _yangZhang = yangZhang ?? throw new ArgumentNullException(nameof(yangZhang));
         _termAnalyzer = termAnalyzer ?? throw new ArgumentNullException(nameof(termAnalyzer));
         _earningsCalibrator = earningsCalibrator ?? new STIV005A();
-        _syntheticIVGenerator = syntheticIVGenerator ?? new STIV020A(yangZhang, _earningsCalibrator);
         _logger = logger;
     }
 
@@ -143,28 +133,14 @@ public sealed class STCR001A
                 return signal;
             }
 
-            // Check if we need synthetic IV fallback
-            bool needsSyntheticIV = optionChain.Expiries.Count == 0 ||
-                                    !HasValidIVData(optionChain);
-            
-            if (needsSyntheticIV)
-            {
-                SafeLog(() => LogUsingSyntheticIV(_logger!, symbol, null));
-                optionChain = _syntheticIVGenerator.GenerateSyntheticChain(
-                    symbol,
-                    _marketData.GetCurrentPrice(symbol),
-                    priceHistory,
-                    earningsDate,
-                    evaluationDate,
-                    historicalEarningsDates);
-                signal.UsingSyntheticIV = true;
-            }
-
-            if (optionChain.Expiries.Count == 0)
+            // Fail-fast: Real market IV is mandatory - no synthetic fallbacks
+            // Options data must be bootstrapped via CLI before running backtest
+            if (optionChain.Expiries.Count == 0 || !HasValidIVData(optionChain))
             {
                 SafeLog(() => LogNoOptionData(_logger!, symbol, null));
-                signal.Strength = STCR004AStrength.Avoid;
-                return signal;
+                throw new InvalidOperationException(
+                    $"No valid options data with IV available for {symbol} on {evaluationDate:yyyy-MM-dd}. " +
+                    "Run 'alaris backtest run --auto-bootstrap' to download historical options data from Polygon API.");
             }
 
             // Calculate signal metrics (including L&S model if historical data provided)

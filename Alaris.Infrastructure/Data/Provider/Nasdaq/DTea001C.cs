@@ -116,14 +116,32 @@ public sealed class NasdaqEarningsProvider : DTpr004A
         int lookbackDays = 730,
         CancellationToken cancellationToken = default)
     {
+        // Default: anchor to today (live mode)
+        return await GetHistoricalEarningsAsync(symbol, DateTime.UtcNow.Date, lookbackDays, cancellationToken);
+    }
+
+    /// <summary>
+    /// Gets historical earnings for a symbol, anchored to a specific date.
+    /// Use this overload in backtest mode with simulation date as anchor.
+    /// </summary>
+    /// <param name="symbol">The symbol to look up.</param>
+    /// <param name="anchorDate">The anchor date (simulation date in backtest, or today in live).</param>
+    /// <param name="lookbackDays">Number of days to look back from anchor date.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    public async Task<IReadOnlyList<EarningsEvent>> GetHistoricalEarningsAsync(
+        string symbol,
+        DateTime anchorDate,
+        int lookbackDays = 730,
+        CancellationToken cancellationToken = default)
+    {
         if (string.IsNullOrWhiteSpace(symbol))
             throw new ArgumentException("Symbol cannot be null or whitespace", nameof(symbol));
 
         _logger.LogInformation(
-            "Fetching historical earnings for {Symbol} ({Days} days back) from NASDAQ",
-            symbol, lookbackDays);
+            "Fetching historical earnings for {Symbol} ({Days} days back from {Anchor:yyyy-MM-dd}) from NASDAQ",
+            symbol, lookbackDays, anchorDate);
 
-        DateTime endDate = DateTime.UtcNow.Date;
+        DateTime endDate = anchorDate.Date;
         DateTime startDate = endDate.AddDays(-lookbackDays);
 
         List<EarningsEvent> allEarnings = new();

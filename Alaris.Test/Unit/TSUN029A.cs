@@ -740,6 +740,13 @@ internal sealed class MockEarningsProvider : DTpr004A
         return Task.FromResult<IReadOnlyList<EarningsEvent>>(events);
     }
 
+    public Task<IReadOnlyList<EarningsEvent>> GetHistoricalEarningsAsync(
+        string symbol,
+        DateTime anchorDate,
+        int lookbackDays = 730,
+        CancellationToken cancellationToken = default)
+        => GetHistoricalEarningsAsync(symbol, lookbackDays, cancellationToken);
+
     public Task<IReadOnlyList<string>> GetSymbolsWithEarningsAsync(
         DateTime startDate,
         DateTime endDate,
