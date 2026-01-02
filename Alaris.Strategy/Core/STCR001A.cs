@@ -17,6 +17,7 @@ public sealed class STCR001A
     private readonly STCR003A _yangZhang;
     private readonly STTM001A _termAnalyzer;
     private readonly STIV005A _earningsCalibrator;
+    private readonly STIV020A _syntheticIVGenerator;
     private readonly ILogger<STCR001A>? _logger;
 
     // LoggerMessage delegates
@@ -62,6 +63,12 @@ public sealed class STCR001A
             new EventId(7, nameof(LogLeungSantoliMetrics)),
             "L&S model for {Symbol}: sigmaE={SigmaE:P2}, theoreticalIV={TheoreticalIV:P2}, mispricing={Mispricing:P2}");
 
+    private static readonly Action<ILogger, string, Exception?> LogUsingSyntheticIV =
+        LoggerMessage.Define<string>(
+            LogLevel.Information,
+            new EventId(8, nameof(LogUsingSyntheticIV)),
+            "Using synthetic IV (L&S model) for {Symbol} - no market options data available");
+
     // Strategy thresholds from research
     private const double MinIvRvRatio = 1.25;
     private const double MaxTermSlope = -0.00406;
@@ -74,18 +81,21 @@ public sealed class STCR001A
     /// <param name="yangZhang">Yang-Zhang volatility estimator.</param>
     /// <param name="termAnalyzer">Term structure analyzer.</param>
     /// <param name="earningsCalibrator">Optional L&amp;S earnings jump calibrator.</param>
+    /// <param name="syntheticIVGenerator">Optional synthetic IV generator for backtest mode.</param>
     /// <param name="logger">Optional logger instance.</param>
     public STCR001A(
         STDT001A marketData,
         STCR003A yangZhang,
         STTM001A termAnalyzer,
         STIV005A? earningsCalibrator = null,
+        STIV020A? syntheticIVGenerator = null,
         ILogger<STCR001A>? logger = null)
     {
         _marketData = marketData ?? throw new ArgumentNullException(nameof(marketData));
         _yangZhang = yangZhang ?? throw new ArgumentNullException(nameof(yangZhang));
         _termAnalyzer = termAnalyzer ?? throw new ArgumentNullException(nameof(termAnalyzer));
         _earningsCalibrator = earningsCalibrator ?? new STIV005A();
+        _syntheticIVGenerator = syntheticIVGenerator ?? new STIV020A(yangZhang, _earningsCalibrator);
         _logger = logger;
     }
 
@@ -131,6 +141,23 @@ public sealed class STCR001A
                 SafeLog(() => LogInsufficientPriceHistory(_logger!, symbol, null));
                 signal.Strength = STCR004AStrength.Avoid;
                 return signal;
+            }
+
+            // Check if we need synthetic IV fallback
+            bool needsSyntheticIV = optionChain.Expiries.Count == 0 ||
+                                    !HasValidIVData(optionChain);
+            
+            if (needsSyntheticIV)
+            {
+                SafeLog(() => LogUsingSyntheticIV(_logger!, symbol, null));
+                optionChain = _syntheticIVGenerator.GenerateSyntheticChain(
+                    symbol,
+                    _marketData.GetCurrentPrice(symbol),
+                    priceHistory,
+                    earningsDate,
+                    evaluationDate,
+                    historicalEarningsDates);
+                signal.UsingSyntheticIV = true;
             }
 
             if (optionChain.Expiries.Count == 0)
@@ -481,6 +508,32 @@ public sealed class STCR001A
 
         double totalWeight = spreads.Sum(s => s.weight);
         return spreads.Sum(s => s.spread * s.weight) / totalWeight;
+    }
+
+    /// <summary>
+    /// Checks if the option chain has valid IV data for signal generation.
+    /// Returns false if all IVs are zero or missing.
+    /// </summary>
+    private static bool HasValidIVData(STDT002A optionChain)
+    {
+        foreach (var expiry in optionChain.Expiries)
+        {
+            foreach (var call in expiry.Calls)
+            {
+                if (call.ImpliedVolatility > 0.001)
+                {
+                    return true;
+                }
+            }
+            foreach (var put in expiry.Puts)
+            {
+                if (put.ImpliedVolatility > 0.001)
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /// <summary>

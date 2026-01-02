@@ -376,7 +376,8 @@ public sealed class STLN001A : QCAlgorithm
             _yangZhangEstimator,
             _termStructureAnalyzer,
             earningsCalibrator: null,  // Use default calibration
-            _loggerFactory!.CreateLogger<STCR001A>());
+            syntheticIVGenerator: null,  // Use default synthetic IV generator for backtest mode
+            logger: _loggerFactory!.CreateLogger<STCR001A>());
         
         // Position sizer (Kelly criterion)
         _positionSizer = new STRK001A(

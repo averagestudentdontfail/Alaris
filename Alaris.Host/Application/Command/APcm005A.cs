@@ -121,6 +121,17 @@ public sealed class BacktestCreateCommand : AsyncCommand<BacktestCreateSettings>
                 AnsiConsole.MarkupLine("[yellow]Downloading market data...[/]");
                 using var dataService = DependencyFactory.CreateAPsv002A();
                 await dataService.DownloadEquityDataAsync(service.GetDataPath(session.SessionId), targets, startDate, endDate);
+                AnsiConsole.MarkupLine("[green]✓[/] Market data downloaded");
+                
+                // Bootstrap earnings calendar for the date range
+                AnsiConsole.MarkupLine("[yellow]Downloading earnings calendar...[/]");
+                AnsiConsole.MarkupLine("[grey]  (Rate-limited: ~1 day/second to avoid blocking)[/]");
+                var daysDownloaded = await dataService.BootstrapEarningsCalendarAsync(
+                    startDate,
+                    endDate,
+                    service.GetDataPath(session.SessionId),  // Use data path for algorithm compatibility
+                    CancellationToken.None);
+                AnsiConsole.MarkupLine($"[green]✓[/] Earnings calendar downloaded ({daysDownloaded} days)");
                 
                 // Update status to Ready
                 await service.UpdateAsync(session with { Status = SessionStatus.Ready });
@@ -258,6 +269,17 @@ public sealed class BacktestPrepareCommand : AsyncCommand<BacktestPrepareSetting
         using var dataService = DependencyFactory.CreateAPsv002A();
         AnsiConsole.MarkupLine($"[yellow]Downloading data for session {session.SessionId}...[/]");
         await dataService.DownloadEquityDataAsync(service.GetDataPath(session.SessionId), targets, session.StartDate, session.EndDate);
+        AnsiConsole.MarkupLine("[green]✓[/] Market data downloaded");
+        
+        // Bootstrap earnings calendar for the date range
+        AnsiConsole.MarkupLine("[yellow]Downloading earnings calendar...[/]");
+        AnsiConsole.MarkupLine("[grey]  (Rate-limited: ~1 day/second to avoid blocking)[/]");
+        var daysDownloaded = await dataService.BootstrapEarningsCalendarAsync(
+            session.StartDate,
+            session.EndDate,
+            service.GetDataPath(session.SessionId),  // Use data path for algorithm compatibility
+            CancellationToken.None);
+        AnsiConsole.MarkupLine($"[green]✓[/] Earnings calendar downloaded ({daysDownloaded} days)");
         
         await service.UpdateAsync(session with { Status = SessionStatus.Ready });
         AnsiConsole.MarkupLine($"[green]✓[/] Session {session.SessionId} is ready.");
@@ -606,17 +628,102 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
         AnsiConsole.MarkupLine("[grey]  (Rate-limited: ~1 day/second to avoid blocking)[/]");
         AnsiConsole.WriteLine();
         
-        // Earnings data goes in the session directory (parent of data path)
-        var sessionPath = Path.GetDirectoryName(dataPath) ?? dataPath;
+        // Use data path so algorithm can find cached earnings at {data}/earnings/nasdaq/
         var daysDownloaded = await dataService.BootstrapEarningsCalendarAsync(
             session.StartDate,
             session.EndDate,
-            sessionPath,
+            dataPath,
             CancellationToken.None);
 
         AnsiConsole.WriteLine();
         AnsiConsole.MarkupLine($"[green]✓[/] Earnings calendar bootstrap completed ({daysDownloaded} days downloaded)");
         AnsiConsole.WriteLine();
+        
+        // Bootstrap options data for evaluation dates around earnings
+        // Parse earnings dates from cached calendar to determine which dates need options
+        AnsiConsole.MarkupLine("[blue]Downloading historical options data with IV...[/]");
+        AnsiConsole.MarkupLine("[grey]  (Uses market prices to calculate Black-Scholes IV)[/]");
+        AnsiConsole.WriteLine();
+        
+        var earningsDates = GetEarningsDatesFromCache(dataPath, session.StartDate, session.EndDate);
+        if (earningsDates.Count > 0)
+        {
+            // For each earnings date, get options for evaluation dates 7-21 days before (strategy entry window)
+            var evaluationDates = new HashSet<DateTime>();
+            foreach (var earningsDate in earningsDates)
+            {
+                // Strategy evaluates 7-21 days before earnings
+                for (int daysBeforeEarnings = 7; daysBeforeEarnings <= 21; daysBeforeEarnings += 7)
+                {
+                    var evalDate = earningsDate.AddDays(-daysBeforeEarnings).Date;
+                    if (evalDate >= session.StartDate && evalDate <= session.EndDate)
+                    {
+                        evaluationDates.Add(evalDate);
+                    }
+                }
+            }
+            
+            if (evaluationDates.Count > 0)
+            {
+                var optionsDownloaded = await dataService.BootstrapOptionsDataAsync(
+                    session.Symbols,
+                    evaluationDates.OrderBy(d => d),
+                    dataPath,
+                    CancellationToken.None);
+                    
+                AnsiConsole.WriteLine();
+                AnsiConsole.MarkupLine($"[green]✓[/] Options data bootstrap completed ({optionsDownloaded} chains downloaded for {evaluationDates.Count} dates)");
+            }
+            else
+            {
+                AnsiConsole.MarkupLine("[grey]No evaluation dates in range for options bootstrap[/]");
+            }
+        }
+        else
+        {
+            AnsiConsole.MarkupLine("[grey]No earnings dates found in cache for options bootstrap[/]");
+        }
+        AnsiConsole.WriteLine();
+    }
+    
+    /// <summary>
+    /// Parses earnings dates from cached calendar files.
+    /// </summary>
+    private static List<DateTime> GetEarningsDatesFromCache(string dataPath, DateTime startDate, DateTime endDate)
+    {
+        var earningsDates = new List<DateTime>();
+        var earningsPath = System.IO.Path.Combine(dataPath, "earnings", "nasdaq");
+        
+        if (!Directory.Exists(earningsPath))
+        {
+            return earningsDates;
+        }
+        
+        foreach (var file in Directory.GetFiles(earningsPath, "*.json"))
+        {
+            var filename = System.IO.Path.GetFileNameWithoutExtension(file);
+            if (DateTime.TryParseExact(filename, "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out var date))
+            {
+                if (date >= startDate && date <= endDate)
+                {
+                    // Check if file has any earnings events
+                    try
+                    {
+                        var content = File.ReadAllText(file);
+                        if (content.Length > 10 && !content.Contains("[]")) // Not empty
+                        {
+                            earningsDates.Add(date);
+                        }
+                    }
+                    catch
+                    {
+                        // Skip files that can't be read
+                    }
+                }
+            }
+        }
+        
+        return earningsDates;
     }
 
     private static async Task<int> ExecuteLeanWithMonitoringAsync(APmd001A session, APsv001A service)

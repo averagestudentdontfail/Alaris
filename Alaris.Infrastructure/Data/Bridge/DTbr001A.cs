@@ -213,7 +213,11 @@ public sealed class AlarisDataBridge
     /// <summary>
     /// Gets option chain with cache fallback for backtest mode.
     /// Loads from session cache if available, otherwise falls back to live API.
-    /// Now supports both binary (.sbe) and legacy JSON (.json) cache formats.
+    /// Supports three cache formats:
+    ///   1. Date-specific: {symbol}_{yyyyMMdd}.sbe/.json (preferred for multi-date backtests)
+    ///   2. Single-file binary: {symbol}.sbe
+    ///   3. Single-file JSON: {symbol}.json (legacy)
+    /// When exact date match is not found, uses the nearest earlier cached date.
     /// </summary>
     private async Task<OptionChainSnapshot> GetOptionChainWithCacheFallbackAsync(
         string symbol,
@@ -226,7 +230,59 @@ public sealed class AlarisDataBridge
             var optionsDir = System.IO.Path.Combine(_sessionDataPath, "options");
             var symbolLower = symbol.ToLowerInvariant();
             
-            // Try binary cache first (preferred - zero allocation on read path)
+            // Strategy 1: Try exact date-specific cache files (from earnings-based bootstrap)
+            var dateSuffix = evaluationDate.ToString("yyyyMMdd");
+            
+            var dateSpecificBinaryPath = System.IO.Path.Combine(optionsDir, $"{symbolLower}_{dateSuffix}.sbe");
+            if (File.Exists(dateSpecificBinaryPath))
+            {
+                try
+                {
+                    var cached = await LoadBinaryCacheAsync(dateSpecificBinaryPath, cancellationToken);
+                    if (cached != null && cached.Contracts.Count > 0)
+                    {
+                        _logger.LogDebug("Loaded {Count} options from date-specific binary cache for {Symbol} @ {Date}", 
+                            cached.Contracts.Count, symbol, evaluationDate);
+                        return cached;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to load date-specific binary cache for {Symbol}", symbol);
+                }
+            }
+            
+            var dateSpecificJsonPath = System.IO.Path.Combine(optionsDir, $"{symbolLower}_{dateSuffix}.json");
+            if (File.Exists(dateSpecificJsonPath))
+            {
+                try
+                {
+                    var json = await File.ReadAllTextAsync(dateSpecificJsonPath, cancellationToken);
+                    var cached = JsonSerializer.Deserialize<OptionChainSnapshot>(json, JsonOptions);
+                    if (cached != null && cached.Contracts.Count > 0)
+                    {
+                        _logger.LogDebug("Loaded {Count} options from date-specific JSON cache for {Symbol} @ {Date}", 
+                            cached.Contracts.Count, symbol, evaluationDate);
+                        return cached;
+                    }
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogWarning(ex, "Failed to deserialize date-specific JSON cache for {Symbol}", symbol);
+                }
+            }
+            
+            // Strategy 2: Find nearest earlier dated cache file
+            if (Directory.Exists(optionsDir))
+            {
+                var nearestCache = await FindNearestCacheAsync(optionsDir, symbolLower, evaluationDate, cancellationToken);
+                if (nearestCache != null)
+                {
+                    return nearestCache;
+                }
+            }
+            
+            // Strategy 3: Fall back to single-file cache (legacy format - date-agnostic)
             var binaryCachePath = System.IO.Path.Combine(optionsDir, $"{symbolLower}.sbe");
             if (File.Exists(binaryCachePath))
             {
@@ -235,24 +291,17 @@ public sealed class AlarisDataBridge
                     var cached = await LoadBinaryCacheAsync(binaryCachePath, cancellationToken);
                     if (cached != null && cached.Contracts.Count > 0)
                     {
-                        if (cached.Timestamp.Date == evaluationDate.Date)
-                        {
-                            _logger.LogDebug("Loaded {Count} options from binary cache for {Symbol} (Hit)", 
-                                cached.Contracts.Count, symbol);
-                            return cached;
-                        }
-                        
-                        _logger.LogDebug("Binary cache mismatch for {Symbol}: Cached={CachedDate:yyyy-MM-dd}, Requested={ReqDate:yyyy-MM-dd}",
-                            symbol, cached.Timestamp, evaluationDate);
+                        _logger.LogDebug("Loaded {Count} options from legacy binary cache for {Symbol} (using as fallback)", 
+                            cached.Contracts.Count, symbol);
+                        return cached;
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to load binary cache for {Symbol}, trying JSON fallback", symbol);
+                    _logger.LogWarning(ex, "Failed to load legacy binary cache for {Symbol}", symbol);
                 }
             }
             
-            // Fallback to legacy JSON cache
             var jsonCachePath = System.IO.Path.Combine(optionsDir, $"{symbolLower}.json");
             if (File.Exists(jsonCachePath))
             {
@@ -263,31 +312,102 @@ public sealed class AlarisDataBridge
                     
                     if (cached != null && cached.Contracts.Count > 0)
                     {
-                        if (cached.Timestamp.Date == evaluationDate.Date)
-                        {
-                            _logger.LogDebug("Loaded {Count} options from JSON cache for {Symbol} (Hit)", 
-                                cached.Contracts.Count, symbol);
-                            return cached;
-                        }
-                        
-                        _logger.LogDebug("JSON cache mismatch for {Symbol}: Cached={CachedDate:yyyy-MM-dd}, Requested={ReqDate:yyyy-MM-dd}",
-                            symbol, cached.Timestamp, evaluationDate);
+                        _logger.LogDebug("Loaded {Count} options from legacy JSON cache for {Symbol} (using as fallback)", 
+                            cached.Contracts.Count, symbol);
+                        return cached;
                     }
                 }
                 catch (JsonException ex)
                 {
-                    _logger.LogWarning(ex, "Failed to deserialize JSON cache for {Symbol}", symbol);
+                    _logger.LogWarning(ex, "Failed to deserialize legacy JSON cache for {Symbol}", symbol);
                 }
             }
-            else
-            {
-                _logger.LogDebug("No options cache file found for {Symbol}", symbol);
-            }
+            
+            _logger.LogDebug("No options cache found for {Symbol} @ {Date}", symbol, evaluationDate);
         }
 
         // Fetch from provider (Live or Historical On-Demand)
         _logger.LogDebug("Fetching option chain for {Symbol} as of {Date}", symbol, evaluationDate);
         return await _marketDataProvider.GetOptionChainAsync(symbol, evaluationDate, cancellationToken);
+    }
+    
+    /// <summary>
+    /// Finds the nearest earlier cached options file for a symbol.
+    /// </summary>
+    private async Task<OptionChainSnapshot?> FindNearestCacheAsync(
+        string optionsDir,
+        string symbolLower,
+        DateTime evaluationDate,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Find all cache files for this symbol with date suffixes
+            var pattern = $"{symbolLower}_*.sbe";
+            var binaryFiles = Directory.GetFiles(optionsDir, pattern);
+            var jsonPattern = $"{symbolLower}_*.json";
+            var jsonFiles = Directory.GetFiles(optionsDir, jsonPattern);
+            
+            // Parse dates from filenames and find nearest earlier date
+            var availableDates = new List<(DateTime date, string path, bool isBinary)>();
+            
+            foreach (var file in binaryFiles)
+            {
+                var filename = Path.GetFileNameWithoutExtension(file);
+                var datePart = filename.Substring(symbolLower.Length + 1);
+                if (DateTime.TryParseExact(datePart, "yyyyMMdd", null, System.Globalization.DateTimeStyles.None, out var date))
+                {
+                    availableDates.Add((date, file, true));
+                }
+            }
+            
+            foreach (var file in jsonFiles)
+            {
+                var filename = Path.GetFileNameWithoutExtension(file);
+                var datePart = filename.Substring(symbolLower.Length + 1);
+                if (DateTime.TryParseExact(datePart, "yyyyMMdd", null, System.Globalization.DateTimeStyles.None, out var date))
+                {
+                    // Only add if not already in list (binary takes precedence)
+                    if (!availableDates.Exists(x => x.date == date))
+                    {
+                        availableDates.Add((date, file, false));
+                    }
+                }
+            }
+            
+            if (availableDates.Count == 0)
+            {
+                return null;
+            }
+            
+            // Find nearest date <= evaluationDate, or if none, nearest date > evaluationDate
+            var nearestEarlier = availableDates
+                .Where(x => x.date <= evaluationDate)
+                .OrderByDescending(x => x.date)
+                .FirstOrDefault();
+                
+            var selected = nearestEarlier != default 
+                ? nearestEarlier 
+                : availableDates.OrderBy(x => x.date).First();
+            
+            _logger.LogDebug("Using cached options from {CacheDate} for {EvalDate} (delta: {Days} days)", 
+                selected.date, evaluationDate, Math.Abs((evaluationDate - selected.date).Days));
+            
+            if (selected.isBinary)
+            {
+                return await LoadBinaryCacheAsync(selected.path, cancellationToken);
+            }
+            else
+            {
+                var json = await File.ReadAllTextAsync(selected.path, cancellationToken);
+                return JsonSerializer.Deserialize<OptionChainSnapshot>(json, JsonOptions);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error finding nearest cache for {Symbol}", symbolLower);
+            return null;
+        }
     }
 
     /// <summary>

@@ -120,6 +120,12 @@ public sealed class STCR004A
     /// </summary>
     public bool IsLeungSantoliCalibrated { get; set; }
 
+    /// <summary>
+    /// Gets or sets whether synthetic IV was used (from L&amp;S model) due to missing options data.
+    /// This indicates the IV was estimated rather than observed from market prices.
+    /// </summary>
+    public bool UsingSyntheticIV { get; set; }
+
     // Calendar Spread Position Properties
 
     /// <summary>

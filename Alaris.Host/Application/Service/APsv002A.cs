@@ -267,6 +267,123 @@ public sealed class APsv002A : IDisposable
         return downloadedDays;
     }
 
+    /// <summary>
+    /// Bootstrap options data for specific dates (typically around earnings events).
+    /// Downloads historical option chain with IV calculated from market prices via Black-Scholes.
+    /// Rate-limited to 5 concurrent requests per symbol to respect API limits.
+    /// </summary>
+    /// <param name="symbols">Symbols to download options for.</param>
+    /// <param name="dates">Dates to download options for (evaluation dates around earnings).</param>
+    /// <param name="sessionDataPath">Session data path for caching.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Number of option chains downloaded.</returns>
+    public async Task<int> BootstrapOptionsDataAsync(
+        IEnumerable<string> symbols,
+        IEnumerable<DateTime> dates,
+        string sessionDataPath,
+        CancellationToken cancellationToken = default)
+    {
+        var symbolList = symbols.ToList();
+        var dateList = dates.Distinct().OrderBy(d => d).ToList();
+        
+        if (symbolList.Count == 0 || dateList.Count == 0)
+        {
+            return 0;
+        }
+
+        var optionsPath = System.IO.Path.Combine(sessionDataPath, "options");
+        Directory.CreateDirectory(optionsPath);
+
+        int totalDownloaded = 0;
+        int totalSkipped = 0;
+        int totalFailed = 0;
+
+        // Apply 2-year limit buffer (Polygon Options Starter plan)
+        var optionsMinDate = DateTime.UtcNow.AddYears(-2).AddMonths(1).Date;
+
+        _logger?.LogInformation(
+            "Bootstrap options: {SymbolCount} symbols × {DateCount} dates",
+            symbolList.Count, dateList.Count);
+
+        await AnsiConsole.Progress()
+            .AutoClear(false)
+            .Columns(
+                new TaskDescriptionColumn(),
+                new ProgressBarColumn(),
+                new PercentageColumn(),
+                new SpinnerColumn())
+            .StartAsync(async ctx =>
+            {
+                var task = ctx.AddTask("Downloading Options Data", maxValue: symbolList.Count * dateList.Count);
+
+                foreach (var symbol in symbolList)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    foreach (var date in dateList)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+
+                        var symbolLower = symbol.ToLowerInvariant();
+                        var dateSuffix = date.ToString("yyyyMMdd");
+                        var cachePath = System.IO.Path.Combine(optionsPath, $"{symbolLower}_{dateSuffix}.json");
+
+                        // Skip if already cached
+                        if (File.Exists(cachePath))
+                        {
+                            totalSkipped++;
+                            task.Increment(1);
+                            continue;
+                        }
+
+                        // Skip dates outside Polygon's 2-year limit
+                        if (date < optionsMinDate)
+                        {
+                            _logger?.LogDebug("Skipping {Symbol} @ {Date}: outside 2-year limit", symbol, date);
+                            task.Increment(1);
+                            continue;
+                        }
+
+                        try
+                        {
+                            task.Description = $"Options: {symbol} @ {date:yyyy-MM-dd}";
+
+                            var optionChain = await _polygonClient.GetHistoricalOptionChainAsync(symbol, date, cancellationToken);
+                            
+                            if (optionChain.Contracts.Count > 0)
+                            {
+                                var json = JsonSerializer.Serialize(optionChain, JsonOptions);
+                                await File.WriteAllTextAsync(cachePath, json, cancellationToken);
+                                totalDownloaded++;
+                                _logger?.LogDebug("Cached {Count} options for {Symbol} @ {Date}", 
+                                    optionChain.Contracts.Count, symbol, date);
+                            }
+                            else
+                            {
+                                _logger?.LogDebug("No options found for {Symbol} @ {Date}", symbol, date);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            totalFailed++;
+                            _logger?.LogWarning(ex, "Failed to download options for {Symbol} @ {Date}", symbol, date);
+                        }
+
+                        task.Increment(1);
+
+                        // Rate limit: small delay between requests
+                        await Task.Delay(100, cancellationToken);
+                    }
+                }
+            });
+
+        _logger?.LogInformation(
+            "Options bootstrap complete: {Downloaded} downloaded, {Skipped} cached, {Failed} failed",
+            totalDownloaded, totalSkipped, totalFailed);
+
+        return totalDownloaded;
+    }
+
     public void Dispose()
     {
         // NasdaqEarningsProvider does not require explicit disposal
