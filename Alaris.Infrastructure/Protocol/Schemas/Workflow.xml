@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Workflow.xml - SBE Message Schema for Alaris Workflow FSM Protocol
+  
+  This schema defines the binary message format for workflow state transitions,
+  enabling deterministic, auditable workflow execution with formal guarantees.
+  
+  Theoretical Basis: Finite Automata/DFA (Hopcroft, Motwani, Ullman 2006)
+  
+  Schema ID: 4 (reserved for Workflow domain)
+  
+  References:
+    - Alaris.Infrastructure/Protocol/Workflow/PLWF001A.cs (FSM Engine)
+    - Alaris.Infrastructure/Protocol/Workflow/PLWF002A.cs (Backtest Workflow)
+    - Alaris.Infrastructure/Protocol/Workflow/PLWF003A.cs (Trading Workflow)
+-->
+<sbe:messageSchema xmlns:sbe="http://fixprotocol.io/2016/sbe"
+    package="Alaris.Protocol.Generated.Workflow"
+    id="4"
+    version="1"
+    semanticVersion="1.0.0"
+    description="Alaris Workflow FSM Binary Protocol"
+    byteOrder="littleEndian">
+
+    <!-- Encoding types -->
+    <types>
+        <type name="int32" primitiveType="int32"/>
+        <type name="int64" primitiveType="int64"/>
+        <type name="uint8" primitiveType="uint8"/>
+        <type name="uint16" primitiveType="uint16"/>
+        <type name="timestamp" primitiveType="int64" description="Unix epoch milliseconds"/>
+        
+        <!-- State ID (max 32 chars, null-padded) -->
+        <type name="stateId" primitiveType="char" length="32"/>
+        
+        <!-- Event/Action ID (max 32 chars, null-padded) -->
+        <type name="eventId" primitiveType="char" length="32"/>
+        
+        <!-- Session ID for correlation (max 64 chars) -->
+        <type name="sessionId" primitiveType="char" length="64"/>
+        
+        <!-- Error message (max 256 chars) -->
+        <type name="errorMessage" primitiveType="char" length="256"/>
+        
+        <composite name="messageHeader">
+            <type name="blockLength" primitiveType="uint16"/>
+            <type name="templateId" primitiveType="uint16"/>
+            <type name="schemaId" primitiveType="uint16"/>
+            <type name="version" primitiveType="uint16"/>
+        </composite>
+        
+        <composite name="groupSizeEncoding">
+            <type name="blockLength" primitiveType="uint16"/>
+            <type name="numInGroup" primitiveType="uint16"/>
+        </composite>
+    </types>
+
+    <!-- Enumeration types -->
+    <types>
+        <!-- Workflow domains -->
+        <enum name="WorkflowDomain" encodingType="uint8">
+            <validValue name="Backtest">0</validValue>
+            <validValue name="Trading">1</validValue>
+            <validValue name="Configuration">2</validValue>
+            <validValue name="System">3</validValue>
+            <validValue name="DataManagement">4</validValue>
+        </enum>
+        
+        <!-- Transition result codes -->
+        <enum name="TransitionResultCode" encodingType="uint8">
+            <validValue name="Success">0</validValue>
+            <validValue name="GuardFailed">1</validValue>
+            <validValue name="InvalidTransition">2</validValue>
+            <validValue name="ActionFailed">3</validValue>
+            <validValue name="Timeout">4</validValue>
+        </enum>
+    </types>
+
+    <!-- Message ID 1: State Transition Request -->
+    <sbe:message name="TransitionRequest" id="1" description="Request to transition workflow state">
+        <field name="domain" id="1" type="WorkflowDomain"/>
+        <field name="currentState" id="2" type="stateId"/>
+        <field name="event" id="3" type="eventId"/>
+        <field name="sessionId" id="4" type="sessionId"/>
+        <field name="timestamp" id="5" type="timestamp"/>
+        <field name="sequenceNumber" id="6" type="int64"/>
+    </sbe:message>
+    
+    <!-- Message ID 2: State Transition Response -->
+    <sbe:message name="TransitionResponse" id="2" description="Result of state transition attempt">
+        <field name="domain" id="1" type="WorkflowDomain"/>
+        <field name="previousState" id="2" type="stateId"/>
+        <field name="event" id="3" type="eventId"/>
+        <field name="newState" id="4" type="stateId"/>
+        <field name="result" id="5" type="TransitionResultCode"/>
+        <field name="sessionId" id="6" type="sessionId"/>
+        <field name="timestamp" id="7" type="timestamp"/>
+        <field name="sequenceNumber" id="8" type="int64"/>
+        <field name="errorMessage" id="9" type="errorMessage" presence="optional"/>
+    </sbe:message>
+
+    <!-- Message ID 3: Workflow Definition (for persistence/transmission) -->
+    <sbe:message name="WorkflowDefinition" id="3" description="Complete workflow FSM definition">
+        <field name="domain" id="1" type="WorkflowDomain"/>
+        <field name="initialState" id="2" type="stateId"/>
+        <field name="transitionCount" id="3" type="int32"/>
+        <field name="terminalStateCount" id="4" type="int32"/>
+        
+        <!-- Valid transitions -->
+        <group name="transitions" id="5" dimensionType="groupSizeEncoding">
+            <field name="fromState" id="1" type="stateId"/>
+            <field name="event" id="2" type="eventId"/>
+            <field name="toState" id="3" type="stateId"/>
+            <field name="hasGuard" id="4" type="uint8"/>
+            <field name="hasAction" id="5" type="uint8"/>
+        </group>
+        
+        <!-- Terminal states -->
+        <group name="terminalStates" id="6" dimensionType="groupSizeEncoding">
+            <field name="state" id="1" type="stateId"/>
+        </group>
+    </sbe:message>
+    
+    <!-- Message ID 4: Workflow State Snapshot -->
+    <sbe:message name="WorkflowStateSnapshot" id="4" description="Current state of a workflow instance">
+        <field name="domain" id="1" type="WorkflowDomain"/>
+        <field name="currentState" id="2" type="stateId"/>
+        <field name="sessionId" id="3" type="sessionId"/>
+        <field name="isTerminal" id="4" type="uint8"/>
+        <field name="lastTransitionTimestamp" id="5" type="timestamp"/>
+        <field name="transitionCount" id="6" type="int32"/>
+        
+        <!-- Available events from current state -->
+        <group name="availableEvents" id="7" dimensionType="groupSizeEncoding">
+            <field name="event" id="1" type="eventId"/>
+            <field name="targetState" id="2" type="stateId"/>
+        </group>
+    </sbe:message>
+    
+    <!-- Message ID 5: Transition History Record -->
+    <sbe:message name="TransitionHistoryRecord" id="5" description="Single transition for audit trail">
+        <field name="domain" id="1" type="WorkflowDomain"/>
+        <field name="fromState" id="2" type="stateId"/>
+        <field name="event" id="3" type="eventId"/>
+        <field name="toState" id="4" type="stateId"/>
+        <field name="result" id="5" type="TransitionResultCode"/>
+        <field name="sessionId" id="6" type="sessionId"/>
+        <field name="timestamp" id="7" type="timestamp"/>
+        <field name="sequenceNumber" id="8" type="int64"/>
+    </sbe:message>
+
+</sbe:messageSchema>

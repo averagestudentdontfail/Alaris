@@ -38,6 +38,8 @@ Mandatory structural and naming conventions for the Alaris quantitative finance 
 | `ST` | Strategy |
 | `DT` | Data |
 | `EV` | Events |
+| `PL` | Protocol |
+| `AP` | Application |
 | `TS` | Test Suite |
 
 ### 3.2 Variant Codes
@@ -87,7 +89,25 @@ Mandatory structural and naming conventions for the Alaris quantitative finance 
 | `STHD009A` | Pin risk monitor |
 | `STKF001A` | Kalman-filtered volatility |
 
-### 4.3 Alaris.Test
+### 4.3 Alaris.Infrastructure
+
+#### Protocol (Alaris.Infrastructure/Protocol/Workflow/)
+| Component | Description | Reference |
+|-----------|-------------|-----------|
+| `PLWF001A` | FSM engine for workflow routing | Hopcroft et al. (2006) |
+| `PLWF002A` | Backtest workflow definition | DFA formalism |
+| `PLWF003A` | Trading workflow definition | DFA formalism |
+| `PLBF001A` | Buffer pool manager | Zero-allocation patterns |
+
+#### SBE Schemas (Alaris.Infrastructure/Protocol/Schemas/)
+| Schema | Description |
+|--------|-------------|
+| `Workflow.xml` | FSM state transition protocol |
+| `MarketData.xml` | Market data message formats |
+| `Session.xml` | Backtest session management |
+| `Events.xml` | Domain event serialization |
+
+### 4.4 Alaris.Test
 
 | Category | Prefix | Coverage |
 |----------|--------|----------|
@@ -96,8 +116,9 @@ Mandatory structural and naming conventions for the Alaris quantitative finance 
 | Benchmark | `TSBM` | Performance |
 | Diagnostic | `TSDG` | Constraints |
 
-**Statistics (2026-01-01):**
-- Total tests: 853
+**Statistics (2026-01-02):**
+- Total tests: 916 (was 853)
+- FSM tests: 29 (new)
 - Spectral engine tests: 112
 - All passing 
 

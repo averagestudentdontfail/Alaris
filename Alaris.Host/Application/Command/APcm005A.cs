@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Threading;
 using Alaris.Host.Application.Model;
 using Alaris.Host.Application.Service;
 using Spectre.Console;
@@ -15,6 +16,7 @@ using Alaris.Infrastructure.Data.Provider.Polygon;
 using Alaris.Infrastructure.Data.Provider.Nasdaq;
 using Alaris.Infrastructure.Data.Provider.Treasury;
 using Alaris.Infrastructure.Data.Http.Contracts;
+using Alaris.Infrastructure.Protocol.Workflow;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics.CodeAnalysis;
@@ -382,6 +384,14 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
 {
     public override async Task<int> ExecuteAsync(CommandContext context, BacktestRunSettings settings)
     {
+        // Initialize FSM for deterministic state tracking
+        var fsm = PLWF002A.Create();
+        fsm.OnTransition += record => 
+        {
+            if (record.Succeeded)
+                AnsiConsole.MarkupLine($"[grey]FSM: {record.FromState} → {record.ToState}[/]");
+        };
+        
         var service = new APsv001A();
 
         string? sessionId = settings.SessionId;
@@ -408,44 +418,79 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
             return 1;
         }
 
+        // FSM: Idle → SessionSelected
+        fsm.Fire(BacktestEvent.SelectSession);
+
         AnsiConsole.MarkupLine($"[blue]Running session:[/] {session.SessionId}");
         AnsiConsole.MarkupLine($"[blue]Date Range:[/] {session.StartDate:yyyy-MM-dd} to {session.EndDate:yyyy-MM-dd}");
         AnsiConsole.MarkupLine($"[blue]Symbols:[/] {string.Join(", ", session.Symbols.Take(10))}{(session.Symbols.Count > 10 ? "..." : "")}");
         AnsiConsole.WriteLine();
 
-        // === SMART DATA CHECK ===
+        // FSM: SessionSelected → DataChecking
+        fsm.Fire(BacktestEvent.CheckData);
+
         var dataPath = service.GetDataPath(session.SessionId);
         var (pricesMissing, earningsMissing) = CheckDataAvailability(dataPath, session);
 
         if (pricesMissing || earningsMissing)
         {
+            // FSM: DataChecking → DataBootstrapping
+            fsm.Fire(BacktestEvent.DataMissing);
+            
             AnsiConsole.MarkupLine("[yellow]⚠ Missing data detected:[/]");
-            if (pricesMissing) AnsiConsole.MarkupLine("  [grey]• Price data not found (LEAN will use API if available)[/]");
-            if (earningsMissing) AnsiConsole.MarkupLine("  [grey]• Earnings cache empty (algorithm will skip earnings checks)[/]");
+            if (pricesMissing) AnsiConsole.MarkupLine("  [grey]• Price data not found[/]");
+            if (earningsMissing) AnsiConsole.MarkupLine("  [grey]• Earnings cache empty[/]");
             AnsiConsole.WriteLine();
 
             if (settings.AutoBootstrap)
             {
-                // Auto-bootstrap without prompting
-                await BootstrapDataAsync(session, service, dataPath);
+                try
+                {
+                    await BootstrapDataAsync(session, service, dataPath);
+                    // FSM: DataBootstrapping → DataChecking (re-check after bootstrap)
+                    fsm.Fire(BacktestEvent.BootstrapComplete);
+                    // FSM: DataChecking → ExecutingLean (data should be ready now)
+                    fsm.Fire(BacktestEvent.DataReady);
+                }
+                catch (Exception ex)
+                {
+                    AnsiConsole.MarkupLine($"[red]Bootstrap failed: {ex.Message}[/]");
+                    fsm.Fire(BacktestEvent.BootstrapFailed);
+                    return 1;
+                }
             }
             else
             {
-                // Prompt user
                 var download = AnsiConsole.Confirm("Download missing data now?", defaultValue: true);
                 if (download)
                 {
-                    await BootstrapDataAsync(session, service, dataPath);
+                    try
+                    {
+                        await BootstrapDataAsync(session, service, dataPath);
+                        fsm.Fire(BacktestEvent.BootstrapComplete);
+                        fsm.Fire(BacktestEvent.DataReady);
+                    }
+                    catch (Exception ex)
+                    {
+                        AnsiConsole.MarkupLine($"[red]Bootstrap failed: {ex.Message}[/]");
+                        fsm.Fire(BacktestEvent.BootstrapFailed);
+                        return 1;
+                    }
                 }
                 else
                 {
                     AnsiConsole.MarkupLine("[grey]Continuing without data (algorithm may have limited functionality)[/]");
+                    // Still transition to DataReady (user chose to proceed)
+                    fsm.Fire(BacktestEvent.BootstrapComplete);
+                    fsm.Fire(BacktestEvent.DataReady);
                 }
             }
             AnsiConsole.WriteLine();
         }
         else
         {
+            // FSM: DataChecking → ExecutingLean
+            fsm.Fire(BacktestEvent.DataReady);
             AnsiConsole.MarkupLine("[green]✓[/] Data available for session");
             AnsiConsole.WriteLine();
         }
@@ -457,13 +502,21 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
         int exitCode;
         if (!settings.NoMonitor)
         {
-            // Run with live monitoring dashboard (default)
             exitCode = await ExecuteLeanWithMonitoringAsync(session, service);
         }
         else
         {
-            // Run with logs only
             exitCode = await ExecuteLeanForSession(session, service);
+        }
+
+        // FSM: ExecutingLean → Completed/Failed
+        if (exitCode == 0)
+        {
+            fsm.Fire(BacktestEvent.LeanCompleted);
+        }
+        else
+        {
+            fsm.Fire(BacktestEvent.LeanFailed);
         }
 
         // Update status based on result
@@ -482,6 +535,10 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
         {
             AnsiConsole.MarkupLine($"[red]✗[/] Session failed with exit code {exitCode}");
         }
+
+        // Log FSM audit trail
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine($"[grey]FSM transitions: {fsm.History.Count}, Final state: {fsm.CurrentState}[/]");
 
         return exitCode;
     }
@@ -504,7 +561,7 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
         AnsiConsole.MarkupLine("[blue]Downloading price data from Polygon...[/]");
         AnsiConsole.WriteLine();
         
-        // Create data download service (same as BacktestPrepareCommand)
+        // Create configuration
         var config = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.jsonc", optional: true)
@@ -514,22 +571,51 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
 
         var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Warning));
         
+        // Create Polygon client for price data
         var polygonHttpClient = new HttpClient { BaseAddress = new Uri("https://api.polygon.io") };
         polygonHttpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Alaris/1.0");
         var polygonApi = RestService.For<IPolygonApi>(polygonHttpClient);
         var polygonClient = new PolygonApiClient(polygonApi, config, loggerFactory.CreateLogger<PolygonApiClient>());
 
-        // APsv002A(polygonClient, earningsClient?, treasuryClient?, logger?)
-        using var dataService = new APsv002A(polygonClient, null, null, loggerFactory.CreateLogger<APsv002A>());
+        // Create NASDAQ client for earnings calendar
+        var nasdaqHttpClient = new HttpClient { BaseAddress = new Uri("https://api.nasdaq.com") };
+        nasdaqHttpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+        nasdaqHttpClient.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+        var nasdaqApi = RestService.For<INasdaqCalendarApi>(nasdaqHttpClient);
+        var earningsProvider = new NasdaqEarningsProvider(nasdaqApi, loggerFactory.CreateLogger<NasdaqEarningsProvider>());
+
+        // Create data service with both providers
+        using var dataService = new APsv002A(
+            polygonClient, 
+            earningsProvider, 
+            null, 
+            loggerFactory.CreateLogger<APsv002A>());
         
-        // Signature: (sessionDataPath, symbols, start, end)
+        // Download price data
         await dataService.DownloadEquityDataAsync(
             dataPath,
             session.Symbols,
             session.StartDate,
             session.EndDate);
 
-        AnsiConsole.MarkupLine("[green]✓[/] Data bootstrap completed");
+        AnsiConsole.MarkupLine("[green]✓[/] Price data download completed");
+        AnsiConsole.WriteLine();
+
+        // Bootstrap earnings calendar for the session date range
+        AnsiConsole.MarkupLine("[blue]Downloading earnings calendar from NASDAQ...[/]");
+        AnsiConsole.MarkupLine("[grey]  (Rate-limited: ~1 day/second to avoid blocking)[/]");
+        AnsiConsole.WriteLine();
+        
+        // Earnings data goes in the session directory (parent of data path)
+        var sessionPath = Path.GetDirectoryName(dataPath) ?? dataPath;
+        var daysDownloaded = await dataService.BootstrapEarningsCalendarAsync(
+            session.StartDate,
+            session.EndDate,
+            sessionPath,
+            CancellationToken.None);
+
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine($"[green]✓[/] Earnings calendar bootstrap completed ({daysDownloaded} days downloaded)");
         AnsiConsole.WriteLine();
     }
 
