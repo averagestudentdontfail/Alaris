@@ -455,7 +455,7 @@ public sealed class STLN001A : QCAlgorithm
         AddUniverseSelection(polygonUniverseSelector);
         
         // Configure options for selected symbols
-        UniverseSettings.Resolution = Resolution.Minute;
+        UniverseSettings.Resolution = Resolution.Daily;
         UniverseSettings.DataNormalizationMode = DataNormalizationMode.Raw;
         
         Log($"STLN001A: Universe selection configured (Polygon-based)");

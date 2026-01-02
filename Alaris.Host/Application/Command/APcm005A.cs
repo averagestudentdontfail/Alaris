@@ -118,20 +118,30 @@ public sealed class BacktestCreateCommand : AsyncCommand<BacktestCreateSettings>
                     await service.UpdateAsync(session);
                 }
                 
-                AnsiConsole.MarkupLine("[yellow]Downloading market data...[/]");
-                using var dataService = DependencyFactory.CreateAPsv002A();
-                await dataService.DownloadEquityDataAsync(service.GetDataPath(session.SessionId), targets, startDate, endDate);
-                AnsiConsole.MarkupLine("[green]✓[/] Market data downloaded");
+                // Build requirements model for unified bootstrap
+                var requirements = new Alaris.Core.Model.STDT010A
+                {
+                    StartDate = startDate,
+                    EndDate = endDate,
+                    Symbols = targets.ToList()
+                };
                 
-                // Bootstrap earnings calendar for the date range
-                AnsiConsole.MarkupLine("[yellow]Downloading earnings calendar...[/]");
-                AnsiConsole.MarkupLine("[grey]  (Rate-limited: ~1 day/second to avoid blocking)[/]");
-                var daysDownloaded = await dataService.BootstrapEarningsCalendarAsync(
-                    startDate,
-                    endDate,
-                    service.GetDataPath(session.SessionId),  // Use data path for algorithm compatibility
+                AnsiConsole.MarkupLine("[yellow]Starting unified data bootstrap...[/]");
+                AnsiConsole.MarkupLine($"[grey]  Requirements: {requirements.GetSummary()}[/]");
+                
+                using var dataService = DependencyFactory.CreateAPsv002A();
+                var bootstrapReport = await dataService.BootstrapSessionDataAsync(
+                    requirements,
+                    service.GetDataPath(session.SessionId),
                     CancellationToken.None);
-                AnsiConsole.MarkupLine($"[green]✓[/] Earnings calendar downloaded ({daysDownloaded} days)");
+                
+                if (!bootstrapReport.Success)
+                {
+                    AnsiConsole.MarkupLine($"[red]Bootstrap failed: {bootstrapReport.ErrorMessage}[/]");
+                    return 1;
+                }
+                
+                AnsiConsole.MarkupLine($"[green]✓[/] {bootstrapReport.GetSummary()}");
                 
                 // Update status to Ready
                 await service.UpdateAsync(session with { Status = SessionStatus.Ready });
@@ -266,25 +276,86 @@ public sealed class BacktestPrepareCommand : AsyncCommand<BacktestPrepareSetting
             await service.UpdateAsync(session);
         }
 
-        using var dataService = DependencyFactory.CreateAPsv002A();
-        AnsiConsole.MarkupLine($"[yellow]Downloading data for session {session.SessionId}...[/]");
-        await dataService.DownloadEquityDataAsync(service.GetDataPath(session.SessionId), targets, session.StartDate, session.EndDate);
-        AnsiConsole.MarkupLine("[green]✓[/] Market data downloaded");
+        // Build requirements model for unified bootstrap
+        var requirements = new Alaris.Core.Model.STDT010A
+        {
+            StartDate = session.StartDate,
+            EndDate = session.EndDate,
+            Symbols = targets.ToList()
+        };
         
-        // Bootstrap earnings calendar for the date range
-        AnsiConsole.MarkupLine("[yellow]Downloading earnings calendar...[/]");
-        AnsiConsole.MarkupLine("[grey]  (Rate-limited: ~1 day/second to avoid blocking)[/]");
-        var daysDownloaded = await dataService.BootstrapEarningsCalendarAsync(
-            session.StartDate,
-            session.EndDate,
-            service.GetDataPath(session.SessionId),  // Use data path for algorithm compatibility
+        using var dataService = DependencyFactory.CreateAPsv002A();
+        AnsiConsole.MarkupLine($"[yellow]Starting unified bootstrap for session {session.SessionId}...[/]");
+        
+        var bootstrapReport = await dataService.BootstrapSessionDataAsync(
+            requirements,
+            service.GetDataPath(session.SessionId),
             CancellationToken.None);
-        AnsiConsole.MarkupLine($"[green]✓[/] Earnings calendar downloaded ({daysDownloaded} days)");
+        
+        if (!bootstrapReport.Success)
+        {
+            AnsiConsole.MarkupLine($"[red]Bootstrap failed: {bootstrapReport.ErrorMessage}[/]");
+            return 1;
+        }
+        
+        AnsiConsole.MarkupLine($"[green]✓[/] {bootstrapReport.GetSummary()}");
         
         await service.UpdateAsync(session with { Status = SessionStatus.Ready });
         AnsiConsole.MarkupLine($"[green]✓[/] Session {session.SessionId} is ready.");
         
         return 0;
+    }
+    
+    /// <summary>
+    /// Helper to get options-required dates from an existing session.
+    /// </summary>
+    private static IReadOnlyList<DateTime> GetOptionsRequiredDatesFromSession(string sessionDataPath, IEnumerable<string> symbols)
+    {
+        var dates = new HashSet<DateTime>();
+        var nasdaqPath = System.IO.Path.Combine(sessionDataPath, "earnings", "nasdaq");
+        
+        if (!Directory.Exists(nasdaqPath))
+        {
+            return Array.Empty<DateTime>();
+        }
+        
+        var symbolSet = new HashSet<string>(symbols, StringComparer.OrdinalIgnoreCase);
+        
+        foreach (var file in Directory.GetFiles(nasdaqPath, "*.json"))
+        {
+            try
+            {
+                var json = File.ReadAllText(file);
+                // Simple parsing - look for symbol matches
+                foreach (var symbol in symbolSet)
+                {
+                    if (json.Contains($"\"{symbol}\"", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Extract date from filename
+                        var dateStr = System.IO.Path.GetFileNameWithoutExtension(file);
+                        if (DateTime.TryParse(dateStr, out var earningsDate))
+                        {
+                            // Add evaluation dates (5-7 days before)
+                            for (int d = 5; d <= 7; d++)
+                            {
+                                var evalDate = earningsDate.AddDays(-d);
+                                if (evalDate.DayOfWeek != DayOfWeek.Saturday && 
+                                    evalDate.DayOfWeek != DayOfWeek.Sunday)
+                                {
+                                    dates.Add(evalDate);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // Ignore parsing errors
+            }
+        }
+        
+        return dates.OrderBy(d => d).ToList();
     }
 }
 

@@ -435,6 +435,298 @@ public sealed class APsv002A : IDisposable
         return totalDownloaded;
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // Unified Bootstrap (Single Entry Point)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Bootstraps ALL data required for a backtest session.
+    /// This is the SINGLE entry point for data preparation.
+    /// </summary>
+    /// <param name="requirements">Session data requirements model.</param>
+    /// <param name="sessionDataPath">Path to session data directory.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Detailed bootstrap report.</returns>
+    public async Task<BootstrapReport> BootstrapSessionDataAsync(
+        Alaris.Core.Model.STDT010A requirements,
+        string sessionDataPath,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(requirements);
+        ArgumentException.ThrowIfNullOrWhiteSpace(sessionDataPath);
+        
+        var (isValid, error) = requirements.Validate();
+        if (!isValid)
+            throw new ArgumentException(error, nameof(requirements));
+        
+        _logger?.LogInformation("Starting unified bootstrap: {Summary}", requirements.GetSummary());
+        
+        var report = new BootstrapReport
+        {
+            StartedAt = DateTime.UtcNow,
+            SessionDataPath = sessionDataPath
+        };
+        
+        try
+        {
+            // Phase 1: System files (market-hours, symbol-properties, default maps)
+            AnsiConsole.MarkupLine("[blue]Phase 1:[/] Copying system files...");
+            CopySystemFiles(sessionDataPath);
+            
+            // Phase 2: Price data with warmup buffer
+            AnsiConsole.MarkupLine("[blue]Phase 2:[/] Downloading price data...");
+            report.PricesDownloaded = await DownloadPriceDataWithBenchmarkAsync(
+                requirements, sessionDataPath, cancellationToken);
+            
+            // Phase 3: Earnings calendar with lookahead
+            AnsiConsole.MarkupLine("[blue]Phase 3:[/] Downloading earnings calendar (with lookahead)...");
+            AnsiConsole.MarkupLine($"[grey]  Range: {requirements.StartDate:yyyy-MM-dd} to {requirements.EarningsLookaheadEnd:yyyy-MM-dd}[/]");
+            
+            if (_earningsClient != null)
+            {
+                report.EarningsDaysDownloaded = await BootstrapEarningsCalendarAsync(
+                    requirements.StartDate,
+                    requirements.EarningsLookaheadEnd, // Critical: includes lookahead
+                    sessionDataPath,
+                    cancellationToken);
+            }
+            
+            // Phase 4: Compute options-required dates from earnings
+            AnsiConsole.MarkupLine("[blue]Phase 4:[/] Computing options-required dates...");
+            var optionsDates = ComputeOptionsRequiredDates(
+                sessionDataPath,
+                requirements.Symbols,
+                requirements.StartDate,
+                requirements.EndDate,
+                requirements.SignalWindowMinDays,
+                requirements.SignalWindowMaxDays);
+            
+            report.OptionsRequiredDatesComputed = optionsDates.Count;
+            AnsiConsole.MarkupLine($"[grey]  Found {optionsDates.Count} dates requiring options data[/]");
+            
+            // Phase 5: Bootstrap options for each required date
+            if (optionsDates.Count > 0)
+            {
+                AnsiConsole.MarkupLine("[blue]Phase 5:[/] Downloading options data for signal dates...");
+                report.OptionsDownloaded = await BootstrapOptionsDataAsync(
+                    requirements.Symbols,
+                    optionsDates,
+                    sessionDataPath,
+                    cancellationToken);
+            }
+            
+            // Phase 6: Interest rates (optional)
+            if (_treasuryClient != null)
+            {
+                AnsiConsole.MarkupLine("[blue]Phase 6:[/] Downloading interest rates...");
+                report.InterestRatesDownloaded = await DownloadInterestRatesAsync(
+                    requirements, sessionDataPath, cancellationToken);
+            }
+            
+            report.Success = true;
+        }
+        catch (Exception ex)
+        {
+            report.Success = false;
+            report.ErrorMessage = ex.Message;
+            _logger?.LogError(ex, "Bootstrap failed");
+        }
+        finally
+        {
+            report.CompletedAt = DateTime.UtcNow;
+        }
+        
+        _logger?.LogInformation(
+            "Bootstrap complete: Prices={Prices}, Earnings={Earnings}, Options={Options}",
+            report.PricesDownloaded, report.EarningsDaysDownloaded, report.OptionsDownloaded);
+        
+        return report;
+    }
+
+    /// <summary>
+    /// Downloads price data for all symbols including benchmark.
+    /// </summary>
+    private async Task<int> DownloadPriceDataWithBenchmarkAsync(
+        Alaris.Core.Model.STDT010A requirements,
+        string sessionDataPath,
+        CancellationToken cancellationToken)
+    {
+        var dailyPath = System.IO.Path.Combine(sessionDataPath, "equity", "usa", "daily");
+        Directory.CreateDirectory(dailyPath);
+        
+        var mapFilesPath = System.IO.Path.Combine(sessionDataPath, "equity", "usa", "map_files");
+        Directory.CreateDirectory(mapFilesPath);
+        
+        var factorFilesPath = System.IO.Path.Combine(sessionDataPath, "equity", "usa", "factor_files");
+        Directory.CreateDirectory(factorFilesPath);
+        
+        var allSymbols = requirements.AllSymbols;
+        int downloaded = 0;
+        
+        // Apply 2-year limit for Polygon
+        var minAllowedDate = DateTime.UtcNow.AddYears(-2).Date;
+        var requestStart = requirements.PriceDataStart < minAllowedDate 
+            ? minAllowedDate 
+            : requirements.PriceDataStart;
+        
+        await AnsiConsole.Progress()
+            .StartAsync(async ctx =>
+            {
+                var task = ctx.AddTask($"[green]Downloading prices ({allSymbols.Count} symbols)...[/]");
+                
+                for (int i = 0; i < allSymbols.Count; i++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    
+                    var symbol = allSymbols[i];
+                    task.Description = $"[green]Price data: {symbol} ({i + 1}/{allSymbols.Count})[/]";
+                    task.Value = (double)(i + 1) / allSymbols.Count * 100;
+                    
+                    try
+                    {
+                        // Generate map and factor files
+                        await GenerateMapFileAsync(symbol, mapFilesPath);
+                        await GenerateFactorFileAsync(symbol, factorFilesPath);
+                        
+                        // Download price data
+                        var bars = await _polygonClient.GetHistoricalBarsAsync(
+                            symbol, requestStart, requirements.EndDate);
+                        
+                        if (bars.Count > 0)
+                        {
+                            await SaveAsLeanZipAsync(symbol, bars, dailyPath);
+                            downloaded++;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogWarning(ex, "Failed to download prices for {Symbol}", symbol);
+                    }
+                }
+            });
+        
+        return downloaded;
+    }
+
+    /// <summary>
+    /// Downloads interest rate data.
+    /// </summary>
+    private async Task<bool> DownloadInterestRatesAsync(
+        Alaris.Core.Model.STDT010A requirements,
+        string sessionDataPath,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var ratePath = System.IO.Path.Combine(sessionDataPath, "alternative", "interest-rate", "usa");
+            Directory.CreateDirectory(ratePath);
+            var csvPath = System.IO.Path.Combine(ratePath, "interest-rate.csv");
+            
+            var rates = await _treasuryClient!.GetHistoricalRatesAsync(
+                requirements.PriceDataStart, requirements.EndDate, cancellationToken);
+            
+            if (rates.Count > 0)
+            {
+                var sb = new StringBuilder();
+                foreach (var kvp in rates.OrderBy(x => x.Key))
+                {
+                    sb.AppendLine($"{kvp.Key:yyyyMMdd},{kvp.Value}");
+                }
+                await File.WriteAllTextAsync(csvPath, sb.ToString(), cancellationToken);
+                return true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to download interest rates");
+        }
+        
+        return false;
+    }
+
+    /// <summary>
+    /// Computes all dates where options data is required for signal generation.
+    /// For each earnings event within the session range, we need options on dates
+    /// [earnings - maxDays, earnings - minDays].
+    /// </summary>
+    private IReadOnlyList<DateTime> ComputeOptionsRequiredDates(
+        string sessionDataPath,
+        IReadOnlyList<string> symbols,
+        DateTime startDate,
+        DateTime endDate,
+        int minDays,
+        int maxDays)
+    {
+        var dates = new HashSet<DateTime>();
+        var nasdaqPath = System.IO.Path.Combine(sessionDataPath, "earnings", "nasdaq");
+        
+        if (!Directory.Exists(nasdaqPath))
+        {
+            _logger?.LogWarning("Earnings directory not found: {Path}", nasdaqPath);
+            return Array.Empty<DateTime>();
+        }
+        
+        // Read all earnings files and find dates for our symbols
+        foreach (var file in Directory.GetFiles(nasdaqPath, "*.json"))
+        {
+            try
+            {
+                var json = File.ReadAllText(file);
+                var cached = JsonSerializer.Deserialize<CachedEarningsDay>(json);
+                
+                if (cached?.Earnings == null)
+                    continue;
+                
+                foreach (var earning in cached.Earnings)
+                {
+                    // Check if this symbol is in our universe
+                    if (!symbols.Contains(earning.Symbol, StringComparer.OrdinalIgnoreCase))
+                        continue;
+                    
+                    // For this earnings date, compute evaluation dates
+                    for (int d = minDays; d <= maxDays; d++)
+                    {
+                        var evalDate = earning.Date.AddDays(-d);
+                        
+                        // Only include if within session range
+                        if (evalDate >= startDate && evalDate <= endDate)
+                        {
+                            // Skip weekends
+                            if (evalDate.DayOfWeek != DayOfWeek.Saturday && 
+                                evalDate.DayOfWeek != DayOfWeek.Sunday)
+                            {
+                                dates.Add(evalDate);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "Error reading earnings file: {File}", file);
+            }
+        }
+        
+        _logger?.LogInformation("Computed {Count} options-required dates from earnings calendar", dates.Count);
+        return dates.OrderBy(d => d).ToList();
+    }
+
+    /// <summary>
+    /// Cached earnings data structure for deserialization.
+    /// </summary>
+    private sealed class CachedEarningsDay
+    {
+        public DateTime Date { get; init; }
+        public DateTime FetchedAt { get; init; }
+        public IReadOnlyList<CachedEarningsEvent> Earnings { get; init; } = Array.Empty<CachedEarningsEvent>();
+    }
+    
+    private sealed class CachedEarningsEvent
+    {
+        public string Symbol { get; init; } = string.Empty;
+        public DateTime Date { get; init; }
+    }
+
     public void Dispose()
     {
         // NasdaqEarningsProvider does not require explicit disposal
@@ -567,3 +859,29 @@ public sealed class APsv002A : IDisposable
         }
     }
 }
+
+/// <summary>
+/// Report of bootstrap operation results.
+/// </summary>
+public sealed class BootstrapReport
+{
+    public DateTime StartedAt { get; init; }
+    public DateTime CompletedAt { get; set; }
+    public string SessionDataPath { get; init; } = string.Empty;
+    public bool Success { get; set; }
+    public string? ErrorMessage { get; set; }
+    
+    public int PricesDownloaded { get; set; }
+    public int EarningsDaysDownloaded { get; set; }
+    public int OptionsRequiredDatesComputed { get; set; }
+    public int OptionsDownloaded { get; set; }
+    public bool InterestRatesDownloaded { get; set; }
+    
+    public TimeSpan Duration => CompletedAt - StartedAt;
+    
+    public string GetSummary() =>
+        $"Bootstrap {(Success ? "succeeded" : "failed")} in {Duration.TotalSeconds:F1}s: " +
+        $"Prices={PricesDownloaded}, Earnings={EarningsDaysDownloaded} days, " +
+        $"Options={OptionsDownloaded} (from {OptionsRequiredDatesComputed} dates)";
+}
+
