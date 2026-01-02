@@ -636,7 +636,7 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
         // Use data path so algorithm can find cached earnings at {data}/earnings/nasdaq/
         var daysDownloaded = await dataService.BootstrapEarningsCalendarAsync(
             session.StartDate,
-            session.EndDate,
+            session.EndDate.AddDays(120), // Fetch 120 days of future earnings for lookahead logic
             dataPath,
             CancellationToken.None);
 

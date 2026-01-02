@@ -66,6 +66,17 @@ public sealed class APsv002A : IDisposable
         var optionsPath = System.IO.Path.Combine(sessionDataPath, "options");
         Directory.CreateDirectory(optionsPath);
 
+        // Copy system files first (so we can overwrite/add to them)
+        CopySystemFiles(sessionDataPath);
+
+        // Path: session/data/equity/usa/map_files
+        var mapFilesPath = System.IO.Path.Combine(sessionDataPath, "equity", "usa", "map_files");
+        Directory.CreateDirectory(mapFilesPath);
+
+        // Path: session/data/equity/usa/factor_files
+        var factorFilesPath = System.IO.Path.Combine(sessionDataPath, "equity", "usa", "factor_files");
+        Directory.CreateDirectory(factorFilesPath);
+
         await AnsiConsole.Progress()
             .StartAsync(async ctx =>
             {
@@ -78,6 +89,12 @@ public sealed class APsv002A : IDisposable
                     current++;
                     taskData.Description = $"[green]Downloading prices for {symbol} ({current}/{total})...[/]";
                     taskData.Value = (double)current / total * 100;
+
+                    // Generate Map File (Critical for LEAN to find the data)
+                    await GenerateMapFileAsync(symbol, mapFilesPath);
+                    
+                    // Generate Factor File (Critical for LEAN data reading, assumes adjusted data)
+                    await GenerateFactorFileAsync(symbol, factorFilesPath);
 
                     // Price Data
                     try
@@ -161,8 +178,42 @@ public sealed class APsv002A : IDisposable
                 }
             });
             
-        // Copy system files (should be quick)
-        CopySystemFiles(sessionDataPath);
+        // CopySystemFiles moved to start
+    }
+
+    /// <summary>
+    /// Generates a valid LEAN map file (csv) for the symbol.
+    /// Format: Date,Ticker,Exchange
+    /// </summary>
+    private async Task GenerateMapFileAsync(string symbol, string mapFilesPath)
+    {
+        var ticker = symbol.ToLowerInvariant();
+        var path = System.IO.Path.Combine(mapFilesPath, $"{ticker}.csv");
+        
+        // Simple map file: valid provided ticker for all history, default to NASDAQ (Q)
+        // 19980101,ticker,Q
+        // 20501231,ticker,Q
+        var content = $"19980101,{ticker},Q\n20501231,{ticker},Q";
+        
+        await File.WriteAllTextAsync(path, content);
+    }
+
+    /// <summary>
+    /// Generates a valid LEAN factor file (csv) for the symbol.
+    /// Format: Date,PriceFactor,SplitFactor,ReferencePrice
+    /// Since we use adjusted data from Polygon (post-split prices), we set factors to 1 (no adjustment).
+    /// </summary>
+    private async Task GenerateFactorFileAsync(string symbol, string factorFilesPath)
+    {
+        var ticker = symbol.ToLowerInvariant();
+        var path = System.IO.Path.Combine(factorFilesPath, $"{ticker}.csv");
+        
+        // Simple factor file: no adjustments (1,1) for all history
+        // 19980101,1,1,1
+        // 20501231,1,1,1
+        var content = "19980101,1,1,1\n20501231,1,1,1";
+        
+        await File.WriteAllTextAsync(path, content);
     }
 
     /// <summary>
