@@ -72,8 +72,12 @@ public sealed class NasdaqStatus
     [JsonPropertyName("rCode")]
     public int RCode { get; init; }
 
+    /// <summary>
+    /// NASDAQ API returns this as either a string or an array.
+    /// Using JsonElement for flexible deserialization.
+    /// </summary>
     [JsonPropertyName("bCodeMessage")]
-    public string? BCodeMessage { get; init; }
+    public System.Text.Json.JsonElement? BCodeMessage { get; init; }
 }
 
 public sealed class NasdaqEarningsRow
