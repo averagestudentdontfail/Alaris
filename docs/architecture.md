@@ -291,10 +291,10 @@ Alaris uses a structured component code system for traceability and audit purpos
 
 ```mermaid
 flowchart LR
-    A["📊 Market Data"] --> B["Alaris.Infrastructure<br/>(Polygon API)"]
+    A["Market Data"] --> B["Alaris.Infrastructure<br/>(Polygon API)"]
     B --> C["Alaris.Strategy<br/>(Signal Engine)"]
     C --> D["Alaris.Core<br/>(Yang-Zhang IV)"]
-    D --> E["✅ Signal<br/>Recommended"]
+    D --> E["Signal<br/>Recommended"]
 
     style A fill:#bbdefb
     style B fill:#fce4ec
@@ -313,10 +313,10 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    A["📋 Signal"] --> B["Alaris.Algorithm<br/>(Order Builder)"]
+    A["Signal"] --> B["Alaris.Algorithm<br/>(Order Builder)"]
     B --> C["LEAN Engine<br/>(Execution)"]
     C --> D["Broker API<br/>(Order Routing)"]
-    D --> E["📝 Fill Report"]
+    D --> E["Fill Report"]
 
     style A fill:#fff3e0
     style B fill:#fff3e0
