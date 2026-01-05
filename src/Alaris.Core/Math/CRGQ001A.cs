@@ -19,6 +19,15 @@ namespace Alaris.Core.Math;
 /// </summary>
 public static class CRGQ001A
 {
+    private const int MaxLegendreOrder = 64;
+    private const int MaxLaguerreOrder = 32;
+    private const int MaxHermiteOrder = 32;
+    private const double LegendreRootTolerance = 1e-15;
+    private const int LegendreMaxIterations = 100;
+    private const double TanhSinhWeightCutoff = 1e-20;
+    private const double TanhSinhOverflowLimit = 350.0;
+    private const int TanhSinhMaxSamples = 1000;
+
     /// <summary>
     /// Pre-computed Gauss-Legendre nodes and weights for common orders.
     /// </summary>
@@ -33,6 +42,12 @@ public static class CRGQ001A
 
         /// <summary>High precision scheme: 32-point Gauss-Legendre.</summary>
         public static readonly (double[] Nodes, double[] Weights) HighPrecision = GaussLegendre(32);
+
+        /// <summary>Adaptive scheme: 7-point Gauss-Legendre.</summary>
+        public static readonly (double[] Nodes, double[] Weights) Adaptive7 = GaussLegendre(7);
+
+        /// <summary>Adaptive scheme: 15-point Gauss-Legendre.</summary>
+        public static readonly (double[] Nodes, double[] Weights) Adaptive15 = GaussLegendre(15);
     }
 
     /// <summary>
@@ -46,10 +61,8 @@ public static class CRGQ001A
     /// </remarks>
     public static (double[] Nodes, double[] Weights) GaussLegendre(int n)
     {
-        if (n < 1 || n > 64)
-        {
-            throw new ArgumentException("Order must be between 1 and 64", nameof(n));
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThan(n, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(n, MaxLegendreOrder);
 
         double[] nodes = new double[n];
         double[] weights = new double[n];
@@ -62,7 +75,6 @@ public static class CRGQ001A
             double z = System.Math.Cos(System.Math.PI * (i + 0.75) / (n + 0.5));
 
             double z1, pp;
-            int maxIter = 100;
             int iter = 0;
 
             do
@@ -85,7 +97,7 @@ public static class CRGQ001A
                 z -= p1 / pp;
                 iter++;
             }
-            while (System.Math.Abs(z - z1) > 1e-15 && iter < maxIter);
+            while (System.Math.Abs(z - z1) > LegendreRootTolerance && iter < LegendreMaxIterations);
 
             // Store symmetric pairs
             nodes[i] = -z;
@@ -135,6 +147,10 @@ public static class CRGQ001A
     public static double GaussLegendreIntegrate(Func<double, double> f, double a, double b, int n = 16)
     {
         ArgumentNullException.ThrowIfNull(f);
+        if (a == b)
+        {
+            return 0.0;
+        }
 
         (double[] nodes, double[] weights) = GaussLegendreAB(n, a, b);
 
@@ -169,50 +185,50 @@ public static class CRGQ001A
         int maxLevels = 10)
     {
         ArgumentNullException.ThrowIfNull(f);
+        ArgumentOutOfRangeException.ThrowIfLessThan(maxLevels, 1);
+        if (tolerance <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(tolerance), "Tolerance must be positive.");
+        }
 
-        // Transform to [-1, 1]
+        if (a == b)
+        {
+            return 0.0;
+        }
+
         double halfWidth = (b - a) / 2.0;
         double midPoint = (a + b) / 2.0;
-
-        Func<double, double> g = t => f(midPoint + (halfWidth * t));
-
+        double piOverTwo = System.Math.PI / 2.0;
         double h = 1.0;  // Step size
         double previousResult = 0.0;
 
         for (int level = 0; level < maxLevels; level++)
         {
             double sum = 0.0;
-            int k = 0;
-
-            while (true)
+            for (int k = 0; k <= TanhSinhMaxSamples; k++)
             {
                 double t = k * h;
 
-                // Compute the transformation
                 double sinhT = System.Math.Sinh(t);
-                double piHalfSinhT = System.Math.PI / 2.0 * sinhT;
-
-                // Check for overflow
-                if (System.Math.Abs(piHalfSinhT) > 350.0)
+                double piHalfSinhT = piOverTwo * sinhT;
+                if (System.Math.Abs(piHalfSinhT) > TanhSinhOverflowLimit)
                 {
                     break;
                 }
 
                 double coshT = System.Math.Cosh(t);
                 double x = System.Math.Tanh(piHalfSinhT);
-                double w = (System.Math.PI / 2.0) * coshT / (System.Math.Cosh(piHalfSinhT) * System.Math.Cosh(piHalfSinhT));
+                double coshPiHalf = System.Math.Cosh(piHalfSinhT);
+                double w = piOverTwo * coshT / (coshPiHalf * coshPiHalf);
 
-                // Weight becomes negligible
-                if (w < 1e-20)
+                if (w < TanhSinhWeightCutoff)
                 {
                     break;
                 }
 
-                // Symmetric sampling
                 if (k == 0)
                 {
-                    // Central point
-                    double gVal = g(x);
+                    double gVal = f(midPoint + (halfWidth * x));
                     if (!double.IsNaN(gVal) && !double.IsInfinity(gVal))
                     {
                         sum += w * gVal;
@@ -220,12 +236,8 @@ public static class CRGQ001A
                 }
                 else
                 {
-                    // Positive and negative t
-                    double xPos = x;
-                    double xNeg = -x;
-
-                    double gPos = g(xPos);
-                    double gNeg = g(xNeg);
+                    double gPos = f(midPoint + (halfWidth * x));
+                    double gNeg = f(midPoint - (halfWidth * x));
 
                     if (!double.IsNaN(gPos) && !double.IsInfinity(gPos))
                     {
@@ -236,12 +248,6 @@ public static class CRGQ001A
                     {
                         sum += w * gNeg;
                     }
-                }
-
-                k++;
-                if (k > 1000)
-                {
-                    break;  // Safety limit
                 }
             }
 
@@ -280,6 +286,18 @@ public static class CRGQ001A
         double tolerance = 1e-10,
         int maxDepth = 15)
     {
+        ArgumentNullException.ThrowIfNull(f);
+        ArgumentOutOfRangeException.ThrowIfLessThan(maxDepth, 1);
+        if (tolerance <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(tolerance), "Tolerance must be positive.");
+        }
+
+        if (a == b)
+        {
+            return 0.0;
+        }
+
         return AdaptiveIntegrateRecursive(f, a, b, tolerance, maxDepth, 0);
     }
 
@@ -292,12 +310,8 @@ public static class CRGQ001A
         int depth)
     {
         // 7-point Gauss rule
-        const int n7 = 7;
-        double integral7 = GaussLegendreIntegrate(f, a, b, n7);
-
-        // 15-point Kronrod extension (approximate with higher-order Gauss)
-        const int n15 = 15;
-        double integral15 = GaussLegendreIntegrate(f, a, b, n15);
+        double integral7 = IntegrateWithScheme(f, Schemes.Adaptive7, a, b);
+        double integral15 = IntegrateWithScheme(f, Schemes.Adaptive15, a, b);
 
         double error = System.Math.Abs(integral15 - integral7);
         double absIntegral = System.Math.Abs(integral15);
@@ -332,6 +346,10 @@ public static class CRGQ001A
         double b)
     {
         ArgumentNullException.ThrowIfNull(f);
+        if (a == b)
+        {
+            return 0.0;
+        }
 
         double halfWidth = (b - a) / 2.0;
         double midPoint = (a + b) / 2.0;
@@ -358,10 +376,8 @@ public static class CRGQ001A
     /// </remarks>
     public static (double[] Nodes, double[] Weights) GaussLaguerre(int n)
     {
-        if (n < 1 || n > 32)
-        {
-            throw new ArgumentException("Order must be between 1 and 32", nameof(n));
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThan(n, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(n, MaxLaguerreOrder);
 
         double[] nodes = new double[n];
         double[] weights = new double[n];
@@ -436,10 +452,8 @@ public static class CRGQ001A
     /// </remarks>
     public static (double[] Nodes, double[] Weights) GaussHermite(int n)
     {
-        if (n < 1 || n > 32)
-        {
-            throw new ArgumentException("Order must be between 1 and 32", nameof(n));
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThan(n, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(n, MaxHermiteOrder);
 
         double[] nodes = new double[n];
         double[] weights = new double[n];

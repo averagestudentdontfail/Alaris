@@ -115,6 +115,11 @@ public static class CRMF001A
     /// </remarks>
     public static double NormalPDF(double x)
     {
+        if (x > 38.0 || x < -38.0)
+        {
+            return 0.0;
+        }
+
         return InvSqrtTwoPi * System.Math.Exp(-0.5 * x * x);
     }
 
@@ -352,6 +357,7 @@ public static class CRMF001A
         double discountRate = System.Math.Exp(-r * tau);
         double fwd = S * discountDiv;
         double strike = K * discountRate;
+        double maxPrice = isCall ? fwd : strike;
 
         // Check intrinsic value bounds
         double intrinsic = isCall
@@ -361,6 +367,11 @@ public static class CRMF001A
         if (marketPrice < intrinsic - tolerance)
         {
             return double.NaN; // Price below intrinsic value - no valid IV
+        }
+
+        if (marketPrice > maxPrice + tolerance)
+        {
+            return double.NaN; // Price above theoretical bound - no valid IV
         }
 
         // Initial guess: Corrado-Miller (1996) approximation
@@ -573,7 +584,10 @@ public static class CRMF001A
     /// <returns>True if valid.</returns>
     public static bool IsValidVolatility(double sigma)
     {
-        return sigma >= MinVolatility && sigma <= MaxVolatility && !double.IsNaN(sigma);
+        return sigma >= MinVolatility &&
+               sigma <= MaxVolatility &&
+               !double.IsNaN(sigma) &&
+               !double.IsInfinity(sigma);
     }
 
     /// <summary>

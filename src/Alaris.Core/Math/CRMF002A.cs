@@ -11,6 +11,7 @@
 // - Healy (2021) "American Options Under Negative Rates"
 // - Kim (1990) "Analytic Valuation of American Options"
 
+using System;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Alaris.Core.Math;
@@ -36,10 +37,7 @@ public static class CRMF002A
     [SuppressMessage("StyleCop.CSharp.NamingRules", "SA1312:VariableNamesMustBeginWithLowerCaseLetter", Justification = "Greek letters")]
     public static (double λ1, double λ2) SolveCharacteristic(double r, double q, double σ)
     {
-        if (σ <= 0)
-        {
-            throw new ArgumentException("Volatility must be positive", nameof(σ));
-        }
+        System.ArgumentOutOfRangeException.ThrowIfNegativeOrZero(σ, nameof(σ));
 
         double σ2 = σ * σ;
         
@@ -55,7 +53,7 @@ public static class CRMF002A
         if (discriminant < 0)
         {
             // Should not happen for valid parameters, but handle gracefully
-            throw new ArgumentException("Complex roots detected - invalid parameter combination");
+            throw new ArgumentException("Complex roots detected for the provided parameter combination.");
         }
 
         double sqrtD = System.Math.Sqrt(discriminant);
@@ -104,6 +102,12 @@ public static class CRMF002A
         double tolerance = 1e-12, 
         int maxIterations = 20)
     {
+        if (tolerance <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(tolerance), "Tolerance must be positive.");
+        }
+
+        ArgumentOutOfRangeException.ThrowIfLessThan(maxIterations, 1);
         double λ = λInit;
 
         for (int i = 0; i < maxIterations; i++)
@@ -169,6 +173,11 @@ public static class CRMF002A
         double c,
         double tolerance = 1e-12)
     {
+        if (tolerance <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(tolerance), "Tolerance must be positive.");
+        }
+
         // Evaluate f(λ) = aλ² + bλ + c
         static double EvalQuadratic(double λ, double a, double b, double c)
         {
@@ -236,6 +245,11 @@ public static class CRMF002A
     [SuppressMessage("StyleCop.CSharp.NamingRules", "SA1312:VariableNamesMustBeginWithLowerCaseLetter", Justification = "Greek letters")]
     public static bool ValidateRoot(double r, double q, double σ, double λ, double tolerance = 1e-10)
     {
+        if (tolerance <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(tolerance), "Tolerance must be positive.");
+        }
+
         double σ2 = σ * σ;
         
         // f(λ) = (σ²/2)λ² + (r - q - σ²/2)λ - r

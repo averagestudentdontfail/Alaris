@@ -18,6 +18,8 @@ namespace Alaris.Core.Math;
 /// </summary>
 public static class CRCH001A
 {
+    private const double NodeMatchTolerance = 1e-14;
+
     /// <summary>
     /// Generates Chebyshev nodes of the first kind on interval [a, b].
     /// </summary>
@@ -31,14 +33,11 @@ public static class CRCH001A
     /// </remarks>
     public static double[] ChebyshevNodes(int n, double a = 0.0, double b = 1.0)
     {
-        if (n < 1)
-        {
-            throw new ArgumentException("Number of nodes must be at least 1", nameof(n));
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThan(n, 1);
 
         if (b <= a)
         {
-            throw new ArgumentException("Right endpoint must be greater than left endpoint");
+            throw new ArgumentOutOfRangeException(nameof(b), "Right endpoint must be greater than left endpoint.");
         }
 
         double[] nodes = new double[n];
@@ -47,7 +46,6 @@ public static class CRCH001A
 
         for (int k = 0; k < n; k++)
         {
-            // Chebyshev nodes of the first kind
             double theta = (2.0 * k + 1.0) * System.Math.PI / (2.0 * n);
             nodes[k] = mid + (halfWidth * System.Math.Cos(theta));
         }
@@ -71,14 +69,11 @@ public static class CRCH001A
     /// </remarks>
     public static double[] ChebyshevLobattoNodes(int n, double a = 0.0, double b = 1.0)
     {
-        if (n < 2)
-        {
-            throw new ArgumentException("Number of Lobatto nodes must be at least 2", nameof(n));
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThan(n, 2);
 
         if (b <= a)
         {
-            throw new ArgumentException("Right endpoint must be greater than left endpoint");
+            throw new ArgumentOutOfRangeException(nameof(b), "Right endpoint must be greater than left endpoint.");
         }
 
         double[] nodes = new double[n];
@@ -109,10 +104,7 @@ public static class CRCH001A
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static double ChebyshevT(int n, double x)
     {
-        if (n < 0)
-        {
-            throw new ArgumentException("Degree must be non-negative", nameof(n));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegative(n);
 
         if (n == 0)
         {
@@ -148,10 +140,7 @@ public static class CRCH001A
     /// </remarks>
     public static double[] BarycentricWeights(int n)
     {
-        if (n < 1)
-        {
-            throw new ArgumentException("Number of nodes must be at least 1", nameof(n));
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThan(n, 1);
 
         double[] weights = new double[n];
 
@@ -179,10 +168,7 @@ public static class CRCH001A
     /// </remarks>
     public static double[] BarycentricWeightsLobatto(int n)
     {
-        if (n < 2)
-        {
-            throw new ArgumentException("Number of Lobatto nodes must be at least 2", nameof(n));
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThan(n, 2);
 
         double[] weights = new double[n];
 
@@ -214,24 +200,25 @@ public static class CRCH001A
         ArgumentNullException.ThrowIfNull(weights);
 
         int n = nodes.Length;
+        if (n == 0)
+        {
+            throw new ArgumentException("Nodes must not be empty.", nameof(nodes));
+        }
 
         if (values.Length != n || weights.Length != n)
         {
-            throw new ArgumentException("Arrays must have the same length");
+            throw new ArgumentException("Nodes, values, and weights must have the same length.");
         }
 
-        // Check if x coincides with a node (within tolerance)
-        const double Epsilon = 1e-14;
         for (int k = 0; k < n; k++)
         {
             double diff = x - nodes[k];
-            if (System.Math.Abs(diff) < Epsilon)
+            if (System.Math.Abs(diff) < NodeMatchTolerance)
             {
                 return values[k];
             }
         }
 
-        // Barycentric formula
         double numerator = 0.0;
         double denominator = 0.0;
 
@@ -261,6 +248,11 @@ public static class CRCH001A
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static double ToStandardDomain(double x, double a, double b)
     {
+        if (b <= a)
+        {
+            throw new ArgumentOutOfRangeException(nameof(b), "Right endpoint must be greater than left endpoint.");
+        }
+
         return (2.0 * x - a - b) / (b - a);
     }
 
@@ -270,6 +262,11 @@ public static class CRCH001A
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static double FromStandardDomain(double t, double a, double b)
     {
+        if (b <= a)
+        {
+            throw new ArgumentOutOfRangeException(nameof(b), "Right endpoint must be greater than left endpoint.");
+        }
+
         return ((b - a) * t + a + b) / 2.0;
     }
 
@@ -287,9 +284,12 @@ public static class CRCH001A
     {
         ArgumentNullException.ThrowIfNull(nodes);
         int n = nodes.Length;
+        if (n < 2)
+        {
+            throw new ArgumentOutOfRangeException(nameof(nodes), "At least two nodes are required.");
+        }
         double[,] D = new double[n, n];
 
-        // Compute barycentric weights for Lobatto nodes
         double[] c = new double[n];
         for (int k = 0; k < n; k++)
         {
@@ -297,7 +297,6 @@ public static class CRCH001A
             c[k] *= (k % 2 == 0) ? 1.0 : -1.0;
         }
 
-        // Off-diagonal entries
         for (int i = 0; i < n; i++)
         {
             for (int j = 0; j < n; j++)
@@ -309,7 +308,6 @@ public static class CRCH001A
             }
         }
 
-        // Diagonal entries (negative row sum)
         for (int i = 0; i < n; i++)
         {
             double rowSum = 0.0;
@@ -327,39 +325,25 @@ public static class CRCH001A
     }
 
     /// <summary>
-    /// Computes Chebyshev coefficients from function values (Discrete Cosine Transform).
+    /// Computes Chebyshev coefficients from function values (DCT-I on Lobatto nodes).
     /// </summary>
     /// <param name="values">Function values at Chebyshev-Lobatto nodes.</param>
-    /// <returns>Chebyshev coefficients a_k such that f(x) ≈ Σ a_k T_k(x).</returns>
+    /// <returns>Chebyshev coefficients a_k for f(x) ≈ 0.5a_0 + Σ a_k T_k(x) + 0.5a_n T_n(x).</returns>
     public static double[] ValuesToCoefficients(double[] values)
     {
         ArgumentNullException.ThrowIfNull(values);
         int n = values.Length;
-        double[] coeffs = new double[n];
-
-        for (int k = 0; k < n; k++)
+        if (n == 0)
         {
-            double sum = 0.0;
-            for (int j = 0; j < n; j++)
-            {
-                double theta = j * System.Math.PI / (n - 1);
-                sum += values[j] * System.Math.Cos(k * theta);
-            }
-
-            // Normalization factors
-            double factor = 2.0 / (n - 1);
-            if (k == 0 || k == n - 1)
-            {
-                factor /= 2.0;
-            }
-
-            // Account for endpoint weighting
-            coeffs[k] = factor * (sum - (0.5 * values[0]) - (0.5 * ((k % 2 == 0) ? 1.0 : -1.0) * values[n - 1]));
+            throw new ArgumentException("Values must not be empty.", nameof(values));
         }
 
-        // Correct the formula for endpoints
-        coeffs[0] = 0.0;
-        coeffs[n - 1] = 0.0;
+        if (n == 1)
+        {
+            return new[] { values[0] };
+        }
+
+        double[] coeffs = new double[n];
 
         for (int k = 0; k < n; k++)
         {
@@ -372,10 +356,6 @@ public static class CRCH001A
             }
 
             coeffs[k] = (2.0 / (n - 1)) * sum;
-            if (k == 0)
-            {
-                coeffs[k] /= 2.0;
-            }
         }
 
         return coeffs;
@@ -384,7 +364,7 @@ public static class CRCH001A
     /// <summary>
     /// Evaluates a Chebyshev series at a point using Clenshaw's algorithm.
     /// </summary>
-    /// <param name="coeffs">Chebyshev coefficients.</param>
+    /// <param name="coeffs">Chebyshev coefficients with half-weighted endpoints.</param>
     /// <param name="x">Evaluation point in [-1, 1].</param>
     /// <returns>Value of the Chebyshev series at x.</returns>
     /// <remarks>
@@ -409,11 +389,12 @@ public static class CRCH001A
 
         for (int k = n - 1; k >= 1; k--)
         {
-            double bk = coeffs[k] + (2.0 * x * bk1) - bk2;
+            double coeff = k == n - 1 ? 0.5 * coeffs[k] : coeffs[k];
+            double bk = coeff + (2.0 * x * bk1) - bk2;
             bk2 = bk1;
             bk1 = bk;
         }
 
-        return coeffs[0] + (x * bk1) - bk2;
+        return (0.5 * coeffs[0]) + (x * bk1) - bk2;
     }
 }
