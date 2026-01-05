@@ -80,6 +80,11 @@ public sealed class CRTS002AFlatVol : IVolatilitySurface
     /// <param name="dayCounter">Day count convention for time calculations.</param>
     public CRTS002AFlatVol(CRTM005A referenceDate, double volatility, IDayCounter? dayCounter = null)
     {
+        if (double.IsNaN(volatility) || double.IsInfinity(volatility))
+        {
+            throw new ArgumentOutOfRangeException(nameof(volatility), "Volatility must be finite.");
+        }
+
         if (volatility < 0)
         {
             throw new ArgumentException("Volatility cannot be negative", nameof(volatility));

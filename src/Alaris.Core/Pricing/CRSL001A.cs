@@ -2,8 +2,7 @@
 // Component ID: CRSL001A
 // Migrated from: Alaris.Double.DBSL001A
 //
-// NOTE: Kim refinement (Stage 2) requires CRSL002A which is pending migration.
-// For now, useRefinement defaults to FALSE to use QD+-only mode.
+// NOTE: Kim refinement (Stage 2) is available via CRSL002A and enabled by default.
 
 using System;
 using Alaris.Core.Validation;
@@ -36,7 +35,7 @@ public sealed class CRSL001A
     /// <param name="volatility">Volatility</param>
     /// <param name="isCall">True for call, false for put</param>
     /// <param name="collocationPoints">Number of time points (default 50)</param>
-    /// <param name="useRefinement">Use FP-B' Kim refinement (default FALSE until CRSL002A migrated)</param>
+    /// <param name="useRefinement">Use FP-B' Kim refinement (default: true).</param>
     /// <exception cref="BoundsViolationException">Thrown if inputs violate algorithm bounds.</exception>
     public CRSL001A(
         double spot,

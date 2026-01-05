@@ -86,6 +86,11 @@ public sealed class CRTS001AFlatForward : IYieldCurve
     /// <param name="dayCounter">Day count convention for time calculations.</param>
     public CRTS001AFlatForward(CRTM005A referenceDate, double rate, IDayCounter? dayCounter = null)
     {
+        if (double.IsNaN(rate) || double.IsInfinity(rate))
+        {
+            throw new ArgumentOutOfRangeException(nameof(rate), "Rate must be finite.");
+        }
+
         ReferenceDate = referenceDate;
         _rate = rate;
         DayCounter = dayCounter ?? DayCounters.Actual365Fixed;

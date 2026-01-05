@@ -33,6 +33,7 @@ public static class CRPL001A
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static double[] RentDoubles(int minimumLength)
     {
+        ArgumentOutOfRangeException.ThrowIfNegative(minimumLength);
         return DoublePool.Rent(minimumLength);
     }
 
@@ -56,6 +57,7 @@ public static class CRPL001A
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static byte[] RentBytes(int minimumLength)
     {
+        ArgumentOutOfRangeException.ThrowIfNegative(minimumLength);
         return BytePool.Rent(minimumLength);
     }
 
@@ -84,6 +86,7 @@ public static class CRPL001A
         Func<double[], TResult> action)
     {
         ArgumentNullException.ThrowIfNull(action);
+        ArgumentOutOfRangeException.ThrowIfNegative(minimumLength);
 
         double[] buffer = RentDoubles(minimumLength);
         try
@@ -105,6 +108,7 @@ public static class CRPL001A
         Func<byte[], TResult> action)
     {
         ArgumentNullException.ThrowIfNull(action);
+        ArgumentOutOfRangeException.ThrowIfNegative(minimumLength);
 
         byte[] buffer = RentBytes(minimumLength);
         try
@@ -124,6 +128,7 @@ public static class CRPL001A
     public static void WithDoubleBuffer(int minimumLength, Action<double[]> action)
     {
         ArgumentNullException.ThrowIfNull(action);
+        ArgumentOutOfRangeException.ThrowIfNegative(minimumLength);
 
         double[] buffer = RentDoubles(minimumLength);
         try

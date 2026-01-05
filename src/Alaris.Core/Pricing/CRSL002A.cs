@@ -4,8 +4,6 @@
 
 using System;
 using System.Buffers;
-using System.Collections.Generic;
-using System.Linq;
 using Alaris.Core.Validation;
 
 namespace Alaris.Core.Pricing;
@@ -138,6 +136,7 @@ public sealed class CRSL002A
                 double maxChange = 0.0;
                 double maxUpperChange = 0.0;
                 double maxLowerChange = 0.0;
+                Array.Copy(upper, tempUpper, m);
 
                 // FP-B' iteration (Equation 33)
                 for (int i = 0; i < m; i++)
@@ -156,10 +155,9 @@ public sealed class CRSL002A
                     upperNew[i] = SolveUpperBoundaryPoint(ti, upper, lower, crossingTime);
 
                     // CRITICAL: Update lower using just-computed upper (FP-B' stabilization)
-                    // Use pooled tempUpper instead of cloning
-                    Array.Copy(upper, tempUpper, m);
                     tempUpper[i] = upperNew[i];
                     lowerNew[i] = SolveLowerBoundaryPointStabilized(ti, lower, tempUpper, crossingTime);
+                    tempUpper[i] = upper[i];
 
                     // Enforce constraints
                     (upperNew[i], lowerNew[i]) = EnforceConstraints(upperNew[i], lowerNew[i]);
@@ -221,6 +219,16 @@ public sealed class CRSL002A
 
     private bool ValidateInitialInputs(double[] upper, double[] lower)
     {
+        if (upper is null || lower is null)
+        {
+            return false;
+        }
+
+        if (upper.Length < _collocationPoints || lower.Length < _collocationPoints)
+        {
+            return false;
+        }
+
         int lastIdx = _collocationPoints - 1;
         double upperRatio = upper[lastIdx] / _strike;
         double lowerRatio = lower[lastIdx] / _strike;
@@ -238,8 +246,7 @@ public sealed class CRSL002A
             _spot, _strike, _maturity, _rate, _dividendYield, _volatility, _isCall);
         (double qdUpper, double qdLower) = qdplus.CalculateBoundaries();
 
-        return (Enumerable.Repeat(qdUpper, m).ToArray(),
-                Enumerable.Repeat(qdLower, m).ToArray());
+        return (CreateConstantArray(qdUpper, m), CreateConstantArray(qdLower, m));
     }
 
     private static bool CheckStagnation(int iter, double maxChange, ref double previousMaxChange, ref int stagnationCount)
@@ -726,6 +733,18 @@ public sealed class CRSL002A
         smoothed[n - 1] = (-boundary[n - 3] + (2.0 * boundary[n - 2]) + (5.0 * boundary[n - 1])) / 6.0;
 
         return smoothed;
+    }
+
+    private static double[] CreateConstantArray(double value, int length)
+    {
+        if (length <= 0)
+        {
+            return Array.Empty<double>();
+        }
+
+        double[] result = new double[length];
+        Array.Fill(result, value);
+        return result;
     }
 
     // Use centralised CRMF001A for math utilities

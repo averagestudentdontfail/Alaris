@@ -26,7 +26,8 @@ public sealed class BacktestTimeProvider : ITimeProvider
     /// </param>
     public BacktestTimeProvider(Func<DateTime> timeSource)
     {
-        _timeSource = timeSource ?? throw new ArgumentNullException(nameof(timeSource));
+        ArgumentNullException.ThrowIfNull(timeSource);
+        _timeSource = timeSource;
     }
 
     /// <summary>

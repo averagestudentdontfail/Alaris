@@ -62,7 +62,7 @@ public readonly struct VanillaPayoff : IEquatable<VanillaPayoff>
         {
             OptionType.Call => System.Math.Max(spot - Strike, 0.0),
             OptionType.Put => System.Math.Max(Strike - spot, 0.0),
-            _ => throw new ArgumentOutOfRangeException(nameof(Type), Type, "Unknown option type.")
+            _ => throw new InvalidOperationException($"Unknown option type: {Type}.")
         };
     }
 

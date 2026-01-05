@@ -44,6 +44,7 @@ public static class CRVT001A
         ReadOnlySpan<bool> isCalls,
         Span<double> results)
     {
+        ValidateBatchInputs(spots, strikes, taus, sigmas, isCalls, results);
         int count = spots.Length;
         if (count == 0)
         {
@@ -179,6 +180,7 @@ public static class CRVT001A
         ReadOnlySpan<bool> isCalls,
         Span<double> results)
     {
+        ValidateBatchInputs(spots, strikes, taus, sigmas, isCalls, results);
         int count = spots.Length;
         if (count == 0)
         {
@@ -295,6 +297,7 @@ public static class CRVT001A
         double q,
         Span<double> results)
     {
+        ValidateBatchInputs(spots, strikes, taus, sigmas, results);
         int count = spots.Length;
         if (count == 0)
         {
@@ -405,6 +408,7 @@ public static class CRVT001A
         double q,
         Span<double> results)
     {
+        ValidateBatchInputs(spots, strikes, taus, sigmas, results);
         int count = spots.Length;
         if (count == 0)
         {
@@ -639,5 +643,44 @@ public static class CRVT001A
             result[i] = System.Math.Exp(v[i]);
         }
         return new Vector<double>(result);
+    }
+
+    private static void ValidateBatchInputs(
+        ReadOnlySpan<double> spots,
+        ReadOnlySpan<double> strikes,
+        ReadOnlySpan<double> taus,
+        ReadOnlySpan<double> sigmas,
+        ReadOnlySpan<bool> isCalls,
+        Span<double> results)
+    {
+        int count = spots.Length;
+        if (strikes.Length != count || taus.Length != count || sigmas.Length != count || isCalls.Length != count)
+        {
+            throw new ArgumentException("Input spans must have matching lengths.");
+        }
+
+        if (results.Length < count)
+        {
+            throw new ArgumentException("Result span must be at least as long as input spans.");
+        }
+    }
+
+    private static void ValidateBatchInputs(
+        ReadOnlySpan<double> spots,
+        ReadOnlySpan<double> strikes,
+        ReadOnlySpan<double> taus,
+        ReadOnlySpan<double> sigmas,
+        Span<double> results)
+    {
+        int count = spots.Length;
+        if (strikes.Length != count || taus.Length != count || sigmas.Length != count)
+        {
+            throw new ArgumentException("Input spans must have matching lengths.");
+        }
+
+        if (results.Length < count)
+        {
+            throw new ArgumentException("Result span must be at least as long as input spans.");
+        }
     }
 }

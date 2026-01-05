@@ -31,7 +31,8 @@ public sealed class LiveTimeProvider : ITimeProvider
     /// <param name="clock">The clock to use.</param>
     public LiveTimeProvider(IClock clock)
     {
-        _clock = clock ?? throw new ArgumentNullException(nameof(clock));
+        ArgumentNullException.ThrowIfNull(clock);
+        _clock = clock;
     }
 
     /// <inheritdoc/>

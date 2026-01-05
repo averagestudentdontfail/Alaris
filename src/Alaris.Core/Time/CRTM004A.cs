@@ -31,6 +31,7 @@ public static class TimeProviderExtensions
         this IServiceCollection services,
         Func<DateTime> timeSource)
     {
+        ArgumentNullException.ThrowIfNull(timeSource);
         return services.AddSingleton<ITimeProvider>(
             _ => new BacktestTimeProvider(timeSource));
     }
