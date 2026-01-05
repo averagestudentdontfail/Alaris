@@ -16,9 +16,6 @@ Alaris.Library/
 # Claude AI assistant
 .claude/
 
-# GitHub workflows (environment-specific)
-.github/
-
 # User-specific files
 *.rsuser
 *.suo
