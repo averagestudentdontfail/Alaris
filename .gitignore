@@ -118,5 +118,4 @@ ses/
 storage/
 
 # Simulation Output (may contain sensitive data in logs)
-**/Output/
-**/Results/
+src/Alaris.Simulation/out/
