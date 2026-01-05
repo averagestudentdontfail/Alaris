@@ -4,6 +4,7 @@ using Spectre.Console;
 using Spectre.Console.Cli;
 using Alaris.Host.Application.Cli.Infrastructure;
 using Alaris.Host.Application.Cli.Settings;
+using Alaris.Host.Application.Model;
 using Alaris.Host.Application.Service;
 
 namespace Alaris.Host.Application.Cli.Commands.Data;

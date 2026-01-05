@@ -527,7 +527,7 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
     public override async Task<int> ExecuteAsync(CommandContext context, BacktestRunSettings settings)
     {
         // Initialize FSM for deterministic state tracking
-        PLWF002A fsm = PLWF002A.Create();
+        PLWF001A<BacktestState, BacktestEvent> fsm = PLWF002A.Create();
         fsm.OnTransition += record => 
         {
             if (record.Succeeded)
