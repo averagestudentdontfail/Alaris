@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# Alaris CLI - Unified Trading System Interface
+# Alaris CLI - Trading System Interface
 # =============================================================================
 # Usage: ./alaris [command] [options]
 #   ./alaris                     Launch TUI mode
