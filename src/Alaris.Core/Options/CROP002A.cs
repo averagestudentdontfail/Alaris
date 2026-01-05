@@ -30,10 +30,12 @@ public readonly struct VanillaPayoff : IEquatable<VanillaPayoff>
     /// <param name="strike">Strike price.</param>
     public VanillaPayoff(OptionType optionType, double strike)
     {
-        if (strike <= 0)
+        if (!double.IsFinite(strike))
         {
-            throw new ArgumentException("Strike must be positive", nameof(strike));
+            throw new ArgumentOutOfRangeException(nameof(strike), "Strike must be finite.");
         }
+
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(strike, nameof(strike));
 
         Type = optionType;
         Strike = strike;
@@ -60,7 +62,7 @@ public readonly struct VanillaPayoff : IEquatable<VanillaPayoff>
         {
             OptionType.Call => System.Math.Max(spot - Strike, 0.0),
             OptionType.Put => System.Math.Max(Strike - spot, 0.0),
-            _ => 0.0
+            _ => throw new ArgumentOutOfRangeException(nameof(Type), Type, "Unknown option type.")
         };
     }
 

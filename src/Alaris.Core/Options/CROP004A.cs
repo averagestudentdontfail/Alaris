@@ -10,6 +10,8 @@
 // - Wilmott, Howison, Dewynne. "The Mathematics of Financial Derivatives" (1995)
 // - QuantLib FdBlackScholesVanillaEngine CashDividendModel
 
+using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 
 namespace Alaris.Core.Options;
@@ -80,10 +82,24 @@ public sealed class DividendSchedule
     public DividendSchedule(IEnumerable<CashDividend> dividends)
     {
         ArgumentNullException.ThrowIfNull(dividends);
-        _dividends = dividends
-            .Where(d => d.IsValid)
-            .OrderBy(d => d.ExDividendDate)
-            .ToImmutableArray();
+        List<CashDividend> filtered = new List<CashDividend>();
+
+        foreach (CashDividend dividend in dividends)
+        {
+            if (dividend.IsValid)
+            {
+                filtered.Add(dividend);
+            }
+        }
+
+        if (filtered.Count == 0)
+        {
+            _dividends = ImmutableArray<CashDividend>.Empty;
+            return;
+        }
+
+        filtered.Sort(static (left, right) => left.ExDividendDate.CompareTo(right.ExDividendDate));
+        _dividends = filtered.ToImmutableArray();
     }
 
     /// <summary>
@@ -109,7 +125,19 @@ public sealed class DividendSchedule
     /// <returns>Dividends in the range.</returns>
     public IEnumerable<CashDividend> GetDividendsBetween(DateTime startDate, DateTime endDate)
     {
-        return _dividends.Where(d => d.ExDividendDate > startDate && d.ExDividendDate <= endDate);
+        if (_dividends.IsDefaultOrEmpty)
+        {
+            yield break;
+        }
+
+        for (int i = 0; i < _dividends.Length; i++)
+        {
+            CashDividend dividend = _dividends[i];
+            if (dividend.ExDividendDate > startDate && dividend.ExDividendDate <= endDate)
+            {
+                yield return dividend;
+            }
+        }
     }
 
     /// <summary>
@@ -126,9 +154,19 @@ public sealed class DividendSchedule
     public double ComputePresentValue(DateTime valuationDate, DateTime expiryDate, double riskFreeRate)
     {
         double totalPV = 0.0;
-
-        foreach (CashDividend dividend in GetDividendsBetween(valuationDate, expiryDate))
+        if (_dividends.IsDefaultOrEmpty)
         {
+            return totalPV;
+        }
+
+        for (int i = 0; i < _dividends.Length; i++)
+        {
+            CashDividend dividend = _dividends[i];
+            if (dividend.ExDividendDate <= valuationDate || dividend.ExDividendDate > expiryDate)
+            {
+                continue;
+            }
+
             double timeToDiv = (dividend.ExDividendDate - valuationDate).TotalDays / 365.0;
             totalPV += dividend.Amount * System.Math.Exp(-riskFreeRate * timeToDiv);
         }
@@ -158,9 +196,31 @@ public sealed class DividendSchedule
     /// <returns>Array of (time in years, amount) pairs for FD grid integration.</returns>
     public (double TimeYears, double Amount)[] GetDividendTimesForGrid(DateTime valuationDate, DateTime expiryDate)
     {
-        return GetDividendsBetween(valuationDate, expiryDate)
-            .Select(d => ((d.ExDividendDate - valuationDate).TotalDays / 365.0, d.Amount))
-            .ToArray();
+        if (_dividends.IsDefaultOrEmpty)
+        {
+            return Array.Empty<(double TimeYears, double Amount)>();
+        }
+
+        List<(double TimeYears, double Amount)> times = new List<(double TimeYears, double Amount)>();
+
+        for (int i = 0; i < _dividends.Length; i++)
+        {
+            CashDividend dividend = _dividends[i];
+            if (dividend.ExDividendDate <= valuationDate || dividend.ExDividendDate > expiryDate)
+            {
+                continue;
+            }
+
+            double timeYears = (dividend.ExDividendDate - valuationDate).TotalDays / 365.0;
+            times.Add((timeYears, dividend.Amount));
+        }
+
+        if (times.Count == 0)
+        {
+            return Array.Empty<(double TimeYears, double Amount)>();
+        }
+
+        return times.ToArray();
     }
 
     /// <summary>
@@ -197,9 +257,17 @@ public sealed class DividendSchedule
         DateTime endDate,
         int frequency = 4)
     {
-        if (continuousYield <= 0 || frequency <= 0)
+        if (continuousYield <= 0)
         {
             return Empty;
+        }
+
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(spot, nameof(spot));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(frequency, nameof(frequency));
+
+        if (endDate < startDate)
+        {
+            throw new ArgumentOutOfRangeException(nameof(endDate), "End date must not be earlier than start date.");
         }
 
         List<CashDividend> dividends = new List<CashDividend>();

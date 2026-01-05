@@ -28,6 +28,8 @@ namespace Alaris.Core.Options;
 /// </remarks>
 public readonly struct AmericanExercise : IEquatable<AmericanExercise>
 {
+    private const int UnsetSerialNumber = 0;
+
     /// <summary>
     /// Initialises American exercise with immediate exercise allowed.
     /// </summary>
@@ -76,8 +78,7 @@ public readonly struct AmericanExercise : IEquatable<AmericanExercise>
     /// <returns>True if exercise is allowed on this date.</returns>
     public bool CanExercise(CRTM005A date)
     {
-        // If EarliestDate is default (serial 0), treat as no lower bound
-        if (EarliestDate.SerialNumber == 0)
+        if (EarliestDate.SerialNumber == UnsetSerialNumber)
         {
             return date <= LatestDate;
         }
@@ -121,7 +122,7 @@ public readonly struct AmericanExercise : IEquatable<AmericanExercise>
     /// <inheritdoc/>
     public override string ToString()
     {
-        if (EarliestDate.SerialNumber == 0)
+        if (EarliestDate.SerialNumber == UnsetSerialNumber)
         {
             return $"American exercise until {LatestDate}";
         }

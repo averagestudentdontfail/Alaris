@@ -12,6 +12,7 @@
 // - Alaris.Governance/Coding.md Rule 8 (Limited Scope)
 
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 
 namespace Alaris.Core.Options;
 
@@ -47,14 +48,21 @@ public static class OptionTypeExtensions
     /// </summary>
     /// <param name="optionType">The option type.</param>
     /// <returns>+1 for Call, -1 for Put.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int Sign(this OptionType optionType)
     {
-        return (int)optionType;
+        return optionType switch
+        {
+            OptionType.Call => 1,
+            OptionType.Put => -1,
+            _ => throw new ArgumentOutOfRangeException(nameof(optionType), optionType, "Unknown option type.")
+        };
     }
 
     /// <summary>
     /// Determines if this is a call option.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool IsCall(this OptionType optionType)
     {
         return optionType == OptionType.Call;
@@ -63,6 +71,7 @@ public static class OptionTypeExtensions
     /// <summary>
     /// Determines if this is a put option.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool IsPut(this OptionType optionType)
     {
         return optionType == OptionType.Put;
