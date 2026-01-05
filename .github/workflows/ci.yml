@@ -6,8 +6,7 @@
 # 2. Runs full test suite
 # 3. Validates compliance with LOC rules
 #
-# Note: Alaris.Quantlib and Alaris.Lean are excluded from strict analysis
-# as they contain SWIG-generated and external code.
+# Note: lib/Alaris.Lean is excluded from strict analysis as it contains external code.
 
 name: CI
 
@@ -18,7 +17,7 @@ on:
     branches: [main, master, develop]
 
 env:
-  DOTNET_VERSION: '9.0.x'
+  DOTNET_VERSION: '10.0.x'
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
 
@@ -30,6 +29,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -41,12 +42,13 @@ jobs:
 
       - name: Build (with analyzers)
         run: |
-          # Build only core Alaris projects (excludes Alaris.Lean external code)
-          # Alaris.Algorithm and Alaris.Application depend on LEAN and are excluded
+          # Build core Alaris projects (excludes lib/Alaris.Lean external code)
           for project in \
-            Alaris.Strategy/Alaris.Strategy.csproj \
-            Alaris.Simulation/Alaris.Simulation.csproj \
-            Alaris.Test/Alaris.Test.csproj; do
+            src/Alaris.Core/Alaris.Core.csproj \
+            src/Alaris.Infrastructure/Alaris.Infrastructure.csproj \
+            src/Alaris.Strategy/Alaris.Strategy.csproj \
+            src/Alaris.Simulation/Alaris.Simulation.csproj \
+            src/Alaris.Test/Alaris.Test.csproj; do
             echo "=== Building $project ==="
             dotnet build "$project" --no-restore --configuration Release
           done
@@ -55,8 +57,7 @@ jobs:
 
       - name: Run tests
         run: |
-          # Run tests only for Alaris.Test (excludes LEAN algorithm tests)
-          dotnet test Alaris.Test/Alaris.Test.csproj \
+          dotnet test src/Alaris.Test/Alaris.Test.csproj \
             --no-build --configuration Release --verbosity normal
 
   analyze:
@@ -66,6 +67,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -77,10 +80,13 @@ jobs:
 
       - name: Analyze core projects (excludes external code)
         run: |
-          # Build only core Alaris projects with strict analysis
-          # Excludes: Alaris.Quantlib (SWIG-generated), Alaris.Lean (external), 
-          #           Alaris.Test (depends on Lean/Quantlib transitively)
-          for project in Alaris.Strategy Alaris.Simulation; do
+          # Build core Alaris projects with strict analysis
+          # Excludes: lib/Alaris.Lean (external QuantConnect code)
+          for project in \
+            src/Alaris.Core \
+            src/Alaris.Infrastructure \
+            src/Alaris.Strategy \
+            src/Alaris.Simulation; do
             if [ -d "$project" ]; then
               echo "=== Analyzing $project ==="
               dotnet build "$project" --configuration Release \
@@ -104,13 +110,11 @@ jobs:
         run: |
           echo "=== High-Integrity Coding Standard Compliance ==="
           echo ""
-          echo "Checking .compliance directory..."
-          if [ -d ".compliance" ]; then
-            echo "Compliance documentation found:"
-            ls -la .compliance/
-          else
-            echo "Warning: .compliance directory not found"
-          fi
+          echo "Project Structure:"
+          echo "  src/     - Source code (Alaris components)"
+          echo "  lib/     - External dependencies (Alaris.Lean)"
+          echo "  docs/    - Documentation"
+          echo "  ses/     - Session data (runtime, gitignored)"
           echo ""
           echo "=== Build enforces these rules via Roslyn analyzers ==="
           echo "- LOC-1 Rule 2: Zero Warnings (TreatWarningsAsErrors=true)"
@@ -121,5 +125,4 @@ jobs:
           echo "- LOC-5 Rule 16: Deterministic Cleanup (CA2000, CA2213=error)"
           echo ""
           echo "=== Excluded from strict analysis ==="
-          echo "- Alaris.Quantlib: SWIG-generated C++/CLI wrapper"
-          echo "- Alaris.Lean: External QuantConnect library"
+          echo "- lib/Alaris.Lean: External QuantConnect LEAN library"
