@@ -13,6 +13,12 @@ Alaris.Library/
 # Visual Studio Code
 .vscode/
 
+# Claude AI assistant
+.claude/
+
+# GitHub workflows (environment-specific)
+.github/
+
 # User-specific files
 *.rsuser
 *.suo
@@ -110,7 +116,6 @@ logs/
 /Data/
 *.log
 
-# Alaris Output Directory (LEAN runtime artifacts)
-Alaris.Output/
-Alaris.Sessions/
+# Alaris Session Data (runtime artifacts, not committed)
+ses/
 storage/

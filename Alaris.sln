@@ -3,49 +3,57 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Alaris.Strategy", "Alaris.Strategy\Alaris.Strategy.csproj", "{57B7C6A2-D825-4490-A4F7-2E0559DE0A0B}"
+
+# Alaris Core Projects
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Alaris.Core", "src\Alaris.Core\Alaris.Core.csproj", "{4DFFAAA3-A5F0-4326-978F-BD0834DBAC43}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Alaris.Test", "Alaris.Test\Alaris.Test.csproj", "{C2D00E91-48DE-4779-B438-2BC4E2953934}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Alaris.Infrastructure", "src\Alaris.Infrastructure\Alaris.Infrastructure.csproj", "{A986D5C8-5907-4EE4-B9C1-5F4025E12EC6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Alaris.Simulation", "Alaris.Simulation\Alaris.Simulation.csproj", "{E9F28E1D-68AF-4FC0-BA7C-BF01C544C596}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Alaris.Strategy", "src\Alaris.Strategy\Alaris.Strategy.csproj", "{57B7C6A2-D825-4490-A4F7-2E0559DE0A0B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Alaris.Core", "Alaris.Core\Alaris.Core.csproj", "{4DFFAAA3-A5F0-4326-978F-BD0834DBAC43}"
+
+# Alaris Application Projects
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Alaris.Host", "src\Alaris.Host\Alaris.Host.csproj", "{0D16E4AB-5173-41B3-B843-896F5EB67DF9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Alaris.Infrastructure", "Alaris.Infrastructure\Alaris.Infrastructure.csproj", "{A986D5C8-5907-4EE4-B9C1-5F4025E12EC6}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Alaris.Algorithm", "src\Alaris.Algorithm\Alaris.Algorithm.csproj", "{C1369B18-3AA3-4D80-A513-0571355F62D8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Alaris.Host", "Alaris.Host\Alaris.Host.csproj", "{0D16E4AB-5173-41B3-B843-896F5EB67DF9}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Alaris.Simulation", "src\Alaris.Simulation\Alaris.Simulation.csproj", "{E9F28E1D-68AF-4FC0-BA7C-BF01C544C596}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Alaris.Algorithm", "Alaris.Algorithm\Alaris.Algorithm.csproj", "{C1369B18-3AA3-4D80-A513-0571355F62D8}"
+
+# Alaris Test Projects
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Alaris.Test", "src\Alaris.Test\Alaris.Test.csproj", "{C2D00E91-48DE-4779-B438-2BC4E2953934}"
 EndProject
+
+# QuantConnect LEAN Dependencies
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Alaris.Lean", "Alaris.Lean", "{580D129D-7C4A-89D6-1565-9C1BAFB2E5D0}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Algorithm", "Algorithm", "{46519B48-EF3C-EE4F-2657-52AD4F05D711}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuantConnect.Algorithm", "Alaris.Lean\Algorithm\QuantConnect.Algorithm.csproj", "{5FD186A5-6B53-4580-95D2-8BB2F00B027E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuantConnect.Algorithm", "lib\Alaris.Lean\Algorithm\QuantConnect.Algorithm.csproj", "{5FD186A5-6B53-4580-95D2-8BB2F00B027E}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Configuration", "Configuration", "{2924F856-EAE2-DF8A-0169-D43526B14C24}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuantConnect.Configuration", "Alaris.Lean\Configuration\QuantConnect.Configuration.csproj", "{F07C3415-FCEF-4C2E-98A8-63D89EF0D780}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuantConnect.Configuration", "lib\Alaris.Lean\Configuration\QuantConnect.Configuration.csproj", "{F07C3415-FCEF-4C2E-98A8-63D89EF0D780}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Logging", "Logging", "{1065CED4-7DB3-351F-845C-D02E7F0C2F94}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuantConnect.Logging", "Alaris.Lean\Logging\QuantConnect.Logging.csproj", "{B8755473-B4AC-43F0-9B96-19F77A997831}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuantConnect.Logging", "lib\Alaris.Lean\Logging\QuantConnect.Logging.csproj", "{B8755473-B4AC-43F0-9B96-19F77A997831}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Indicators", "Indicators", "{258A904C-64E6-097F-9DE2-A838971E4ADC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuantConnect.Indicators", "Alaris.Lean\Indicators\QuantConnect.Indicators.csproj", "{A3FA744B-1F64-4E46-A2D7-E83D369C6656}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuantConnect.Indicators", "lib\Alaris.Lean\Indicators\QuantConnect.Indicators.csproj", "{A3FA744B-1F64-4E46-A2D7-E83D369C6656}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{12EF81E1-E891-4835-BD8D-B4CD745DCE84}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuantConnect", "Alaris.Lean\Common\QuantConnect.csproj", "{093460EE-F4E7-4815-9695-1B36B8213D26}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuantConnect", "lib\Alaris.Lean\Common\QuantConnect.csproj", "{093460EE-F4E7-4815-9695-1B36B8213D26}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Compression", "Compression", "{9BBDAB3A-A2FB-4CC7-8882-33DF9449C738}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuantConnect.Compression", "Alaris.Lean\Compression\QuantConnect.Compression.csproj", "{E72019F2-64EE-49DD-99B9-3A9D7AAAD0C7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuantConnect.Compression", "lib\Alaris.Lean\Compression\QuantConnect.Compression.csproj", "{E72019F2-64EE-49DD-99B9-3A9D7AAAD0C7}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Algorithm.Framework", "Algorithm.Framework", "{5160BCA1-4D24-070A-09C3-BB7F074B48FF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuantConnect.Algorithm.Framework", "Alaris.Lean\Algorithm.Framework\QuantConnect.Algorithm.Framework.csproj", "{ACFBF694-8867-40BC-A3F9-5CDC3F57D5C0}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuantConnect.Algorithm.Framework", "lib\Alaris.Lean\Algorithm.Framework\QuantConnect.Algorithm.Framework.csproj", "{ACFBF694-8867-40BC-A3F9-5CDC3F57D5C0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -22,10 +22,7 @@
                 "BaseUrl": "https://api.polygon.io",
                 "RateLimitPerMinute": 5,
                 "TimeoutSeconds": 30
-            },
-            "FMP": {
-                "BaseUrl": "https://financialmodelingprep.com/api",
-                "TimeoutSeconds": 30
+                // ApiKey loaded from user-secrets or environment: Polygon:ApiKey
             },
             "Treasury": {
                 "BaseUrl": "https://www.treasurydirect.gov/TA_WS/securities",
@@ -52,9 +49,18 @@
             "MinimumLevel": "Information",
             "EnableStructuredLogging": true,
             "LogFilePath": "./logs/alaris.log"
+        },
+        // Session Management
+        "Sessions": {
+            "BasePath": "./ses",
+            "RetentionDays": 90
         }
     },
     // Interactive Brokers Gateway
+    // Credentials loaded from user-secrets or environment:
+    //   InteractiveBrokers:Account
+    //   InteractiveBrokers:Username
+    //   InteractiveBrokers:Password
     "InteractiveBrokers": {
         "Host": "127.0.0.1",
         "Port": 4002, // Paper trading: 4002, Live: 4001
@@ -69,7 +75,7 @@
         "Environment": "live-interactive",
         "AlgorithmTypeName": "Alaris.Algorithm.STLN001A",
         "AlgorithmLanguage": "CSharp",
-        "AlgorithmLocation": "../Alaris.Algorithm/bin/Release/net9.0/Alaris.Algorithm.dll",
+        "AlgorithmLocation": "../Alaris.Algorithm/bin/Release/net10.0/Alaris.Algorithm.dll",
         "DataFolder": "./Data",
         "StartCash": 100000,
         "LiveMode": true

@@ -11,7 +11,9 @@
       "Bash(dotnet clean:*)",
       "Bash(cd:*)",
       "Bash(wsl ls:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(tree:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []
