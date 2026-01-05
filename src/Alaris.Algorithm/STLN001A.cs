@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -42,13 +43,6 @@ using AlarisOptionRight = Alaris.Infrastructure.Data.Model.OptionRight;
 
 namespace Alaris.Algorithm;
 
-public struct OptionParameters
-{
-    public double Strike { get; set; }
-    public double DTE { get; set; }
-    public double ImpliedVolatility { get; set; }
-    public bool IsCall { get; set; }
-}
 /// <summary>
 /// Alaris Earnings Volatility Trading Algorithm.
 /// </summary>
@@ -80,28 +74,12 @@ public struct OptionParameters
 /// </remarks>
 public sealed class STLN001A : QCAlgorithm
 {
-    // Configuration Constants (Atilgan 2014)
-    
-    /// <summary>Target days before earnings for entry.</summary>
-    private const int DaysBeforeEarnings = 6;
-    
-    /// <summary>Minimum 30-day average dollar volume.</summary>
-    private const decimal MinimumDollarVolume = 1_500_000m;
-    
-    /// <summary>Minimum share price for consideration.</summary>
-    private const decimal MinimumPrice = 5.00m;
-    
-    /// <summary>Maximum portfolio allocation to strategy.</summary>
-    private const decimal PortfolioAllocationLimit = 0.80m;
-    
-    /// <summary>Maximum allocation per position.</summary>
-    private const decimal MaxPositionAllocation = 0.06m;
-    
-    /// <summary>Maximum concurrent positions.</summary>
-    private const int MaxConcurrentPositions = 15;
-    
-    /// <summary>Default timeout for external API calls.</summary>
-    private static readonly TimeSpan ApiTimeout = TimeSpan.FromSeconds(30);
+    // Configuration Settings
+    private StrategySettings _strategySettings = StrategySettings.Empty;
+    private BacktestSettings _backtestSettings = BacktestSettings.Empty;
+    private DataProviderSettings _dataProviderSettings = DataProviderSettings.Empty;
+    private ValidationSettings _validationSettings = ValidationSettings.Empty;
+    private FeeSettings _feeSettings = FeeSettings.Empty;
 
     // Alaris Components (Instance-Based)
     
@@ -136,9 +114,7 @@ public sealed class STLN001A : QCAlgorithm
     // Logging
     private ILogger<STLN001A>? _logger;
     private ILoggerFactory? _loggerFactory;
-    
-    // HTTP Client (shared)
-    private HttpClient? _httpClient;
+    private IConfiguration? _configuration;
     
     // Time Provider (backtest-aware)
     private AlarisTimeProvider? _timeProvider;
@@ -157,15 +133,14 @@ public sealed class STLN001A : QCAlgorithm
     {
         // Basic Algorithm Configuration
         
-        // Load configuration first to get backtest dates
+        // Load configuration first to set strategy and backtest settings
         var config = BuildConfiguration();
+        LoadSettings(config);
+        _configuration = config;
         
-        // Read dates from config with sensible defaults (2023-2024 for 2-year Polygon history)
-        var startDate = config.GetValue<DateTime?>("Alaris:Backtest:StartDate") 
-            ?? new DateTime(2023, 1, 1);
-        var endDate = config.GetValue<DateTime?>("Alaris:Backtest:EndDate") 
-            ?? new DateTime(2024, 12, 31);
-        var initialCash = config.GetValue<int?>("Alaris:Backtest:InitialCash") ?? 100_000;
+        var startDate = _backtestSettings.StartDate;
+        var endDate = _backtestSettings.EndDate;
+        var initialCash = _backtestSettings.InitialCash;
         
         // CLI can override via environment variables (set by Alaris.Application)
         var envStart = Environment.GetEnvironmentVariable("ALARIS_BACKTEST_STARTDATE");
@@ -179,6 +154,9 @@ public sealed class STLN001A : QCAlgorithm
         {
             endDate = cliEnd;
         }
+
+        if (endDate <= startDate)
+            throw new InvalidOperationException("Backtest EndDate must be after StartDate.");
         
         SetStartDate(startDate);
         SetEndDate(endDate);
@@ -191,7 +169,7 @@ public sealed class STLN001A : QCAlgorithm
         SetBenchmark("SPY");
         
         // Set warmup period for historical data preloading (required for History() to work)
-        SetWarmUp(TimeSpan.FromDays(45), Resolution.Daily);
+        SetWarmUp(TimeSpan.FromDays(_backtestSettings.WarmUpDays), Resolution.Daily);
         
         // Pre-subscribe to session symbols for backtest validation
         // Use symbols from the session (set via ALARIS_SESSION_SYMBOLS env var)
@@ -228,10 +206,10 @@ public sealed class STLN001A : QCAlgorithm
         Log("STLN001A: Alaris Earnings Algorithm Initialised");
         Log($"  Start Date: {StartDate:yyyy-MM-dd}");
         Log($"  Cash: {Portfolio.Cash:C}");
-        Log($"  Target Days Before Earnings: {DaysBeforeEarnings}");
-        Log($"  Min Dollar Volume: {MinimumDollarVolume:C}");
-        Log($"  Max Portfolio Allocation: {PortfolioAllocationLimit:P0}");
-        Log($"  Max Position Allocation: {MaxPositionAllocation:P0}");
+        Log($"  Target Days Before Earnings: {_strategySettings.DaysBeforeEarningsMin}-{_strategySettings.DaysBeforeEarningsMax}");
+        Log($"  Min Dollar Volume: {_strategySettings.MinimumDollarVolume:C}");
+        Log($"  Max Portfolio Allocation: {_strategySettings.PortfolioAllocationLimit:P0}");
+        Log($"  Max Position Allocation: {_strategySettings.MaxPositionAllocation:P0}");
         Log("═══════════════════════════════════════════════════════════════════");
     }
 
@@ -245,9 +223,6 @@ public sealed class STLN001A : QCAlgorithm
         Log($"  Final Portfolio Value: {Portfolio.TotalPortfolioValue:C}");
         Log($"  Total Trades Executed: {Transactions.OrdersCount}");
         Log("═══════════════════════════════════════════════════════════════════");
-        
-        // Dispose HTTP client
-        _httpClient?.Dispose();
         
         base.OnEndOfAlgorithm();
     }
@@ -276,17 +251,9 @@ public sealed class STLN001A : QCAlgorithm
     /// </summary>
     private void InitialiseDataProviders()
     {
-        // Create shared HTTP client with sensible defaults
-        _httpClient = new HttpClient
-        {
-            Timeout = ApiTimeout
-        };
-        
-        // Load configuration
-        var configuration = BuildConfiguration();
-        
         // Initialise market data provider (Polygon) with Refit
-        var polygonHttpClient = new HttpClient { BaseAddress = new Uri("https://api.polygon.io"), Timeout = ApiTimeout };
+        var configuration = _configuration ?? BuildConfiguration();
+        var polygonHttpClient = new HttpClient { BaseAddress = _dataProviderSettings.PolygonBaseUri, Timeout = _dataProviderSettings.PolygonTimeout };
         polygonHttpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Alaris/1.0 (Quantitative Trading System)");
         IPolygonApi polygonApi = RestService.For<IPolygonApi>(polygonHttpClient);
         _marketDataProvider = new PolygonApiClient(
@@ -295,7 +262,7 @@ public sealed class STLN001A : QCAlgorithm
             _loggerFactory!.CreateLogger<PolygonApiClient>());
         
         // Initialise earnings provider (NASDAQ - free, no rate limits) with Refit
-        var nasdaqHttpClient = new HttpClient { BaseAddress = new Uri("https://api.nasdaq.com"), Timeout = ApiTimeout };
+        var nasdaqHttpClient = new HttpClient { BaseAddress = _dataProviderSettings.NasdaqBaseUri, Timeout = _dataProviderSettings.NasdaqTimeout };
         nasdaqHttpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
         nasdaqHttpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         INasdaqCalendarApi nasdaqApi = RestService.For<INasdaqCalendarApi>(nasdaqHttpClient);
@@ -310,7 +277,7 @@ public sealed class STLN001A : QCAlgorithm
             Log("STLN001A: Earnings provider set to cache-only mode (backtest)");
         }
         // Initialise risk-free rate provider (Treasury Direct) with Refit
-        var treasuryHttpClient = new HttpClient { BaseAddress = new Uri("https://www.treasurydirect.gov/TA_WS/securities"), Timeout = ApiTimeout };
+        var treasuryHttpClient = new HttpClient { BaseAddress = _dataProviderSettings.TreasuryBaseUri, Timeout = _dataProviderSettings.TreasuryTimeout };
         treasuryHttpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Alaris/1.0 (Quantitative Trading System)");
         ITreasuryDirectApi treasuryApi = RestService.For<ITreasuryDirectApi>(treasuryHttpClient);
         _riskFreeRateProvider = new TreasuryDirectRateProvider(
@@ -391,9 +358,9 @@ public sealed class STLN001A : QCAlgorithm
     {
         // Fee model for IBKR
         _feeModel = new STCS005A(
-            feePerContract: 0.65,
-            exchangeFeePerContract: 0.30,
-            regulatoryFeePerContract: 0.02,
+            feePerContract: Convert.ToDouble(_feeSettings.PerContract),
+            exchangeFeePerContract: Convert.ToDouble(_feeSettings.ExchangePerContract),
+            regulatoryFeePerContract: Convert.ToDouble(_feeSettings.RegulatoryPerContract),
             logger: _loggerFactory!.CreateLogger<STCS005A>());
         
         // Cost validator (signal survives costs)
@@ -403,21 +370,21 @@ public sealed class STLN001A : QCAlgorithm
         
         // Vega correlation analyser
         _vegaAnalyser = new STHD001A(
-            maxAcceptableCorrelation: 0.70,
-            minimumObservations: 20,
+            maxAcceptableCorrelation: _validationSettings.MaxVegaCorrelation,
+            minimumObservations: _validationSettings.MinimumVegaObservations,
             logger: _loggerFactory!.CreateLogger<STHD001A>());
         
         // Liquidity validator
         _liquidityValidator = new STCS008A(
-            maxPositionToVolumeRatio: 0.05,
-            maxPositionToOpenInterestRatio: 0.02,
+            maxPositionToVolumeRatio: _validationSettings.MaxPositionToVolumeRatio,
+            maxPositionToOpenInterestRatio: _validationSettings.MaxPositionToOpenInterestRatio,
             logger: _loggerFactory!.CreateLogger<STCS008A>());
         
         // Gamma risk manager
         _gammaRiskManager = new STHD003A(
-            deltaRehedgeThreshold: 0.10,
-            gammaWarningThreshold: -0.05,
-            moneynessAlertThreshold: 0.03,
+            deltaRehedgeThreshold: _validationSettings.DeltaRehedgeThreshold,
+            gammaWarningThreshold: _validationSettings.GammaWarningThreshold,
+            moneynessAlertThreshold: _validationSettings.MoneynessAlertThreshold,
             logger: _loggerFactory!.CreateLogger<STHD003A>());
         
         // Production validator (orchestrates all checks)
@@ -444,11 +411,11 @@ public sealed class STLN001A : QCAlgorithm
         var polygonUniverseSelector = new STUN001B(
             _earningsProvider!,
             dataPath,
-            daysBeforeEarningsMin: DaysBeforeEarnings - 1,
-            daysBeforeEarningsMax: DaysBeforeEarnings + 1,
-            minimumDollarVolume: MinimumDollarVolume,
-            minimumPrice: MinimumPrice,
-            maxFinalSymbols: 50,
+            daysBeforeEarningsMin: _strategySettings.DaysBeforeEarningsMin,
+            daysBeforeEarningsMax: _strategySettings.DaysBeforeEarningsMax,
+            minimumDollarVolume: _strategySettings.MinimumDollarVolume,
+            minimumPrice: _strategySettings.MinimumPrice,
+            maxFinalSymbols: _strategySettings.MaxUniverseSymbols,
             _loggerFactory!.CreateLogger<STUN001B>());
         
         // Register universe with LEAN
@@ -512,10 +479,10 @@ public sealed class STLN001A : QCAlgorithm
     {
         Schedule.On(
             DateRules.EveryDay(),
-            TimeRules.At(9, 31),  // 9:31 AM ET
+            TimeRules.At(_strategySettings.EvaluationTimeHour, _strategySettings.EvaluationTimeMinute),
             EvaluatePositions);
-        
-        Log("STLN001A: Scheduled daily evaluation at 9:31 AM ET");
+
+        Log($"STLN001A: Scheduled daily evaluation at {_strategySettings.EvaluationTimeHour:D2}:{_strategySettings.EvaluationTimeMinute:D2} ET");
     }
 
     /// <summary>
@@ -558,6 +525,68 @@ public sealed class STLN001A : QCAlgorithm
         return System.IO.Directory.GetCurrentDirectory();
     }
 
+    /// <summary>
+    /// Loads configuration-backed settings with validation.
+    /// </summary>
+    private void LoadSettings(IConfiguration configuration)
+    {
+        _strategySettings = new StrategySettings(
+            DaysBeforeEarningsMin: GetRequiredInt(configuration, "Alaris:Strategy:DaysBeforeEarningsMin"),
+            DaysBeforeEarningsMax: GetRequiredInt(configuration, "Alaris:Strategy:DaysBeforeEarningsMax"),
+            MinimumDollarVolume: GetRequiredDecimal(configuration, "Alaris:Strategy:MinimumDollarVolume"),
+            MinimumPrice: GetRequiredDecimal(configuration, "Alaris:Strategy:MinimumPrice"),
+            PortfolioAllocationLimit: GetRequiredDecimal(configuration, "Alaris:Strategy:PortfolioAllocationLimit"),
+            MaxPositionAllocation: GetRequiredDecimal(configuration, "Alaris:Strategy:MaxPositionAllocation"),
+            MaxConcurrentPositions: GetRequiredInt(configuration, "Alaris:Strategy:MaxConcurrentPositions"),
+            MaxUniverseSymbols: GetRequiredInt(configuration, "Alaris:Strategy:MaxUniverseSymbols"),
+            MaxCoarseSymbols: GetRequiredInt(configuration, "Alaris:Strategy:MaxCoarseSymbols"),
+            EvaluationTimeHour: GetRequiredInt(configuration, "Alaris:Strategy:EvaluationTimeHour"),
+            EvaluationTimeMinute: GetRequiredInt(configuration, "Alaris:Strategy:EvaluationTimeMinute"),
+            RealisedVolatilityWindowDays: GetRequiredInt(configuration, "Alaris:Strategy:RealisedVolatilityWindowDays"),
+            DefaultImpliedVolatility: GetRequiredDouble(configuration, "Alaris:Strategy:DefaultImpliedVolatility"));
+        _strategySettings.Validate();
+
+        _backtestSettings = new BacktestSettings(
+            StartDate: GetRequiredDateTime(configuration, "Alaris:Backtest:StartDate"),
+            EndDate: GetRequiredDateTime(configuration, "Alaris:Backtest:EndDate"),
+            InitialCash: GetRequiredDecimal(configuration, "Alaris:Backtest:InitialCash"),
+            WarmUpDays: GetRequiredInt(configuration, "Alaris:Backtest:WarmUpDays"),
+            HistoryLookbackDays: GetRequiredInt(configuration, "Alaris:Backtest:HistoryLookbackDays"),
+            EarningsLookaheadDays: GetRequiredInt(configuration, "Alaris:Backtest:EarningsLookaheadDays"),
+            EarningsLookbackDays: GetRequiredInt(configuration, "Alaris:Backtest:EarningsLookbackDays"),
+            EarningsQueryTimeout: TimeSpan.FromSeconds(GetRequiredInt(configuration, "Alaris:Backtest:EarningsQueryTimeoutSeconds")));
+        _backtestSettings.Validate();
+        if (_backtestSettings.HistoryLookbackDays <= _strategySettings.RealisedVolatilityWindowDays)
+            throw new InvalidOperationException("HistoryLookbackDays must exceed RealisedVolatilityWindowDays.");
+
+        _dataProviderSettings = new DataProviderSettings(
+            PolygonBaseUri: GetRequiredUri(configuration, "Alaris:DataProviders:Polygon:BaseUrl"),
+            PolygonTimeout: TimeSpan.FromSeconds(GetRequiredInt(configuration, "Alaris:DataProviders:Polygon:TimeoutSeconds")),
+            NasdaqBaseUri: GetRequiredUri(configuration, "Alaris:DataProviders:Nasdaq:BaseUrl"),
+            NasdaqTimeout: TimeSpan.FromSeconds(GetRequiredInt(configuration, "Alaris:DataProviders:Nasdaq:TimeoutSeconds")),
+            TreasuryBaseUri: GetRequiredUri(configuration, "Alaris:DataProviders:Treasury:BaseUrl"),
+            TreasuryTimeout: TimeSpan.FromSeconds(GetRequiredInt(configuration, "Alaris:DataProviders:Treasury:TimeoutSeconds")),
+            MarketDataTimeout: TimeSpan.FromSeconds(GetRequiredInt(configuration, "Alaris:DataProviders:MarketDataTimeoutSeconds")),
+            ExecutionQuoteTimeout: TimeSpan.FromSeconds(GetRequiredInt(configuration, "Alaris:DataProviders:ExecutionQuoteTimeoutSeconds")));
+        _dataProviderSettings.Validate();
+
+        _validationSettings = new ValidationSettings(
+            MaxVegaCorrelation: GetRequiredDouble(configuration, "Alaris:Validation:MaxVegaCorrelation"),
+            MinimumVegaObservations: GetRequiredInt(configuration, "Alaris:Validation:MinimumVegaObservations"),
+            MaxPositionToVolumeRatio: GetRequiredDouble(configuration, "Alaris:Validation:MaxPositionToVolumeRatio"),
+            MaxPositionToOpenInterestRatio: GetRequiredDouble(configuration, "Alaris:Validation:MaxPositionToOpenInterestRatio"),
+            DeltaRehedgeThreshold: GetRequiredDouble(configuration, "Alaris:Validation:DeltaRehedgeThreshold"),
+            GammaWarningThreshold: GetRequiredDouble(configuration, "Alaris:Validation:GammaWarningThreshold"),
+            MoneynessAlertThreshold: GetRequiredDouble(configuration, "Alaris:Validation:MoneynessAlertThreshold"));
+        _validationSettings.Validate();
+
+        _feeSettings = new FeeSettings(
+            PerContract: GetRequiredDecimal(configuration, "Alaris:Fees:PerContract"),
+            ExchangePerContract: GetRequiredDecimal(configuration, "Alaris:Fees:ExchangePerContract"),
+            RegulatoryPerContract: GetRequiredDecimal(configuration, "Alaris:Fees:RegulatoryPerContract"));
+        _feeSettings.Validate();
+    }
+
     // Main Strategy Logic
     
     /// <summary>
@@ -579,14 +608,14 @@ public sealed class STLN001A : QCAlgorithm
         try
         {
             // Check portfolio allocation limit
-            if (GetCurrentAllocation() >= PortfolioAllocationLimit)
+            if (GetCurrentAllocation() >= _strategySettings.PortfolioAllocationLimit)
             {
                 Log("STLN001A: Portfolio allocation limit reached, skipping new entries");
                 return;
             }
             
             // Check position count limit
-            if (_activePositions.Count >= MaxConcurrentPositions)
+            if (_activePositions.Count >= _strategySettings.MaxConcurrentPositions)
             {
                 Log("STLN001A: Maximum concurrent positions reached, skipping new entries");
                 return;
@@ -689,7 +718,7 @@ public sealed class STLN001A : QCAlgorithm
         MarketDataSnapshot snapshot;
         try
         {
-            using var cts = new CancellationTokenSource(ApiTimeout);
+            using var cts = new CancellationTokenSource(_dataProviderSettings.MarketDataTimeout);
             // Pass Time (simulation time) for consistency, even in live mode
             snapshot = _dataBridge!.GetMarketDataSnapshotAsync(ticker, Time, cts.Token)
                 .GetAwaiter().GetResult();
@@ -714,8 +743,8 @@ public sealed class STLN001A : QCAlgorithm
         // Phase 2: Realised Volatility Calculation
         
         var priceBars = ConvertToPriceBars(snapshot.HistoricalBars);
-        var rv = _yangZhangEstimator!.Calculate(priceBars, 30, true);
-        Log($"  {ticker}: 30-day RV = {rv:P2}");
+        var rv = _yangZhangEstimator!.Calculate(priceBars, _strategySettings.RealisedVolatilityWindowDays, true);
+        Log($"  {ticker}: {_strategySettings.RealisedVolatilityWindowDays}-day RV = {rv:P2}");
         
         // Phase 3: Term Structure Analysis
         
@@ -772,7 +801,7 @@ public sealed class STLN001A : QCAlgorithm
         DTmd002A? spreadQuote;
         try
         {
-            using var cts = new CancellationTokenSource(ApiTimeout);
+            using var cts = new CancellationTokenSource(_dataProviderSettings.ExecutionQuoteTimeout);
             spreadQuote = _executionQuoteProvider!.GetDTmd002AAsync(
                 ticker,
                 signal.Strike,
@@ -798,10 +827,12 @@ public sealed class STLN001A : QCAlgorithm
         
         // Phase 7: Position Sizing
         
+        var portfolioValue = Portfolio.TotalPortfolioValue;
+        var spreadMid = spreadQuote.SpreadMid;
         var sizing = _positionSizer!.CalculateFromHistory(
-            portfolioValue: (double)Portfolio.TotalPortfolioValue,
+            portfolioValue: (double)portfolioValue,
             historicalTrades: Array.Empty<Alaris.Strategy.Risk.Trade>(),
-            spreadCost: (double)spreadQuote.SpreadMid,
+            spreadCost: (double)spreadMid,
             signal: signal);
         
         if (sizing.Contracts <= 0)
@@ -810,10 +841,26 @@ public sealed class STLN001A : QCAlgorithm
             return result;
         }
         
-        // Apply position limit from production validation if lower
-        var finalContracts = Math.Min(sizing.Contracts, validation.RecommendedContracts);
-        
-        Log($"  {ticker}: Position size = {finalContracts} contracts ({sizing.AllocationPercent:P2} of portfolio)");
+        var allocationPercent = sizing.AllocationPercent;
+        var maxAllocationPercent = (double)_strategySettings.MaxPositionAllocation;
+        var cappedContracts = sizing.Contracts;
+        if (allocationPercent > maxAllocationPercent && allocationPercent > 0)
+        {
+            var scale = maxAllocationPercent / allocationPercent;
+            cappedContracts = (int)Math.Floor(sizing.Contracts * scale);
+        }
+
+        var finalContracts = Math.Min(cappedContracts, validation.RecommendedContracts);
+        if (finalContracts <= 0)
+        {
+            Log($"  {ticker}: Position sizing reduced to 0 contracts by allocation limits");
+            return result;
+        }
+
+        var effectiveAllocationPercent = cappedContracts < sizing.Contracts && allocationPercent > 0
+            ? maxAllocationPercent
+            : allocationPercent;
+        Log($"  {ticker}: Position size = {finalContracts} contracts ({effectiveAllocationPercent:P2} of portfolio)");
         
         // Phase 8: Order Execution
         
@@ -876,12 +923,16 @@ public sealed class STLN001A : QCAlgorithm
 
         // Step 1: Get historical bars from LEAN (no external API call)
         
-        var historyBars = History<QuantConnect.Data.Market.TradeBar>(symbol, 45, Resolution.Daily);
+        var historyBars = History<QuantConnect.Data.Market.TradeBar>(
+            symbol,
+            _backtestSettings.HistoryLookbackDays,
+            Resolution.Daily);
         var barList = historyBars.ToList();
-        
-        if (barList.Count < 31)
+
+        var minimumBars = _strategySettings.RealisedVolatilityWindowDays + 1;
+        if (barList.Count < minimumBars)
         {
-            Log($"  {ticker}: Insufficient LEAN history ({barList.Count} bars, need 31+)");
+            Log($"  {ticker}: Insufficient LEAN history ({barList.Count} bars, need {minimumBars}+)");
             return result;
         }
 
@@ -901,14 +952,16 @@ public sealed class STLN001A : QCAlgorithm
         EarningsEvent? nextEarnings = null;
         try
         {
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            using var cts = new CancellationTokenSource(_backtestSettings.EarningsQueryTimeout);
             
             // Search for earnings: 2 years before simulation AND up to 90 days after
             // This finds both historical (for Leung-Santoli) and upcoming (for signals)
+            var lookaheadDays = _backtestSettings.EarningsLookaheadDays;
+            var lookbackDays = _backtestSettings.EarningsLookbackDays + lookaheadDays;
             var earnings = _earningsProvider!.GetHistoricalEarningsAsync(
                 ticker,
-                simulationDate.AddDays(90), // Anchor to 90 days AFTER simulation (to capture future earnings)
-                820, // Look back from the anchor (730 + 90)
+                simulationDate.AddDays(lookaheadDays),
+                lookbackDays,
                 cts.Token).GetAwaiter().GetResult();
 
             // Find the next earnings AFTER current simulation date
@@ -943,15 +996,16 @@ public sealed class STLN001A : QCAlgorithm
             Volume = 0 // Not needed for Yang-Zhang RV
         }).ToList();
 
-        var rv = _yangZhangEstimator!.Calculate(priceBars, 30, true);
-        Log($"  {ticker}: 30-day RV = {rv:P2}");
+        var rv = _yangZhangEstimator!.Calculate(priceBars, _strategySettings.RealisedVolatilityWindowDays, true);
+        Log($"  {ticker}: {_strategySettings.RealisedVolatilityWindowDays}-day RV = {rv:P2}");
 
         // Step 4: Signal Generation (simplified for backtest)
         
         // Check if within target window for earnings
-        if (daysToEarnings < 5 || daysToEarnings > 7)
+        if (daysToEarnings < _strategySettings.DaysBeforeEarningsMin
+            || daysToEarnings > _strategySettings.DaysBeforeEarningsMax)
         {
-            Log($"  {ticker}: Not in target window (5-7 days before earnings)");
+            Log($"  {ticker}: Not in target window ({_strategySettings.DaysBeforeEarningsMin}-{_strategySettings.DaysBeforeEarningsMax} days before earnings)");
             return result;
         }
 
@@ -1019,18 +1073,55 @@ public sealed class STLN001A : QCAlgorithm
         // This is a simplified version - full implementation would extract
         // all required parameters from the snapshot and signal
         
+        var spotPrice = snapshot.SpotPrice;
+        var strikePrice = signal.Strike;
+
+        var backMonthVolume = GetBackMonthVolume(snapshot.OptionChain, signal.BackExpiry);
+        var backMonthOpenInterest = GetBackMonthOpenInterest(snapshot.OptionChain, signal.BackExpiry);
+
         return _productionValidator!.Validate(
             signal,
             frontLegParams: CreateOptionParams(signal, true),
             backLegParams: CreateOptionParams(signal, false),
             frontIVHistory: Array.Empty<double>(),  // Would come from historical data
             backIVHistory: Array.Empty<double>(),
-            backMonthVolume: (int)(snapshot.AverageVolume30Day * 0.1m),  // Estimate
-            backMonthOpenInterest: 1000,  // Would come from options chain
-            spotPrice: (double)snapshot.SpotPrice,
-            strikePrice: (double)signal.Strike,
+            backMonthVolume: backMonthVolume,
+            backMonthOpenInterest: backMonthOpenInterest,
+            spotPrice: Convert.ToDouble(spotPrice),
+            strikePrice: Convert.ToDouble(strikePrice),
             spreadGreeks: ComputeSpreadGreeks(signal, snapshot),
             daysToEarnings: (signal.EarningsDate - Time).Days);
+    }
+
+    private static int GetBackMonthVolume(OptionChainSnapshot optionChain, DateTime backExpiry)
+    {
+        long totalVolume = 0;
+        foreach (var contract in optionChain.Contracts)
+        {
+            if (contract.Expiration.Date != backExpiry.Date)
+                continue;
+            totalVolume += contract.Volume;
+        }
+
+        if (totalVolume <= 0)
+            return 0;
+        return totalVolume > int.MaxValue ? int.MaxValue : (int)totalVolume;
+    }
+
+    private static int GetBackMonthOpenInterest(OptionChainSnapshot optionChain, DateTime backExpiry)
+    {
+        long maxOpenInterest = 0;
+        foreach (var contract in optionChain.Contracts)
+        {
+            if (contract.Expiration.Date != backExpiry.Date)
+                continue;
+            if (contract.OpenInterest > maxOpenInterest)
+                maxOpenInterest = contract.OpenInterest;
+        }
+
+        if (maxOpenInterest <= 0)
+            return 0;
+        return maxOpenInterest > int.MaxValue ? int.MaxValue : (int)maxOpenInterest;
     }
 
     /// <summary>
@@ -1120,7 +1211,7 @@ public sealed class STLN001A : QCAlgorithm
             var avgIV = group
                 .Where(c => c.ImpliedVolatility.HasValue && c.ImpliedVolatility > 0)
                 .Select(c => (double)c.ImpliedVolatility!.Value)
-                .DefaultIfEmpty(0.2) // Default 20% IV if no data
+                .DefaultIfEmpty(_strategySettings.DefaultImpliedVolatility)
                 .Average();
             
             points.Add(new STTM001APoint
@@ -1264,6 +1355,235 @@ public sealed class STLN001A : QCAlgorithm
         public bool Success { get; set; }
         public int OrderId { get; set; }
         public string Message { get; set; } = string.Empty;
+    }
+
+    private sealed record StrategySettings(
+        int DaysBeforeEarningsMin,
+        int DaysBeforeEarningsMax,
+        decimal MinimumDollarVolume,
+        decimal MinimumPrice,
+        decimal PortfolioAllocationLimit,
+        decimal MaxPositionAllocation,
+        int MaxConcurrentPositions,
+        int MaxUniverseSymbols,
+        int MaxCoarseSymbols,
+        int EvaluationTimeHour,
+        int EvaluationTimeMinute,
+        int RealisedVolatilityWindowDays,
+        double DefaultImpliedVolatility)
+    {
+        public static StrategySettings Empty => new(
+            0, 0, 0m, 0m, 0m, 0m, 0, 0, 0, 0, 0, 0, 0.0);
+
+        public void Validate()
+        {
+            if (DaysBeforeEarningsMin <= 0)
+                throw new InvalidOperationException("DaysBeforeEarningsMin must be positive.");
+            if (DaysBeforeEarningsMax < DaysBeforeEarningsMin)
+                throw new InvalidOperationException("DaysBeforeEarningsMax must be greater than or equal to DaysBeforeEarningsMin.");
+            if (MinimumDollarVolume <= 0m)
+                throw new InvalidOperationException("MinimumDollarVolume must be positive.");
+            if (MinimumPrice <= 0m)
+                throw new InvalidOperationException("MinimumPrice must be positive.");
+            if (PortfolioAllocationLimit <= 0m || PortfolioAllocationLimit > 1m)
+                throw new InvalidOperationException("PortfolioAllocationLimit must be between 0 and 1.");
+            if (MaxPositionAllocation <= 0m || MaxPositionAllocation > 1m)
+                throw new InvalidOperationException("MaxPositionAllocation must be between 0 and 1.");
+            if (MaxConcurrentPositions <= 0)
+                throw new InvalidOperationException("MaxConcurrentPositions must be positive.");
+            if (MaxUniverseSymbols <= 0)
+                throw new InvalidOperationException("MaxUniverseSymbols must be positive.");
+            if (MaxCoarseSymbols <= 0)
+                throw new InvalidOperationException("MaxCoarseSymbols must be positive.");
+            if (MaxUniverseSymbols > MaxCoarseSymbols)
+                throw new InvalidOperationException("MaxUniverseSymbols must not exceed MaxCoarseSymbols.");
+            if (EvaluationTimeHour < 0 || EvaluationTimeHour > 23)
+                throw new InvalidOperationException("EvaluationTimeHour must be between 0 and 23.");
+            if (EvaluationTimeMinute < 0 || EvaluationTimeMinute > 59)
+                throw new InvalidOperationException("EvaluationTimeMinute must be between 0 and 59.");
+            if (RealisedVolatilityWindowDays <= 0)
+                throw new InvalidOperationException("RealisedVolatilityWindowDays must be positive.");
+            if (DefaultImpliedVolatility <= 0)
+                throw new InvalidOperationException("DefaultImpliedVolatility must be positive.");
+        }
+    }
+
+    private sealed record BacktestSettings(
+        DateTime StartDate,
+        DateTime EndDate,
+        decimal InitialCash,
+        int WarmUpDays,
+        int HistoryLookbackDays,
+        int EarningsLookaheadDays,
+        int EarningsLookbackDays,
+        TimeSpan EarningsQueryTimeout)
+    {
+        public static BacktestSettings Empty => new(
+            DateTime.MinValue,
+            DateTime.MinValue,
+            0m,
+            0,
+            0,
+            0,
+            0,
+            TimeSpan.Zero);
+
+        public void Validate()
+        {
+            if (StartDate == DateTime.MinValue || EndDate == DateTime.MinValue)
+                throw new InvalidOperationException("Backtest StartDate and EndDate must be set.");
+            if (EndDate <= StartDate)
+                throw new InvalidOperationException("Backtest EndDate must be after StartDate.");
+            if (InitialCash <= 0m)
+                throw new InvalidOperationException("InitialCash must be positive.");
+            if (WarmUpDays <= 0)
+                throw new InvalidOperationException("WarmUpDays must be positive.");
+            if (HistoryLookbackDays <= 0)
+                throw new InvalidOperationException("HistoryLookbackDays must be positive.");
+            if (EarningsLookaheadDays < 0)
+                throw new InvalidOperationException("EarningsLookaheadDays must be non-negative.");
+            if (EarningsLookbackDays <= 0)
+                throw new InvalidOperationException("EarningsLookbackDays must be positive.");
+            if (EarningsQueryTimeout <= TimeSpan.Zero)
+                throw new InvalidOperationException("EarningsQueryTimeout must be positive.");
+        }
+    }
+
+    private sealed record DataProviderSettings(
+        Uri PolygonBaseUri,
+        TimeSpan PolygonTimeout,
+        Uri NasdaqBaseUri,
+        TimeSpan NasdaqTimeout,
+        Uri TreasuryBaseUri,
+        TimeSpan TreasuryTimeout,
+        TimeSpan MarketDataTimeout,
+        TimeSpan ExecutionQuoteTimeout)
+    {
+        public static DataProviderSettings Empty => new(
+            new Uri("http://localhost"),
+            TimeSpan.Zero,
+            new Uri("http://localhost"),
+            TimeSpan.Zero,
+            new Uri("http://localhost"),
+            TimeSpan.Zero,
+            TimeSpan.Zero,
+            TimeSpan.Zero);
+
+        public void Validate()
+        {
+            if (!PolygonBaseUri.IsAbsoluteUri)
+                throw new InvalidOperationException("PolygonBaseUri must be absolute.");
+            if (!NasdaqBaseUri.IsAbsoluteUri)
+                throw new InvalidOperationException("NasdaqBaseUri must be absolute.");
+            if (!TreasuryBaseUri.IsAbsoluteUri)
+                throw new InvalidOperationException("TreasuryBaseUri must be absolute.");
+            if (PolygonTimeout <= TimeSpan.Zero)
+                throw new InvalidOperationException("PolygonTimeout must be positive.");
+            if (NasdaqTimeout <= TimeSpan.Zero)
+                throw new InvalidOperationException("NasdaqTimeout must be positive.");
+            if (TreasuryTimeout <= TimeSpan.Zero)
+                throw new InvalidOperationException("TreasuryTimeout must be positive.");
+            if (MarketDataTimeout <= TimeSpan.Zero)
+                throw new InvalidOperationException("MarketDataTimeout must be positive.");
+            if (ExecutionQuoteTimeout <= TimeSpan.Zero)
+                throw new InvalidOperationException("ExecutionQuoteTimeout must be positive.");
+        }
+    }
+
+    private sealed record ValidationSettings(
+        double MaxVegaCorrelation,
+        int MinimumVegaObservations,
+        double MaxPositionToVolumeRatio,
+        double MaxPositionToOpenInterestRatio,
+        double DeltaRehedgeThreshold,
+        double GammaWarningThreshold,
+        double MoneynessAlertThreshold)
+    {
+        public static ValidationSettings Empty => new(0, 0, 0, 0, 0, 0, 0);
+
+        public void Validate()
+        {
+            if (MaxVegaCorrelation <= 0 || MaxVegaCorrelation > 1)
+                throw new InvalidOperationException("MaxVegaCorrelation must be between 0 and 1.");
+            if (MinimumVegaObservations <= 0)
+                throw new InvalidOperationException("MinimumVegaObservations must be positive.");
+            if (MaxPositionToVolumeRatio <= 0 || MaxPositionToVolumeRatio > 1)
+                throw new InvalidOperationException("MaxPositionToVolumeRatio must be between 0 and 1.");
+            if (MaxPositionToOpenInterestRatio <= 0 || MaxPositionToOpenInterestRatio > 1)
+                throw new InvalidOperationException("MaxPositionToOpenInterestRatio must be between 0 and 1.");
+            if (DeltaRehedgeThreshold <= 0)
+                throw new InvalidOperationException("DeltaRehedgeThreshold must be positive.");
+            if (GammaWarningThreshold >= 0)
+                throw new InvalidOperationException("GammaWarningThreshold must be negative.");
+            if (MoneynessAlertThreshold <= 0)
+                throw new InvalidOperationException("MoneynessAlertThreshold must be positive.");
+        }
+    }
+
+    private sealed record FeeSettings(
+        decimal PerContract,
+        decimal ExchangePerContract,
+        decimal RegulatoryPerContract)
+    {
+        public static FeeSettings Empty => new(0m, 0m, 0m);
+
+        public void Validate()
+        {
+            if (PerContract < 0m)
+                throw new InvalidOperationException("PerContract must be non-negative.");
+            if (ExchangePerContract < 0m)
+                throw new InvalidOperationException("ExchangePerContract must be non-negative.");
+            if (RegulatoryPerContract < 0m)
+                throw new InvalidOperationException("RegulatoryPerContract must be non-negative.");
+        }
+    }
+
+    private static string GetRequiredValue(IConfiguration configuration, string key)
+    {
+        var value = configuration[key];
+        if (string.IsNullOrWhiteSpace(value))
+            throw new InvalidOperationException($"Missing configuration value: {key}");
+        return value;
+    }
+
+    private static int GetRequiredInt(IConfiguration configuration, string key)
+    {
+        var value = GetRequiredValue(configuration, key);
+        if (!int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed))
+            throw new InvalidOperationException($"Invalid integer for {key}: {value}");
+        return parsed;
+    }
+
+    private static double GetRequiredDouble(IConfiguration configuration, string key)
+    {
+        var value = GetRequiredValue(configuration, key);
+        if (!double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed))
+            throw new InvalidOperationException($"Invalid double for {key}: {value}");
+        return parsed;
+    }
+
+    private static decimal GetRequiredDecimal(IConfiguration configuration, string key)
+    {
+        var value = GetRequiredValue(configuration, key);
+        if (!decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed))
+            throw new InvalidOperationException($"Invalid decimal for {key}: {value}");
+        return parsed;
+    }
+
+    private static DateTime GetRequiredDateTime(IConfiguration configuration, string key)
+    {
+        var value = GetRequiredValue(configuration, key);
+        if (!DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var parsed))
+            throw new InvalidOperationException($"Invalid date for {key}: {value}");
+        return parsed;
+    }
+
+    private static Uri GetRequiredUri(IConfiguration configuration, string key)
+    {
+        var value = GetRequiredValue(configuration, key);
+        if (!Uri.TryCreate(value, UriKind.Absolute, out var parsed))
+            throw new InvalidOperationException($"Invalid URI for {key}: {value}");
+        return parsed;
     }
 }
 

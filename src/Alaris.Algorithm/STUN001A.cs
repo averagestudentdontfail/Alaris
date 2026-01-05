@@ -4,7 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using System.Threading.Tasks;
 using QuantConnect;
 using QuantConnect.Algorithm;
 using QuantConnect.Algorithm.Framework.Selection;
@@ -43,11 +42,12 @@ public sealed class STUN001A : FundamentalUniverseSelectionModel
     private readonly int _daysBeforeEarningsMax;
     private readonly decimal _minimumDollarVolume;
     private readonly decimal _minimumPrice;
+    private readonly int _maxCoarseSymbols;
     private readonly int _maxSymbols;
     
     // Cache to avoid redundant API calls
     private DateTime _lastEarningsQueryDate;
-    private HashSet<string> _cachedEarningsSymbols = new();
+    private HashSet<string> _cachedEarningsSymbols = new(StringComparer.OrdinalIgnoreCase);
     
     // LoggerMessage delegates
     private static readonly Action<ILogger, DateTime, DateTime, int, Exception?> LogEarningsQuery =
@@ -86,10 +86,17 @@ public sealed class STUN001A : FundamentalUniverseSelectionModel
     {
         _earningsProvider = earningsProvider
             ?? throw new ArgumentNullException(nameof(earningsProvider));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(daysBeforeEarningsMin, nameof(daysBeforeEarningsMin));
+        ArgumentOutOfRangeException.ThrowIfLessThan(daysBeforeEarningsMax, daysBeforeEarningsMin, nameof(daysBeforeEarningsMax));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(minimumDollarVolume, nameof(minimumDollarVolume));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(minimumPrice, nameof(minimumPrice));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxCoarseSymbols, nameof(maxCoarseSymbols));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxFinalSymbols, nameof(maxFinalSymbols));
         _daysBeforeEarningsMin = daysBeforeEarningsMin;
         _daysBeforeEarningsMax = daysBeforeEarningsMax;
         _minimumDollarVolume = minimumDollarVolume;
         _minimumPrice = minimumPrice;
+        _maxCoarseSymbols = maxCoarseSymbols;
         _maxSymbols = maxFinalSymbols;
         _logger = logger;
     }
@@ -101,7 +108,7 @@ public sealed class STUN001A : FundamentalUniverseSelectionModel
     {
         return $"Days before earnings: [{_daysBeforeEarningsMin}, {_daysBeforeEarningsMax}], " +
                $"Min volume: {_minimumDollarVolume:C0}, Min price: {_minimumPrice:C2}, " +
-               $"Max symbols: {_maxSymbols}";
+               $"Max coarse: {_maxCoarseSymbols}, Max symbols: {_maxSymbols}";
     }
 
     /// <summary>
@@ -118,10 +125,17 @@ public sealed class STUN001A : FundamentalUniverseSelectionModel
         // Step 1: Apply fundamental filters (volume, price)
         var filtered = fundamental
             .Where(f => f.HasFundamentalData)
-            .Where(f => f.DollarVolume >= (double)_minimumDollarVolume)
+            .Select(f => new
+            {
+                Fundamental = f,
+                DollarVolume = (decimal)f.DollarVolume,
+                Price = (decimal)f.Price
+            })
+            .Where(f => f.DollarVolume >= _minimumDollarVolume)
             .Where(f => f.Price >= _minimumPrice)
             .OrderByDescending(f => f.DollarVolume)
-            .Take(500) // Pre-filter to top 500 by volume
+            .Take(_maxCoarseSymbols)
+            .Select(f => f.Fundamental)
             .ToList();
         
         // Step 2: Query earnings calendar (with caching)
@@ -158,10 +172,17 @@ public sealed class STUN001A : FundamentalUniverseSelectionModel
         // Step 1: Apply coarse filters (volume, price, has fundamental data)
         var coarseFiltered = coarse
             .Where(c => c.HasFundamentalData)
-            .Where(c => c.DollarVolume >= (double)_minimumDollarVolume)
+            .Select(c => new
+            {
+                Coarse = c,
+                DollarVolume = (decimal)c.DollarVolume,
+                Price = (decimal)c.Price
+            })
+            .Where(c => c.DollarVolume >= _minimumDollarVolume)
             .Where(c => c.Price >= _minimumPrice)
             .OrderByDescending(c => c.DollarVolume)
-            .Take(500) // Pre-filter to top 500 by volume
+            .Take(_maxCoarseSymbols)
+            .Select(c => c.Coarse)
             .ToList();
         
         // Step 2: Query earnings calendar (with caching)

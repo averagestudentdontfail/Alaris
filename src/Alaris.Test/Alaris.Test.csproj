@@ -10,7 +10,7 @@
     <!-- Suppress documentation warnings and test-specific style warnings -->
     <!-- CA1515: Test classes need to be public for xUnit discovery -->
     <!-- CA2007: ConfigureAwait not needed in test code -->
-    <NoWarn>$(NoWarn);CS1591;IDE0008;IDE0048;CA1515;CA2007;NU1201;NU1510;NU1902;NU1903;NU1904</NoWarn>
+    <NoWarn>$(NoWarn);CS1591;IDE0008;IDE0048;CA1515;CA2007;NU1201;NU1510;NU1902;NU1903;NU1904;NETSDK1206</NoWarn>
   </PropertyGroup>
 
   <!-- xUnit configuration to disable parallel execution (workaround for QuantLib memory issues) -->

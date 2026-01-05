@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 // using System.IO; -- Using fully qualified names due to QuantConnect namespace conflict
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using QuantConnect;
@@ -45,7 +46,7 @@ public sealed class STUN001B : UniverseSelectionModel
     // Universe file cache
     private DateTime _lastUniverseDate;
     private List<UniverseEntry> _cachedUniverse = new();
-    private HashSet<string> _cachedEarningsSymbols = new();
+    private HashSet<string> _cachedEarningsSymbols = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Initialises a new instance of the Polygon-based universe selection model.
@@ -63,6 +64,11 @@ public sealed class STUN001B : UniverseSelectionModel
         _earningsProvider = earningsProvider
             ?? throw new ArgumentNullException(nameof(earningsProvider));
         _dataPath = dataPath ?? throw new ArgumentNullException(nameof(dataPath));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(daysBeforeEarningsMin, nameof(daysBeforeEarningsMin));
+        ArgumentOutOfRangeException.ThrowIfLessThan(daysBeforeEarningsMax, daysBeforeEarningsMin, nameof(daysBeforeEarningsMax));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(minimumDollarVolume, nameof(minimumDollarVolume));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(minimumPrice, nameof(minimumPrice));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxFinalSymbols, nameof(maxFinalSymbols));
         _daysBeforeEarningsMin = daysBeforeEarningsMin;
         _daysBeforeEarningsMax = daysBeforeEarningsMax;
         _minimumDollarVolume = minimumDollarVolume;
@@ -161,7 +167,7 @@ public sealed class STUN001B : UniverseSelectionModel
                 });
             }
             
-            // Note: Filters at lines 197-200 will run but pass due to dummy values.
+            // Session symbols are explicit; filters are not applied in this path.
             return;
         }
 
@@ -208,9 +214,9 @@ public sealed class STUN001B : UniverseSelectionModel
                     {
                         SymbolId = parts[0],
                         Ticker = parts[1].ToUpperInvariant(),
-                        Close = decimal.TryParse(parts[2], out var c) ? c : 0,
-                        Volume = double.TryParse(parts[3], out var v) ? v : 0,
-                        DollarVolume = decimal.TryParse(parts[4], out var dv) ? dv : 0
+                        Close = decimal.TryParse(parts[2], NumberStyles.Number, CultureInfo.InvariantCulture, out var c) ? c : 0,
+                        Volume = double.TryParse(parts[3], NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : 0,
+                        DollarVolume = decimal.TryParse(parts[4], NumberStyles.Number, CultureInfo.InvariantCulture, out var dv) ? dv : 0
                     });
                 }
             }

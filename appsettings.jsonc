@@ -8,24 +8,42 @@
             "MinimumPrice": 5.00,
             "PortfolioAllocationLimit": 0.80,
             "MaxPositionAllocation": 0.06,
-            "MaxConcurrentPositions": 15
+            "MaxConcurrentPositions": 15,
+            "MaxUniverseSymbols": 50,
+            "MaxCoarseSymbols": 500,
+            "EvaluationTimeHour": 9,
+            "EvaluationTimeMinute": 31,
+            "RealisedVolatilityWindowDays": 30,
+            "DefaultImpliedVolatility": 0.20
         },
         // Backtest Configuration
         "Backtest": {
             "StartDate": "2023-01-01",
             "EndDate": "2024-12-31",
-            "InitialCash": 100000
+            "InitialCash": 100000,
+            "WarmUpDays": 45,
+            "HistoryLookbackDays": 45,
+            "EarningsLookaheadDays": 90,
+            "EarningsLookbackDays": 730,
+            "EarningsQueryTimeoutSeconds": 5
         },
         // Data Provider Settings
         "DataProviders": {
+            "MarketDataTimeoutSeconds": 30,
+            "ExecutionQuoteTimeoutSeconds": 30,
             "Polygon": {
                 "BaseUrl": "https://api.polygon.io",
                 "RateLimitPerMinute": 5,
                 "TimeoutSeconds": 30
                 // ApiKey loaded from user-secrets or environment: Polygon:ApiKey
             },
+            "Nasdaq": {
+                "BaseUrl": "https://api.nasdaq.com",
+                "TimeoutSeconds": 30
+            },
             "Treasury": {
                 "BaseUrl": "https://www.treasurydirect.gov/TA_WS/securities",
+                "TimeoutSeconds": 30,
                 "FallbackRiskFreeRate": 0.0525
             }
         },
@@ -35,7 +53,19 @@
             "MinimumOtmPercent": 10,
             "MaxBidAskSpread": 0.50,
             "MinimumOpenInterest": 100,
-            "MaxVegaCorrelation": 0.70
+            "MaxVegaCorrelation": 0.70,
+            "MinimumVegaObservations": 20,
+            "MaxPositionToVolumeRatio": 0.05,
+            "MaxPositionToOpenInterestRatio": 0.02,
+            "DeltaRehedgeThreshold": 0.10,
+            "GammaWarningThreshold": -0.05,
+            "MoneynessAlertThreshold": 0.03
+        },
+        // Execution Fees
+        "Fees": {
+            "PerContract": 0.65,
+            "ExchangePerContract": 0.30,
+            "RegulatoryPerContract": 0.02
         },
         // Risk Controls
         "RiskControls": {
