@@ -1,5 +1,5 @@
 // CRTM005ATests.cs - Unit tests for native Date type
-// Tests date arithmetic, serial number conversion, and QuantLib compatibility
+// Tests date arithmetic and serial number conversion for Alaris date semantics
 
 using Alaris.Core.Time;
 using Xunit;

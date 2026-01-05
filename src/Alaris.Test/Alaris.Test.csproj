@@ -13,7 +13,7 @@
     <NoWarn>$(NoWarn);CS1591;IDE0008;IDE0048;CA1515;CA2007;NU1201;NU1510;NU1902;NU1903;NU1904;NETSDK1206</NoWarn>
   </PropertyGroup>
 
-  <!-- xUnit configuration to disable parallel execution (workaround for QuantLib memory issues) -->
+  <!-- xUnit configuration to disable parallel execution for deterministic tests -->
   <ItemGroup>
     <Content Include="xunit.runner.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -43,60 +43,5 @@
     <ProjectReference Include="../Alaris.Infrastructure/Alaris.Infrastructure.csproj" />
     <ProjectReference Include="../Alaris.Host/Alaris.Host.csproj" />
   </ItemGroup>
-
-  <!-- 
-    Native library copying - CONDITIONAL on file existence.
-    These files are gitignored and only available in local development environments.
-    CI builds will skip these; tests requiring native libs will be skipped at runtime.
-  -->
-  <ItemGroup Condition="Exists('../Alaris.Library/Native/libNQuantLibc.so')">
-    <Content Include="../Alaris.Library/Native/libNQuantLibc.so">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Link>libNQuantLibc.so</Link>
-      <Visible>false</Visible>
-    </Content>
-    <Content Include="../Alaris.Library/Native/libNQuantLibc.so">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Link>NQuantLibc.so</Link>
-      <Visible>false</Visible>
-    </Content>
-  </ItemGroup>
-  
-  <ItemGroup Condition="Exists('../Alaris.Library/Runtime/libQuantLib.so')">
-    <Content Include="../Alaris.Library/Runtime/libQuantLib.so">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Link>libQuantLib.so</Link>
-      <Visible>false</Visible>
-    </Content>
-    <Content Include="../Alaris.Library/Runtime/libQuantLib.so.1">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Link>libQuantLib.so.1</Link>
-      <Visible>false</Visible>
-    </Content>
-    <Content Include="../Alaris.Library/Runtime/libQuantLib.so.1.39.0">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Link>libQuantLib.so.1.39.0</Link>
-      <Visible>false</Visible>
-    </Content>
-  </ItemGroup>
-
-  <!-- Post-build: copy native libraries if they exist (local dev only) -->
-  <Target Name="CopyNativeLibrariesForTests" AfterTargets="Build" Condition="Exists('$(MSBuildProjectDirectory)/../Alaris.Library/Native/')">
-    <ItemGroup>
-      <NativeLibs Include="$(MSBuildProjectDirectory)/../Alaris.Library/Native/*.so" />
-      <RuntimeLibs Include="$(MSBuildProjectDirectory)/../Alaris.Library/Runtime/*.so*" />
-    </ItemGroup>
-    <Copy SourceFiles="@(NativeLibs)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" Condition="'@(NativeLibs)' != ''" />
-    <Copy SourceFiles="@(RuntimeLibs)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" Condition="'@(RuntimeLibs)' != ''" />
-    <Message Text="Copied native libraries to test output: $(OutputPath)" Importance="High" Condition="'@(NativeLibs)' != ''" />
-  </Target>
-
-  <!-- Display library paths for debugging -->
-  <Target Name="DisplayNativeLibraryInfo" BeforeTargets="Build">
-    <Message Text="Native library source: $(MSBuildProjectDirectory)/../Alaris.Library/Native/" Importance="High" />
-    <Message Text="Runtime library source: $(MSBuildProjectDirectory)/../Alaris.Library/Runtime/" Importance="High" />
-    <Message Text="Test output path: $(OutputPath)" Importance="High" />
-    <Message Text="Native libs available: $(Exists('$(MSBuildProjectDirectory)/../Alaris.Library/Native/libNQuantLibc.so'))" Importance="High" />
-  </Target>
 
 </Project>

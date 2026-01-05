@@ -87,7 +87,6 @@ Alaris/
 │   ├── Alaris.Simulation/   # Application layer: backtesting
 │   ├── Alaris.Infrastructure/# Infrastructure: data feeds, persistence
 │   ├── Alaris.Host/         # Presentation: CLI, TUI
-│   ├── Alaris.Library/      # Native bindings
 │   └── Alaris.Test/         # Test suite
 │
 ├── lib/                     # External dependencies
@@ -130,7 +129,6 @@ The documentation is designed to be read in order, building from philosophical f
 
 Prerequisites:
 - .NET 10.0 SDK
-- QuantLib native libraries (for American option pricing)
 
 ```bash
 # Restore dependencies

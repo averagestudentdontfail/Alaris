@@ -45,7 +45,6 @@ flowchart TB
 
     subgraph INFRASTRUCTURE["INFRASTRUCTURE LAYER"]
         Infra["<b>Alaris.Infrastructure</b><br/>Data feeds, persistence, broker integration, messaging<br/>Implements interfaces defined in higher layers"]
-        Library["<b>Alaris.Library</b><br/>Native library bindings (QuantLib SWIG wrappers)"]
     end
 
     PRESENTATION --> APPLICATION
@@ -151,17 +150,6 @@ External system integration:
 
 Dependencies: Alaris.Core (for data types)
 
-**Alaris.Library**
-
-Native bindings:
-
-| Responsibility | Description |
-|----------------|-------------|
-| QuantLib wrapper | SWIG-generated bindings to QuantLib C++ |
-| Native loading | Platform-specific library loading |
-
-Dependencies: None (native libraries)
-
 ---
 
 ## 4. Directory Structure
@@ -204,10 +192,6 @@ Alaris/
 │   │   └── Protocol/             # Binary protocol (PL*.cs)
 │   │
 │   ├── Alaris.Host/              # Presentation layer (CLI, TUI)
-│   │
-│   ├── Alaris.Library/           # Native bindings
-│   │   ├── Native/               # SWIG wrappers
-│   │   └── Runtime/              # Shared libraries
 │   │
 │   └── Alaris.Test/              # Test project (TS*.cs)
 │
@@ -510,8 +494,6 @@ bin/
 │   ├── Alaris.Strategy.dll       # Strategy
 │   ├── Alaris.Core.dll           # Core
 │   ├── Alaris.Infrastructure.dll # Infrastructure
-│   ├── libNQuantLibc.so          # QuantLib wrapper
-│   ├── libQuantLib.so            # QuantLib library
 │   └── appsettings.json          # Configuration
 └── Release/net10.0/
     └── (same structure)
