@@ -2,7 +2,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
@@ -73,12 +72,12 @@ public sealed class PolygonUniverseProvider
         DateTime date,
         CancellationToken cancellationToken = default)
     {
-        var dateStr = date.ToString("yyyy-MM-dd");
-        var url = $"/v2/aggs/grouped/locale/us/market/stocks/{dateStr}?adjusted=true&apiKey={_apiKey}";
+        string dateStr = date.ToString("yyyy-MM-dd");
+        string url = $"/v2/aggs/grouped/locale/us/market/stocks/{dateStr}?adjusted=true&apiKey={_apiKey}";
 
         try
         {
-            var response = await _httpClient.GetFromJsonAsync<PolygonGroupedResponse>(url, cancellationToken)
+            PolygonGroupedResponse? response = await _httpClient.GetFromJsonAsync<PolygonGroupedResponse>(url, cancellationToken)
                 .ConfigureAwait(false);
 
             if (response?.Results == null || response.Results.Length == 0)
@@ -87,20 +86,27 @@ public sealed class PolygonUniverseProvider
                 return Array.Empty<UniverseStock>();
             }
 
-            var stocks = response.Results
-                .Where(r => !string.IsNullOrEmpty(r.Ticker))
-                .Select(r => new UniverseStock
+            List<UniverseStock> stocks = new List<UniverseStock>(response.Results.Length);
+            foreach (PolygonGroupedResult result in response.Results)
+            {
+                if (string.IsNullOrEmpty(result.Ticker))
                 {
-                    Ticker = r.Ticker!,
-                    Open = r.Open,
-                    High = r.High,
-                    Low = r.Low,
-                    Close = r.Close,
-                    Volume = r.Volume,
-                    DollarVolume = r.Close * (decimal)r.Volume,
+                    continue;
+                }
+
+                UniverseStock stock = new UniverseStock
+                {
+                    Ticker = result.Ticker,
+                    Open = result.Open,
+                    High = result.High,
+                    Low = result.Low,
+                    Close = result.Close,
+                    Volume = result.Volume,
+                    DollarVolume = result.Close * (decimal)result.Volume,
                     Date = date
-                })
-                .ToList();
+                };
+                stocks.Add(stock);
+            }
 
             LogUniverseFetched(_logger, date, stocks.Count, null);
             return stocks;
@@ -126,13 +132,23 @@ public sealed class PolygonUniverseProvider
         decimal minPrice = 5.00m,
         CancellationToken cancellationToken = default)
     {
-        var allStocks = await GetUniverseAsync(date, cancellationToken).ConfigureAwait(false);
+        IReadOnlyList<UniverseStock> allStocks = await GetUniverseAsync(date, cancellationToken).ConfigureAwait(false);
 
-        var filtered = allStocks
-            .Where(s => s.DollarVolume >= minDollarVolume)
-            .Where(s => s.Close >= minPrice)
-            .OrderByDescending(s => s.DollarVolume)
-            .ToList();
+        List<UniverseStock> filtered = new List<UniverseStock>();
+        foreach (UniverseStock stock in allStocks)
+        {
+            if (stock.DollarVolume < minDollarVolume)
+            {
+                continue;
+            }
+            if (stock.Close < minPrice)
+            {
+                continue;
+            }
+            filtered.Add(stock);
+        }
+
+        filtered.Sort((left, right) => right.DollarVolume.CompareTo(left.DollarVolume));
 
         LogUniverseFiltered(_logger, date, filtered.Count, minDollarVolume, minPrice, null);
         return filtered;
@@ -154,13 +170,19 @@ public sealed class PolygonUniverseProvider
         int maxTickers = 500,
         CancellationToken cancellationToken = default)
     {
-        var filtered = await GetFilteredUniverseAsync(date, minDollarVolume, minPrice, cancellationToken)
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxTickers);
+
+        IReadOnlyList<UniverseStock> filtered = await GetFilteredUniverseAsync(date, minDollarVolume, minPrice, cancellationToken)
             .ConfigureAwait(false);
 
-        return filtered
-            .Take(maxTickers)
-            .Select(s => s.Ticker)
-            .ToList();
+        int takeCount = filtered.Count < maxTickers ? filtered.Count : maxTickers;
+        List<string> tickers = new List<string>(takeCount);
+        for (int i = 0; i < takeCount; i++)
+        {
+            tickers.Add(filtered[i].Ticker);
+        }
+
+        return tickers;
     }
 }
 
@@ -233,4 +255,3 @@ file sealed class PolygonGroupedResult
     [JsonPropertyName("n")]
     public int NumberOfTransactions { get; init; }
 }
-

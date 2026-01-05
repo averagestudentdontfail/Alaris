@@ -95,7 +95,7 @@ public static class EVsr001A
         }
 
         // EventId
-        var eventId = new Guid(buffer.Slice(offset, 16));
+        Guid eventId = new Guid(buffer.Slice(offset, 16));
         offset += 16;
 
         // SequenceNumber

@@ -3,7 +3,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -45,7 +44,7 @@ public sealed class NasdaqEarningsProvider : DTpr004A
     private readonly string? _cacheDataPath;
     private bool _cacheOnlyMode;
 
-    private static readonly JsonSerializerOptions JsonOptions = new()
+    private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         WriteIndented = true,
@@ -98,10 +97,16 @@ public sealed class NasdaqEarningsProvider : DTpr004A
             endDate,
             cancellationToken);
 
-        List<EarningsEvent> symbolEarnings = allEarnings
-            .Where(e => string.Equals(e.Symbol, symbol, StringComparison.OrdinalIgnoreCase))
-            .OrderBy(e => e.Date)
-            .ToList();
+        List<EarningsEvent> symbolEarnings = new List<EarningsEvent>();
+        foreach (EarningsEvent earnings in allEarnings)
+        {
+            if (string.Equals(earnings.Symbol, symbol, StringComparison.OrdinalIgnoreCase))
+            {
+                symbolEarnings.Add(earnings);
+            }
+        }
+
+        symbolEarnings.Sort(static (left, right) => left.Date.CompareTo(right.Date));
 
         _logger.LogInformation(
             "Found {Count} upcoming earnings for {Symbol}",
@@ -144,7 +149,7 @@ public sealed class NasdaqEarningsProvider : DTpr004A
         DateTime endDate = anchorDate.Date;
         DateTime startDate = endDate.AddDays(-lookbackDays);
 
-        List<EarningsEvent> allEarnings = new();
+        List<EarningsEvent> allEarnings = new List<EarningsEvent>();
 
         // Query in 30-day chunks to avoid overwhelming the API
         DateTime chunkStart = startDate;
@@ -158,9 +163,14 @@ public sealed class NasdaqEarningsProvider : DTpr004A
                 IReadOnlyList<EarningsEvent> chunkEarnings = await GetEarningsInDateRangeAsync(
                     chunkStart, chunkEnd, cancellationToken);
 
-                List<EarningsEvent> symbolChunk = chunkEarnings
-                    .Where(e => string.Equals(e.Symbol, symbol, StringComparison.OrdinalIgnoreCase))
-                    .ToList();
+                List<EarningsEvent> symbolChunk = new List<EarningsEvent>();
+                foreach (EarningsEvent earnings in chunkEarnings)
+                {
+                    if (string.Equals(earnings.Symbol, symbol, StringComparison.OrdinalIgnoreCase))
+                    {
+                        symbolChunk.Add(earnings);
+                    }
+                }
 
                 allEarnings.AddRange(symbolChunk);
             }
@@ -174,15 +184,13 @@ public sealed class NasdaqEarningsProvider : DTpr004A
             chunkStart = chunkEnd.AddDays(1);
         }
 
-        List<EarningsEvent> result = allEarnings
-            .OrderByDescending(e => e.Date)
-            .ToList();
+        allEarnings.Sort(static (left, right) => right.Date.CompareTo(left.Date));
 
         _logger.LogInformation(
             "Retrieved {Count} historical earnings for {Symbol}",
-            result.Count, symbol);
+            allEarnings.Count, symbol);
 
-        return result;
+        return allEarnings;
     }
 
     /// <inheritdoc/>
@@ -198,11 +206,22 @@ public sealed class NasdaqEarningsProvider : DTpr004A
         IReadOnlyList<EarningsEvent> earnings = await GetEarningsInDateRangeAsync(
             startDate, endDate, cancellationToken);
 
-        List<string> symbols = earnings
-            .Select(e => e.Symbol)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(s => s)
-            .ToList();
+        HashSet<string> symbolSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (EarningsEvent earningsEvent in earnings)
+        {
+            if (!string.IsNullOrWhiteSpace(earningsEvent.Symbol))
+            {
+                symbolSet.Add(earningsEvent.Symbol);
+            }
+        }
+
+        List<string> symbols = new List<string>(symbolSet.Count);
+        foreach (string symbol in symbolSet)
+        {
+            symbols.Add(symbol);
+        }
+
+        symbols.Sort(StringComparer.OrdinalIgnoreCase);
 
         _logger.LogInformation("Found {Count} symbols with earnings", symbols.Count);
         return symbols;
@@ -216,7 +235,7 @@ public sealed class NasdaqEarningsProvider : DTpr004A
         DateTime endDate,
         CancellationToken cancellationToken)
     {
-        List<EarningsEvent> allEarnings = new();
+        List<EarningsEvent> allEarnings = new List<EarningsEvent>();
 
         // Query each date individually (NASDAQ API is date-specific)
         for (DateTime date = startDate; date <= endDate; date = date.AddDays(1))
@@ -294,10 +313,16 @@ public sealed class NasdaqEarningsProvider : DTpr004A
             return Array.Empty<EarningsEvent>();
         }
 
-        List<EarningsEvent> earnings = response.Data.Rows
-            .Where(row => !string.IsNullOrWhiteSpace(row.Symbol))
-            .Select(row => MapToEarningsEvent(row, date))
-            .ToList();
+        List<EarningsEvent> earnings = new List<EarningsEvent>();
+        foreach (NasdaqEarningsRow row in response.Data.Rows)
+        {
+            if (string.IsNullOrWhiteSpace(row.Symbol))
+            {
+                continue;
+            }
+
+            earnings.Add(MapToEarningsEvent(row, date));
+        }
 
         _logger.LogDebug("Fetched {Count} earnings for {Date:yyyy-MM-dd}", earnings.Count, date);
         return earnings;
@@ -341,11 +366,17 @@ public sealed class NasdaqEarningsProvider : DTpr004A
 
         string cachePath = Path.Combine(nasdaqPath, $"{date:yyyy-MM-dd}.json");
 
-        var cached = new CachedEarningsDay
+        List<EarningsEvent> cachedEarnings = new List<EarningsEvent>(earnings.Count);
+        for (int i = 0; i < earnings.Count; i++)
+        {
+            cachedEarnings.Add(earnings[i]);
+        }
+
+        CachedEarningsDay cached = new CachedEarningsDay
         {
             Date = date,
             FetchedAt = DateTime.UtcNow,
-            Earnings = earnings.ToList()
+            Earnings = cachedEarnings
         };
 
         await using FileStream stream = File.Create(cachePath);
@@ -372,10 +403,16 @@ public sealed class NasdaqEarningsProvider : DTpr004A
         }
         else
         {
-            earnings = response.Data.Rows
-                .Where(row => !string.IsNullOrWhiteSpace(row.Symbol))
-                .Select(row => MapToEarningsEvent(row, date))
-                .ToList();
+            earnings = new List<EarningsEvent>();
+            foreach (NasdaqEarningsRow row in response.Data.Rows)
+            {
+                if (string.IsNullOrWhiteSpace(row.Symbol))
+                {
+                    continue;
+                }
+
+                earnings.Add(MapToEarningsEvent(row, date));
+            }
         }
 
         await SaveToCacheAsync(date, earnings, outputPath, cancellationToken);

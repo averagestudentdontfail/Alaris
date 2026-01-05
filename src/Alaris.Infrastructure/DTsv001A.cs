@@ -96,7 +96,7 @@ public static class DTsv001A
         string name,
         Action<HttpClient>? configureClient = null)
     {
-        var builder = services.AddHttpClient(name);
+        IHttpClientBuilder builder = services.AddHttpClient(name);
 
         if (configureClient != null)
         {
@@ -108,4 +108,3 @@ public static class DTsv001A
         return services;
     }
 }
-

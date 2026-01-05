@@ -70,16 +70,19 @@ public sealed class DTch001A
         TimeSpan? absoluteExpiration = null,
         TimeSpan? slidingExpiration = null)
     {
-        if (_cache.TryGetValue<T>(key, out var cachedValue))
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        ArgumentNullException.ThrowIfNull(factory);
+
+        if (_cache.TryGetValue<T>(key, out T? cachedValue))
         {
             _logger.LogDebug("Cache hit for key: {Key}", key);
             return cachedValue!;
         }
 
         _logger.LogDebug("Cache miss for key: {Key}, fetching...", key);
-        var value = await factory().ConfigureAwait(false);
+        T value = await factory().ConfigureAwait(false);
 
-        var options = new MemoryCacheEntryOptions();
+        MemoryCacheEntryOptions options = new MemoryCacheEntryOptions();
 
         if (absoluteExpiration.HasValue)
         {
@@ -111,7 +114,9 @@ public sealed class DTch001A
     /// <returns>The cached value, or default if not found.</returns>
     public T? Get<T>(string key)
     {
-        _cache.TryGetValue<T>(key, out var value);
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+
+        _cache.TryGetValue<T>(key, out T? value);
         return value;
     }
 
@@ -124,7 +129,9 @@ public sealed class DTch001A
     /// <param name="absoluteExpiration">Optional absolute expiration time.</param>
     public void Set<T>(string key, T value, TimeSpan? absoluteExpiration = null)
     {
-        var options = new MemoryCacheEntryOptions();
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+
+        MemoryCacheEntryOptions options = new MemoryCacheEntryOptions();
 
         if (absoluteExpiration.HasValue)
         {
@@ -144,6 +151,8 @@ public sealed class DTch001A
     /// <param name="key">The cache key.</param>
     public void Remove(string key)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+
         _cache.Remove(key);
         _logger.LogDebug("Removed cache key: {Key}", key);
     }

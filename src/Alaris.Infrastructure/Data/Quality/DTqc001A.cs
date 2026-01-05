@@ -1,5 +1,4 @@
 using System;
-using System.Linq;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Alaris.Core.Time;
@@ -42,25 +41,25 @@ public sealed class PriceReasonablenessValidator : DTqc002A
     /// <inheritdoc/>
     public DataQualityResult Validate(MarketDataSnapshot snapshot)
     {
-        var warnings = new System.Collections.Generic.List<string>();
+        System.Collections.Generic.List<string> warnings = new System.Collections.Generic.List<string>();
         Instant now = _timeProvider.Now;
 
         // Check 1: Spot price change reasonableness
         if (snapshot.HistoricalBars.Count > 0)
         {
-            var previousClose = snapshot.HistoricalBars[^1].Close;
-            var priceChange = Math.Abs((snapshot.SpotPrice - previousClose) / previousClose);
+            decimal previousClose = snapshot.HistoricalBars[^1].Close;
+            decimal priceChange = Math.Abs((snapshot.SpotPrice - previousClose) / previousClose);
 
             if (priceChange > 0.10m)
             {
-                var message = $"Spot price changed {priceChange:P2} from previous close";
+                string message = $"Spot price changed {priceChange:P2} from previous close";
                 _logger.LogWarning("{ComponentId}: {Message}", ComponentId, message);
                 warnings.Add(message);
             }
         }
 
         // Check 2: Option bid/ask validity
-        foreach (var contract in snapshot.OptionChain.Contracts)
+        foreach (OptionContract contract in snapshot.OptionChain.Contracts)
         {
             if (contract.Bid <= 0)
             {
@@ -85,7 +84,7 @@ public sealed class PriceReasonablenessValidator : DTqc002A
             }
 
             // Check intrinsic value bounds
-            var intrinsicValue = contract.Right == OptionRight.Call
+            decimal intrinsicValue = contract.Right == OptionRight.Call
                 ? Math.Max(0, snapshot.SpotPrice - contract.Strike)
                 : Math.Max(0, contract.Strike - snapshot.SpotPrice);
 
@@ -119,7 +118,7 @@ public sealed class PriceReasonablenessValidator : DTqc002A
             };
         }
 
-        var status = warnings.Count > 0 ? ValidationStatus.PassedWithWarnings : ValidationStatus.Passed;
+        ValidationStatus status = warnings.Count > 0 ? ValidationStatus.PassedWithWarnings : ValidationStatus.Passed;
         return new DataQualityResult
         {
             ValidatorId = ComponentId,
@@ -159,36 +158,75 @@ public sealed class IvArbitrageValidator : DTqc002A
     /// <inheritdoc/>
     public DataQualityResult Validate(MarketDataSnapshot snapshot)
     {
-        var warnings = new System.Collections.Generic.List<string>();
+        System.Collections.Generic.List<string> warnings = new System.Collections.Generic.List<string>();
 
         // Check put-call parity for each expiration and strike
-        var expirations = snapshot.OptionChain.Contracts
-            .Select(c => c.Expiration)
-            .Distinct()
-            .ToList();
-
-        foreach (var expiration in expirations)
+        System.Collections.Generic.HashSet<DateTime> expirationSet = new System.Collections.Generic.HashSet<DateTime>();
+        System.Collections.Generic.List<DateTime> expirations = new System.Collections.Generic.List<DateTime>();
+        foreach (OptionContract contract in snapshot.OptionChain.Contracts)
         {
-            var contracts = snapshot.OptionChain.Contracts
-                .Where(c => c.Expiration == expiration)
-                .ToList();
-
-            var strikes = contracts.Select(c => c.Strike).Distinct();
-
-            foreach (var strike in strikes)
+            if (expirationSet.Add(contract.Expiration))
             {
-                var call = contracts.FirstOrDefault(c => c.Strike == strike && c.Right == OptionRight.Call);
-                var put = contracts.FirstOrDefault(c => c.Strike == strike && c.Right == OptionRight.Put);
+                expirations.Add(contract.Expiration);
+            }
+        }
+
+        foreach (DateTime expiration in expirations)
+        {
+            System.Collections.Generic.List<OptionContract> contracts = new System.Collections.Generic.List<OptionContract>();
+            foreach (OptionContract contract in snapshot.OptionChain.Contracts)
+            {
+                if (contract.Expiration == expiration)
+                {
+                    contracts.Add(contract);
+                }
+            }
+
+            System.Collections.Generic.HashSet<decimal> strikeSet = new System.Collections.Generic.HashSet<decimal>();
+            System.Collections.Generic.List<decimal> strikes = new System.Collections.Generic.List<decimal>();
+            foreach (OptionContract contract in contracts)
+            {
+                if (strikeSet.Add(contract.Strike))
+                {
+                    strikes.Add(contract.Strike);
+                }
+            }
+
+            foreach (decimal strike in strikes)
+            {
+                OptionContract? call = null;
+                OptionContract? put = null;
+                foreach (OptionContract contract in contracts)
+                {
+                    if (contract.Strike != strike)
+                    {
+                        continue;
+                    }
+
+                    if (contract.Right == OptionRight.Call)
+                    {
+                        call = contract;
+                    }
+                    else if (contract.Right == OptionRight.Put)
+                    {
+                        put = contract;
+                    }
+
+                    if (call != null && put != null)
+                    {
+                        break;
+                    }
+                }
 
                 if (call == null || put == null)
                     continue;
 
                 // Put-call parity: C - P = S - K * exp(-r*T)
                 // For short-dated options, approximate: C - P ≈ S - K
-                var lhs = call.Mid - put.Mid;
-                var rhs = snapshot.SpotPrice - strike;
-                var parityDiff = Math.Abs(lhs - rhs);
-                var parityErrorPct = parityDiff / Math.Max(call.Mid, put.Mid);
+                decimal lhs = call.Mid - put.Mid;
+                decimal rhs = snapshot.SpotPrice - strike;
+                decimal parityDiff = Math.Abs(lhs - rhs);
+                decimal parityErrorPct = parityDiff / Math.Max(call.Mid, put.Mid);
 
                 if (parityErrorPct > 0.02m) // 2% threshold
                 {
@@ -198,28 +236,68 @@ public sealed class IvArbitrageValidator : DTqc002A
         }
 
         // Check calendar spread IV term structure
-        var atm = snapshot.OptionChain.Contracts
-            .Where(c => c.ImpliedVolatility.HasValue)
-            .OrderBy(c => Math.Abs(c.Strike - snapshot.SpotPrice))
-            .Take(10) // Top 10 ATM options
-            .ToList();
+        System.Collections.Generic.List<OptionContract> atmCandidates = new System.Collections.Generic.List<OptionContract>();
+        foreach (OptionContract contract in snapshot.OptionChain.Contracts)
+        {
+            if (contract.ImpliedVolatility.HasValue)
+            {
+                atmCandidates.Add(contract);
+            }
+        }
+
+        atmCandidates.Sort((left, right) =>
+        {
+            decimal leftDistance = Math.Abs(left.Strike - snapshot.SpotPrice);
+            decimal rightDistance = Math.Abs(right.Strike - snapshot.SpotPrice);
+            return leftDistance.CompareTo(rightDistance);
+        });
+
+        int atmCount = atmCandidates.Count > 10 ? 10 : atmCandidates.Count;
+        System.Collections.Generic.List<OptionContract> atm = new System.Collections.Generic.List<OptionContract>(atmCount);
+        for (int i = 0; i < atmCount; i++)
+        {
+            atm.Add(atmCandidates[i]);
+        }
 
         if (atm.Count >= 2)
         {
-            var ivs = atm
-                .GroupBy(c => c.Expiration)
-                .OrderBy(g => g.Key)
-                .Select(g => new
+            System.Collections.Generic.Dictionary<DateTime, (decimal Sum, int Count)> ivByExpiration =
+                new System.Collections.Generic.Dictionary<DateTime, (decimal Sum, int Count)>();
+
+            foreach (OptionContract contract in atm)
+            {
+                if (!contract.ImpliedVolatility.HasValue)
                 {
-                    Expiration = g.Key,
-                    AvgIv = g.Average(c => c.ImpliedVolatility!.Value)
-                })
-                .ToList();
+                    continue;
+                }
+
+                DateTime expiration = contract.Expiration;
+                decimal iv = contract.ImpliedVolatility.Value;
+                if (ivByExpiration.TryGetValue(expiration, out (decimal Sum, int Count) aggregate))
+                {
+                    ivByExpiration[expiration] = (aggregate.Sum + iv, aggregate.Count + 1);
+                }
+                else
+                {
+                    ivByExpiration.Add(expiration, (iv, 1));
+                }
+            }
+
+            System.Collections.Generic.List<(DateTime Expiration, decimal AvgIv)> ivs =
+                new System.Collections.Generic.List<(DateTime Expiration, decimal AvgIv)>();
+            foreach (System.Collections.Generic.KeyValuePair<DateTime, (decimal Sum, int Count)> kvp in ivByExpiration)
+            {
+                if (kvp.Value.Count > 0)
+                {
+                    ivs.Add((kvp.Key, kvp.Value.Sum / kvp.Value.Count));
+                }
+            }
+
+            ivs.Sort((left, right) => left.Expiration.CompareTo(right.Expiration));
 
             for (int i = 1; i < ivs.Count; i++)
             {
-                var ivChange = ivs[i].AvgIv - ivs[i - 1].AvgIv;
-                var daysDiff = (ivs[i].Expiration - ivs[i - 1].Expiration).TotalDays;
+                decimal ivChange = ivs[i].AvgIv - ivs[i - 1].AvgIv;
 
                 // Expect IV to decrease or stay flat with longer expiry (absent earnings)
                 if (ivChange > 0.05m) // >5% IV increase
@@ -229,7 +307,7 @@ public sealed class IvArbitrageValidator : DTqc002A
             }
         }
 
-        var status = warnings.Count > 0 ? ValidationStatus.PassedWithWarnings : ValidationStatus.Passed;
+        ValidationStatus status = warnings.Count > 0 ? ValidationStatus.PassedWithWarnings : ValidationStatus.Passed;
         return new DataQualityResult
         {
             ValidatorId = ComponentId,
@@ -269,9 +347,9 @@ public sealed class VolumeOpenInterestValidator : DTqc002A
     /// <inheritdoc/>
     public DataQualityResult Validate(MarketDataSnapshot snapshot)
     {
-        var warnings = new System.Collections.Generic.List<string>();
+        System.Collections.Generic.List<string> warnings = new System.Collections.Generic.List<string>();
 
-        foreach (var contract in snapshot.OptionChain.Contracts)
+        foreach (OptionContract contract in snapshot.OptionChain.Contracts)
         {
             // Check 1: Liquid options should have volume
             if (contract.OpenInterest > 100 && contract.Volume == 0)
@@ -307,8 +385,8 @@ public sealed class VolumeOpenInterestValidator : DTqc002A
         // Underlying volume should be within reasonable range
         if (snapshot.HistoricalBars.Count > 0)
         {
-            var recentVolume = snapshot.HistoricalBars[^1].Volume;
-            var volumeRatio = (decimal)recentVolume / snapshot.AverageVolume30Day;
+            long recentVolume = snapshot.HistoricalBars[^1].Volume;
+            decimal volumeRatio = (decimal)recentVolume / snapshot.AverageVolume30Day;
 
             if (volumeRatio > 10m)
             {
@@ -320,7 +398,7 @@ public sealed class VolumeOpenInterestValidator : DTqc002A
             }
         }
 
-        var status = warnings.Count > 0 ? ValidationStatus.PassedWithWarnings : ValidationStatus.Passed;
+        ValidationStatus status = warnings.Count > 0 ? ValidationStatus.PassedWithWarnings : ValidationStatus.Passed;
         return new DataQualityResult
         {
             ValidatorId = ComponentId,
@@ -366,7 +444,7 @@ public sealed class EarningsDateValidator : DTqc002A
     /// <inheritdoc/>
     public DataQualityResult Validate(MarketDataSnapshot snapshot)
     {
-        var warnings = new System.Collections.Generic.List<string>();
+        System.Collections.Generic.List<string> warnings = new System.Collections.Generic.List<string>();
 
         if (snapshot.NextEarnings == null)
         {
@@ -381,7 +459,7 @@ public sealed class EarningsDateValidator : DTqc002A
         }
 
         LocalDate today = _timeProvider.Today;
-        var earnings = snapshot.NextEarnings;
+        EarningsEvent? earnings = snapshot.NextEarnings;
 
         // Check 1: Earnings date is in the future
         LocalDate earningsDate = _timeProvider.ToLocalDate(earnings.Date);
@@ -414,13 +492,18 @@ public sealed class EarningsDateValidator : DTqc002A
         // Check 4: Historical consistency
         if (snapshot.HistoricalEarnings.Count > 0)
         {
-            var lastEarnings = snapshot.HistoricalEarnings
-                .OrderByDescending(e => e.Date)
-                .FirstOrDefault();
+            EarningsEvent? lastEarnings = null;
+            foreach (EarningsEvent earning in snapshot.HistoricalEarnings)
+            {
+                if (lastEarnings == null || earning.Date > lastEarnings.Date)
+                {
+                    lastEarnings = earning;
+                }
+            }
 
             if (lastEarnings != null)
             {
-                var quarterGap = (earnings.Date - lastEarnings.Date).TotalDays;
+                double quarterGap = (earnings.Date - lastEarnings.Date).TotalDays;
                 
                 // Typical quarterly spacing: 84-98 days
                 if (quarterGap < 70 || quarterGap > 120)
@@ -430,7 +513,7 @@ public sealed class EarningsDateValidator : DTqc002A
             }
         }
 
-        var status = warnings.Count > 0 ? ValidationStatus.PassedWithWarnings : ValidationStatus.Passed;
+        ValidationStatus status = warnings.Count > 0 ? ValidationStatus.PassedWithWarnings : ValidationStatus.Passed;
         return new DataQualityResult
         {
             ValidatorId = ComponentId,

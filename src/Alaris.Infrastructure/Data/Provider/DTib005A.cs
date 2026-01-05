@@ -77,7 +77,7 @@ public sealed class InteractiveBrokersSnapshotProvider : DTpr002A
         _port = int.Parse(_configuration["InteractiveBrokers:Port"] ?? "4002");
         _clientId = int.Parse(_configuration["InteractiveBrokers:ClientId"] ?? "1");
         
-        var tradingMode = _configuration["InteractiveBrokers:TradingMode"] ?? "paper";
+        string tradingMode = _configuration["InteractiveBrokers:TradingMode"] ?? "paper";
         _isBacktestMode = false; // This constructor is for live/paper
 
         _logger.LogInformation(
@@ -138,8 +138,8 @@ public sealed class InteractiveBrokersSnapshotProvider : DTpr002A
             // _client.eConnect(_host, _port, _clientId);
 
             // For now, we verify connectivity by attempting a TCP connection
-            using var tcpClient = new System.Net.Sockets.TcpClient();
-            using var cts = new CancellationTokenSource(_connectionTimeout);
+            using System.Net.Sockets.TcpClient tcpClient = new System.Net.Sockets.TcpClient();
+            using CancellationTokenSource cts = new CancellationTokenSource(_connectionTimeout);
             
             await tcpClient.ConnectAsync(_host, _port, cts.Token);
             
@@ -181,14 +181,14 @@ public sealed class InteractiveBrokersSnapshotProvider : DTpr002A
             "Requesting snapshot quote for {Symbol} {Strike} {Right} expiring {Expiration:yyyy-MM-dd}",
             underlyingSymbol, strike, right, expiration);
 
-        var reqId = Interlocked.Increment(ref _nextRequestId);
-        var tcs = new TaskCompletionSource<OptionContract>();
+        int reqId = Interlocked.Increment(ref _nextRequestId);
+        TaskCompletionSource<OptionContract> tcs = new TaskCompletionSource<OptionContract>();
         
         if (!_pendingRequests.TryAdd(reqId, tcs))
             throw new InvalidOperationException($"Request ID {reqId} already in use");
 
         // Initialize quote state
-        var state = new QuoteState
+        QuoteState state = new QuoteState
         {
             UnderlyingSymbol = underlyingSymbol,
             Strike = strike,
@@ -199,7 +199,7 @@ public sealed class InteractiveBrokersSnapshotProvider : DTpr002A
 
         try
         {
-            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            using CancellationTokenSource timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             timeoutCts.CancelAfter(_quoteTimeout);
 
             if (_isBacktestMode)
@@ -219,7 +219,7 @@ public sealed class InteractiveBrokersSnapshotProvider : DTpr002A
                 await RequestLiveQuoteAsync(reqId, state);
             }
 
-            var quote = await tcs.Task.WaitAsync(timeoutCts.Token);
+            OptionContract quote = await tcs.Task.WaitAsync(timeoutCts.Token);
 
             _logger.LogInformation(
                 "Received quote for {Symbol}: Bid={Bid:F2}, Ask={Ask:F2}, Mid={Mid:F2}",
@@ -251,24 +251,24 @@ public sealed class InteractiveBrokersSnapshotProvider : DTpr002A
             // Small delay to simulate network latency
             await Task.Delay(50);
 
-            if (_pendingRequests.TryGetValue(reqId, out var tcs))
+            if (_pendingRequests.TryGetValue(reqId, out TaskCompletionSource<OptionContract>? tcs))
             {
                 // Generate realistic mid price based on strike and DTE
-                var daysToExpiry = (state.Expiration - DateTime.UtcNow.Date).Days;
-                var atm = state.Strike; // Assume ATM for simulation
+                int daysToExpiry = (state.Expiration - DateTime.UtcNow.Date).Days;
+                decimal atm = state.Strike; // Assume ATM for simulation
                 
                 // Base price: ~$2-5 for ATM options with 30 DTE
-                var dteFactor = daysToExpiry / 30.0m;
-                var basePrice = 2.0m + (dteFactor * 1.5m);
+                decimal dteFactor = daysToExpiry / 30.0m;
+                decimal basePrice = 2.0m + (dteFactor * 1.5m);
                 
                 // Realistic bid-ask spread: wider for short-dated, narrower for liquid
-                var spreadWidth = Math.Max(0.05m, basePrice * 0.03m); // 3% of price, min $0.05
+                decimal spreadWidth = Math.Max(0.05m, basePrice * 0.03m); // 3% of price, min $0.05
                 
-                var mid = basePrice;
-                var bid = mid - (spreadWidth / 2);
-                var ask = mid + (spreadWidth / 2);
+                decimal mid = basePrice;
+                decimal bid = mid - (spreadWidth / 2);
+                decimal ask = mid + (spreadWidth / 2);
 
-                var quote = new OptionContract
+                OptionContract quote = new OptionContract
                 {
                     UnderlyingSymbol = state.UnderlyingSymbol,
                     OptionSymbol = FormatOptionSymbol(state),
@@ -307,7 +307,7 @@ public sealed class InteractiveBrokersSnapshotProvider : DTpr002A
 
     private static string FormatOptionSymbol(QuoteState state)
     {
-        var rightChar = state.Right == OptionRight.Call ? 'C' : 'P';
+        char rightChar = state.Right == OptionRight.Call ? 'C' : 'P';
         return $"{state.UnderlyingSymbol} {state.Expiration:yyMMdd}{rightChar}{state.Strike * 1000:00000000}";
     }
 
@@ -325,18 +325,18 @@ public sealed class InteractiveBrokersSnapshotProvider : DTpr002A
             underlyingSymbol, strike, right);
 
         // Request both legs concurrently
-        var frontTask = GetSnapshotQuoteAsync(
+        Task<OptionContract> frontTask = GetSnapshotQuoteAsync(
             underlyingSymbol, strike, frontExpiration, right, cancellationToken);
 
-        var backTask = GetSnapshotQuoteAsync(
+        Task<OptionContract> backTask = GetSnapshotQuoteAsync(
             underlyingSymbol, strike, backExpiration, right, cancellationToken);
 
         await Task.WhenAll(frontTask, backTask);
 
-        var frontLeg = await frontTask;
-        var backLeg = await backTask;
+        OptionContract frontLeg = await frontTask;
+        OptionContract backLeg = await backTask;
 
-        var calendarSpread = new DTmd002A
+        DTmd002A calendarSpread = new DTmd002A
         {
             UnderlyingSymbol = underlyingSymbol,
             Strike = strike,
@@ -361,7 +361,7 @@ public sealed class InteractiveBrokersSnapshotProvider : DTpr002A
     /// </summary>
     internal void OnTickPrice(int reqId, int field, decimal price)
     {
-        if (!_quoteStates.TryGetValue(reqId, out var state))
+        if (!_quoteStates.TryGetValue(reqId, out QuoteState? state))
             return;
 
         // Field codes: 1=Bid, 2=Ask
@@ -376,7 +376,7 @@ public sealed class InteractiveBrokersSnapshotProvider : DTpr002A
     /// </summary>
     internal void OnTickSize(int reqId, int field, int size)
     {
-        if (!_quoteStates.TryGetValue(reqId, out var state))
+        if (!_quoteStates.TryGetValue(reqId, out QuoteState? state))
             return;
 
         // Field codes: 0=BidSize, 3=AskSize, 5=LastSize, 8=Volume
@@ -390,9 +390,9 @@ public sealed class InteractiveBrokersSnapshotProvider : DTpr002A
         // We need at least Bid and Ask to form a quote
         if (state.Bid.HasValue && state.Ask.HasValue)
         {
-            if (_pendingRequests.TryGetValue(reqId, out var tcs))
+            if (_pendingRequests.TryGetValue(reqId, out TaskCompletionSource<OptionContract>? tcs))
             {
-                var quote = new OptionContract
+                OptionContract quote = new OptionContract
                 {
                     UnderlyingSymbol = state.UnderlyingSymbol,
                     OptionSymbol = FormatOptionSymbol(state),
@@ -426,7 +426,7 @@ public sealed class InteractiveBrokersSnapshotProvider : DTpr002A
         // }
 
         // Complete any pending requests with cancellation
-        foreach (var kvp in _pendingRequests)
+        foreach (KeyValuePair<int, TaskCompletionSource<OptionContract>> kvp in _pendingRequests)
         {
             kvp.Value.TrySetCanceled();
         }

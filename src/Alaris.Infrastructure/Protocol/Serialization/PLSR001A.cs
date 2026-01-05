@@ -163,7 +163,7 @@ public static class PLSR001A
     {
         int offset = HeaderSize;
 
-        var contract = new OptionContractData
+        OptionContractData contract = new OptionContractData
         {
             StrikeMantissa = BinaryPrimitives.ReadInt64LittleEndian(buffer[offset..]),
             ExpirationDays = BinaryPrimitives.ReadInt32LittleEndian(buffer[(offset + 8)..]),
@@ -293,4 +293,3 @@ public struct OptionContractData
     public readonly decimal Vega => PLSR001A.FromMantissa(VegaMantissa);
     public readonly DateTime Expiration => DateTime.UnixEpoch.AddDays(ExpirationDays);
 }
-

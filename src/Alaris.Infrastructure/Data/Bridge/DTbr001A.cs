@@ -86,8 +86,10 @@ public sealed class AlarisDataBridge
         DateTime? evaluationDate = null,
         CancellationToken cancellationToken = default)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(symbol);
+
         // Use provided date or fall back to UTC now for live trading
-        var effectiveDate = evaluationDate ?? DateTime.UtcNow;
+        DateTime effectiveDate = evaluationDate ?? DateTime.UtcNow;
         _logger.LogInformation("Building market data snapshot for {Symbol} as of {Date:yyyy-MM-dd}", symbol, effectiveDate);
 
         try
@@ -95,10 +97,13 @@ public sealed class AlarisDataBridge
             // Step 1: Fetch primary data concurrently
             // Note: Spot price is derived from historical bars, NOT from /prev endpoint
             // The /prev endpoint only returns yesterday's close and doesn't work for historical dates in backtests
-            var historicalBarsTask = GetHistoricalBarsForRvCalculationAsync(symbol, effectiveDate, cancellationToken);
-            var optionChainTask = GetOptionChainWithCacheFallbackAsync(symbol, effectiveDate, cancellationToken);
-            var earningsTask = GetEarningsDataAsync(symbol, effectiveDate, cancellationToken);
-            var avgVolumeTask = _marketDataProvider.GetAverageVolume30DayAsync(symbol, effectiveDate, cancellationToken);
+            Task<IReadOnlyList<PriceBar>> historicalBarsTask =
+                GetHistoricalBarsForRvCalculationAsync(symbol, effectiveDate, cancellationToken);
+            Task<OptionChainSnapshot> optionChainTask =
+                GetOptionChainWithCacheFallbackAsync(symbol, effectiveDate, cancellationToken);
+            Task<(EarningsEvent? next, IReadOnlyList<EarningsEvent> historical)> earningsTask =
+                GetEarningsDataAsync(symbol, effectiveDate, cancellationToken);
+            Task<long> avgVolumeTask = _marketDataProvider.GetAverageVolume30DayAsync(symbol, effectiveDate, cancellationToken);
 
             await Task.WhenAll(
                 historicalBarsTask,
@@ -106,10 +111,10 @@ public sealed class AlarisDataBridge
                 earningsTask,
                 avgVolumeTask);
 
-            var historicalBars = await historicalBarsTask;
-            var optionChain = await optionChainTask;
-            var (nextEarnings, historicalEarnings) = await earningsTask;
-            var avgVolume = await avgVolumeTask;
+            IReadOnlyList<PriceBar> historicalBars = await historicalBarsTask;
+            OptionChainSnapshot optionChain = await optionChainTask;
+            (EarningsEvent? nextEarnings, IReadOnlyList<EarningsEvent> historicalEarnings) = await earningsTask;
+            long avgVolume = await avgVolumeTask;
             
             // Derive spot price from the most recent bar's close price
             // This works for both live (recent bars) and backtesting (historical bars)
@@ -117,10 +122,20 @@ public sealed class AlarisDataBridge
             if (historicalBars.Count > 0)
             {
                 // Get the bar closest to evaluation date (but not after it)
-                var relevantBar = historicalBars
-                    .Where(b => b.Timestamp.Date <= effectiveDate.Date)
-                    .OrderByDescending(b => b.Timestamp)
-                    .FirstOrDefault();
+                PriceBar? relevantBar = null;
+                for (int i = 0; i < historicalBars.Count; i++)
+                {
+                    PriceBar bar = historicalBars[i];
+                    if (bar.Timestamp.Date > effectiveDate.Date)
+                    {
+                        continue;
+                    }
+
+                    if (relevantBar == null || bar.Timestamp > relevantBar.Timestamp)
+                    {
+                        relevantBar = bar;
+                    }
+                }
                     
                 spotPrice = relevantBar?.Close ?? historicalBars[^1].Close;
                 _logger.LogDebug("Derived spot price {Price} from historical bars for {Symbol}", spotPrice, symbol);
@@ -147,7 +162,7 @@ public sealed class AlarisDataBridge
             }
 
             // Step 2: Construct snapshot
-            var snapshot = new MarketDataSnapshot
+            MarketDataSnapshot snapshot = new MarketDataSnapshot
             {
                 Symbol = symbol,
                 Timestamp = effectiveDate,
@@ -162,16 +177,26 @@ public sealed class AlarisDataBridge
             };
 
             // Step 3: Run data quality validation
-            var validationResults = RunDataQualityValidation(snapshot);
+            IReadOnlyList<DataQualityResult> validationResults = RunDataQualityValidation(snapshot);
 
             // Step 4: Check for critical failures
-            var criticalFailures = validationResults
-                .Where(r => r.Status == ValidationStatus.Failed)
-                .ToList();
+            List<DataQualityResult> criticalFailures = new List<DataQualityResult>();
+            foreach (DataQualityResult result in validationResults)
+            {
+                if (result.Status == ValidationStatus.Failed)
+                {
+                    criticalFailures.Add(result);
+                }
+            }
 
             if (criticalFailures.Count > 0)
             {
-                var errors = string.Join("; ", criticalFailures.Select(r => r.Message));
+                List<string> errorMessages = new List<string>(criticalFailures.Count);
+                foreach (DataQualityResult failure in criticalFailures)
+                {
+                    errorMessages.Add(failure.Message);
+                }
+                string errors = string.Join("; ", errorMessages);
                 _logger.LogError(
                     "Data quality validation failed for {Symbol}: {Errors}",
                     symbol, errors);
@@ -181,10 +206,24 @@ public sealed class AlarisDataBridge
             }
 
             // Step 5: Log warnings
-            var warnings = validationResults
-                .Where(r => r.Status == ValidationStatus.PassedWithWarnings)
-                .SelectMany(r => r.Warnings)
-                .ToList();
+            List<string> warnings = new List<string>();
+            foreach (DataQualityResult result in validationResults)
+            {
+                if (result.Status != ValidationStatus.PassedWithWarnings)
+                {
+                    continue;
+                }
+
+                if (result.Warnings == null)
+                {
+                    continue;
+                }
+
+                foreach (string warning in result.Warnings)
+                {
+                    warnings.Add(warning);
+                }
+            }
 
             if (warnings.Count > 0)
             {
@@ -239,18 +278,18 @@ public sealed class AlarisDataBridge
         // Try to load from session cache first (backtest mode)
         if (!string.IsNullOrEmpty(_sessionDataPath))
         {
-            var optionsDir = System.IO.Path.Combine(_sessionDataPath, "options");
-            var symbolLower = symbol.ToLowerInvariant();
+            string optionsDir = System.IO.Path.Combine(_sessionDataPath, "options");
+            string symbolLower = symbol.ToLowerInvariant();
             
             // Strategy 1: Try exact date-specific cache files (from earnings-based bootstrap)
-            var dateSuffix = evaluationDate.ToString("yyyyMMdd");
+            string dateSuffix = evaluationDate.ToString("yyyyMMdd");
             
-            var dateSpecificBinaryPath = System.IO.Path.Combine(optionsDir, $"{symbolLower}_{dateSuffix}.sbe");
+            string dateSpecificBinaryPath = System.IO.Path.Combine(optionsDir, $"{symbolLower}_{dateSuffix}.sbe");
             if (File.Exists(dateSpecificBinaryPath))
             {
                 try
                 {
-                    var cached = await LoadBinaryCacheAsync(dateSpecificBinaryPath, cancellationToken);
+                    OptionChainSnapshot? cached = await LoadBinaryCacheAsync(dateSpecificBinaryPath, cancellationToken);
                     if (cached != null && cached.Contracts.Count > 0)
                     {
                         _logger.LogDebug("Loaded {Count} options from date-specific binary cache for {Symbol} @ {Date}", 
@@ -264,13 +303,13 @@ public sealed class AlarisDataBridge
                 }
             }
             
-            var dateSpecificJsonPath = System.IO.Path.Combine(optionsDir, $"{symbolLower}_{dateSuffix}.json");
+            string dateSpecificJsonPath = System.IO.Path.Combine(optionsDir, $"{symbolLower}_{dateSuffix}.json");
             if (File.Exists(dateSpecificJsonPath))
             {
                 try
                 {
-                    var json = await File.ReadAllTextAsync(dateSpecificJsonPath, cancellationToken);
-                    var cached = JsonSerializer.Deserialize<OptionChainSnapshot>(json, JsonOptions);
+                    string json = await File.ReadAllTextAsync(dateSpecificJsonPath, cancellationToken);
+                    OptionChainSnapshot? cached = JsonSerializer.Deserialize<OptionChainSnapshot>(json, JsonOptions);
                     if (cached != null && cached.Contracts.Count > 0)
                     {
                         _logger.LogDebug("Loaded {Count} options from date-specific JSON cache for {Symbol} @ {Date}", 
@@ -287,7 +326,7 @@ public sealed class AlarisDataBridge
             // Strategy 2: Find nearest earlier dated cache file
             if (Directory.Exists(optionsDir))
             {
-                var nearestCache = await FindNearestCacheAsync(optionsDir, symbolLower, evaluationDate, cancellationToken);
+                OptionChainSnapshot? nearestCache = await FindNearestCacheAsync(optionsDir, symbolLower, evaluationDate, cancellationToken);
                 if (nearestCache != null)
                 {
                     return nearestCache;
@@ -295,12 +334,12 @@ public sealed class AlarisDataBridge
             }
             
             // Strategy 3: Fall back to single-file cache (legacy format - date-agnostic)
-            var binaryCachePath = System.IO.Path.Combine(optionsDir, $"{symbolLower}.sbe");
+            string binaryCachePath = System.IO.Path.Combine(optionsDir, $"{symbolLower}.sbe");
             if (File.Exists(binaryCachePath))
             {
                 try
                 {
-                    var cached = await LoadBinaryCacheAsync(binaryCachePath, cancellationToken);
+                    OptionChainSnapshot? cached = await LoadBinaryCacheAsync(binaryCachePath, cancellationToken);
                     if (cached != null && cached.Contracts.Count > 0)
                     {
                         _logger.LogDebug("Loaded {Count} options from legacy binary cache for {Symbol} (using as fallback)", 
@@ -314,13 +353,13 @@ public sealed class AlarisDataBridge
                 }
             }
             
-            var jsonCachePath = System.IO.Path.Combine(optionsDir, $"{symbolLower}.json");
+            string jsonCachePath = System.IO.Path.Combine(optionsDir, $"{symbolLower}.json");
             if (File.Exists(jsonCachePath))
             {
                 try
                 {
-                    var json = await File.ReadAllTextAsync(jsonCachePath, cancellationToken);
-                    var cached = JsonSerializer.Deserialize<OptionChainSnapshot>(json, JsonOptions);
+                    string json = await File.ReadAllTextAsync(jsonCachePath, cancellationToken);
+                    OptionChainSnapshot? cached = JsonSerializer.Deserialize<OptionChainSnapshot>(json, JsonOptions);
                     
                     if (cached != null && cached.Contracts.Count > 0)
                     {
@@ -355,32 +394,42 @@ public sealed class AlarisDataBridge
         try
         {
             // Find all cache files for this symbol with date suffixes
-            var pattern = $"{symbolLower}_*.sbe";
-            var binaryFiles = Directory.GetFiles(optionsDir, pattern);
-            var jsonPattern = $"{symbolLower}_*.json";
-            var jsonFiles = Directory.GetFiles(optionsDir, jsonPattern);
+            string pattern = $"{symbolLower}_*.sbe";
+            string[] binaryFiles = Directory.GetFiles(optionsDir, pattern);
+            string jsonPattern = $"{symbolLower}_*.json";
+            string[] jsonFiles = Directory.GetFiles(optionsDir, jsonPattern);
             
             // Parse dates from filenames and find nearest earlier date
-            var availableDates = new List<(DateTime date, string path, bool isBinary)>();
+            List<(DateTime date, string path, bool isBinary)> availableDates =
+                new List<(DateTime date, string path, bool isBinary)>();
             
-            foreach (var file in binaryFiles)
+            foreach (string file in binaryFiles)
             {
-                var filename = Path.GetFileNameWithoutExtension(file);
-                var datePart = filename.Substring(symbolLower.Length + 1);
-                if (DateTime.TryParseExact(datePart, "yyyyMMdd", null, System.Globalization.DateTimeStyles.None, out var date))
+                string filename = Path.GetFileNameWithoutExtension(file);
+                string datePart = filename.Substring(symbolLower.Length + 1);
+                if (DateTime.TryParseExact(datePart, "yyyyMMdd", null, System.Globalization.DateTimeStyles.None, out DateTime date))
                 {
                     availableDates.Add((date, file, true));
                 }
             }
             
-            foreach (var file in jsonFiles)
+            foreach (string file in jsonFiles)
             {
-                var filename = Path.GetFileNameWithoutExtension(file);
-                var datePart = filename.Substring(symbolLower.Length + 1);
-                if (DateTime.TryParseExact(datePart, "yyyyMMdd", null, System.Globalization.DateTimeStyles.None, out var date))
+                string filename = Path.GetFileNameWithoutExtension(file);
+                string datePart = filename.Substring(symbolLower.Length + 1);
+                if (DateTime.TryParseExact(datePart, "yyyyMMdd", null, System.Globalization.DateTimeStyles.None, out DateTime date))
                 {
                     // Only add if not already in list (binary takes precedence)
-                    if (!availableDates.Exists(x => x.date == date))
+                    bool exists = false;
+                    for (int i = 0; i < availableDates.Count; i++)
+                    {
+                        if (availableDates[i].date == date)
+                        {
+                            exists = true;
+                            break;
+                        }
+                    }
+                    if (!exists)
                     {
                         availableDates.Add((date, file, false));
                     }
@@ -393,14 +442,37 @@ public sealed class AlarisDataBridge
             }
             
             // Find nearest date <= evaluationDate, or if none, nearest date > evaluationDate
-            var nearestEarlier = availableDates
-                .Where(x => x.date <= evaluationDate)
-                .OrderByDescending(x => x.date)
-                .FirstOrDefault();
-                
-            var selected = nearestEarlier != default 
-                ? nearestEarlier 
-                : availableDates.OrderBy(x => x.date).First();
+            bool hasEarlier = false;
+            DateTime nearestEarlierDate = DateTime.MinValue;
+            (DateTime date, string path, bool isBinary) selected = default;
+
+            for (int i = 0; i < availableDates.Count; i++)
+            {
+                (DateTime date, string path, bool isBinary) entry = availableDates[i];
+                if (entry.date <= evaluationDate)
+                {
+                    if (!hasEarlier || entry.date > nearestEarlierDate)
+                    {
+                        hasEarlier = true;
+                        nearestEarlierDate = entry.date;
+                        selected = entry;
+                    }
+                }
+            }
+
+            if (!hasEarlier)
+            {
+                DateTime earliestDate = availableDates[0].date;
+                selected = availableDates[0];
+                for (int i = 1; i < availableDates.Count; i++)
+                {
+                    if (availableDates[i].date < earliestDate)
+                    {
+                        earliestDate = availableDates[i].date;
+                        selected = availableDates[i];
+                    }
+                }
+            }
             
             _logger.LogDebug("Using cached options from {CacheDate} for {EvalDate} (delta: {Days} days)", 
                 selected.date, evaluationDate, Math.Abs((evaluationDate - selected.date).Days));
@@ -411,7 +483,7 @@ public sealed class AlarisDataBridge
             }
             else
             {
-                var json = await File.ReadAllTextAsync(selected.path, cancellationToken);
+                string json = await File.ReadAllTextAsync(selected.path, cancellationToken);
                 return JsonSerializer.Deserialize<OptionChainSnapshot>(json, JsonOptions);
             }
         }
@@ -428,8 +500,8 @@ public sealed class AlarisDataBridge
     /// </summary>
     private async Task<OptionChainSnapshot?> LoadBinaryCacheAsync(string path, CancellationToken cancellationToken)
     {
-        using var buffer = PLBF001A.RentBuffer(PLBF001A.LargeBufferSize);
-        using var stream = File.OpenRead(path);
+        using PooledBuffer buffer = PLBF001A.RentBuffer(PLBF001A.LargeBufferSize);
+        using FileStream stream = File.OpenRead(path);
         
         int bytesRead = await stream.ReadAsync(buffer.Memory, cancellationToken);
         if (bytesRead == 0)
@@ -453,12 +525,12 @@ public sealed class AlarisDataBridge
             return;
         }
         
-        var optionsDir = System.IO.Path.Combine(_sessionDataPath, "options");
+        string optionsDir = System.IO.Path.Combine(_sessionDataPath, "options");
         Directory.CreateDirectory(optionsDir);
         
-        var binaryCachePath = System.IO.Path.Combine(optionsDir, $"{symbol.ToLowerInvariant()}.sbe");
+        string binaryCachePath = System.IO.Path.Combine(optionsDir, $"{symbol.ToLowerInvariant()}.sbe");
         
-        using var buffer = PLBF001A.RentBuffer(PLBF001A.LargeBufferSize);
+        using PooledBuffer buffer = PLBF001A.RentBuffer(PLBF001A.LargeBufferSize);
         int bytesWritten = DTsr001A.EncodeOptionChainSnapshot(snapshot, buffer.Span);
         
         await File.WriteAllBytesAsync(binaryCachePath, buffer.Array.AsSpan(0, bytesWritten).ToArray(), cancellationToken);
@@ -475,10 +547,10 @@ public sealed class AlarisDataBridge
         CancellationToken cancellationToken)
     {
         // Use evaluation date (from LEAN simulation or live) instead of real-world time
-        var endDate = evaluationDate.Date;
-        var startDate = endDate.AddDays(-45); // 45 days to ensure 30 trading days
+        DateTime endDate = evaluationDate.Date;
+        DateTime startDate = endDate.AddDays(-45); // 45 days to ensure 30 trading days
 
-        var bars = await _marketDataProvider.GetHistoricalBarsAsync(
+        IReadOnlyList<PriceBar> bars = await _marketDataProvider.GetHistoricalBarsAsync(
             symbol,
             startDate,
             endDate,
@@ -506,34 +578,47 @@ public sealed class AlarisDataBridge
         CancellationToken cancellationToken)
     {
         // Fetch upcoming and historical concurrently
-        var upcomingTask = _earningsProvider.GetUpcomingEarningsAsync(
+        Task<IReadOnlyList<EarningsEvent>> upcomingTask = _earningsProvider.GetUpcomingEarningsAsync(
             symbol,
             daysAhead: 90,
             cancellationToken);
 
-        var historicalTask = _earningsProvider.GetHistoricalEarningsAsync(
+        Task<IReadOnlyList<EarningsEvent>> historicalTask = _earningsProvider.GetHistoricalEarningsAsync(
             symbol,
             lookbackDays: 730, // 2 years for Leung-Santoli calibration
             cancellationToken);
 
         await Task.WhenAll(upcomingTask, historicalTask);
 
-        var upcoming = await upcomingTask;
-        var historical = await historicalTask;
+        IReadOnlyList<EarningsEvent> upcoming = await upcomingTask;
+        IReadOnlyList<EarningsEvent> historical = await historicalTask;
 
         // Find next earnings (closest upcoming)
-        EarningsEvent? nextEarnings = upcoming
-            .OrderBy(e => e.Date)
-            .FirstOrDefault();
+        EarningsEvent? nextEarnings = null;
+        foreach (EarningsEvent earning in upcoming)
+        {
+            if (nextEarnings == null || earning.Date < nextEarnings.Date)
+            {
+                nextEarnings = earning;
+            }
+        }
 
         // For backtesting: If upcoming is empty (SEC EDGAR only provides historical),
         // search historical data for dates AFTER the evaluation date
         if (nextEarnings == null && historical.Count > 0)
         {
-            nextEarnings = historical
-                .Where(e => e.Date > evaluationDate.Date)
-                .OrderBy(e => e.Date)
-                .FirstOrDefault();
+            foreach (EarningsEvent earning in historical)
+            {
+                if (earning.Date <= evaluationDate.Date)
+                {
+                    continue;
+                }
+
+                if (nextEarnings == null || earning.Date < nextEarnings.Date)
+                {
+                    nextEarnings = earning;
+                }
+            }
                 
             if (nextEarnings != null)
             {
@@ -544,9 +629,14 @@ public sealed class AlarisDataBridge
         }
 
         // Filter historical to only include dates BEFORE evaluation date
-        var historicalBeforeEvaluation = historical
-            .Where(e => e.Date <= evaluationDate.Date)
-            .ToList();
+        List<EarningsEvent> historicalBeforeEvaluation = new List<EarningsEvent>();
+        foreach (EarningsEvent earning in historical)
+        {
+            if (earning.Date <= evaluationDate.Date)
+            {
+                historicalBeforeEvaluation.Add(earning);
+            }
+        }
 
         _logger.LogDebug(
             "Earnings data for {Symbol}: Next={NextDate}, Historical={HistoricalCount}",
@@ -564,13 +654,13 @@ public sealed class AlarisDataBridge
     {
         _logger.LogDebug("Running data quality validation for {Symbol}", snapshot.Symbol);
 
-        var results = new List<DataQualityResult>();
+        List<DataQualityResult> results = new List<DataQualityResult>();
 
-        foreach (var validator in _validators)
+        foreach (DTqc002A validator in _validators)
         {
             try
             {
-                var result = validator.Validate(snapshot);
+                DataQualityResult result = validator.Validate(snapshot);
                 results.Add(result);
 
                 _logger.LogDebug(
@@ -609,7 +699,7 @@ public sealed class AlarisDataBridge
             "Getting symbols with earnings from {StartDate:yyyy-MM-dd} to {EndDate:yyyy-MM-dd}",
             startDate, endDate);
 
-        var symbols = await _earningsProvider.GetSymbolsWithEarningsAsync(
+        IReadOnlyList<string> symbols = await _earningsProvider.GetSymbolsWithEarningsAsync(
             startDate,
             endDate,
             cancellationToken);
@@ -630,7 +720,7 @@ public sealed class AlarisDataBridge
         try
         {
             // Check 1: Has upcoming earnings within 90 days
-            var upcomingEarnings = await _earningsProvider.GetUpcomingEarningsAsync(
+            IReadOnlyList<EarningsEvent> upcomingEarnings = await _earningsProvider.GetUpcomingEarningsAsync(
                 symbol,
                 daysAhead: 90,
                 cancellationToken);
@@ -642,7 +732,7 @@ public sealed class AlarisDataBridge
             }
 
             // Check 2: Sufficient average volume (Atilgan threshold: 1.5M)
-            var avgVolume = await _marketDataProvider.GetAverageVolume30DayAsync(
+            long avgVolume = await _marketDataProvider.GetAverageVolume30DayAsync(
                 symbol,
                 null, // Use current date for live pre-filtering
                 cancellationToken);

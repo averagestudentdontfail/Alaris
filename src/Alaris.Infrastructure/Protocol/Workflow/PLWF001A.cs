@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Threading;
 
 namespace Alaris.Infrastructure.Protocol.Workflow;
@@ -46,13 +45,13 @@ public sealed class PLWF001A<TState, TEvent>
     where TEvent : struct, Enum
 {
     // === Core DFA components ===
-    private readonly Dictionary<(TState, TEvent), Transition> _transitions = new();
-    private readonly HashSet<TState> _terminalStates = new();
+    private readonly Dictionary<(TState, TEvent), Transition> _transitions = new Dictionary<(TState, TEvent), Transition>();
+    private readonly HashSet<TState> _terminalStates = new HashSet<TState>();
     private readonly TState _initialState;
     
     // === Moore model extensions: state-based actions ===
-    private readonly Dictionary<TState, Action?> _stateEntryActions = new();
-    private readonly Dictionary<TState, Action?> _stateExitActions = new();
+    private readonly Dictionary<TState, Action?> _stateEntryActions = new Dictionary<TState, Action?>();
+    private readonly Dictionary<TState, Action?> _stateExitActions = new Dictionary<TState, Action?>();
     
     // === Thread safety ===
     private SpinLock _stateLock = new(enableThreadOwnerTracking: false);
@@ -62,7 +61,7 @@ public sealed class PLWF001A<TState, TEvent>
     private readonly TransitionRecord[] _historyBuffer;
     private int _historyHead;
     private int _historyCount;
-    private readonly object _historyLock = new();
+    private readonly object _historyLock = new object();
     
     // === Immutability after first use ===
     private volatile bool _frozen;
@@ -108,7 +107,7 @@ public sealed class PLWF001A<TState, TEvent>
     {
         get
         {
-            var lockTaken = false;
+            bool lockTaken = false;
             try
             {
                 _stateLock.Enter(ref lockTaken);
@@ -164,13 +163,13 @@ public sealed class PLWF001A<TState, TEvent>
         {
             lock (_historyLock)
             {
-                var count = Math.Min(_historyCount, _historyBuffer.Length);
-                var result = new TransitionRecord[count];
+                int count = Math.Min(_historyCount, _historyBuffer.Length);
+                TransitionRecord[] result = new TransitionRecord[count];
                 
                 for (int i = 0; i < count; i++)
                 {
                     // Read from newest to oldest
-                    var index = (_historyHead - 1 - i + _historyBuffer.Length) % _historyBuffer.Length;
+                    int index = (_historyHead - 1 - i + _historyBuffer.Length) % _historyBuffer.Length;
                     result[i] = _historyBuffer[index];
                 }
                 
@@ -198,7 +197,7 @@ public sealed class PLWF001A<TState, TEvent>
     {
         ThrowIfFrozen();
         
-        var key = (from, on);
+        (TState, TEvent) key = (from, on);
         if (_transitions.ContainsKey(key))
         {
             throw new InvalidOperationException(
@@ -269,16 +268,16 @@ public sealed class PLWF001A<TState, TEvent>
         // Freeze on first use (defensive immutability)
         _frozen = true;
         
-        var lockTaken = false;
+        bool lockTaken = false;
         try
         {
             _stateLock.Enter(ref lockTaken);
             
-            var key = (_currentState, @event);
+            (TState, TEvent) key = (_currentState, @event);
             
-            if (!_transitions.TryGetValue(key, out var transition))
+            if (!_transitions.TryGetValue(key, out Transition transition))
             {
-                var result = TransitionResult<TState, TEvent>.InvalidTransition(_currentState, @event);
+                TransitionResult<TState, TEvent> result = TransitionResult<TState, TEvent>.InvalidTransition(_currentState, @event);
                 RecordTransition(result);
                 return result;
             }
@@ -286,22 +285,22 @@ public sealed class PLWF001A<TState, TEvent>
             // Check guard condition
             if (transition.Guard != null && !transition.Guard())
             {
-                var result = TransitionResult<TState, TEvent>.GuardFailed(_currentState, @event, transition.Target);
+                TransitionResult<TState, TEvent> result = TransitionResult<TState, TEvent>.GuardFailed(_currentState, @event, transition.Target);
                 RecordTransition(result);
                 return result;
             }
             
-            var previousState = _currentState;
+            TState previousState = _currentState;
             
             // Execute exit action (Moore model)
             try
             {
-                if (_stateExitActions.TryGetValue(previousState, out var exitAction))
+                if (_stateExitActions.TryGetValue(previousState, out Action? exitAction))
                     exitAction?.Invoke();
             }
             catch (Exception ex)
             {
-                var result = TransitionResult<TState, TEvent>.ActionFailed(previousState, @event, ex, "Exit action failed");
+                TransitionResult<TState, TEvent> result = TransitionResult<TState, TEvent>.ActionFailed(previousState, @event, ex, "Exit action failed");
                 RecordTransition(result);
                 return result;
             }
@@ -313,7 +312,7 @@ public sealed class PLWF001A<TState, TEvent>
             }
             catch (Exception ex)
             {
-                var result = TransitionResult<TState, TEvent>.ActionFailed(_currentState, @event, ex, "Transition action failed");
+                TransitionResult<TState, TEvent> result = TransitionResult<TState, TEvent>.ActionFailed(_currentState, @event, ex, "Transition action failed");
                 RecordTransition(result);
                 return result;
             }
@@ -324,18 +323,18 @@ public sealed class PLWF001A<TState, TEvent>
             // Execute entry action (Moore model)
             try
             {
-                if (_stateEntryActions.TryGetValue(_currentState, out var entryAction))
+                if (_stateEntryActions.TryGetValue(_currentState, out Action? entryAction))
                     entryAction?.Invoke();
             }
             catch (Exception ex)
             {
                 // State already changed, log but don't revert
-                var result = TransitionResult<TState, TEvent>.ActionFailed(previousState, @event, ex, "Entry action failed");
+                TransitionResult<TState, TEvent> result = TransitionResult<TState, TEvent>.ActionFailed(previousState, @event, ex, "Entry action failed");
                 RecordTransition(result);
                 return result;
             }
             
-            var successResult = TransitionResult<TState, TEvent>.Success(previousState, @event, _currentState);
+            TransitionResult<TState, TEvent> successResult = TransitionResult<TState, TEvent>.Success(previousState, @event, _currentState);
             RecordTransition(successResult);
             return successResult;
         }
@@ -352,14 +351,14 @@ public sealed class PLWF001A<TState, TEvent>
     /// <returns>True if the transition can be fired from the current state.</returns>
     public bool CanFire(TEvent @event)
     {
-        var lockTaken = false;
+        bool lockTaken = false;
         try
         {
             _stateLock.Enter(ref lockTaken);
             
-            var key = (_currentState, @event);
+            (TState, TEvent) key = (_currentState, @event);
             
-            if (!_transitions.TryGetValue(key, out var transition))
+            if (!_transitions.TryGetValue(key, out Transition transition))
                 return false;
                 
             return transition.Guard == null || transition.Guard();
@@ -377,11 +376,23 @@ public sealed class PLWF001A<TState, TEvent>
     /// <returns>Enumerable of available events.</returns>
     public IEnumerable<TEvent> GetAvailableEvents()
     {
-        var currentState = CurrentState;
-        return _transitions.Keys
-            .Where(k => k.Item1.Equals(currentState))
-            .Where(k => CanFire(k.Item2))
-            .Select(k => k.Item2);
+        TState currentState = CurrentState;
+        List<TEvent> events = new List<TEvent>();
+        foreach (KeyValuePair<(TState, TEvent), Transition> transition in _transitions)
+        {
+            if (!transition.Key.Item1.Equals(currentState))
+            {
+                continue;
+            }
+
+            TEvent candidate = transition.Key.Item2;
+            if (CanFire(candidate))
+            {
+                events.Add(candidate);
+            }
+        }
+
+        return events;
     }
     
     /// <summary>
@@ -390,10 +401,17 @@ public sealed class PLWF001A<TState, TEvent>
     /// <returns>Enumerable of (event, targetState) pairs.</returns>
     public IEnumerable<(TEvent Event, TState Target)> GetPossibleTransitions()
     {
-        var currentState = CurrentState;
-        return _transitions
-            .Where(kvp => kvp.Key.Item1.Equals(currentState))
-            .Select(kvp => (kvp.Key.Item2, kvp.Value.Target));
+        TState currentState = CurrentState;
+        List<(TEvent Event, TState Target)> transitions = new List<(TEvent Event, TState Target)>();
+        foreach (KeyValuePair<(TState, TEvent), Transition> kvp in _transitions)
+        {
+            if (kvp.Key.Item1.Equals(currentState))
+            {
+                transitions.Add((kvp.Key.Item2, kvp.Value.Target));
+            }
+        }
+
+        return transitions;
     }
     
     /// <summary>
@@ -402,7 +420,7 @@ public sealed class PLWF001A<TState, TEvent>
     /// </summary>
     public void Reset()
     {
-        var lockTaken = false;
+        bool lockTaken = false;
         try
         {
             _stateLock.Enter(ref lockTaken);
@@ -427,34 +445,48 @@ public sealed class PLWF001A<TState, TEvent>
     /// <returns>List of validation issues (empty if valid).</returns>
     public IReadOnlyList<string> Validate()
     {
-        var issues = new List<string>();
+        List<string> issues = new List<string>();
         
         // Check that initial state has at least one outgoing transition
-        var hasInitialTransition = _transitions.Keys.Any(k => k.Item1.Equals(_initialState));
+        bool hasInitialTransition = false;
+        foreach (KeyValuePair<(TState, TEvent), Transition> kvp in _transitions)
+        {
+            if (kvp.Key.Item1.Equals(_initialState))
+            {
+                hasInitialTransition = true;
+                break;
+            }
+        }
+
         if (!hasInitialTransition)
         {
             issues.Add($"Initial state '{_initialState}' has no outgoing transitions");
         }
         
         // Build reachability graph
-        var allStates = _transitions.Values.Select(t => t.Target)
-            .Concat(_transitions.Keys.Select(k => k.Item1))
-            .Concat(new[] { _initialState })
-            .ToHashSet();
+        HashSet<TState> allStates = new HashSet<TState>();
+        allStates.Add(_initialState);
+        foreach (KeyValuePair<(TState, TEvent), Transition> kvp in _transitions)
+        {
+            allStates.Add(kvp.Key.Item1);
+            allStates.Add(kvp.Value.Target);
+        }
             
-        var reachableStates = new HashSet<TState> { _initialState };
-        var frontier = new Queue<TState>();
+        HashSet<TState> reachableStates = new HashSet<TState> { _initialState };
+        Queue<TState> frontier = new Queue<TState>();
         frontier.Enqueue(_initialState);
         
         while (frontier.Count > 0)
         {
-            var current = frontier.Dequeue();
-            var outgoing = _transitions
-                .Where(kvp => kvp.Key.Item1.Equals(current))
-                .Select(kvp => kvp.Value.Target);
-            
-            foreach (var target in outgoing)
+            TState current = frontier.Dequeue();
+            foreach (KeyValuePair<(TState, TEvent), Transition> kvp in _transitions)
             {
+                if (!kvp.Key.Item1.Equals(current))
+                {
+                    continue;
+                }
+
+                TState target = kvp.Value.Target;
                 if (reachableStates.Add(target))
                 {
                     frontier.Enqueue(target);
@@ -463,27 +495,40 @@ public sealed class PLWF001A<TState, TEvent>
         }
         
         // Check for unreachable states
-        var unreachable = allStates.Except(reachableStates).ToList();
-        foreach (var state in unreachable)
+        List<TState> unreachable = new List<TState>();
+        foreach (TState state in allStates)
+        {
+            if (!reachableStates.Contains(state))
+            {
+                unreachable.Add(state);
+            }
+        }
+
+        foreach (TState state in unreachable)
         {
             issues.Add($"State '{state}' is unreachable from initial state");
         }
         
         // Check for dead states (non-terminal states with no outgoing transitions)
-        foreach (var state in allStates)
+        HashSet<TState> statesWithOutgoing = new HashSet<TState>();
+        foreach (KeyValuePair<(TState, TEvent), Transition> kvp in _transitions)
+        {
+            statesWithOutgoing.Add(kvp.Key.Item1);
+        }
+
+        foreach (TState state in allStates)
         {
             if (_terminalStates.Contains(state))
                 continue;
                 
-            var hasOutgoing = _transitions.Keys.Any(k => k.Item1.Equals(state));
-            if (!hasOutgoing)
+            if (!statesWithOutgoing.Contains(state))
             {
                 issues.Add($"Non-terminal state '{state}' has no outgoing transitions (dead state)");
             }
         }
         
         // Check that all terminal states are reachable
-        foreach (var terminal in _terminalStates)
+        foreach (TState terminal in _terminalStates)
         {
             if (!reachableStates.Contains(terminal))
             {
@@ -499,11 +544,15 @@ public sealed class PLWF001A<TState, TEvent>
     /// </summary>
     public FsmStatistics GetStatistics()
     {
-        var allStates = _transitions.Values.Select(t => t.Target)
-            .Concat(_transitions.Keys.Select(k => k.Item1))
-            .ToHashSet();
-            
-        var allEvents = _transitions.Keys.Select(k => k.Item2).ToHashSet();
+        HashSet<TState> allStates = new HashSet<TState>();
+        HashSet<TEvent> allEvents = new HashSet<TEvent>();
+        allStates.Add(_initialState);
+        foreach (KeyValuePair<(TState, TEvent), Transition> kvp in _transitions)
+        {
+            allStates.Add(kvp.Key.Item1);
+            allStates.Add(kvp.Value.Target);
+            allEvents.Add(kvp.Key.Item2);
+        }
         
         return new FsmStatistics(
             StateCount: allStates.Count,
@@ -519,10 +568,16 @@ public sealed class PLWF001A<TState, TEvent>
     
     private bool DetectCycles()
     {
-        var visited = new HashSet<TState>();
-        var inStack = new HashSet<TState>();
+        HashSet<TState> visited = new HashSet<TState>();
+        HashSet<TState> inStack = new HashSet<TState>();
         
-        foreach (var state in _transitions.Keys.Select(k => k.Item1).Distinct())
+        HashSet<TState> statesWithOutgoing = new HashSet<TState>();
+        foreach (KeyValuePair<(TState, TEvent), Transition> kvp in _transitions)
+        {
+            statesWithOutgoing.Add(kvp.Key.Item1);
+        }
+
+        foreach (TState state in statesWithOutgoing)
         {
             if (DetectCyclesDfs(state, visited, inStack))
                 return true;
@@ -542,12 +597,14 @@ public sealed class PLWF001A<TState, TEvent>
         visited.Add(state);
         inStack.Add(state);
         
-        var outgoing = _transitions
-            .Where(kvp => kvp.Key.Item1.Equals(state))
-            .Select(kvp => kvp.Value.Target);
-            
-        foreach (var target in outgoing)
+        foreach (KeyValuePair<(TState, TEvent), Transition> kvp in _transitions)
         {
+            if (!kvp.Key.Item1.Equals(state))
+            {
+                continue;
+            }
+
+            TState target = kvp.Value.Target;
             if (DetectCyclesDfs(target, visited, inStack))
                 return true;
         }
@@ -558,7 +615,7 @@ public sealed class PLWF001A<TState, TEvent>
     
     private void RecordTransition(TransitionResult<TState, TEvent> result)
     {
-        var record = new TransitionRecord(
+        TransitionRecord record = new TransitionRecord(
             result.FromState?.ToString() ?? "",
             result.Event?.ToString() ?? "",
             result.ToState?.ToString() ?? "",

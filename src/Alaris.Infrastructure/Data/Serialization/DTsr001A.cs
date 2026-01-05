@@ -37,7 +37,7 @@ public static class DTsr001A
     /// <returns>Number of bytes written.</returns>
     public static int EncodePriceBar(PriceBar bar, Span<byte> buffer)
     {
-        var data = new PriceBarData
+        PriceBarData data = new PriceBarData
         {
             TimestampEpochMs = new DateTimeOffset(bar.Timestamp, TimeSpan.Zero).ToUnixTimeMilliseconds(),
             OpenMantissa = PLSR001A.ToMantissa(bar.Open),
@@ -58,7 +58,7 @@ public static class DTsr001A
     /// <returns>Decoded domain model.</returns>
     public static PriceBar DecodePriceBar(ReadOnlySpan<byte> buffer, string symbol)
     {
-        var data = PLSR001A.DecodePriceBar(buffer);
+        PriceBarData data = PLSR001A.DecodePriceBar(buffer);
 
         return new PriceBar
         {
@@ -95,7 +95,7 @@ public static class DTsr001A
         offset += 16;
 
         // Write each bar
-        foreach (var bar in bars)
+        foreach (PriceBar bar in bars)
         {
             int written = EncodePriceBar(bar, buffer[offset..]);
             offset += written;
@@ -124,7 +124,7 @@ public static class DTsr001A
         string symbol = ReadFixedString(buffer[offset..], 16);
         offset += 16;
 
-        var result = new List<PriceBar>(count);
+        List<PriceBar> result = new List<PriceBar>(count);
 
         for (int i = 0; i < count; i++)
         {
@@ -291,7 +291,7 @@ public static class DTsr001A
         offset += 4;
 
         // Contracts
-        foreach (var contract in snapshot.Contracts)
+        foreach (OptionContract contract in snapshot.Contracts)
         {
             int written = EncodeOptionContract(contract, buffer[offset..]);
             offset += written;
@@ -331,7 +331,7 @@ public static class DTsr001A
         offset += 4;
 
         // Contracts
-        var contracts = new List<OptionContract>(contractCount);
+        List<OptionContract> contracts = new List<OptionContract>(contractCount);
         for (int i = 0; i < contractCount; i++)
         {
             contracts.Add(DecodeOptionContract(buffer[offset..]));

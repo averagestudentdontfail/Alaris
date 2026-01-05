@@ -2,7 +2,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
@@ -82,19 +81,35 @@ public sealed class TreasuryDirectRateProvider : DTpr005A
             }
 
             // Find most recent 3-month T-bill (91-day maturity)
-            TreasurySecurityDto? threeMonthBill = securities
-                .Where(s => s.Term != null && s.Term.Contains("91"))
-                .OrderByDescending(s => s.IssueDate)
-                .FirstOrDefault();
+            TreasurySecurityDto? threeMonthBill = null;
+            for (int i = 0; i < securities.Length; i++)
+            {
+                TreasurySecurityDto security = securities[i];
+                if (security.Term == null || !security.Term.Contains("91"))
+                {
+                    continue;
+                }
+
+                if (threeMonthBill == null || security.IssueDate > threeMonthBill.IssueDate)
+                {
+                    threeMonthBill = security;
+                }
+            }
 
             if (threeMonthBill == null)
             {
                 _logger.LogWarning("No 3-month T-bills found in recent auctions");
                 
                 // Use any bill as fallback
-                TreasurySecurityDto anyBill = securities
-                    .OrderByDescending(s => s.IssueDate)
-                    .First();
+                TreasurySecurityDto anyBill = securities[0];
+                for (int i = 1; i < securities.Length; i++)
+                {
+                    TreasurySecurityDto security = securities[i];
+                    if (security.IssueDate > anyBill.IssueDate)
+                    {
+                        anyBill = security;
+                    }
+                }
                 
                 decimal fallbackRate = ParseRate(anyBill.InterestRate);
                 _logger.LogInformation("Using fallback rate from {Term}: {Rate:P4}", anyBill.Term, fallbackRate);
@@ -151,22 +166,42 @@ public sealed class TreasuryDirectRateProvider : DTpr005A
             }
 
             // Group by issue date, prefer 3-month bills
-            Dictionary<DateTime, decimal> ratesByDate = securities
-                .Where(s => !string.IsNullOrWhiteSpace(s.InterestRate))
-                .GroupBy(s => s.IssueDate.Date)
-                .ToDictionary(
-                    g => g.Key,
-                    g =>
+            Dictionary<DateTime, (decimal Rate, bool IsPreferred)> ratesByDate =
+                new Dictionary<DateTime, (decimal Rate, bool IsPreferred)>();
+            for (int i = 0; i < securities.Length; i++)
+            {
+                TreasurySecurityDto security = securities[i];
+                if (string.IsNullOrWhiteSpace(security.InterestRate))
+                {
+                    continue;
+                }
+
+                DateTime issueDate = security.IssueDate.Date;
+                bool isPreferred = security.Term != null && security.Term.Contains("91");
+                decimal rate = ParseRate(security.InterestRate);
+
+                if (ratesByDate.TryGetValue(issueDate, out (decimal Rate, bool IsPreferred) current))
+                {
+                    if (isPreferred && !current.IsPreferred)
                     {
-                        // Prefer 3-month bill if available (Term usually '13-Week' or similar, strict check '91')
-                        TreasurySecurityDto preferred = g.FirstOrDefault(s => s.Term != null && s.Term.Contains("91"))
-                            ?? g.First();
-                        return ParseRate(preferred.InterestRate!);
-                    });
+                        ratesByDate[issueDate] = (rate, true);
+                    }
+                }
+                else
+                {
+                    ratesByDate.Add(issueDate, (rate, isPreferred));
+                }
+            }
 
-            _logger.LogInformation("Retrieved {Count} historical rate observations from Treasury Direct", ratesByDate.Count);
+            Dictionary<DateTime, decimal> materializedRates = new Dictionary<DateTime, decimal>(ratesByDate.Count);
+            foreach (KeyValuePair<DateTime, (decimal Rate, bool IsPreferred)> kvp in ratesByDate)
+            {
+                materializedRates.Add(kvp.Key, kvp.Value.Rate);
+            }
 
-            return ratesByDate;
+            _logger.LogInformation("Retrieved {Count} historical rate observations from Treasury Direct", materializedRates.Count);
+
+            return materializedRates;
         }
         catch (HttpRequestException ex)
         {

@@ -3,7 +3,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -95,16 +94,21 @@ public sealed class PolygonApiClient : DTpr003A
                 return Array.Empty<PriceBar>();
             }
 
-            List<PriceBar> bars = response.Results.Select(r => new PriceBar
+            List<PriceBar> bars = new List<PriceBar>(response.Results.Length);
+            foreach (PolygonAggregateResult result in response.Results)
             {
-                Symbol = symbol,
-                Timestamp = DateTimeOffset.FromUnixTimeMilliseconds(r.Timestamp).DateTime,
-                Open = r.Open,
-                High = r.High,
-                Low = r.Low,
-                Close = r.Close,
-                Volume = (long)r.Volume
-            }).ToList();
+                PriceBar bar = new PriceBar
+                {
+                    Symbol = symbol,
+                    Timestamp = DateTimeOffset.FromUnixTimeMilliseconds(result.Timestamp).DateTime,
+                    Open = result.Open,
+                    High = result.High,
+                    Low = result.Low,
+                    Close = result.Close,
+                    Volume = (long)result.Volume
+                };
+                bars.Add(bar);
+            }
 
             _logger.LogInformation("Retrieved {Count} bars for {Symbol}", bars.Count, symbol);
             return bars;
@@ -198,16 +202,32 @@ public sealed class PolygonApiClient : DTpr003A
             _logger.LogInformation("Found {Count} reference contracts for {Symbol}, fetching daily bars (max 50)...", refResponse.Results.Length, symbol);
 
             // 3. Fetch daily bars for each contract - WITH PARALLELISM and LIMITS
-            PolygonOptionContract[] contractsToFetch = refResponse.Results.Take(50).ToArray();
+            int contractLimit = refResponse.Results.Length < 50 ? refResponse.Results.Length : 50;
+            PolygonOptionContract[] contractsToFetch = new PolygonOptionContract[contractLimit];
+            for (int i = 0; i < contractLimit; i++)
+            {
+                contractsToFetch[i] = refResponse.Results[i];
+            }
             ConcurrentBag<OptionContract> contracts = new();
             bool subscriptionLimitHit = false;
             
             // Use semaphore to limit concurrent requests (Polygon rate limits apply)
             using SemaphoreSlim semaphore = new(5);
-            IEnumerable<Task> tasks = contractsToFetch.Select(async refContract =>
+            List<Task> tasks = new List<Task>(contractsToFetch.Length);
+            for (int i = 0; i < contractsToFetch.Length; i++)
+            {
+                PolygonOptionContract refContract = contractsToFetch[i];
+                tasks.Add(FetchContractAsync(refContract));
+            }
+            
+            await Task.WhenAll(tasks);
+
+            async Task FetchContractAsync(PolygonOptionContract refContract)
             {
                 if (subscriptionLimitHit)
+                {
                     return;
+                }
                     
                 await semaphore.WaitAsync(cancellationToken);
                 try
@@ -221,7 +241,9 @@ public sealed class PolygonApiClient : DTpr003A
                         cancellationToken);
                     
                     if (aggResponse?.Results == null || aggResponse.Results.Length == 0)
+                    {
                         return;
+                    }
 
                     PolygonBar bar = aggResponse.Results[0];
                     
@@ -235,7 +257,7 @@ public sealed class PolygonApiClient : DTpr003A
                         (double)spotPrice, (double)strike, timeToExpiry, riskFreeRate, 0.0,
                         (double)bar.Close, right == OptionRight.Call);
                     
-                    contracts.Add(new OptionContract
+                    OptionContract contract = new OptionContract
                     {
                         OptionSymbol = refContract.Ticker,
                         UnderlyingSymbol = underlying,
@@ -249,7 +271,9 @@ public sealed class PolygonApiClient : DTpr003A
                         OpenInterest = (long)bar.Volume,
                         ImpliedVolatility = !double.IsNaN(impliedVol) && impliedVol > 0 ? (decimal)impliedVol : null,
                         Timestamp = DateTimeOffset.FromUnixTimeMilliseconds(bar.Timestamp).DateTime
-                    });
+                    };
+                    
+                    contracts.Add(contract);
                 }
                 catch (OperationCanceledException)
                 {
@@ -270,9 +294,7 @@ public sealed class PolygonApiClient : DTpr003A
                 {
                     semaphore.Release();
                 }
-            });
-            
-            await Task.WhenAll(tasks);
+            }
 
             _logger.LogInformation("Retrieved {Count} contracts with pricing for {Symbol}", contracts.Count, symbol);
 
@@ -281,7 +303,7 @@ public sealed class PolygonApiClient : DTpr003A
                 Symbol = symbol,
                 SpotPrice = spotPrice,
                 Timestamp = effectiveDate,
-                Contracts = contracts.ToList()
+                Contracts = ToContractList(contracts)
             };
         }
         catch (Exception ex)
@@ -336,8 +358,23 @@ public sealed class PolygonApiClient : DTpr003A
         if (bars.Count == 0)
             throw new InvalidOperationException($"No historical data available for {symbol}");
 
-        decimal avgVolume = (decimal)bars.Average(b => b.Volume);
+        decimal sumVolume = 0m;
+        for (int i = 0; i < bars.Count; i++)
+        {
+            sumVolume += bars[i].Volume;
+        }
+        decimal avgVolume = sumVolume / bars.Count;
         return avgVolume;
+    }
+
+    private static List<OptionContract> ToContractList(IEnumerable<OptionContract> contracts)
+    {
+        List<OptionContract> list = new List<OptionContract>();
+        foreach (OptionContract contract in contracts)
+        {
+            list.Add(contract);
+        }
+        return list;
     }
 
 
