@@ -1,0 +1,11 @@
+<map id="Alaris.Strategy.Core.STCR001A" name="Alaris.Strategy.Core.STCR001A">
+<area shape="rect" id="Node000001" title="Generates trading signals for earnings calendar spread opportunities. Implements the strategy from At..." alt="" coords="343,433,561,979"/>
+<area shape="rect" id="Node000002" href="$d0/d02/interfaceAlaris_1_1Strategy_1_1Bridge_1_1STDT001A.html" title="Interface for accessing market data including option chains and historical prices...." alt="" coords="5,105,213,271"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="163,269,228,369,336,531,332,534,223,372,159,272"/>
+<area shape="rect" id="Node000003" href="$d7/d02/classAlaris_1_1Strategy_1_1Core_1_1STCR003A.html" title="Implements the Yang&#45;Zhang (2000) realized volatility estimator. This estimator is an efficient method..." alt="" coords="238,98,439,278"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="361,278,391,417,386,418,356,279"/>
+<area shape="rect" id="Node000004" href="$df/d01/classAlaris_1_1Strategy_1_1Core_1_1STTM001A.html" title="Analyzes the term structure of implied volatility. Used to identify inverted term structures that sig..." alt="" coords="463,145,670,231"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="560,232,519,418,513,417,555,230"/>
+<area shape="rect" id="Node000005" href="$dd/d02/classAlaris_1_1Strategy_1_1Core_1_1STIV005A.html" title="Calibrates earnings jump volatility (sigma_e) from historical earnings announcement data...." alt="" coords="695,5,889,371"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="697,354,685,372,572,540,568,537,680,369,692,351"/>
+</map>

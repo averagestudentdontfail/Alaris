@@ -1,0 +1,7 @@
+<map id="Alaris.Infrastructure.Events.Infrastructure.EVIF001B" name="Alaris.Infrastructure.Events.Infrastructure.EVIF001B">
+<area shape="rect" id="Node000001" title="File&#45;based persistent implementation of EVCR002A for production use." alt="" coords="93,248,315,737"/>
+<area shape="rect" id="Node000002" href="$dd/d03/interfaceAlaris_1_1Infrastructure_1_1Events_1_1Core_1_1EVCR002A.html" title="Interface for storing and retrieving events. Implementations must ensure events are never modified or..." alt="" coords="5,5,227,200"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="143,213,151,247,146,249,138,214"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="251,70,333,135"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="284,149,262,248,257,247,279,148"/>
+</map>

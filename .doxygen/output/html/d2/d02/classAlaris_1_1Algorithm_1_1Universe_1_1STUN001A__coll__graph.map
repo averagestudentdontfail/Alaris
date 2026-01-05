@@ -1,0 +1,7 @@
+<map id="Alaris.Algorithm.Universe.STUN001A" name="Alaris.Algorithm.Universe.STUN001A">
+<area shape="rect" id="Node000001" title="Universe selection model that filters for symbols with upcoming earnings. Implements Atilgan (2014) p..." alt="" coords="107,228,330,608"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,45,200,125"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="123,138,155,227,150,229,118,139"/>
+<area shape="rect" id="Node000003" href="$da/d01/interfaceAlaris_1_1Infrastructure_1_1Data_1_1Provider_1_1DTpr004A.html" title="Interface for earnings calendar providers." alt="" coords="224,5,445,165"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="309,167,293,213,288,212,304,165"/>
+</map>

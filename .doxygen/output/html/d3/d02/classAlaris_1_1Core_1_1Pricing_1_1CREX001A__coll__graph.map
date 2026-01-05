@@ -1,0 +1,3 @@
+<map id="Alaris.Core.Pricing.CREX001A" name="Alaris.Core.Pricing.CREX001A">
+<area shape="rect" id="Node000001" title="Handles numerical stability as τ → 0 via blending to intrinsic. Threshold: τ &lt; 1/252." alt="" coords="5,5,201,311"/>
+</map>

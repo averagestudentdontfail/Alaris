@@ -1,0 +1,3 @@
+<map id="Alaris.Infrastructure.Events.Core.EVCR002A" name="Alaris.Infrastructure.Events.Core.EVCR002A">
+<area shape="rect" id="Node000001" title="Interface for storing and retrieving events. Implementations must ensure events are never modified or..." alt="" coords="5,5,227,215"/>
+</map>

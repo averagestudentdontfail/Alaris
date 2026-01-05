@@ -1,0 +1,26 @@
+var classAlaris_1_1Strategy_1_1Risk_1_1STQT001A =
+[
+    [ "STQT001A", "d4/d01/classAlaris_1_1Strategy_1_1Risk_1_1STQT001A.html#ae936b4d896e2dc5224a77a7236d03758", null ],
+    [ "AdvanceVirtualTime", "d4/d01/classAlaris_1_1Strategy_1_1Risk_1_1STQT001A.html#a4d77e3b55c6d0bf42a346b37868728ac", null ],
+    [ "ComputeBlockingProbability", "d4/d01/classAlaris_1_1Strategy_1_1Risk_1_1STQT001A.html#aba1d59a32bd4661c664a66ae89008e23", null ],
+    [ "ComputeGittinsProxy", "d4/d01/classAlaris_1_1Strategy_1_1Risk_1_1STQT001A.html#a7ce76a21a9ae57c24a2d1e54ae3739df", null ],
+    [ "ComputeMeanQueueLength", "d4/d01/classAlaris_1_1Strategy_1_1Risk_1_1STQT001A.html#a87eaf6f88c7c124e40585ac8e63d11d1", null ],
+    [ "ComputeMeanQueueLengthWithCapacity", "d4/d01/classAlaris_1_1Strategy_1_1Risk_1_1STQT001A.html#aefa5a5dc5740a912fb5e308a413631bd", null ],
+    [ "ComputeMeanWaitingTime", "d4/d01/classAlaris_1_1Strategy_1_1Risk_1_1STQT001A.html#a74c3b4effeb23873cafe9cd049aea8eb", null ],
+    [ "ComputeOptimalCapacity", "d4/d01/classAlaris_1_1Strategy_1_1Risk_1_1STQT001A.html#a3d78c1207088321170101a2be45acf81", null ],
+    [ "ComputeVirtualFinishTime", "d4/d01/classAlaris_1_1Strategy_1_1Risk_1_1STQT001A.html#a16f3d871c3b2f5973bbc4b50c34adf1b", null ],
+    [ "GetCurrentEstimates", "d4/d01/classAlaris_1_1Strategy_1_1Risk_1_1STQT001A.html#a3215eb611b0f5320d8489b9b6ba4d94b", null ],
+    [ "RankByWFQ", "d4/d01/classAlaris_1_1Strategy_1_1Risk_1_1STQT001A.html#a4d47b0f42fbcbb28fa7d02c3f35a05ef", null ],
+    [ "SafeLog", "d4/d01/classAlaris_1_1Strategy_1_1Risk_1_1STQT001A.html#a7936d31e593b7a38cde7ee8ab8d26a82", null ],
+    [ "SelectForEjection", "d4/d01/classAlaris_1_1Strategy_1_1Risk_1_1STQT001A.html#ab1f5d0dc2f2ba5531ca394c4d1037f27", null ],
+    [ "UpdateArrivalRateEstimate", "d4/d01/classAlaris_1_1Strategy_1_1Risk_1_1STQT001A.html#ab7e93d2582554aa45494e117e19eb565", null ],
+    [ "UpdateServiceRateEstimate", "d4/d01/classAlaris_1_1Strategy_1_1Risk_1_1STQT001A.html#a832c5a5dda1991dba6c5c5fe744d650b", null ],
+    [ "_currentVirtualTime", "d4/d01/classAlaris_1_1Strategy_1_1Risk_1_1STQT001A.html#a2f72e85ec7c5e4c801c9f315534dbb69", null ],
+    [ "_estimatedArrivalRate", "d4/d01/classAlaris_1_1Strategy_1_1Risk_1_1STQT001A.html#aae9a0a13ee360c8bf9c7ca3a0fea4d15", null ],
+    [ "_estimatedServiceCV", "d4/d01/classAlaris_1_1Strategy_1_1Risk_1_1STQT001A.html#a5788d93d6fbc7fc835109a5804165123", null ],
+    [ "_estimatedServiceRate", "d4/d01/classAlaris_1_1Strategy_1_1Risk_1_1STQT001A.html#a167bd96f8491793ca74aa76096030a89", null ],
+    [ "_logger", "d4/d01/classAlaris_1_1Strategy_1_1Risk_1_1STQT001A.html#af6a2bece1940623ada6c5dee3bfddcf3", null ],
+    [ "_params", "d4/d01/classAlaris_1_1Strategy_1_1Risk_1_1STQT001A.html#a0d0e2d696c6fd88391a563f8aed45d45", null ],
+    [ "LogBlockingProbability", "d4/d01/classAlaris_1_1Strategy_1_1Risk_1_1STQT001A.html#ad1202c39bd566e6dc292a100516fd3fd", null ],
+    [ "LogCapacityRecommendation", "d4/d01/classAlaris_1_1Strategy_1_1Risk_1_1STQT001A.html#a84a8fb9bd8b1bc13c3490d117079f038", null ]
+];

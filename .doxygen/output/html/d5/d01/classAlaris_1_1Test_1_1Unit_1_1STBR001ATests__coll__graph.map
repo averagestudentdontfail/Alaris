@@ -1,0 +1,26 @@
+<map id="Alaris.Test.Unit.STBR001ATests" name="Alaris.Test.Unit.STBR001ATests">
+<area shape="rect" id="Node000001" title="Unit tests for the STBR001A component. Tests regime detection, pricing accuracy, and calendar spread ..." alt="" coords="95,1784,322,2316"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="11,838,94,903"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="53,917,48,1054,49,1254,53,1368,61,1486,75,1605,94,1721,109,1783,104,1785,89,1722,70,1606,56,1486,48,1368,43,1254,43,1054,47,917"/>
+<area shape="rect" id="Node000003" href="$dd/d03/classAlaris_1_1Strategy_1_1Bridge_1_1STBR001A.html" title="Unified pricing engine that automatically selects between Alaris native engines based on interest rat..." alt="" coords="104,1206,313,1591"/>
+<area shape="poly" id="edge4_Node000003_Node000002" title=" " alt="" coords="69,916,154,1205,149,1207,63,918"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="211,1592,211,1767,206,1767,206,1592"/>
+<area shape="rect" id="Node000004" href="$d9/d02/interfaceAlaris_1_1Strategy_1_1Bridge_1_1STBR002A.html" title="Interface for pricing options using advanced models including negative rates. Implementations use the..." alt="" coords="118,818,299,923"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="211,937,211,1205,206,1205,206,937"/>
+<area shape="rect" id="Node000005" href="$d1/d02/classAlaris_1_1Core_1_1Pricing_1_1CREN003A.html" title="Unified American option pricing engine. Automatically selects the appropriate method based on rate re..." alt="" coords="324,728,520,1013"/>
+<area shape="poly" id="edge5_Node000003_Node000005" title=" " alt="" coords="367,1014,295,1192,290,1190,362,1012"/>
+<area shape="rect" id="Node000006" href="$d9/d01/interfaceAlaris_1_1Core_1_1Pricing_1_1IAmericanOptionEngine.html" title="Interface for American option pricing engines." alt="" coords="5,253,156,418"/>
+<area shape="poly" id="edge6_Node000005_Node000006" title=" " alt="" coords="87,431,95,489,110,550,134,610,150,638,169,664,186,679,202,689,236,698,273,705,292,713,313,726,325,736,322,740,310,730,290,718,271,710,235,703,200,694,183,684,165,667,146,641,129,613,105,552,90,490,81,432"/>
+<area shape="rect" id="Node000007" href="$da/d03/classAlaris_1_1Core_1_1Pricing_1_1CREN004A.html" title="Spectral collocation American option pricing engine." alt="" coords="180,5,413,665"/>
+<area shape="poly" id="edge7_Node000005_Node000007" title=" " alt="" coords="349,665,359,703,362,712,357,713,354,705,344,666"/>
+<area shape="rect" id="Node000008" href="$d3/d01/classAlaris_1_1Core_1_1Pricing_1_1CREN002A.html" title="Unified American option pricing engine supporting all rate regimes." alt="" coords="437,103,655,568"/>
+<area shape="poly" id="edge8_Node000005_Node000008" title=" " alt="" coords="495,569,461,713,456,712,489,568"/>
+<area shape="rect" id="Node000009" href="$dc/d00/classAlaris_1_1Core_1_1Pricing_1_1CREX001A.html" title="Handles numerical stability as τ → 0 via blending to intrinsic. Threshold: τ &lt; 1/252." alt="" coords="679,183,875,488"/>
+<area shape="poly" id="edge9_Node000005_Node000009" title=" " alt="" coords="755,489,741,535,722,582,698,627,668,667,651,683,635,692,603,702,570,710,553,718,534,730,534,730,531,726,531,726,550,713,568,705,601,697,633,688,648,678,664,664,694,624,717,580,736,534,750,487"/>
+<area shape="rect" id="Node000010" href="$d4/d02/structAlaris_1_1Core_1_1Time_1_1CRTM005A.html" title="High&#45;performance date type with serial number representation. Matches QuantLib Date semantics for bin..." alt="" coords="536,1076,721,1721"/>
+<area shape="poly" id="edge10_Node000001_Node000010" title=" " alt="" coords="538,1545,333,1861,329,1859,534,1542"/>
+<area shape="rect" id="Node000011" title=" " alt="" coords="545,838,713,903"/>
+<area shape="poly" id="edge11_Node000010_Node000011" title=" " alt="" coords="631,917,631,1076,626,1076,626,917"/>
+<area shape="rect" id="Node000012" title=" " alt="" coords="737,838,917,903"/>
+<area shape="poly" id="edge12_Node000010_Node000012" title=" " alt="" coords="813,917,724,1153,719,1151,808,915"/>
+</map>

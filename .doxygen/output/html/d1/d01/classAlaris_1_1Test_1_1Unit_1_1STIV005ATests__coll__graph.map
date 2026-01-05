@@ -1,0 +1,5 @@
+<map id="Alaris.Test.Unit.STIV005ATests" name="Alaris.Test.Unit.STIV005ATests">
+<area shape="rect" id="Node000001" title="Unit tests for STIV005A. Tests calibration of sigma_e from historical earnings data." alt="" coords="5,433,272,900"/>
+<area shape="rect" id="Node000002" href="$dd/d02/classAlaris_1_1Strategy_1_1Core_1_1STIV005A.html" title="Calibrates earnings jump volatility (sigma_e) from historical earnings announcement data...." alt="" coords="41,5,236,371"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="141,371,141,417,136,417,136,371"/>
+</map>

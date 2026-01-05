@@ -1,0 +1,17 @@
+<map id="Alaris.Strategy.Bridge.STBR001A" name="Alaris.Strategy.Bridge.STBR001A">
+<area shape="rect" id="Node000001" title="Unified pricing engine that automatically selects between Alaris native engines based on interest rat..." alt="" coords="152,1076,361,1461"/>
+<area shape="rect" id="Node000002" href="$d9/d02/interfaceAlaris_1_1Strategy_1_1Bridge_1_1STBR002A.html" title="Interface for pricing options using advanced models including negative rates. Implementations use the..." alt="" coords="10,818,191,923"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="128,935,184,1075,179,1077,124,937"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="215,838,298,903"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="259,917,259,1076,254,1076,254,917"/>
+<area shape="rect" id="Node000004" href="$d1/d02/classAlaris_1_1Core_1_1Pricing_1_1CREN003A.html" title="Unified American option pricing engine. Automatically selects the appropriate method based on rate re..." alt="" coords="323,728,519,1013"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="364,1015,345,1062,340,1059,359,1013"/>
+<area shape="rect" id="Node000005" href="$d9/d01/interfaceAlaris_1_1Core_1_1Pricing_1_1IAmericanOptionEngine.html" title="Interface for American option pricing engines." alt="" coords="5,253,156,418"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="87,431,95,489,110,550,134,610,150,638,169,664,186,679,202,689,236,698,272,705,291,713,312,726,324,736,321,740,308,730,289,718,270,710,234,703,200,694,183,684,165,667,146,641,129,613,105,552,90,490,81,432"/>
+<area shape="rect" id="Node000006" href="$da/d03/classAlaris_1_1Core_1_1Pricing_1_1CREN004A.html" title="Spectral collocation American option pricing engine." alt="" coords="180,5,413,665"/>
+<area shape="poly" id="edge5_Node000004_Node000006" title=" " alt="" coords="376,665,387,711,381,712,371,666"/>
+<area shape="rect" id="Node000007" href="$d3/d01/classAlaris_1_1Core_1_1Pricing_1_1CREN002A.html" title="Unified American option pricing engine supporting all rate regimes." alt="" coords="437,103,655,568"/>
+<area shape="poly" id="edge6_Node000004_Node000007" title=" " alt="" coords="520,569,490,705,488,713,482,711,485,703,515,568"/>
+<area shape="rect" id="Node000008" href="$dc/d00/classAlaris_1_1Core_1_1Pricing_1_1CREX001A.html" title="Handles numerical stability as τ → 0 via blending to intrinsic. Threshold: τ &lt; 1/252." alt="" coords="679,183,875,488"/>
+<area shape="poly" id="edge7_Node000004_Node000008" title=" " alt="" coords="748,489,716,580,695,625,670,667,640,705,606,740,534,800,530,796,602,736,636,701,665,664,690,622,711,578,743,487"/>
+</map>

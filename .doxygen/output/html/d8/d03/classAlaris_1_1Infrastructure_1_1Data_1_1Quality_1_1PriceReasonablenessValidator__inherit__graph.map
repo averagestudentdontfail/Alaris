@@ -1,0 +1,5 @@
+<map id="Alaris.Infrastructure.Data.Quality.PriceReasonablenessValidator" name="Alaris.Infrastructure.Data.Quality.PriceReasonablenessValidator">
+<area shape="rect" id="Node000001" title="Validates price reasonableness and data freshness. Component ID: DTqc001A." alt="" coords="5,119,240,259"/>
+<area shape="rect" id="Node000002" href="$df/d00/interfaceAlaris_1_1Infrastructure_1_1Data_1_1Quality_1_1DTqc002A.html" title="Interface for data quality validators." alt="" coords="71,5,175,71"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="125,84,125,118,120,118,120,84"/>
+</map>

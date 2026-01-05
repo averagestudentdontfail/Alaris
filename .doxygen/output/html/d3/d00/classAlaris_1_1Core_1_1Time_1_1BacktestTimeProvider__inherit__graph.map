@@ -1,0 +1,5 @@
+<map id="Alaris.Core.Time.BacktestTimeProvider" name="Alaris.Core.Time.BacktestTimeProvider">
+<area shape="rect" id="Node000001" title="Time provider for backtesting using simulated time from LEAN algorithm." alt="" coords="5,239,173,559"/>
+<area shape="rect" id="Node000002" href="$d9/d01/interfaceAlaris_1_1Core_1_1Time_1_1ITimeProvider.html" title="Provides time&#45;aware operations supporting both live and backtest modes." alt="" coords="36,5,143,191"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="92,204,92,239,87,239,87,204"/>
+</map>

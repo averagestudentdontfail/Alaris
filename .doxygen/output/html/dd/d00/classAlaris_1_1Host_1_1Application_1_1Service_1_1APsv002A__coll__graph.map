@@ -1,0 +1,23 @@
+<map id="Alaris.Host.Application.Service.APsv002A" name="Alaris.Host.Application.Service.APsv002A">
+<area shape="rect" id="Node000001" title="Service for downloading and preparing session data. Component ID: APsv002A." alt="" coords="365,656,599,1065"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="131,371,214,436"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="182,449,198,519,211,556,228,592,258,638,292,681,366,759,362,762,288,685,254,641,224,595,206,558,193,520,176,450"/>
+<area shape="rect" id="Node000003" href="$d7/d00/classAlaris_1_1Infrastructure_1_1Data_1_1Provider_1_1Polygon_1_1PolygonApiClient.html" title="Polygon.io REST API client for market data retrieval. Component ID: DTpr001A." alt="" coords="239,256,461,551"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="395,550,421,639,416,641,390,552"/>
+<area shape="rect" id="Node000004" href="$d4/d02/interfaceAlaris_1_1Infrastructure_1_1Data_1_1Provider_1_1DTpr003A.html" title="Interface for market data providers (Polygon, IBKR, etc.)." alt="" coords="5,15,228,141"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="180,150,228,212,258,254,254,257,224,215,176,153"/>
+<area shape="rect" id="Node000005" href="$dc/d00/interfaceAlaris_1_1Infrastructure_1_1Data_1_1Http_1_1Contracts_1_1IPolygonApi.html" title="Polygon.io REST API contract. Component ID: DTAP001A." alt="" coords="253,8,447,148"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="353,148,353,239,347,239,347,148"/>
+<area shape="rect" id="Node000006" href="$d7/d01/classAlaris_1_1Infrastructure_1_1Data_1_1Provider_1_1Nasdaq_1_1NasdaqEarningsProvider.html" title="NASDAQ public API earnings calendar provider. Component ID: DTea001C." alt="" coords="485,213,743,593"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="562,594,548,641,543,640,557,593"/>
+<area shape="rect" id="Node000007" href="$da/d01/interfaceAlaris_1_1Infrastructure_1_1Data_1_1Provider_1_1DTpr004A.html" title="Interface for earnings calendar providers." alt="" coords="471,5,693,151"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="593,164,598,213,593,214,588,165"/>
+<area shape="rect" id="Node000008" href="$df/d00/interfaceAlaris_1_1Infrastructure_1_1Data_1_1Http_1_1Contracts_1_1INasdaqCalendarApi.html" title="NASDAQ public calendar REST API contract. Component ID: DTAP004A." alt="" coords="717,38,941,118"/>
+<area shape="poly" id="edge7_Node000006_Node000008" title=" " alt="" coords="805,120,751,201,746,198,801,117"/>
+<area shape="rect" id="Node000009" href="$d1/d03/classAlaris_1_1Infrastructure_1_1Data_1_1Provider_1_1Treasury_1_1TreasuryDirectRateProvider.html" title="Treasury Direct API risk&#45;free rate provider. Component ID: DTrf001A." alt="" coords="955,326,1159,481"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="962,483,614,759,610,754,959,479"/>
+<area shape="rect" id="Node000010" href="$d0/d01/interfaceAlaris_1_1Infrastructure_1_1Data_1_1Provider_1_1DTpr005A.html" title="Interface for risk&#45;free rate providers." alt="" coords="965,35,1148,121"/>
+<area shape="poly" id="edge9_Node000009_Node000010" title=" " alt="" coords="1059,134,1059,325,1054,325,1054,134"/>
+<area shape="rect" id="Node000011" href="$d3/d03/interfaceAlaris_1_1Infrastructure_1_1Data_1_1Http_1_1Contracts_1_1ITreasuryDirectApi.html" title="Treasury Direct REST API contract. Component ID: DTAP003A." alt="" coords="1173,38,1386,118"/>
+<area shape="poly" id="edge10_Node000009_Node000011" title=" " alt="" coords="1255,120,1121,314,1116,311,1250,117"/>
+</map>

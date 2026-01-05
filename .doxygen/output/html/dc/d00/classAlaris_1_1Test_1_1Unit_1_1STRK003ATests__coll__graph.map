@@ -1,0 +1,8 @@
+<map id="Alaris.Test.Unit.STRK003ATests" name="Alaris.Test.Unit.STRK003ATests">
+<area shape="rect" id="Node000001" title="Unit tests for STRK003A &#45; Concurrent Position Reserve Manager. Tests reserve&#45;adjusted Kelly sizing wi..." alt="" coords="5,756,276,1256"/>
+<area shape="rect" id="Node000002" href="$d2/d00/classAlaris_1_1Strategy_1_1Risk_1_1STRK001A.html" title="Implements Kelly Criterion position sizing for options strategies. Uses fractional Kelly (typically 2..." alt="" coords="37,5,244,331"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="136,331,134,393,132,543,134,693,135,739,130,739,129,693,127,543,129,393,130,331"/>
+<area shape="rect" id="Node000003" href="$d3/d03/classAlaris_1_1Strategy_1_1Risk_1_1STRK003A.html" title="Implements reserve&#45;adjusted Kelly position sizing for concurrent positions." alt="" coords="217,393,425,693"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="221,330,244,378,239,380,216,332"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="265,694,247,741,242,739,260,692"/>
+</map>

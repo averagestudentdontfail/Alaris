@@ -1,0 +1,5 @@
+<map id="Alaris.Host.Application.Command.BacktestCreateCommand" name="Alaris.Host.Application.Command.BacktestCreateCommand">
+<area shape="rect" id="Node000001" title="Creates a new backtest session." alt="" coords="5,133,235,233"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="13,5,227,85"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="123,99,123,133,117,133,117,99"/>
+</map>

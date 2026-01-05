@@ -1,0 +1,11 @@
+<map id="Alaris.Infrastructure.Data.Provider.DTpr005A" name="Alaris.Infrastructure.Data.Provider.DTpr005A">
+<area shape="rect" id="Node000001" title="Interface for risk&#45;free rate providers." alt="" coords="245,5,428,105"/>
+<area shape="rect" id="Node000002" href="$d1/d03/classAlaris_1_1Infrastructure_1_1Data_1_1Provider_1_1Treasury_1_1TreasuryDirectRateProvider.html" title="Treasury Direct API risk&#45;free rate provider. Component ID: DTrf001A." alt="" coords="5,153,209,328"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="266,116,211,160,208,156,263,112"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="234,191,439,291"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="339,120,339,190,334,190,334,120"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="464,191,647,291"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="408,112,499,189,495,193,404,116"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="228,376,445,505"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="339,305,339,376,334,376,334,305"/>
+</map>

@@ -1,0 +1,17 @@
+<map id="Alaris.Strategy.STCT001A" name="Alaris.Strategy.STCT001A">
+<area shape="rect" id="Node000001" title="Main control class for the earnings volatility calendar spread strategy. Orchestrates signal generati..." alt="" coords="588,1041,791,1287"/>
+<area shape="rect" id="Node000002" href="$dd/d01/classAlaris_1_1Strategy_1_1Core_1_1STCR001A.html" title="Generates trading signals for earnings calendar spread opportunities. Implements the strategy from At..." alt="" coords="343,433,561,979"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="559,977,580,1016,586,1026,581,1029,575,1019,554,980"/>
+<area shape="rect" id="Node000003" href="$d0/d02/interfaceAlaris_1_1Strategy_1_1Bridge_1_1STDT001A.html" title="Interface for accessing market data including option chains and historical prices...." alt="" coords="5,105,213,271"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="163,269,228,369,336,531,332,534,223,372,159,272"/>
+<area shape="rect" id="Node000004" href="$d7/d02/classAlaris_1_1Strategy_1_1Core_1_1STCR003A.html" title="Implements the Yang&#45;Zhang (2000) realized volatility estimator. This estimator is an efficient method..." alt="" coords="238,98,439,278"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="361,278,391,417,386,418,356,279"/>
+<area shape="rect" id="Node000005" href="$df/d01/classAlaris_1_1Strategy_1_1Core_1_1STTM001A.html" title="Analyzes the term structure of implied volatility. Used to identify inverted term structures that sig..." alt="" coords="463,145,670,231"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="560,232,519,418,513,417,555,230"/>
+<area shape="rect" id="Node000006" href="$dd/d02/classAlaris_1_1Strategy_1_1Core_1_1STIV005A.html" title="Calibrates earnings jump volatility (sigma_e) from historical earnings announcement data...." alt="" coords="695,5,889,371"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="696,360,684,373,654,395,620,412,595,422,585,426,574,435,573,436,569,432,570,431,582,422,593,417,618,407,651,390,681,369,693,356"/>
+<area shape="rect" id="Node000007" href="$d9/d02/interfaceAlaris_1_1Strategy_1_1Bridge_1_1STBR002A.html" title="Interface for pricing options using advanced models including negative rates. Implementations use the..." alt="" coords="585,653,794,759"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="692,759,692,1025,687,1025,687,759"/>
+<area shape="rect" id="Node000008" href="$d2/d00/classAlaris_1_1Strategy_1_1Risk_1_1STRK001A.html" title="Implements Kelly Criterion position sizing for options strategies. Uses fractional Kelly (typically 2..." alt="" coords="818,543,1025,869"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="863,870,829,945,790,1019,784,1029,780,1026,786,1016,824,943,858,868"/>
+</map>

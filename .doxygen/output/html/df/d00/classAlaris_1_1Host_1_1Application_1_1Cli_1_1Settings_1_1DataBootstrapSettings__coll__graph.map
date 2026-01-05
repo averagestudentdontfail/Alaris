@@ -1,0 +1,7 @@
+<map id="Alaris.Host.Application.Cli.Settings.DataBootstrapSettings" name="Alaris.Host.Application.Cli.Settings.DataBootstrapSettings">
+<area shape="rect" id="Node000001" title="Settings for data bootstrap command. Component ID: CLse001A." alt="" coords="5,272,224,412"/>
+<area shape="rect" id="Node000002" href="$d4/d03/classAlaris_1_1Host_1_1Application_1_1Cli_1_1Infrastructure_1_1CLif004A.html" title="Global settings inherited by all CLI commands. Component ID: CLif004A." alt="" coords="68,119,161,224"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="117,238,117,271,112,271,112,238"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="53,5,176,71"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="117,85,117,118,112,118,112,85"/>
+</map>

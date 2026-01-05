@@ -1,0 +1,5 @@
+<map id="Alaris.Strategy.Cost.STCS006A" name="Alaris.Strategy.Cost.STCS006A">
+<area shape="rect" id="Node000001" title="Validates that trading signals survive execution costs." alt="" coords="5,153,227,493"/>
+<area shape="rect" id="Node000002" href="$df/d02/interfaceAlaris_1_1Strategy_1_1Cost_1_1STCS001A.html" title="Defines the contract for execution cost models." alt="" coords="16,5,216,91"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="119,91,119,137,113,137,113,91"/>
+</map>

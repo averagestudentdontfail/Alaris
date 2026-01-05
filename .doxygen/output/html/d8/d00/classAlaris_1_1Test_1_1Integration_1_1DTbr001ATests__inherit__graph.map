@@ -1,0 +1,5 @@
+<map id="Alaris.Test.Integration.DTbr001ATests" name="Alaris.Test.Integration.DTbr001ATests">
+<area shape="rect" id="Node000001" title="Integration tests for AlarisDataBridge (DTbr001A). Uses mock providers to test data aggregation and v..." alt="" coords="5,119,276,536"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="99,5,182,71"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="143,85,143,118,138,118,138,85"/>
+</map>

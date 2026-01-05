@@ -1,0 +1,7 @@
+<map id="Alaris.Host.Application.Cli.Settings.TradeStatusSettings" name="Alaris.Host.Application.Cli.Settings.TradeStatusSettings">
+<area shape="rect" id="Node000001" title="Settings for trade status command. Component ID: CLse004A." alt="" coords="5,272,211,352"/>
+<area shape="rect" id="Node000002" href="$d4/d03/classAlaris_1_1Host_1_1Application_1_1Cli_1_1Infrastructure_1_1CLif004A.html" title="Global settings inherited by all CLI commands. Component ID: CLif004A." alt="" coords="61,119,155,224"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="111,238,111,272,105,272,105,238"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="47,5,169,71"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="111,85,111,118,105,118,105,85"/>
+</map>

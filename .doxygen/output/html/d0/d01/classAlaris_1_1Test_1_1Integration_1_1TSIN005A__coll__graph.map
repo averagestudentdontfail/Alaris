@@ -1,0 +1,7 @@
+<map id="Alaris.Test.Integration.TSIN005A" name="Alaris.Test.Integration.TSIN005A">
+<area shape="rect" id="Node000001" title="TSIN005A: Integration tests for Alaris.Application services." alt="" coords="44,528,244,945"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,203,107,268"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="67,281,110,527,105,528,61,282"/>
+<area shape="rect" id="Node000003" href="$db/d02/classAlaris_1_1Host_1_1Application_1_1Service_1_1APsv001A.html" title="Service for managing backtest session lifecycle. Component ID: APsv001A." alt="" coords="131,5,333,465"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="194,466,186,512,181,511,189,465"/>
+</map>

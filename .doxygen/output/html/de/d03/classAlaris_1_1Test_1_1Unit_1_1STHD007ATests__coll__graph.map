@@ -1,0 +1,5 @@
+<map id="Alaris.Test.Unit.STHD007ATests" name="Alaris.Test.Unit.STHD007ATests">
+<area shape="rect" id="Node000001" title="Unit tests for STHD007A &#45; IV&#45;Based Early Exit Monitor. Tests early exit triggers based on IV crush be..." alt="" coords="5,313,276,705"/>
+<area shape="rect" id="Node000002" href="$d5/d02/classAlaris_1_1Strategy_1_1Hedge_1_1STHD007A.html" title="Monitors implied volatility to trigger early exits when IV crushes faster than expected." alt="" coords="35,5,246,251"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="143,251,143,297,138,297,138,251"/>
+</map>

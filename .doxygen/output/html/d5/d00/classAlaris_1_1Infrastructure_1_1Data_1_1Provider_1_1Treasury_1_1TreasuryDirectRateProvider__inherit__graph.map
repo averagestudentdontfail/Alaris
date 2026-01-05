@@ -1,0 +1,5 @@
+<map id="Alaris.Infrastructure.Data.Provider.Treasury.TreasuryDirectRateProvider" name="Alaris.Infrastructure.Data.Provider.Treasury.TreasuryDirectRateProvider">
+<area shape="rect" id="Node000001" title="Treasury Direct API risk&#45;free rate provider. Component ID: DTrf001A." alt="" coords="5,139,209,313"/>
+<area shape="rect" id="Node000002" href="$d0/d01/interfaceAlaris_1_1Infrastructure_1_1Data_1_1Provider_1_1DTpr005A.html" title="Interface for risk&#45;free rate providers." alt="" coords="16,5,199,91"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="110,104,110,139,105,139,105,104"/>
+</map>

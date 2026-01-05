@@ -1,0 +1,7 @@
+<map id="Alaris.Strategy.Bridge.STDT001A" name="Alaris.Strategy.Bridge.STDT001A">
+<area shape="rect" id="Node000001" title="Interface for accessing market data including option chains and historical prices...." alt="" coords="121,5,329,171"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,219,217,579"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="192,185,180,219,175,217,187,183"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="241,309,437,489"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="262,183,309,307,304,309,257,185"/>
+</map>

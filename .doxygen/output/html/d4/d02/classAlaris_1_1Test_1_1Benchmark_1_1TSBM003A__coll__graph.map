@@ -1,0 +1,7 @@
+<map id="Alaris.Test.Benchmark.TSBM003A" name="Alaris.Test.Benchmark.TSBM003A">
+<area shape="rect" id="Node000001" title="Performance benchmarks comparing spectral collocation vs finite difference." alt="" coords="134,757,358,972"/>
+<area shape="rect" id="Node000002" href="$da/d03/classAlaris_1_1Core_1_1Pricing_1_1CREN004A.html" title="Spectral collocation American option pricing engine." alt="" coords="5,5,239,665"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="189,665,206,733,208,741,203,743,201,734,184,666"/>
+<area shape="rect" id="Node000003" href="$d3/d01/classAlaris_1_1Core_1_1Pricing_1_1CREN002A.html" title="Unified American option pricing engine supporting all rate regimes." alt="" coords="263,103,480,568"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="379,569,367,653,345,734,341,743,336,741,339,732,362,652,373,568"/>
+</map>

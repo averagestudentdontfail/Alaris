@@ -1,0 +1,5 @@
+<map id="Alaris.Host.Application.Command.BacktestDeleteCommand" name="Alaris.Host.Application.Command.BacktestDeleteCommand">
+<area shape="rect" id="Node000001" title="Deletes a backtest session and all its data." alt="" coords="5,133,233,213"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="13,5,226,85"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="122,99,122,133,117,133,117,99"/>
+</map>

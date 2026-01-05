@@ -1,0 +1,7 @@
+<map id="Alaris.Infrastructure.Data.Provider.DTpr002A" name="Alaris.Infrastructure.Data.Provider.DTpr002A">
+<area shape="rect" id="Node000001" title="Interface for execution quote providers (IBKR snapshots)." alt="" coords="27,119,210,219"/>
+<area shape="rect" id="Node000003" href="$dd/d01/classAlaris_1_1Infrastructure_1_1Data_1_1Provider_1_1InteractiveBrokersSnapshotProvider.html" title="Interactive Brokers implementation of execution quote provider. Component: DTib005A | Category: Data ..." alt="" coords="5,267,232,911"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="121,232,121,267,116,267,116,232"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="77,5,160,71"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="121,84,121,119,116,119,116,84"/>
+</map>

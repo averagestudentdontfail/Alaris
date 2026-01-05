@@ -1,0 +1,5 @@
+<map id="Alaris.Strategy.Calendar.STCL001A" name="Alaris.Strategy.Calendar.STCL001A">
+<area shape="rect" id="Node000001" title="NYSE trading calendar implementation with native holiday rules. Replaces QuantLib UnitedStates(NYSE) ..." alt="" coords="5,159,196,479"/>
+<area shape="rect" id="Node000002" href="$d4/d03/interfaceAlaris_1_1Strategy_1_1Calendar_1_1ITradingCalendar.html" title="Interface for trading calendar operations." alt="" coords="5,5,196,111"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="103,124,103,158,98,158,98,124"/>
+</map>

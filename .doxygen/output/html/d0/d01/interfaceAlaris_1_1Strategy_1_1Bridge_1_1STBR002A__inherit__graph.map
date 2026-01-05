@@ -1,0 +1,7 @@
+<map id="Alaris.Strategy.Bridge.STBR002A" name="Alaris.Strategy.Bridge.STBR002A">
+<area shape="rect" id="Node000001" title="Interface for pricing options using advanced models including negative rates. Implementations use the..." alt="" coords="115,5,324,111"/>
+<area shape="rect" id="Node000002" href="$dd/d03/classAlaris_1_1Strategy_1_1Bridge_1_1STBR001A.html" title="Unified pricing engine that automatically selects between Alaris native engines based on interest rat..." alt="" coords="5,159,215,564"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="199,124,186,159,181,157,194,122"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="239,301,421,421"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="245,123,311,300,306,302,240,124"/>
+</map>

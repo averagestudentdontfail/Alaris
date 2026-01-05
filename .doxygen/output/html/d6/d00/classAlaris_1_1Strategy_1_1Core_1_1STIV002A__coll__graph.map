@@ -1,0 +1,5 @@
+<map id="Alaris.Strategy.Core.STIV002A" name="Alaris.Strategy.Core.STIV002A">
+<area shape="rect" id="Node000001" title="Implements the Kou (2002) double&#45;exponential jump&#45;diffusion model for implied volatility...." alt="" coords="5,328,240,633"/>
+<area shape="rect" id="Node000002" href="$d7/d02/classAlaris_1_1Strategy_1_1Core_1_1KouParameters.html" title="Kou model parameters." alt="" coords="37,5,209,265"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="125,266,125,312,120,312,120,266"/>
+</map>

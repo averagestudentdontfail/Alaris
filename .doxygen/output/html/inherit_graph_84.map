@@ -1,0 +1,11 @@
+<map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
+<area shape="rect" id="Node000000" href="$df/d00/interfaceAlaris_1_1Infrastructure_1_1Data_1_1Quality_1_1DTqc002A.html" title="Interface for data quality validators." alt="" coords="5,101,177,141"/>
+<area shape="rect" id="Node000001" href="$d7/d01/classAlaris_1_1Infrastructure_1_1Data_1_1Quality_1_1EarningsDateValidator.html" title="Validates earnings date accuracy and consistency. Component ID: DTqc004A." alt="" coords="249,5,444,45"/>
+<area shape="poly" id="edge36_Node000000_Node000001" title=" " alt="" coords="140,93,224,55,261,43,263,48,226,60,143,97"/>
+<area shape="rect" id="Node000002" href="$d6/d01/classAlaris_1_1Infrastructure_1_1Data_1_1Quality_1_1IvArbitrageValidator.html" title="Validates IV arbitrage conditions (put&#45;call parity, calendar spreads). Component ID: DTqc002A." alt="" coords="257,69,436,109"/>
+<area shape="poly" id="edge37_Node000000_Node000002" title=" " alt="" coords="191,106,257,98,258,103,191,112"/>
+<area shape="rect" id="Node000003" href="$db/d03/classAlaris_1_1Infrastructure_1_1Data_1_1Quality_1_1PriceReasonablenessValidator.html" title="Validates price reasonableness and data freshness. Component ID: DTqc001A." alt="" coords="225,133,468,173"/>
+<area shape="poly" id="edge38_Node000000_Node000003" title=" " alt="" coords="191,131,226,135,225,141,191,136"/>
+<area shape="rect" id="Node000004" href="$dc/d00/classAlaris_1_1Infrastructure_1_1Data_1_1Quality_1_1VolumeOpenInterestValidator.html" title="Validates volume and open interest for liquidity requirements. Component ID: DTqc003A." alt="" coords="229,197,464,237"/>
+<area shape="poly" id="edge39_Node000000_Node000004" title=" " alt="" coords="143,145,226,183,263,195,261,200,224,188,140,150"/>
+</map>

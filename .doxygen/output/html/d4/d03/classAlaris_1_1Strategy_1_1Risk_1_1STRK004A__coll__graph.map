@@ -1,0 +1,5 @@
+<map id="Alaris.Strategy.Risk.STRK004A" name="Alaris.Strategy.Risk.STRK004A">
+<area shape="rect" id="Node000001" title="Implements priority queue capital allocation for heterogeneous opportunities." alt="" coords="5,393,227,739"/>
+<area shape="rect" id="Node000002" href="$d2/d00/classAlaris_1_1Strategy_1_1Risk_1_1STRK001A.html" title="Implements Kelly Criterion position sizing for options strategies. Uses fractional Kelly (typically 2..." alt="" coords="13,5,219,331"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="119,331,119,377,113,377,113,331"/>
+</map>

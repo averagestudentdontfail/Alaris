@@ -1,0 +1,5 @@
+<map id="Alaris.Host.Application.Service.APsv002B" name="Alaris.Host.Application.Service.APsv002B">
+<area shape="rect" id="Node000001" title="Screener service that uses Polygon API to find tradeable stocks. Component ID: APsv002B." alt="" coords="5,119,199,359"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="61,5,143,71"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="105,84,105,119,99,119,99,84"/>
+</map>

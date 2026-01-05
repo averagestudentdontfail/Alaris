@@ -1,0 +1,7 @@
+<map id="Alaris.Host.Application.Cli.Settings.TradeSignalsSettings" name="Alaris.Host.Application.Cli.Settings.TradeSignalsSettings">
+<area shape="rect" id="Node000001" title="Settings for trade signals command." alt="" coords="5,272,216,372"/>
+<area shape="rect" id="Node000002" href="$d4/d03/classAlaris_1_1Host_1_1Application_1_1Cli_1_1Infrastructure_1_1CLif004A.html" title="Global settings inherited by all CLI commands. Component ID: CLif004A." alt="" coords="64,119,157,224"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="113,237,113,272,108,272,108,237"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="49,5,172,71"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="113,85,113,118,108,118,108,85"/>
+</map>

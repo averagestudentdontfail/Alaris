@@ -1,0 +1,5 @@
+<map id="Alaris.Core.TermStructure.IYieldCurve" name="Alaris.Core.TermStructure.IYieldCurve">
+<area shape="rect" id="Node000001" title="Interface for yield term structures (discount curves). Replaces QuantLib YieldTermStructure." alt="" coords="6,5,175,165"/>
+<area shape="rect" id="Node000002" href="$d3/d03/classAlaris_1_1Core_1_1TermStructure_1_1CRTS001AFlatForward.html" title="Flat forward yield curve with constant rate. Replaces QuantLib FlatForward." alt="" coords="5,213,176,433"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="93,179,93,213,88,213,88,179"/>
+</map>

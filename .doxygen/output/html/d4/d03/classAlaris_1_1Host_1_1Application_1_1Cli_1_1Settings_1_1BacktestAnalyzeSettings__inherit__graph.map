@@ -1,0 +1,7 @@
+<map id="Alaris.Host.Application.Cli.Settings.BacktestAnalyzeSettings" name="Alaris.Host.Application.Cli.Settings.BacktestAnalyzeSettings">
+<area shape="rect" id="Node000001" title="Settings for backtest analyze command." alt="" coords="5,272,191,387"/>
+<area shape="rect" id="Node000002" href="$d4/d03/classAlaris_1_1Host_1_1Application_1_1Cli_1_1Infrastructure_1_1CLif004A.html" title="Global settings inherited by all CLI commands. Component ID: CLif004A." alt="" coords="51,119,145,224"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="101,238,101,272,95,272,95,238"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="37,5,159,71"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="101,85,101,118,95,118,95,85"/>
+</map>

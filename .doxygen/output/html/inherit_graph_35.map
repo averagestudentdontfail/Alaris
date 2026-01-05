@@ -1,0 +1,51 @@
+<map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
+<area shape="rect" id="Node000000" href="$df/d02/interfaceAlaris_1_1Host_1_1Application_1_1Cli_1_1Monitor_1_1CLmn001A.html" title="Interface for monitoring algorithm execution (backtest or live). Provides observable streams of equit..." alt="" coords="35,5,193,45"/>
+<area shape="rect" id="Node000001" href="$d0/d03/classAlaris_1_1Host_1_1Application_1_1Cli_1_1Monitor_1_1CLmn002A.html" title="Monitors a LEAN backtest in progress and publishes events. Component ID: CLmn002A." alt="" coords="300,5,459,45"/>
+<area shape="poly" id="edge9_Node000000_Node000001" title=" " alt="" coords="207,23,300,23,300,28,207,28"/>
+<area shape="rect" id="Node000009" href="$dd/d03/interfaceAlaris_1_1Infrastructure_1_1Events_1_1Core_1_1EVCR002A.html" title="Interface for storing and retrieving events. Implementations must ensure events are never modified or..." alt="" coords="21,1003,207,1043"/>
+<area shape="rect" id="Node000010" href="$d5/d01/classAlaris_1_1Infrastructure_1_1Events_1_1Infrastructure_1_1EVIF001A.html" title="In&#45;memory implementation of EVCR002A for development and testing. NOT suitable for production use &#45; e..." alt="" coords="287,1067,472,1107"/>
+<area shape="poly" id="edge10_Node000009_Node000010" title=" " alt="" coords="211,1043,297,1064,295,1069,210,1049"/>
+<area shape="rect" id="Node000008" href="$dd/d01/classAlaris_1_1Infrastructure_1_1Events_1_1Infrastructure_1_1EVIF001B.html" title="File&#45;based persistent implementation of EVCR002A for production use." alt="" coords="287,939,472,979"/>
+<area shape="poly" id="edge11_Node000009_Node000008" title=" " alt="" coords="210,997,295,976,297,981,211,1002"/>
+<area shape="rect" id="Node000012" href="$d8/d03/interfaceAlaris_1_1Infrastructure_1_1Events_1_1Core_1_1EVCR004A.html" title="Interface for writing immutable audit logs. Audit logs provide a human&#45;readable trail of all system a..." alt="" coords="21,1067,207,1107"/>
+<area shape="rect" id="Node000013" href="$de/d00/classAlaris_1_1Infrastructure_1_1Events_1_1Infrastructure_1_1EVIF002A.html" title="In&#45;memory implementation of EVCR004A for development and testing. NOT suitable for production use &#45; a..." alt="" coords="287,1131,472,1171"/>
+<area shape="poly" id="edge12_Node000012_Node000013" title=" " alt="" coords="211,1107,297,1128,295,1133,210,1113"/>
+<area shape="rect" id="Node000011" href="$dc/d03/classAlaris_1_1Infrastructure_1_1Events_1_1Infrastructure_1_1EVIF002B.html" title="File&#45;based persistent implementation of EVCR004A for production use." alt="" coords="287,1003,472,1043"/>
+<area shape="poly" id="edge13_Node000012_Node000011" title=" " alt="" coords="210,1061,295,1040,297,1045,211,1066"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="69,511,159,537"/>
+<area shape="poly" id="edge15_Node000002_Node000001" title=" " alt="" coords="113,497,121,413,130,356,144,294,163,230,190,167,225,107,269,55,298,37,301,41,272,59,229,111,195,169,168,232,149,295,135,357,126,413,119,498"/>
+<area shape="poly" id="edge20_Node000002_Node000008" title=" " alt="" coords="120,550,131,624,157,725,176,779,202,832,234,881,272,925,289,936,286,941,269,929,229,885,197,835,172,781,152,726,126,625,115,551"/>
+<area shape="poly" id="edge21_Node000002_Node000011" title=" " alt="" coords="126,549,204,799,247,927,273,989,288,1000,285,1005,269,992,242,929,199,801,121,551"/>
+<area shape="rect" id="Node000003" href="$df/d02/classAlaris_1_1Host_1_1Application_1_1Cli_1_1Dashboard_1_1CLdb001A.html" title="Renders a live dashboard for algorithm monitoring. Uses Spectre.Console Live display for smooth updat..." alt="" coords="294,376,465,416"/>
+<area shape="poly" id="edge14_Node000002_Node000003" title=" " alt="" coords="142,501,199,463,270,426,300,414,302,419,272,430,202,468,145,506"/>
+<area shape="rect" id="Node000004" href="$d1/d02/classAlaris_1_1Host_1_1Application_1_1Service_1_1APsv002A.html" title="Service for downloading and preparing session data. Component ID: APsv002A." alt="" coords="300,440,459,480"/>
+<area shape="poly" id="edge16_Node000002_Node000004" title=" " alt="" coords="172,507,299,476,300,482,174,513"/>
+<area shape="rect" id="Node000005" href="$de/d02/classAlaris_1_1Host_1_1Application_1_1Service_1_1APsv002B.html" title="Screener service that uses Polygon API to find tradeable stocks. Component ID: APsv002B." alt="" coords="300,504,459,544"/>
+<area shape="poly" id="edge17_Node000002_Node000005" title=" " alt="" coords="174,521,300,521,300,527,174,527"/>
+<area shape="rect" id="Node000006" href="$dc/d02/interfaceAlaris_1_1Infrastructure_1_1Data_1_1Provider_1_1DTpr002A.html" title="Interface for execution quote providers (IBKR snapshots)." alt="" coords="293,568,465,608"/>
+<area shape="poly" id="edge18_Node000002_Node000006" title=" " alt="" coords="174,535,296,565,295,570,172,541"/>
+<area shape="rect" id="Node000014" href="$d4/d03/structAlaris_1_1Infrastructure_1_1Protocol_1_1Buffers_1_1PooledBuffer.html" title="Disposable wrapper for a pooled byte array buffer." alt="" coords="283,632,475,672"/>
+<area shape="poly" id="edge22_Node000002_Node000014" title=" " alt="" coords="145,542,202,580,272,618,302,629,300,634,270,622,199,585,142,547"/>
+<area shape="rect" id="Node000015" href="$dd/d03/classAlaris_1_1Strategy_1_1Bridge_1_1STBR001A.html" title="Unified pricing engine that automatically selects between Alaris native engines based on interest rat..." alt="" coords="271,889,488,914"/>
+<area shape="poly" id="edge23_Node000002_Node000015" title=" " alt="" coords="122,550,135,616,162,704,182,751,206,796,236,838,272,874,293,886,290,891,269,878,232,841,202,799,177,753,157,706,130,617,116,551"/>
+<area shape="rect" id="Node000017" href="$df/d01/classAlaris_1_1Test_1_1Integration_1_1DTbr001ATests.html" title="Integration tests for AlarisDataBridge (DTbr001A). Uses mock providers to test data aggregation and v..." alt="" coords="303,696,456,736"/>
+<area shape="poly" id="edge24_Node000002_Node000017" title=" " alt="" coords="134,546,191,614,229,650,272,682,304,696,301,701,269,686,226,654,187,617,130,550"/>
+<area shape="rect" id="Node000018" href="$dd/d02/classAlaris_1_1Test_1_1Unit_1_1DTqc001ATests.html" title="Unit tests for PriceReasonablenessValidator (DTqc001A). Validates price data quality rules." alt="" coords="295,760,464,800"/>
+<area shape="poly" id="edge25_Node000002_Node000018" title=" " alt="" coords="128,548,149,591,181,645,222,699,246,724,272,746,296,759,293,764,269,750,242,728,218,703,176,648,145,594,124,551"/>
+<area shape="rect" id="Node000019" href="$d6/d03/classAlaris_1_1Test_1_1Unit_1_1DTqc002AValidatorTests.html" title="Unit tests for IvArbitrageValidator (DTqc002A interface test)." alt="" coords="295,824,464,864"/>
+<area shape="poly" id="edge26_Node000002_Node000019" title=" " alt="" coords="125,549,142,604,172,674,215,747,242,781,272,810,296,824,293,829,269,814,238,784,211,750,167,677,137,606,119,551"/>
+<area shape="rect" id="Node000020" href="$d8/d01/classAlaris_1_1Test_1_1Unit_1_1DTqc003ATests.html" title="Unit tests for VolumeOpenInterestValidator (DTqc003A). Validates volume and liquidity rules." alt="" coords="295,69,464,109"/>
+<area shape="poly" id="edge27_Node000002_Node000020" title=" " alt="" coords="115,497,126,423,152,322,172,267,197,213,229,163,269,119,293,104,296,108,272,123,234,167,202,216,176,269,157,323,131,424,120,498"/>
+<area shape="rect" id="Node000021" href="$dd/d00/classAlaris_1_1Test_1_1Unit_1_1DTqc004ATests.html" title="Unit tests for EarningsDateValidator (DTqc004A). Validates earnings date accuracy rules." alt="" coords="295,133,464,173"/>
+<area shape="poly" id="edge28_Node000002_Node000021" title=" " alt="" coords="117,498,132,434,160,350,180,304,205,260,234,219,269,183,293,168,296,173,272,187,238,223,209,263,185,307,165,351,137,436,122,499"/>
+<area shape="rect" id="Node000022" href="$d6/d01/classAlaris_1_1Test_1_1Unit_1_1STBR001ATests.html" title="Unit tests for the STBR001A component. Tests regime detection, pricing accuracy, and calendar spread ..." alt="" coords="293,197,466,237"/>
+<area shape="poly" id="edge29_Node000002_Node000022" title=" " alt="" coords="120,497,139,445,169,377,212,307,239,275,269,247,291,234,294,238,272,251,243,279,216,311,174,380,144,447,125,499"/>
+<area shape="rect" id="Node000023" href="$d5/d03/classAlaris_1_1Test_1_1Unit_1_1STUN001ATests.html" title="Unit tests for STUN001A earnings universe selection model. Tests the earnings provider integration an..." alt="" coords="292,261,467,301"/>
+<area shape="poly" id="edge30_Node000002_Node000023" title=" " alt="" coords="125,497,147,457,179,406,220,355,269,311,291,299,293,304,272,316,224,359,183,410,151,459,129,500"/>
+<area shape="rect" id="Node000024" href="$d2/d02/classAlaris_1_1Test_1_1Unit_1_1TSUN033A.html" title="TSUN033A: Unit tests for persistent event stores (EVIF001B, EVIF002B)." alt="" coords="288,326,471,351"/>
+<area shape="poly" id="edge31_Node000002_Node000024" title=" " alt="" coords="130,498,186,430,225,393,269,362,299,349,301,354,272,366,228,397,190,434,134,502"/>
+<area shape="rect" id="Node000007" href="$dd/d01/classAlaris_1_1Infrastructure_1_1Data_1_1Provider_1_1InteractiveBrokersSnapshotProvider.html" title="Interactive Brokers implementation of execution quote provider. Component: DTib005A | Category: Data ..." alt="" coords="536,561,771,615"/>
+<area shape="poly" id="edge19_Node000006_Node000007" title=" " alt="" coords="479,585,536,585,536,591,479,591"/>
+<area shape="rect" id="Node000016" href="$d9/d02/interfaceAlaris_1_1Strategy_1_1Bridge_1_1STBR002A.html" title="Interface for pricing options using advanced models including negative rates. Implementations use the..." alt="" coords="5,889,223,914"/>
+<area shape="poly" id="edge32_Node000016_Node000015" title=" " alt="" coords="236,899,271,899,271,904,236,904"/>
+</map>

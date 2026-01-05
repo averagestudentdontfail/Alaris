@@ -1,0 +1,5 @@
+<map id="Alaris.Core.Pricing.IAmericanOptionEngine" name="Alaris.Core.Pricing.IAmericanOptionEngine">
+<area shape="rect" id="Node000001" title="Interface for American option pricing engines." alt="" coords="10,5,197,185"/>
+<area shape="rect" id="Node000002" href="$d1/d02/classAlaris_1_1Core_1_1Pricing_1_1CREN003A.html" title="Unified American option pricing engine. Automatically selects the appropriate method based on rate re..." alt="" coords="5,233,201,579"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="106,199,106,233,101,233,101,199"/>
+</map>

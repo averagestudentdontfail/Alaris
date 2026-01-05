@@ -1,0 +1,7 @@
+<map id="Alaris.Infrastructure.Events.Infrastructure.EVIF002B" name="Alaris.Infrastructure.Events.Infrastructure.EVIF002B">
+<area shape="rect" id="Node000001" title="File&#45;based persistent implementation of EVCR004A for production use." alt="" coords="92,179,308,579"/>
+<area shape="rect" id="Node000002" href="$d8/d03/interfaceAlaris_1_1Infrastructure_1_1Events_1_1Core_1_1EVCR004A.html" title="Interface for writing immutable audit logs. Audit logs provide a human&#45;readable trail of all system a..." alt="" coords="5,5,221,131"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="137,143,147,178,141,179,132,145"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="245,35,328,101"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="277,115,259,179,253,178,271,113"/>
+</map>

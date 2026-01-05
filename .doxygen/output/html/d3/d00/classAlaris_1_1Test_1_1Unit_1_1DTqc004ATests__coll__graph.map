@@ -1,0 +1,12 @@
+<map id="Alaris.Test.Unit.DTqc004ATests" name="Alaris.Test.Unit.DTqc004ATests">
+<area shape="rect" id="Node000001" title="Unit tests for EarningsDateValidator (DTqc004A). Validates earnings date accuracy rules." alt="" coords="93,436,317,844"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,281,88,346"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="71,358,108,435,104,437,66,360"/>
+<area shape="rect" id="Node000003" href="$d7/d01/classAlaris_1_1Infrastructure_1_1Data_1_1Quality_1_1EarningsDateValidator.html" title="Validates earnings date accuracy and consistency. Component ID: DTqc004A." alt="" coords="112,253,299,373"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="208,373,208,420,203,420,203,373"/>
+<area shape="rect" id="Node000004" href="$df/d00/interfaceAlaris_1_1Infrastructure_1_1Data_1_1Quality_1_1DTqc002A.html" title="Interface for data quality validators." alt="" coords="120,65,224,131"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="182,144,199,253,193,254,176,144"/>
+<area shape="rect" id="Node000005" href="$d9/d01/interfaceAlaris_1_1Core_1_1Time_1_1ITimeProvider.html" title="Provides time&#45;aware operations supporting both live and backtest modes." alt="" coords="248,5,445,191"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="343,191,332,280,313,374,300,421,294,419,308,373,327,280,338,191"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="257,192,241,216,229,239,225,236,236,213,253,189"/>
+</map>

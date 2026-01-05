@@ -1,0 +1,5 @@
+<map id="Alaris.Core.Time.CRTM006A" name="Alaris.Core.Time.CRTM006A">
+<area shape="rect" id="Node000001" title="Represents a time period with a length and unit. Matches QuantLib Period semantics." alt="" coords="5,119,191,504"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="14,5,182,71"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="101,84,101,118,95,118,95,84"/>
+</map>

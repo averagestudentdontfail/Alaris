@@ -1,0 +1,5 @@
+<map id="Alaris.Strategy.Risk.STRK003A" name="Alaris.Strategy.Risk.STRK003A">
+<area shape="rect" id="Node000001" title="Implements reserve&#45;adjusted Kelly position sizing for concurrent positions." alt="" coords="5,393,213,693"/>
+<area shape="rect" id="Node000002" href="$d2/d00/classAlaris_1_1Strategy_1_1Risk_1_1STRK001A.html" title="Implements Kelly Criterion position sizing for options strategies. Uses fractional Kelly (typically 2..." alt="" coords="6,5,213,331"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="112,331,112,377,107,377,107,331"/>
+</map>

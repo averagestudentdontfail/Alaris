@@ -1,0 +1,26 @@
+var classAlaris_1_1Test_1_1Unit_1_1TSUN033A =
+[
+    [ "TSUN033A", "d2/d02/classAlaris_1_1Test_1_1Unit_1_1TSUN033A.html#a13c4880490ae52330e7f70df1b714152", null ],
+    [ "CreateAuditEntry", "d2/d02/classAlaris_1_1Test_1_1Unit_1_1TSUN033A.html#a48605ed286b504320816a9475db29fda", null ],
+    [ "Dispose", "d2/d02/classAlaris_1_1Test_1_1Unit_1_1TSUN033A.html#acf85f6d7e301550d5588842a25b88745", null ],
+    [ "Dispose", "d2/d02/classAlaris_1_1Test_1_1Unit_1_1TSUN033A.html#a6128d52f1b3f6a6bffe3821049e75acd", null ],
+    [ "EVIF001B_AppendAsync_IncrementsSequence", "d2/d02/classAlaris_1_1Test_1_1Unit_1_1TSUN033A.html#a492747fec971e86d79544dfed0d5dc76", null ],
+    [ "EVIF001B_AppendAsync_PersistsEvent", "d2/d02/classAlaris_1_1Test_1_1Unit_1_1TSUN033A.html#a8309a68e058cfc11775c3d0a750cfe31", null ],
+    [ "EVIF001B_GetEventsForAggregateAsync_FiltersCorrectly", "d2/d02/classAlaris_1_1Test_1_1Unit_1_1TSUN033A.html#ac8b438333b5c09d0361cb4ef683c9d67", null ],
+    [ "EVIF001B_GetEventsFromSequenceAsync_ReturnsFromSequence", "d2/d02/classAlaris_1_1Test_1_1Unit_1_1TSUN033A.html#ac060ac6d40141a2cf85a107359dac7eb", null ],
+    [ "EVIF001B_RecoverSequence_AfterRestart", "d2/d02/classAlaris_1_1Test_1_1Unit_1_1TSUN033A.html#a309cc3cc1395025d31060f32e7d26915", null ],
+    [ "EVIF002B_GetEntriesByInitiatorAsync_FiltersCorrectly", "d2/d02/classAlaris_1_1Test_1_1Unit_1_1TSUN033A.html#a55be0b81fb2b018a68927d1c5f32a9b8", null ],
+    [ "EVIF002B_GetEntriesByTimeRangeAsync_FiltersCorrectly", "d2/d02/classAlaris_1_1Test_1_1Unit_1_1TSUN033A.html#a7eb147b1f9c538d02ef808961664a953", null ],
+    [ "EVIF002B_LogAsync_NullEntry_Throws", "d2/d02/classAlaris_1_1Test_1_1Unit_1_1TSUN033A.html#a2ceda188acaee44e032534e6b64573e1", null ],
+    [ "EVIF002B_LogAsync_PersistsEntry", "d2/d02/classAlaris_1_1Test_1_1Unit_1_1TSUN033A.html#ab56a0f200475cca5f0f2167d9fece1fb", null ],
+    [ "_auditStoragePath", "d2/d02/classAlaris_1_1Test_1_1Unit_1_1TSUN033A.html#a6606bd72cd23cdd281eea43bf9c239fb", null ],
+    [ "_disposed", "d2/d02/classAlaris_1_1Test_1_1Unit_1_1TSUN033A.html#a98bc5b6d4d36943259d218ea5dbb6770", null ],
+    [ "_eventsStoragePath", "d2/d02/classAlaris_1_1Test_1_1Unit_1_1TSUN033A.html#aacfb7e78ba0782bd04ef65d871b1beec", null ],
+    [ "_testStoragePath", "d2/d02/classAlaris_1_1Test_1_1Unit_1_1TSUN033A.html#a53c66090fcc5f7d487c605d95d87560a", null ],
+    [ "init", "d2/d02/classAlaris_1_1Test_1_1Unit_1_1TSUN033A.html#af57317555a8359dad816e40b0295d22c", null ],
+    [ "TestEvent", "d2/d02/classAlaris_1_1Test_1_1Unit_1_1TSUN033A.html#aaec47bd81365d4d772ec938c38b3d5eb", null ],
+    [ "CorrelationId", "d2/d02/classAlaris_1_1Test_1_1Unit_1_1TSUN033A.html#aa1010ec528ef822acc2dc342dfe37901", null ],
+    [ "EventId", "d2/d02/classAlaris_1_1Test_1_1Unit_1_1TSUN033A.html#ab532c906052ef2cc2dc71d9d89540b1b", null ],
+    [ "EventType", "d2/d02/classAlaris_1_1Test_1_1Unit_1_1TSUN033A.html#a439285adfc412421a09e9360a955dbc8", null ],
+    [ "OccurredAtUtc", "d2/d02/classAlaris_1_1Test_1_1Unit_1_1TSUN033A.html#a6f81c156ac1a745846e1cc00fba43850", null ]
+];

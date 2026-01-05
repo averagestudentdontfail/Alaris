@@ -1,0 +1,5 @@
+<map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
+<area shape="rect" id="Node000000" href="$d0/d01/interfaceAlaris_1_1Infrastructure_1_1Data_1_1Provider_1_1DTpr005A.html" title="Interface for risk&#45;free rate providers." alt="" coords="5,13,177,53"/>
+<area shape="rect" id="Node000001" href="$d1/d03/classAlaris_1_1Infrastructure_1_1Data_1_1Provider_1_1Treasury_1_1TreasuryDirectRateProvider.html" title="Treasury Direct API risk&#45;free rate provider. Component ID: DTrf001A." alt="" coords="225,5,437,60"/>
+<area shape="poly" id="edge35_Node000000_Node000001" title=" " alt="" coords="191,30,225,30,225,35,191,35"/>
+</map>

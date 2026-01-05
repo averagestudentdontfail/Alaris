@@ -1,0 +1,8 @@
+<map id="Alaris.Test.Unit.STRK004ATests" name="Alaris.Test.Unit.STRK004ATests">
+<area shape="rect" id="Node000001" title="Unit tests for STRK004A &#45; Priority Queue Capital Allocator. Tests queue&#45;based allocation with heterog..." alt="" coords="5,801,308,1367"/>
+<area shape="rect" id="Node000002" href="$d2/d00/classAlaris_1_1Strategy_1_1Risk_1_1STRK001A.html" title="Implements Kelly Criterion position sizing for options strategies. Uses fractional Kelly (typically 2..." alt="" coords="53,5,260,331"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="152,331,150,393,148,566,150,739,151,785,145,785,145,739,143,566,145,393,146,331"/>
+<area shape="rect" id="Node000003" href="$de/d02/classAlaris_1_1Strategy_1_1Risk_1_1STRK004A.html" title="Implements priority queue capital allocation for heterogeneous opportunities." alt="" coords="233,393,454,739"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="235,330,258,377,253,379,230,332"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="284,740,267,787,262,785,279,738"/>
+</map>

@@ -1,0 +1,11 @@
+<map id="Alaris.Host.Application.Cli.Dashboard.CLdb001A" name="Alaris.Host.Application.Cli.Dashboard.CLdb001A">
+<area shape="rect" id="Node000001" title="Renders a live dashboard for algorithm monitoring. Uses Spectre.Console Live display for smooth updat..." alt="" coords="107,323,269,643"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,157,88,223"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="71,234,113,321,108,324,66,237"/>
+<area shape="rect" id="Node000003" href="$df/d02/interfaceAlaris_1_1Host_1_1Application_1_1Cli_1_1Monitor_1_1CLmn001A.html" title="Interface for monitoring algorithm execution (backtest or live). Provides observable streams of equit..." alt="" coords="113,130,263,250"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="191,250,191,306,185,306,185,250"/>
+<area shape="rect" id="Node000004" href="$df/d01/classAlaris_1_1Host_1_1Application_1_1Cli_1_1Monitor_1_1StatusUpdate.html" title="Algorithm status update." alt="" coords="288,120,448,260"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="328,261,280,338,276,335,323,259"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="331,5,405,71"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="371,84,371,120,365,120,365,84"/>
+</map>

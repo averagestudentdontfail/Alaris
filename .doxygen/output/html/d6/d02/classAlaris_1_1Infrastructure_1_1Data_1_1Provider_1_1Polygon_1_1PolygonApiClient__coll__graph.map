@@ -1,0 +1,7 @@
+<map id="Alaris.Infrastructure.Data.Provider.Polygon.PolygonApiClient" name="Alaris.Infrastructure.Data.Provider.Polygon.PolygonApiClient">
+<area shape="rect" id="Node000001" title="Polygon.io REST API client for market data retrieval. Component ID: DTpr001A." alt="" coords="121,208,344,503"/>
+<area shape="rect" id="Node000002" href="$d4/d02/interfaceAlaris_1_1Infrastructure_1_1Data_1_1Provider_1_1DTpr003A.html" title="Interface for market data providers (Polygon, IBKR, etc.)." alt="" coords="5,13,228,138"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="150,150,174,207,169,209,145,152"/>
+<area shape="rect" id="Node000003" href="$dc/d00/interfaceAlaris_1_1Infrastructure_1_1Data_1_1Http_1_1Contracts_1_1IPolygonApi.html" title="Polygon.io REST API contract. Component ID: DTAP001A." alt="" coords="253,5,447,145"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="323,147,303,194,298,192,318,145"/>
+</map>

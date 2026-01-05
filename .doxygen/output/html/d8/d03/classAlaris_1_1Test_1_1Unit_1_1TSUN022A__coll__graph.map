@@ -1,0 +1,7 @@
+<map id="Alaris.Test.Unit.TSUN022A" name="Alaris.Test.Unit.TSUN022A">
+<area shape="rect" id="Node000001" title="Unit tests for the NYSE trading calendar (STCL001A)." alt="" coords="5,543,224,895"/>
+<area shape="rect" id="Node000002" href="$dd/d02/classAlaris_1_1Strategy_1_1Calendar_1_1STCL001A.html" title="NYSE trading calendar implementation with native holiday rules. Replaces QuantLib UnitedStates(NYSE) ..." alt="" coords="19,160,210,480"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="117,480,117,526,112,526,112,480"/>
+<area shape="rect" id="Node000003" href="$d4/d03/interfaceAlaris_1_1Strategy_1_1Calendar_1_1ITradingCalendar.html" title="Interface for trading calendar operations." alt="" coords="19,5,210,111"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="117,125,117,159,112,159,112,125"/>
+</map>

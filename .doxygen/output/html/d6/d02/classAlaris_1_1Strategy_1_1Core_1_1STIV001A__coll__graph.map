@@ -1,0 +1,5 @@
+<map id="Alaris.Strategy.Core.STIV001A" name="Alaris.Strategy.Core.STIV001A">
+<area shape="rect" id="Node000001" title="Implements the Heston (1993) stochastic volatility model for implied volatility. Stock price dynamics..." alt="" coords="5,368,240,708"/>
+<area shape="rect" id="Node000002" href="$d1/d03/classAlaris_1_1Strategy_1_1Core_1_1HestonParameters.html" title="Heston model parameters." alt="" coords="35,5,211,305"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="125,306,125,352,120,352,120,306"/>
+</map>

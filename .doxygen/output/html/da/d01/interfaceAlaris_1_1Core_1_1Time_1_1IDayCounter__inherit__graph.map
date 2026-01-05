@@ -1,0 +1,9 @@
+<map id="Alaris.Core.Time.IDayCounter" name="Alaris.Core.Time.IDayCounter">
+<area shape="rect" id="Node000001" title="Interface for day count conventions." alt="" coords="198,5,389,91"/>
+<area shape="rect" id="Node000002" href="$d7/d01/classAlaris_1_1Core_1_1Time_1_1CRTM007AActual360.html" title="Actual/360 day count convention. Common for money market instruments." alt="" coords="5,139,181,259"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="228,101,174,141,171,136,224,97"/>
+<area shape="rect" id="Node000003" href="$da/d02/classAlaris_1_1Core_1_1Time_1_1CRTM007AActual365Fixed.html" title="Actual/365 Fixed day count convention. This is the most common convention for equity options." alt="" coords="205,139,381,259"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="296,105,296,138,291,138,291,105"/>
+<area shape="rect" id="Node000004" href="$d7/d03/classAlaris_1_1Core_1_1Time_1_1CRTM007AThirty360.html" title="30/360 (ISDA) day count convention. Used for some corporate bonds." alt="" coords="405,139,581,259"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="362,97,416,136,412,141,359,101"/>
+</map>

@@ -1,0 +1,7 @@
+<map id="Alaris.Algorithm.Universe.STUN001B" name="Alaris.Algorithm.Universe.STUN001B">
+<area shape="rect" id="Node000001" title="Polygon&#45;based universe selection model that uses pre&#45;generated universe files. Component ID: STUN001B..." alt="" coords="94,228,282,608"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,53,160,118"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="99,130,130,227,125,229,94,132"/>
+<area shape="rect" id="Node000003" href="$da/d01/interfaceAlaris_1_1Infrastructure_1_1Data_1_1Provider_1_1DTpr004A.html" title="Interface for earnings calendar providers." alt="" coords="184,5,405,165"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="272,167,257,213,252,211,267,165"/>
+</map>

@@ -1,0 +1,26 @@
+var classAlaris_1_1Test_1_1Unit_1_1TSUN028A =
+[
+    [ "DaysBeforeEarnings_IsAtilganOptimal", "d3/d01/classAlaris_1_1Test_1_1Unit_1_1TSUN028A.html#a8b2d4df1c0a705a1c46573c289f55c38", null ],
+    [ "DeltaBound_IsWithinPhysicalConstraints", "d3/d01/classAlaris_1_1Test_1_1Unit_1_1TSUN028A.html#a737b9321d8c24f92955c4c3a1939ea3e", null ],
+    [ "DteToYears_ConvertsCorrectly", "d3/d01/classAlaris_1_1Test_1_1Unit_1_1TSUN028A.html#a48c48058b7db674f45a2406aea7db3df", null ],
+    [ "DteToYearsToDte_RoundTrip_IsIdentity", "d3/d01/classAlaris_1_1Test_1_1Unit_1_1TSUN028A.html#add58dd427a1cea88d88ac8034b52c6c2", null ],
+    [ "EarningsGapMagnitude_IsRealistic", "d3/d01/classAlaris_1_1Test_1_1Unit_1_1TSUN028A.html#afc33e34600cdfeaaa0f632cd4f6615ae", null ],
+    [ "EarningsIVPremium_IsReasonable", "d3/d01/classAlaris_1_1Test_1_1Unit_1_1TSUN028A.html#a50cb4d3a6b1b8cdb1fd47b0237b27afe", null ],
+    [ "GammaBound_IsWithinPhysicalConstraints", "d3/d01/classAlaris_1_1Test_1_1Unit_1_1TSUN028A.html#ad45caa2f80f50b79106073a547c417db", null ],
+    [ "InvertedTermStructure_FrontIVGreaterThanBack", "d3/d01/classAlaris_1_1Test_1_1Unit_1_1TSUN028A.html#ac7b696d2b3e7d7139683eb5696b61e55", null ],
+    [ "IVRVRatio_MeetsSignalThreshold", "d3/d01/classAlaris_1_1Test_1_1Unit_1_1TSUN028A.html#a5fafb6ec9fa6d7639e3d704162324091", null ],
+    [ "MaxConcurrentPositions_LimitsConcentration", "d3/d01/classAlaris_1_1Test_1_1Unit_1_1TSUN028A.html#a259b8d729bb7c6f96869c5faca43eb7a", null ],
+    [ "MaxPositionAllocation_IsConservative", "d3/d01/classAlaris_1_1Test_1_1Unit_1_1TSUN028A.html#afa30b4ff29514fd4757ba6777ba14389", null ],
+    [ "MinimumDollarVolume_IsReasonable", "d3/d01/classAlaris_1_1Test_1_1Unit_1_1TSUN028A.html#aceb5e4589896395d98a16ffc79e9b36c", null ],
+    [ "MinimumPrice_FiltersPennyStocks", "d3/d01/classAlaris_1_1Test_1_1Unit_1_1TSUN028A.html#a5a8d2c11a18e2287fcec0bf4a9a711ee", null ],
+    [ "NegativeRateRegime_DividendLessThanRate", "d3/d01/classAlaris_1_1Test_1_1Unit_1_1TSUN028A.html#a9ca9d0b7ae12f8285b5ca203e03f5369", null ],
+    [ "NegativeRiskFreeRate_IsValidNegativeRate", "d3/d01/classAlaris_1_1Test_1_1Unit_1_1TSUN028A.html#a33f42874fac19121a346f35da188cf08", null ],
+    [ "PortfolioAllocationLimit_IsConservative", "d3/d01/classAlaris_1_1Test_1_1Unit_1_1TSUN028A.html#abc3c7a5b2b31fd989eae47d7354b0f83", null ],
+    [ "PositiveRiskFreeRate_IsReasonable", "d3/d01/classAlaris_1_1Test_1_1Unit_1_1TSUN028A.html#a2e775b6eae7266a03aff566099fd8634", null ],
+    [ "PriceBar_OHLCRelationship_IsValid", "d3/d01/classAlaris_1_1Test_1_1Unit_1_1TSUN028A.html#a47dbb2715736df62be42a7d7b9f5386c", null ],
+    [ "PriceBar_Volume_NonNegative", "d3/d01/classAlaris_1_1Test_1_1Unit_1_1TSUN028A.html#a9cfca14c91592125df2ed3230159c6e8", null ],
+    [ "TermStructureSlope_IsNegativeForInvertedStructure", "d3/d01/classAlaris_1_1Test_1_1Unit_1_1TSUN028A.html#a4bc71874b151851166a7505b4337f2a7", null ],
+    [ "TradingDaysPerYear_Is252", "d3/d01/classAlaris_1_1Test_1_1Unit_1_1TSUN028A.html#a1670b6b16376cafb27dfb490e2aed1cb", null ],
+    [ "VegaBound_IsWithinPhysicalConstraints", "d3/d01/classAlaris_1_1Test_1_1Unit_1_1TSUN028A.html#aec550327a5a39d82070957fa25afc061", null ],
+    [ "YearsToDte_IsInverseOfDteToYears", "d3/d01/classAlaris_1_1Test_1_1Unit_1_1TSUN028A.html#a8ae0c7bd42750cb9adc0aeba92707ebb", null ]
+];

@@ -1,0 +1,5 @@
+<map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
+<area shape="rect" id="Node000000" href="$db/d02/interfaceAlaris_1_1Core_1_1TermStructure_1_1IVolatilitySurface.html" title="Interface for Black volatility term structures (volatility surfaces). Replaces QuantLib BlackVolTermS..." alt="" coords="5,5,183,45"/>
+<area shape="rect" id="Node000001" href="$dc/d00/classAlaris_1_1Core_1_1TermStructure_1_1CRTS002AFlatVol.html" title="Flat Black volatility surface with constant volatility. Replaces QuantLib BlackConstantVol." alt="" coords="231,5,408,45"/>
+<area shape="poly" id="edge2_Node000000_Node000001" title=" " alt="" coords="196,23,231,23,231,28,196,28"/>
+</map>

@@ -1,0 +1,5 @@
+<map id="Alaris.Infrastructure.Data.Provider.Nasdaq.NasdaqEarningsProvider" name="Alaris.Infrastructure.Data.Provider.Nasdaq.NasdaqEarningsProvider">
+<area shape="rect" id="Node000001" title="NASDAQ public API earnings calendar provider. Component ID: DTea001C." alt="" coords="5,199,264,599"/>
+<area shape="rect" id="Node000002" href="$da/d01/interfaceAlaris_1_1Infrastructure_1_1Data_1_1Provider_1_1DTpr004A.html" title="Interface for earnings calendar providers." alt="" coords="24,5,245,151"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="137,164,137,198,132,198,132,164"/>
+</map>

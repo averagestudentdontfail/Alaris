@@ -1,0 +1,23 @@
+<map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
+<area shape="rect" id="Node000000" title=" " alt="" coords="5,301,88,326"/>
+<area shape="rect" id="Node000001" href="$da/d00/classAlaris_1_1Host_1_1Application_1_1Cli_1_1Commands_1_1CLvr001A.html" title="Displays version and system information. Component ID: CLvr001A." alt="" coords="162,5,333,45"/>
+<area shape="poly" id="edge57_Node000000_Node000001" title=" " alt="" coords="47,286,53,237,67,175,93,111,111,82,134,55,160,38,163,43,138,59,116,85,98,114,72,177,58,238,52,287"/>
+<area shape="rect" id="Node000002" href="$d7/d02/classAlaris_1_1Host_1_1Application_1_1Cli_1_1Commands_1_1Strategy_1_1CLst001A.html" title="Lists available trading strategies. Component ID: CLst001A." alt="" coords="136,69,359,109"/>
+<area shape="poly" id="edge58_Node000000_Node000002" title=" " alt="" coords="50,286,60,249,76,204,100,159,134,119,152,107,155,112,138,123,105,162,81,206,65,251,55,288"/>
+<area shape="rect" id="Node000003" href="$d2/d03/classAlaris_1_1Host_1_1Application_1_1Cli_1_1Commands_1_1Strategy_1_1CLst002A.html" title="Shows strategy parameters and thresholds. Component ID: CLst002A." alt="" coords="136,133,359,173"/>
+<area shape="poly" id="edge59_Node000000_Node000003" title=" " alt="" coords="56,287,86,235,108,207,134,183,155,171,158,176,138,187,112,210,91,237,61,290"/>
+<area shape="rect" id="Node000004" href="$d4/d02/classAlaris_1_1Host_1_1Application_1_1Cli_1_1Commands_1_1Strategy_1_1CLst003A.html" title="Evaluates a single symbol for trading signals. Component ID: CLst003A." alt="" coords="136,197,359,237"/>
+<area shape="poly" id="edge60_Node000000_Node000004" title=" " alt="" coords="71,289,101,267,135,247,164,235,166,240,137,252,104,272,75,294"/>
+<area shape="rect" id="Node000005" href="$d6/d02/classAlaris_1_1Host_1_1Application_1_1Cli_1_1Commands_1_1Trade_1_1CLtr002A.html" title="Shows current trading state and positions. Component ID: CLtr002A." alt="" coords="145,261,350,301"/>
+<area shape="poly" id="edge61_Node000000_Node000005" title=" " alt="" coords="101,302,144,295,145,300,102,307"/>
+<area shape="rect" id="Node000006" href="$dc/d02/classAlaris_1_1Host_1_1Application_1_1Cli_1_1Commands_1_1Trade_1_1CLtr003A.html" title="Shows pending and active trading signals. Component ID: CLtr003A." alt="" coords="145,325,350,365"/>
+<area shape="poly" id="edge62_Node000000_Node000006" title=" " alt="" coords="102,319,145,326,144,332,101,325"/>
+<area shape="rect" id="Node000007" href="$de/d00/classAlaris_1_1Host_1_1Application_1_1Command_1_1APcm001A.html" title="Alaris Run Command &#45; executes algorithm in specified mode. Component ID: APcm001A." alt="" coords="168,389,327,429"/>
+<area shape="poly" id="edge63_Node000000_Node000007" title=" " alt="" coords="75,333,104,355,137,375,169,388,167,393,135,380,101,359,71,337"/>
+<area shape="rect" id="Node000008" href="$d6/d02/classAlaris_1_1Host_1_1Application_1_1Command_1_1APcm002A.html" title="APcm002A: Configuration management command for Alaris." alt="" coords="168,453,327,493"/>
+<area shape="poly" id="edge64_Node000000_Node000008" title=" " alt="" coords="61,337,91,389,112,416,138,439,169,455,166,460,134,444,108,420,86,392,56,340"/>
+<area shape="rect" id="Node000009" href="$da/d03/classAlaris_1_1Host_1_1Application_1_1Command_1_1APcm003A.html" title="Alaris Data Command &#45; download and manage market data. Component ID: APcm003A." alt="" coords="168,517,327,557"/>
+<area shape="poly" id="edge65_Node000000_Node000009" title=" " alt="" coords="55,339,65,376,81,420,105,465,138,503,169,521,166,526,134,507,100,468,76,423,60,378,50,340"/>
+<area shape="rect" id="Node000010" href="$de/d00/classAlaris_1_1Host_1_1Application_1_1Command_1_1APcm004A.html" title="Alaris Universe Command &#45; generate and manage universe files. Component ID: APcm004A." alt="" coords="168,581,327,621"/>
+<area shape="poly" id="edge66_Node000000_Node000010" title=" " alt="" coords="52,340,58,388,72,450,98,513,116,542,138,567,169,586,166,591,134,571,111,545,93,515,67,451,53,389,47,340"/>
+</map>

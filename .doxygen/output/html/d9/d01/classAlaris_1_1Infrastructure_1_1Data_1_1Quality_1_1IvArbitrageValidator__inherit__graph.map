@@ -1,0 +1,5 @@
+<map id="Alaris.Infrastructure.Data.Quality.IvArbitrageValidator" name="Alaris.Infrastructure.Data.Quality.IvArbitrageValidator">
+<area shape="rect" id="Node000001" title="Validates IV arbitrage conditions (put&#45;call parity, calendar spreads). Component ID: DTqc002A." alt="" coords="5,119,176,239"/>
+<area shape="rect" id="Node000002" href="$df/d00/interfaceAlaris_1_1Infrastructure_1_1Data_1_1Quality_1_1DTqc002A.html" title="Interface for data quality validators." alt="" coords="39,5,143,71"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="93,85,93,118,88,118,88,85"/>
+</map>

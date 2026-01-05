@@ -1,0 +1,13 @@
+<map id="Alaris.Test.Unit.Core.Pricing.CREN003AInvariantTests" name="Alaris.Test.Unit.Core.Pricing.CREN003AInvariantTests">
+<area shape="rect" id="Node000001" title="Mathematical invariant tests for the unified American option pricing engine." alt="" coords="314,1076,527,1400"/>
+<area shape="rect" id="Node000002" href="$d1/d02/classAlaris_1_1Core_1_1Pricing_1_1CREN003A.html" title="Unified American option pricing engine. Automatically selects the appropriate method based on rate re..." alt="" coords="323,728,519,1013"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="423,1014,423,1060,418,1060,418,1014"/>
+<area shape="rect" id="Node000003" href="$d9/d01/interfaceAlaris_1_1Core_1_1Pricing_1_1IAmericanOptionEngine.html" title="Interface for American option pricing engines." alt="" coords="5,253,156,418"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="92,431,102,487,118,547,140,608,170,664,203,707,241,746,283,780,324,810,321,814,279,785,238,750,199,710,165,667,135,610,113,549,97,488,87,432"/>
+<area shape="rect" id="Node000004" href="$da/d03/classAlaris_1_1Core_1_1Pricing_1_1CREN004A.html" title="Spectral collocation American option pricing engine." alt="" coords="180,5,413,665"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="376,665,387,711,381,712,371,666"/>
+<area shape="rect" id="Node000005" href="$d3/d01/classAlaris_1_1Core_1_1Pricing_1_1CREN002A.html" title="Unified American option pricing engine supporting all rate regimes." alt="" coords="437,103,655,568"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="520,569,490,705,488,713,482,711,485,703,515,568"/>
+<area shape="rect" id="Node000006" href="$dc/d00/classAlaris_1_1Core_1_1Pricing_1_1CREX001A.html" title="Handles numerical stability as τ → 0 via blending to intrinsic. Threshold: τ &lt; 1/252." alt="" coords="679,183,875,488"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="748,489,716,580,695,625,670,667,640,705,606,740,534,800,530,796,602,736,636,701,665,664,690,622,711,578,743,487"/>
+</map>

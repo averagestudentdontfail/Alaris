@@ -1,0 +1,5 @@
+<map id="Alaris.Host.Application.Cli.Monitor.CLmn001A" name="Alaris.Host.Application.Cli.Monitor.CLmn001A">
+<area shape="rect" id="Node000001" title="Interface for monitoring algorithm execution (backtest or live). Provides observable streams of equit..." alt="" coords="13,5,164,125"/>
+<area shape="rect" id="Node000002" href="$d0/d03/classAlaris_1_1Host_1_1Application_1_1Cli_1_1Monitor_1_1CLmn002A.html" title="Monitors a LEAN backtest in progress and publishes events. Component ID: CLmn002A." alt="" coords="5,173,172,513"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="91,139,91,173,86,173,86,139"/>
+</map>

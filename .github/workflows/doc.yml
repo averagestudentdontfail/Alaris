@@ -1,0 +1,172 @@
+# .github/workflows/documentation.yml
+# Automated Doxygen documentation generation for Alaris
+
+name: Documentation
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - develop
+    paths:
+      - 'src/**'
+      - 'Alaris*/**'
+      - 'Tests/**'
+      - '*.md'
+      - '.doxygen/Doxyfile'
+      - '.github/workflows/documentation.yml'
+  pull_request:
+    branches:
+      - main
+      - master
+    paths:
+      - 'src/**'
+      - 'Alaris*/**'
+      - 'Tests/**'
+      - '*.md'
+      - '.doxygen/Doxyfile'
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: 'Deploy to GitHub Pages'
+        required: false
+        default: 'true'
+        type: boolean
+
+# Cancel in-progress runs for the same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build-documentation:
+    name: Build Documentation
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for git-based versioning
+      
+      - name: Install Doxygen and dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y doxygen graphviz
+          doxygen --version
+          dot -V
+      
+      - name: Create output directory
+        run: mkdir -p .doxygen/output
+      
+      - name: Generate documentation
+        run: |
+          cd ${{ github.workspace }}
+          doxygen .doxygen/Doxyfile
+        env:
+          PROJECT_NUMBER: ${{ github.sha }}
+      
+      - name: Check for warnings
+        run: |
+          if [ -f .doxygen/warnings.log ]; then
+            echo "=== Doxygen Warnings ==="
+            cat .doxygen/warnings.log
+            
+            # Count warnings (optional: fail on warnings)
+            WARN_COUNT=$(wc -l < .doxygen/warnings.log)
+            echo "Total warnings: $WARN_COUNT"
+            
+            # Uncomment to fail on warnings:
+            # if [ "$WARN_COUNT" -gt 0 ]; then
+            #   echo "::error::Documentation has $WARN_COUNT warnings"
+            #   exit 1
+            # fi
+          else
+            echo "No warnings generated"
+          fi
+      
+      - name: Upload documentation artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation-html
+          path: .doxygen/output/html
+          retention-days: 30
+      
+      - name: Upload warnings log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation-warnings
+          path: .doxygen/warnings.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # Optional: Deploy to GitHub Pages
+  deploy-pages:
+    name: Deploy to GitHub Pages
+    needs: build-documentation
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'push' && 
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') ||
+      (github.event_name == 'workflow_dispatch' && inputs.deploy == 'true')
+    
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
+    steps:
+      - name: Download documentation artefact
+        uses: actions/download-artifact@v4
+        with:
+          name: documentation-html
+          path: .doxygen/output/html
+      
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+      
+      - name: Upload Pages artefact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .doxygen/output/html
+      
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  # Optional: Commit documentation back to repository
+  # Uncomment if you prefer in-repo documentation over GitHub Pages
+  # commit-documentation:
+  #   name: Commit Documentation
+  #   needs: build-documentation
+  #   runs-on: ubuntu-latest
+  #   if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+  #   
+  #   permissions:
+  #     contents: write
+  #   
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
+  #       with:
+  #         token: ${{ secrets.GITHUB_TOKEN }}
+  #     
+  #     - name: Download documentation artefact
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: documentation-html
+  #         path: .doxygen/output/html
+  #     
+  #     - name: Commit and push documentation
+  #       run: |
+  #         git config --local user.email "github-actions[bot]@users.noreply.github.com"
+  #         git config --local user.name "github-actions[bot]"
+  #         git add .doxygen/output/html
+  #         git diff --staged --quiet || git commit -m "docs: update generated documentation [skip ci]"
+  #         git push

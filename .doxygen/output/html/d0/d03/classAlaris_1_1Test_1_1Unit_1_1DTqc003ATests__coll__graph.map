@@ -1,0 +1,9 @@
+<map id="Alaris.Test.Unit.DTqc003ATests" name="Alaris.Test.Unit.DTqc003ATests">
+<area shape="rect" id="Node000001" title="Unit tests for VolumeOpenInterestValidator (DTqc003A). Validates volume and liquidity rules." alt="" coords="5,303,213,691"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="13,147,96,213"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="65,226,78,302,73,303,60,227"/>
+<area shape="rect" id="Node000003" href="$dc/d00/classAlaris_1_1Infrastructure_1_1Data_1_1Quality_1_1VolumeOpenInterestValidator.html" title="Validates volume and open interest for liquidity requirements. Component ID: DTqc003A." alt="" coords="120,120,347,240"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="213,241,194,288,189,286,208,239"/>
+<area shape="rect" id="Node000004" href="$df/d00/interfaceAlaris_1_1Infrastructure_1_1Data_1_1Quality_1_1DTqc002A.html" title="Interface for data quality validators." alt="" coords="181,5,285,71"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="236,85,236,120,231,120,231,85"/>
+</map>

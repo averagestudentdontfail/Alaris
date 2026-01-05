@@ -1,0 +1,27 @@
+var structAlaris_1_1Infrastructure_1_1Protocol_1_1Serialization_1_1OptionContractData =
+[
+    [ "AskMantissa", "d7/d01/structAlaris_1_1Infrastructure_1_1Protocol_1_1Serialization_1_1OptionContractData.html#a02a95cb456df71debd988878cff6f9c2", null ],
+    [ "BidMantissa", "d7/d01/structAlaris_1_1Infrastructure_1_1Protocol_1_1Serialization_1_1OptionContractData.html#a91496b7f667f791bf38d6f493745a4cb", null ],
+    [ "DeltaMantissa", "d7/d01/structAlaris_1_1Infrastructure_1_1Protocol_1_1Serialization_1_1OptionContractData.html#a9a4c44900ecdc43c78fd415abc999e6c", null ],
+    [ "ExpirationDays", "d7/d01/structAlaris_1_1Infrastructure_1_1Protocol_1_1Serialization_1_1OptionContractData.html#ad5a43571ac01414fc71ff513c248d1a0", null ],
+    [ "GammaMantissa", "d7/d01/structAlaris_1_1Infrastructure_1_1Protocol_1_1Serialization_1_1OptionContractData.html#a8b585f31d3b9d1bb66dca337d1950a93", null ],
+    [ "ImpliedVolatilityMantissa", "d7/d01/structAlaris_1_1Infrastructure_1_1Protocol_1_1Serialization_1_1OptionContractData.html#a6b50b84f1913f0486fbaad389d227fc1", null ],
+    [ "LastMantissa", "d7/d01/structAlaris_1_1Infrastructure_1_1Protocol_1_1Serialization_1_1OptionContractData.html#aab0de5619d87e84aef02bb409e224625", null ],
+    [ "OpenInterest", "d7/d01/structAlaris_1_1Infrastructure_1_1Protocol_1_1Serialization_1_1OptionContractData.html#a22ac8328caca080e7a599c5ce9d914ff", null ],
+    [ "Right", "d7/d01/structAlaris_1_1Infrastructure_1_1Protocol_1_1Serialization_1_1OptionContractData.html#a8e241ee59c4b56017bd61037eea97bf4", null ],
+    [ "StrikeMantissa", "d7/d01/structAlaris_1_1Infrastructure_1_1Protocol_1_1Serialization_1_1OptionContractData.html#a58d6989abb5a3eed920ef7c6a269653a", null ],
+    [ "Symbol", "d7/d01/structAlaris_1_1Infrastructure_1_1Protocol_1_1Serialization_1_1OptionContractData.html#ad9197d9bb673d3f4c49a9ca56facefbe", null ],
+    [ "ThetaMantissa", "d7/d01/structAlaris_1_1Infrastructure_1_1Protocol_1_1Serialization_1_1OptionContractData.html#aaddbd06a7a273b287496f2909db5009b", null ],
+    [ "VegaMantissa", "d7/d01/structAlaris_1_1Infrastructure_1_1Protocol_1_1Serialization_1_1OptionContractData.html#affffb849dee98f4f4775f2341a08370b", null ],
+    [ "Volume", "d7/d01/structAlaris_1_1Infrastructure_1_1Protocol_1_1Serialization_1_1OptionContractData.html#a87e1e6f277fb98f548259fb18f0ac37c", null ],
+    [ "Ask", "d7/d01/structAlaris_1_1Infrastructure_1_1Protocol_1_1Serialization_1_1OptionContractData.html#ab4398445aeee2875b5476a9ae9def116", null ],
+    [ "Bid", "d7/d01/structAlaris_1_1Infrastructure_1_1Protocol_1_1Serialization_1_1OptionContractData.html#a25e9018a80668862a5b775fbc1886216", null ],
+    [ "Delta", "d7/d01/structAlaris_1_1Infrastructure_1_1Protocol_1_1Serialization_1_1OptionContractData.html#af60da06bd989b9033bdd03fd4543e968", null ],
+    [ "Expiration", "d7/d01/structAlaris_1_1Infrastructure_1_1Protocol_1_1Serialization_1_1OptionContractData.html#a0d4c204f391b4cefbeb3a7447d780aed", null ],
+    [ "Gamma", "d7/d01/structAlaris_1_1Infrastructure_1_1Protocol_1_1Serialization_1_1OptionContractData.html#a962aebe28d00fc7a806bf5f4e37756ba", null ],
+    [ "ImpliedVolatility", "d7/d01/structAlaris_1_1Infrastructure_1_1Protocol_1_1Serialization_1_1OptionContractData.html#a9b1c8d47fce3c5818a70080f640729c8", null ],
+    [ "Last", "d7/d01/structAlaris_1_1Infrastructure_1_1Protocol_1_1Serialization_1_1OptionContractData.html#a98c1160495e4d2256bad4b9fade5a3ff", null ],
+    [ "Strike", "d7/d01/structAlaris_1_1Infrastructure_1_1Protocol_1_1Serialization_1_1OptionContractData.html#a922a244bc96bfbf4b59674a31c8880c2", null ],
+    [ "Theta", "d7/d01/structAlaris_1_1Infrastructure_1_1Protocol_1_1Serialization_1_1OptionContractData.html#aa0068a918f531445fddf1b74ad474a5f", null ],
+    [ "Vega", "d7/d01/structAlaris_1_1Infrastructure_1_1Protocol_1_1Serialization_1_1OptionContractData.html#a25ef53f714c34031e786cea1479e5066", null ]
+];

@@ -1,0 +1,5 @@
+<map id="Alaris.Core.TermStructure.CRTS002AFlatVol" name="Alaris.Core.TermStructure.CRTS002AFlatVol">
+<area shape="rect" id="Node000001" title="Flat Black volatility surface with constant volatility. Replaces QuantLib BlackConstantVol." alt="" coords="5,179,175,379"/>
+<area shape="rect" id="Node000002" href="$db/d02/interfaceAlaris_1_1Core_1_1TermStructure_1_1IVolatilitySurface.html" title="Interface for Black volatility term structures (volatility surfaces). Replaces QuantLib BlackVolTermS..." alt="" coords="31,5,149,131"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="93,145,93,178,87,178,87,145"/>
+</map>

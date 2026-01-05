@@ -1,0 +1,31 @@
+<map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
+<area shape="rect" id="Node000000" title=" " alt="" coords="5,429,124,454"/>
+<area shape="rect" id="Node000001" href="$d0/d02/classAlaris_1_1Host_1_1Application_1_1Cli_1_1Commands_1_1Backtest_1_1CLbt002A.html" title="Analyzes backtest results for a session. Component ID: CLbt002A." alt="" coords="185,5,412,45"/>
+<area shape="poly" id="edge43_Node000000_Node000001" title=" " alt="" coords="62,415,64,344,77,247,90,195,110,145,136,97,170,55,186,43,189,48,174,59,140,100,115,147,96,197,82,248,69,344,68,415"/>
+<area shape="rect" id="Node000002" href="$dd/d01/classAlaris_1_1Host_1_1Application_1_1Cli_1_1Commands_1_1Backtest_1_1CLbt003A.html" title="Lists previous backtest sessions. Component ID: CLbt003A." alt="" coords="185,69,412,109"/>
+<area shape="poly" id="edge44_Node000000_Node000002" title=" " alt="" coords="64,414,70,354,86,274,99,232,117,191,141,153,170,119,187,107,190,112,174,123,145,156,122,194,104,234,91,276,75,354,69,415"/>
+<area shape="rect" id="Node000003" href="$d0/d03/classAlaris_1_1Host_1_1Application_1_1Cli_1_1Commands_1_1Data_1_1CLdt001A.html" title="Downloads market data (prices, options, rates) for a session. Component ID: CLdt001A." alt="" coords="197,133,400,173"/>
+<area shape="poly" id="edge45_Node000000_Node000003" title=" " alt="" coords="67,414,76,365,94,303,125,238,146,209,170,183,196,167,199,172,174,187,150,212,129,241,99,305,81,366,72,415"/>
+<area shape="rect" id="Node000004" href="$d4/d03/classAlaris_1_1Host_1_1Application_1_1Cli_1_1Commands_1_1Data_1_1CLdt002A.html" title="Shows data coverage and freshness for sessions. Component ID: CLdt002A." alt="" coords="197,197,400,237"/>
+<area shape="poly" id="edge46_Node000000_Node000004" title=" " alt="" coords="71,414,84,377,104,332,133,286,170,247,196,232,199,237,174,251,137,289,109,334,88,379,76,416"/>
+<area shape="rect" id="Node000005" href="$d9/d02/classAlaris_1_1Host_1_1Application_1_1Cli_1_1Commands_1_1Data_1_1CLdt003A.html" title="Validates data quality for a session. Component ID: CLdt003A." alt="" coords="197,261,400,301"/>
+<area shape="poly" id="edge47_Node000000_Node000005" title=" " alt="" coords="77,415,115,362,141,335,171,311,196,298,198,303,173,316,144,339,119,366,82,418"/>
+<area shape="rect" id="Node000006" href="$d5/d02/classAlaris_1_1Host_1_1Application_1_1Cli_1_1Commands_1_1Earnings_1_1CLer002A.html" title="Shows upcoming earnings announcements from cached data. Component ID: CLer002A." alt="" coords="185,325,412,365"/>
+<area shape="poly" id="edge48_Node000000_Node000006" title=" " alt="" coords="93,419,129,396,171,375,205,363,206,368,173,380,132,401,96,423"/>
+<area shape="rect" id="Node000007" href="$dd/d00/classAlaris_1_1Host_1_1Application_1_1Cli_1_1Commands_1_1Earnings_1_1CLer003A.html" title="Checks earnings data coverage for a session. Component ID: CLer003A." alt="" coords="185,389,412,429"/>
+<area shape="poly" id="edge49_Node000000_Node000007" title=" " alt="" coords="137,429,185,422,186,427,138,434"/>
+<area shape="rect" id="Node000008" href="$d5/d00/classAlaris_1_1Host_1_1Application_1_1Command_1_1BacktestCreateCommand.html" title="Creates a new backtest session." alt="" coords="180,453,417,493"/>
+<area shape="poly" id="edge50_Node000000_Node000008" title=" " alt="" coords="138,449,180,454,179,460,138,454"/>
+<area shape="rect" id="Node000009" href="$d4/d02/classAlaris_1_1Host_1_1Application_1_1Command_1_1BacktestDeleteCommand.html" title="Deletes a backtest session and all its data." alt="" coords="181,517,417,557"/>
+<area shape="poly" id="edge51_Node000000_Node000009" title=" " alt="" coords="96,460,132,482,173,503,206,515,205,520,171,508,129,487,93,464"/>
+<area shape="rect" id="Node000010" href="$d6/d00/classAlaris_1_1Host_1_1Application_1_1Command_1_1BacktestListCommand.html" title="Lists all backtest sessions." alt="" coords="189,581,408,621"/>
+<area shape="poly" id="edge52_Node000000_Node000010" title=" " alt="" coords="82,464,119,517,144,544,173,567,196,579,194,584,171,572,141,548,115,520,77,467"/>
+<area shape="rect" id="Node000011" href="$df/d01/classAlaris_1_1Host_1_1Application_1_1Command_1_1BacktestPrepareCommand.html" title=" " alt="" coords="177,645,420,685"/>
+<area shape="poly" id="edge53_Node000000_Node000011" title=" " alt="" coords="76,467,88,504,109,549,137,593,174,631,192,643,190,647,170,635,133,597,104,551,84,506,71,468"/>
+<area shape="rect" id="Node000012" href="$d2/d00/classAlaris_1_1Host_1_1Application_1_1Command_1_1BacktestRunCommand.html" title="Runs a backtest session." alt="" coords="187,709,410,749"/>
+<area shape="poly" id="edge54_Node000000_Node000012" title=" " alt="" coords="72,467,81,516,99,578,129,642,150,670,174,695,191,707,188,711,170,699,146,674,125,644,94,580,76,518,67,468"/>
+<area shape="rect" id="Node000013" href="$d0/d03/classAlaris_1_1Host_1_1Application_1_1Command_1_1BacktestViewCommand.html" title="Views details of a backtest session." alt="" coords="185,773,412,813"/>
+<area shape="poly" id="edge55_Node000000_Node000013" title=" " alt="" coords="69,468,75,528,91,607,104,649,122,689,145,727,174,759,190,771,187,775,170,763,141,730,117,692,99,650,86,608,70,529,64,468"/>
+<area shape="rect" id="Node000014" href="$d0/d02/classAlaris_1_1Host_1_1Application_1_1Command_1_1BootstrapEarningsCommand.html" title="Downloads earnings calendar to cache files for backtesting. Component ID: APcm006A." alt="" coords="172,837,425,877"/>
+<area shape="poly" id="edge56_Node000000_Node000014" title=" " alt="" coords="68,468,69,539,82,635,96,686,115,736,140,783,174,823,189,835,186,839,170,827,136,786,110,738,90,687,77,636,64,539,62,468"/>
+</map>

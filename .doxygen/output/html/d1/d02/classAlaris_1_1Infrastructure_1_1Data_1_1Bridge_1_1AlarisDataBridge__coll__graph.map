@@ -1,0 +1,9 @@
+<map id="Alaris.Infrastructure.Data.Bridge.AlarisDataBridge" name="Alaris.Infrastructure.Data.Bridge.AlarisDataBridge">
+<area shape="rect" id="Node000001" title="Bridges Alaris data providers to Lean engine&#39;s data infrastructure. Component ID: DTbr001A." alt="" coords="246,228,481,652"/>
+<area shape="rect" id="Node000002" href="$d4/d02/interfaceAlaris_1_1Infrastructure_1_1Data_1_1Provider_1_1DTpr003A.html" title="Interface for market data providers (Polygon, IBKR, etc.)." alt="" coords="5,15,228,155"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="167,154,239,256,234,259,163,157"/>
+<area shape="rect" id="Node000003" href="$da/d01/interfaceAlaris_1_1Infrastructure_1_1Data_1_1Provider_1_1DTpr004A.html" title="Interface for earnings calendar providers." alt="" coords="253,5,474,165"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="366,166,366,212,361,212,361,166"/>
+<area shape="rect" id="Node000004" href="$d0/d01/interfaceAlaris_1_1Infrastructure_1_1Data_1_1Provider_1_1DTpr005A.html" title="Interface for risk&#45;free rate providers." alt="" coords="499,35,681,135"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="561,137,492,244,487,241,556,134"/>
+</map>

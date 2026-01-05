@@ -1,0 +1,53 @@
+<map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
+<area shape="rect" id="Node000000" title=" " alt="" coords="5,772,136,797"/>
+<area shape="rect" id="Node000001" href="$d4/d03/classAlaris_1_1Host_1_1Application_1_1Cli_1_1Infrastructure_1_1CLif004A.html" title="Global settings inherited by all CLI commands. Component ID: CLif004A." alt="" coords="216,413,393,453"/>
+<area shape="poly" id="edge67_Node000000_Node000001" title=" " alt="" coords="71,758,78,697,95,618,110,576,128,535,152,496,182,463,215,443,217,448,186,467,157,499,133,537,115,578,100,619,83,698,76,758"/>
+<area shape="rect" id="Node000015" href="$d8/d03/classAlaris_1_1Host_1_1Application_1_1Command_1_1BacktestCreateSettings.html" title="Settings for backtest create command." alt="" coords="192,477,417,517"/>
+<area shape="poly" id="edge81_Node000000_Node000015" title=" " alt="" coords="73,758,84,708,104,646,136,582,157,552,182,527,200,514,203,519,186,531,161,556,140,585,109,648,89,710,78,759"/>
+<area shape="rect" id="Node000016" href="$d0/d03/classAlaris_1_1Host_1_1Application_1_1Command_1_1BacktestDeleteSettings.html" title="Settings for backtest delete command." alt="" coords="193,541,417,581"/>
+<area shape="poly" id="edge82_Node000000_Node000016" title=" " alt="" coords="77,758,92,720,114,675,144,629,182,591,202,579,205,583,186,595,148,633,118,678,97,722,82,760"/>
+<area shape="rect" id="Node000017" href="$d6/d00/classAlaris_1_1Host_1_1Application_1_1Command_1_1BacktestListSettings.html" title="Settings for backtest list command." alt="" coords="201,605,408,645"/>
+<area shape="poly" id="edge83_Node000000_Node000017" title=" " alt="" coords="85,759,124,706,152,678,183,654,206,642,209,647,185,659,155,682,128,709,89,762"/>
+<area shape="rect" id="Node000018" href="$dd/d00/classAlaris_1_1Host_1_1Application_1_1Command_1_1BacktestPrepareSettings.html" title=" " alt="" coords="189,669,420,709"/>
+<area shape="poly" id="edge84_Node000000_Node000018" title=" " alt="" coords="101,762,139,740,183,718,217,706,219,711,185,723,142,744,104,767"/>
+<area shape="rect" id="Node000019" href="$d9/d01/classAlaris_1_1Host_1_1Application_1_1Command_1_1BacktestRunSettings.html" title="Settings for backtest run command." alt="" coords="199,733,410,773"/>
+<area shape="poly" id="edge85_Node000000_Node000019" title=" " alt="" coords="150,771,199,764,199,770,150,777"/>
+<area shape="rect" id="Node000020" href="$d2/d01/classAlaris_1_1Host_1_1Application_1_1Command_1_1BacktestViewSettings.html" title="Settings for backtest view command." alt="" coords="197,797,412,837"/>
+<area shape="poly" id="edge86_Node000000_Node000020" title=" " alt="" coords="150,793,197,799,197,805,150,798"/>
+<area shape="rect" id="Node000021" href="$dc/d02/classAlaris_1_1Host_1_1Application_1_1Command_1_1BootstrapEarningsSettings.html" title="Settings for bootstrap earnings command." alt="" coords="184,861,425,901"/>
+<area shape="poly" id="edge87_Node000000_Node000021" title=" " alt="" coords="104,803,142,825,185,846,219,858,217,863,183,851,139,830,101,807"/>
+<area shape="rect" id="Node000022" href="$de/d02/classAlaris_1_1Host_1_1Application_1_1Command_1_1ConfigSettings.html" title="Settings for the config command." alt="" coords="219,925,391,965"/>
+<area shape="poly" id="edge88_Node000000_Node000022" title=" " alt="" coords="89,807,128,860,155,887,185,910,220,926,217,931,183,915,152,891,124,863,85,811"/>
+<area shape="rect" id="Node000023" href="$d4/d02/classAlaris_1_1Host_1_1Application_1_1Command_1_1DataSettings.html" title="Data Command settings." alt="" coords="223,989,386,1029"/>
+<area shape="poly" id="edge89_Node000000_Node000023" title=" " alt="" coords="82,810,97,847,118,892,148,937,186,975,224,994,222,999,182,979,144,940,114,894,92,849,77,812"/>
+<area shape="rect" id="Node000024" href="$d0/d03/classAlaris_1_1Host_1_1Application_1_1Command_1_1RunSettings.html" title="Run Command settings." alt="" coords="225,1053,384,1093"/>
+<area shape="poly" id="edge90_Node000000_Node000024" title=" " alt="" coords="78,810,89,859,109,921,140,985,161,1014,186,1039,205,1051,226,1060,224,1065,202,1056,182,1043,157,1017,136,987,104,923,84,861,73,812"/>
+<area shape="rect" id="Node000025" href="$d1/d00/classAlaris_1_1Host_1_1Application_1_1Command_1_1UniverseSettings.html" title="Universe command settings." alt="" coords="211,1117,398,1157"/>
+<area shape="poly" id="edge91_Node000000_Node000025" title=" " alt="" coords="76,811,83,871,100,950,115,992,133,1032,157,1070,186,1103,213,1120,210,1124,182,1107,152,1073,128,1035,110,994,95,952,78,872,71,812"/>
+<area shape="rect" id="Node000002" href="$d0/d02/classAlaris_1_1Host_1_1Application_1_1Cli_1_1Settings_1_1BacktestAnalyzeSettings.html" title="Settings for backtest analyze command." alt="" coords="492,5,685,60"/>
+<area shape="poly" id="edge68_Node000001_Node000002" title=" " alt="" coords="310,398,327,330,358,243,380,196,406,151,436,108,472,71,490,57,493,61,475,75,440,112,410,154,385,199,363,245,332,332,315,400"/>
+<area shape="rect" id="Node000003" href="$d5/d03/classAlaris_1_1Host_1_1Application_1_1Cli_1_1Settings_1_1BacktestListSettings.html" title="Settings for backtest list command." alt="" coords="481,85,696,125"/>
+<area shape="poly" id="edge69_Node000001_Node000003" title=" " alt="" coords="313,399,333,341,366,270,412,197,440,164,472,135,491,123,494,127,475,139,444,167,416,200,370,273,338,343,318,400"/>
+<area shape="rect" id="Node000004" href="$dc/d00/classAlaris_1_1Host_1_1Application_1_1Cli_1_1Settings_1_1BacktestRunSettings.html" title="Settings for backtest run command. Component ID: CLse003A." alt="" coords="479,149,698,189"/>
+<area shape="poly" id="edge70_Node000001_Node000004" title=" " alt="" coords="318,399,342,354,376,299,419,245,472,198,493,186,496,191,475,203,423,249,380,303,347,356,323,401"/>
+<area shape="rect" id="Node000005" href="$da/d02/classAlaris_1_1Host_1_1Application_1_1Cli_1_1Settings_1_1DataBootstrapSettings.html" title="Settings for data bootstrap command. Component ID: CLse001A." alt="" coords="475,213,702,253"/>
+<area shape="poly" id="edge71_Node000001_Node000005" title=" " alt="" coords="327,400,387,330,428,294,472,262,497,250,499,255,475,267,431,298,391,334,331,403"/>
+<area shape="rect" id="Node000006" href="$d6/d00/classAlaris_1_1Host_1_1Application_1_1Cli_1_1Settings_1_1DataStatusSettings.html" title="Settings for data status command." alt="" coords="485,277,693,317"/>
+<area shape="poly" id="edge72_Node000001_Node000006" title=" " alt="" coords="343,402,402,364,472,326,504,314,506,319,474,331,405,368,345,407"/>
+<area shape="rect" id="Node000007" href="$d0/d01/classAlaris_1_1Host_1_1Application_1_1Cli_1_1Settings_1_1DataValidateSettings.html" title="Settings for data validate command." alt="" coords="481,341,697,381"/>
+<area shape="poly" id="edge73_Node000001_Node000007" title=" " alt="" coords="397,407,508,378,510,383,398,412"/>
+<area shape="rect" id="Node000008" href="$de/d00/classAlaris_1_1Host_1_1Application_1_1Cli_1_1Settings_1_1EarningsBootstrapSettings.html" title="Settings for earnings bootstrap command. Component ID: CLse002A." alt="" coords="488,405,689,460"/>
+<area shape="poly" id="edge74_Node000001_Node000008" title=" " alt="" coords="407,430,488,430,488,435,407,435"/>
+<area shape="rect" id="Node000009" href="$d1/d03/classAlaris_1_1Host_1_1Application_1_1Cli_1_1Settings_1_1EarningsCheckSettings.html" title="Settings for earnings check command." alt="" coords="473,485,704,525"/>
+<area shape="poly" id="edge75_Node000001_Node000009" title=" " alt="" coords="398,453,510,482,508,487,397,459"/>
+<area shape="rect" id="Node000010" href="$d2/d03/classAlaris_1_1Host_1_1Application_1_1Cli_1_1Settings_1_1EarningsUpcomingSettings.html" title="Settings for earnings upcoming command." alt="" coords="487,549,691,604"/>
+<area shape="poly" id="edge76_Node000001_Node000010" title=" " alt="" coords="407,451,427,463,444,481,452,499,460,517,475,535,494,547,491,551,472,539,455,520,447,501,440,484,424,467,405,456"/>
+<area shape="rect" id="Node000011" href="$d7/d02/classAlaris_1_1Host_1_1Application_1_1Cli_1_1Settings_1_1StrategyEvaluateSettings.html" title="Settings for strategy evaluate command." alt="" coords="491,628,686,683"/>
+<area shape="poly" id="edge77_Node000001_Node000011" title=" " alt="" coords="407,449,427,463,442,482,450,501,453,539,455,577,462,595,475,613,493,627,489,632,471,617,457,598,450,578,447,539,445,502,438,484,423,467,404,453"/>
+<area shape="rect" id="Node000012" href="$de/d00/classAlaris_1_1Host_1_1Application_1_1Cli_1_1Settings_1_1StrategyInfoSettings.html" title="Settings for strategy info command. Component ID: CLse005A." alt="" coords="482,707,695,747"/>
+<area shape="poly" id="edge78_Node000001_Node000012" title=" " alt="" coords="408,448,427,463,447,492,456,521,456,550,452,579,449,608,449,636,456,664,475,692,491,705,488,709,471,696,451,666,443,637,443,608,447,579,451,550,450,522,443,494,423,467,405,452"/>
+<area shape="rect" id="Node000013" href="$d1/d00/classAlaris_1_1Host_1_1Application_1_1Cli_1_1Settings_1_1TradeSignalsSettings.html" title="Settings for trade signals command." alt="" coords="479,771,698,811"/>
+<area shape="poly" id="edge79_Node000001_Node000013" title=" " alt="" coords="408,447,427,463,452,500,461,538,459,575,452,612,445,649,444,685,452,721,475,758,489,769,486,773,471,761,447,723,438,686,440,648,447,611,454,575,455,539,447,503,423,466,404,452"/>
+<area shape="rect" id="Node000014" href="$db/d02/classAlaris_1_1Host_1_1Application_1_1Cli_1_1Settings_1_1TradeStatusSettings.html" title="Settings for trade status command. Component ID: CLse004A." alt="" coords="482,835,695,875"/>
+<area shape="poly" id="edge80_Node000001_Node000014" title=" " alt="" coords="408,447,427,463,444,486,456,509,463,532,465,555,462,600,452,644,442,689,439,733,441,755,448,777,459,799,475,822,488,833,485,837,471,825,454,802,443,779,436,756,434,733,437,688,447,643,457,599,460,555,458,533,451,511,440,489,423,467,405,451"/>
+</map>
