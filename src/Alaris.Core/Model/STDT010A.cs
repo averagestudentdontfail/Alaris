@@ -24,10 +24,6 @@ public sealed record STDT010A
     private const int MinimumWarmupDays = 30;
     private const string DefaultBenchmarkSymbol = "SPY";
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // Core Session Parameters
-    // ═══════════════════════════════════════════════════════════════════════
-    
     /// <summary>
     /// First trading day of the backtest.
     /// </summary>
@@ -42,11 +38,7 @@ public sealed record STDT010A
     /// Symbols to include in the backtest universe.
     /// </summary>
     public required IReadOnlyList<string> Symbols { get; init; }
-    
-    // ═══════════════════════════════════════════════════════════════════════
-    // Strategy Parameters (Signal Window)
-    // ═══════════════════════════════════════════════════════════════════════
-    
+
     /// <summary>
     /// Minimum days before earnings for signal generation.
     /// Default: 5 (from STLN001A strategy)
@@ -70,11 +62,7 @@ public sealed record STDT010A
     /// Default: 120 (covers 90-day lookahead with buffer)
     /// </summary>
     public int EarningsLookaheadDays { get; init; } = DefaultEarningsLookaheadDays;
-    
-    // ═══════════════════════════════════════════════════════════════════════
-    // Computed Requirements
-    // ═══════════════════════════════════════════════════════════════════════
-    
+
     /// <summary>
     /// Last date for which earnings data is required.
     /// Algorithm looks ahead 90 days; we add buffer.
@@ -121,11 +109,7 @@ public sealed record STDT010A
             return combined;
         }
     }
-    
-    // ═══════════════════════════════════════════════════════════════════════
-    // Options Data Requirements
-    // ═══════════════════════════════════════════════════════════════════════
-    
+
     /// <summary>
     /// Dates where options data is required for signal generation.
     /// Populated by analyzing earnings calendar.
@@ -137,10 +121,6 @@ public sealed record STDT010A
     /// </summary>
     public STDT010A WithOptionsRequiredDates(IReadOnlyList<DateTime> dates) =>
         this with { OptionsRequiredDates = CopyDates(dates) };
-    
-    // ═══════════════════════════════════════════════════════════════════════
-    // Validation
-    // ═══════════════════════════════════════════════════════════════════════
     
     /// <summary>
     /// Validates the requirements model.
