@@ -167,7 +167,7 @@ Key configuration parameters are documented in the [Specification](docs/specific
 
 ## Licence
 
-Copyright © 2024-2025 Kiran K. Nath. All rights reserved.
+Copyright © 2024-2025 Sunny. All rights reserved.
 
 ## Acknowledgements
 
