@@ -29,19 +29,35 @@ public static class CRFN001A
         T? result = null;
         double minValue = double.MaxValue;
 
-        for (int i = 0; i < items.Length; i++)
+        if (filter is null)
         {
-            T item = items[i];
-            if (filter is not null && !filter(item))
+            for (int i = 0; i < items.Length; i++)
             {
-                continue;
+                T item = items[i];
+                double value = selector(item);
+                if (value < minValue)
+                {
+                    minValue = value;
+                    result = item;
+                }
             }
-
-            double value = selector(item);
-            if (value < minValue)
+        }
+        else
+        {
+            for (int i = 0; i < items.Length; i++)
             {
-                minValue = value;
-                result = item;
+                T item = items[i];
+                if (!filter(item))
+                {
+                    continue;
+                }
+
+                double value = selector(item);
+                if (value < minValue)
+                {
+                    minValue = value;
+                    result = item;
+                }
             }
         }
 
@@ -57,6 +73,7 @@ public static class CRFN001A
         Func<T, double> selector,
         Func<T, bool>? filter = null) where T : class
     {
+        ArgumentNullException.ThrowIfNull(items);
         return FindMinBy<T>(items.AsSpan(), selector, filter);
     }
 
@@ -77,19 +94,35 @@ public static class CRFN001A
         double minValue = double.MaxValue;
         int count = items.Count;
 
-        for (int i = 0; i < count; i++)
+        if (filter is null)
         {
-            T item = items[i];
-            if (filter is not null && !filter(item))
+            for (int i = 0; i < count; i++)
             {
-                continue;
+                T item = items[i];
+                double value = selector(item);
+                if (value < minValue)
+                {
+                    minValue = value;
+                    result = item;
+                }
             }
-
-            double value = selector(item);
-            if (value < minValue)
+        }
+        else
+        {
+            for (int i = 0; i < count; i++)
             {
-                minValue = value;
-                result = item;
+                T item = items[i];
+                if (!filter(item))
+                {
+                    continue;
+                }
+
+                double value = selector(item);
+                if (value < minValue)
+                {
+                    minValue = value;
+                    result = item;
+                }
             }
         }
 
@@ -112,19 +145,35 @@ public static class CRFN001A
         double maxValue = double.MinValue;
         int count = items.Count;
 
-        for (int i = 0; i < count; i++)
+        if (filter is null)
         {
-            T item = items[i];
-            if (filter is not null && !filter(item))
+            for (int i = 0; i < count; i++)
             {
-                continue;
+                T item = items[i];
+                double value = selector(item);
+                if (value > maxValue)
+                {
+                    maxValue = value;
+                    result = item;
+                }
             }
-
-            double value = selector(item);
-            if (value > maxValue)
+        }
+        else
+        {
+            for (int i = 0; i < count; i++)
             {
-                maxValue = value;
-                result = item;
+                T item = items[i];
+                if (!filter(item))
+                {
+                    continue;
+                }
+
+                double value = selector(item);
+                if (value > maxValue)
+                {
+                    maxValue = value;
+                    result = item;
+                }
             }
         }
 
@@ -215,19 +264,35 @@ public static class CRFN001A
         double minValue = double.MaxValue;
         int count = items.Count;
 
-        for (int i = 0; i < count; i++)
+        if (filter is null)
         {
-            T item = items[i];
-            if (filter is not null && !filter(item))
+            for (int i = 0; i < count; i++)
             {
-                continue;
+                T item = items[i];
+                double value = selector(item);
+                if (value < minValue)
+                {
+                    minValue = value;
+                    result = item;
+                }
             }
-
-            double value = selector(item);
-            if (value < minValue)
+        }
+        else
+        {
+            for (int i = 0; i < count; i++)
             {
-                minValue = value;
-                result = item;
+                T item = items[i];
+                if (!filter(item))
+                {
+                    continue;
+                }
+
+                double value = selector(item);
+                if (value < minValue)
+                {
+                    minValue = value;
+                    result = item;
+                }
             }
         }
 
@@ -272,12 +337,22 @@ public static class CRFN001A
         double sum = 0;
         int length = items.Count;
 
-        for (int i = 0; i < length; i++)
+        if (filter is null)
         {
-            T item = items[i];
-            if (filter is null || filter(item))
+            for (int i = 0; i < length; i++)
             {
-                sum += selector(item);
+                sum += selector(items[i]);
+            }
+        }
+        else
+        {
+            for (int i = 0; i < length; i++)
+            {
+                T item = items[i];
+                if (filter(item))
+                {
+                    sum += selector(item);
+                }
             }
         }
 
@@ -300,16 +375,27 @@ public static class CRFN001A
         int count = 0;
         int length = items.Count;
 
-        for (int i = 0; i < length; i++)
+        if (filter is null)
         {
-            T item = items[i];
-            if (filter is null || filter(item))
+            for (int i = 0; i < length; i++)
             {
-                sum += selector(item);
+                sum += selector(items[i]);
                 count++;
             }
         }
+        else
+        {
+            for (int i = 0; i < length; i++)
+            {
+                T item = items[i];
+                if (filter(item))
+                {
+                    sum += selector(item);
+                    count++;
+                }
+            }
+        }
 
-        return count > 0 ? sum / count : 0;
+        return count > 0 ? sum / count : double.NaN;
     }
 }
