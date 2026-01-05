@@ -1,7 +1,7 @@
 # Alaris Type System
 
 > "The beginning of wisdom is the definition of terms."
-> - Socrates
+> — Socrates
 
 ## Preface
 
