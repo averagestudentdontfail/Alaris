@@ -17,17 +17,41 @@ namespace Alaris.Test.Unit;
 /// Unit tests for PriceReasonablenessValidator (DTqc001A).
 /// Validates price data quality rules.
 /// </summary>
-public class DTqc001ATests
+public sealed class DTqc001ATests : IDisposable
 {
     private readonly PriceReasonablenessValidator _validator;
+    private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<PriceReasonablenessValidator> _logger;
     private readonly ITimeProvider _timeProvider;
+    private bool _disposed;
 
     public DTqc001ATests()
     {
-        _logger = new LoggerFactory().CreateLogger<PriceReasonablenessValidator>();
+        _loggerFactory = new LoggerFactory();
+        _logger = _loggerFactory.CreateLogger<PriceReasonablenessValidator>();
         _timeProvider = new LiveTimeProvider();
         _validator = new PriceReasonablenessValidator(_logger, _timeProvider);
+    }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    private void Dispose(bool disposing)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        if (disposing)
+        {
+            _loggerFactory.Dispose();
+        }
+
+        _disposed = true;
     }
 
     [Fact]
@@ -180,15 +204,39 @@ public class DTqc001ATests
 /// <summary>
 /// Unit tests for IvArbitrageValidator (DTqc002A interface test).
 /// </summary>
-public class DTqc002AValidatorTests
+public sealed class DTqc002AValidatorTests : IDisposable
 {
     private readonly IvArbitrageValidator _validator;
+    private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<IvArbitrageValidator> _logger;
+    private bool _disposed;
 
     public DTqc002AValidatorTests()
     {
-        _logger = new LoggerFactory().CreateLogger<IvArbitrageValidator>();
+        _loggerFactory = new LoggerFactory();
+        _logger = _loggerFactory.CreateLogger<IvArbitrageValidator>();
         _validator = new IvArbitrageValidator(_logger);
+    }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    private void Dispose(bool disposing)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        if (disposing)
+        {
+            _loggerFactory.Dispose();
+        }
+
+        _disposed = true;
     }
 
     [Fact]
@@ -282,15 +330,39 @@ public class DTqc002AValidatorTests
 /// Unit tests for VolumeOpenInterestValidator (DTqc003A).
 /// Validates volume and liquidity rules.
 /// </summary>
-public class DTqc003ATests
+public sealed class DTqc003ATests : IDisposable
 {
     private readonly VolumeOpenInterestValidator _validator;
+    private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<VolumeOpenInterestValidator> _logger;
+    private bool _disposed;
 
     public DTqc003ATests()
     {
-        _logger = new LoggerFactory().CreateLogger<VolumeOpenInterestValidator>();
+        _loggerFactory = new LoggerFactory();
+        _logger = _loggerFactory.CreateLogger<VolumeOpenInterestValidator>();
         _validator = new VolumeOpenInterestValidator(_logger);
+    }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    private void Dispose(bool disposing)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        if (disposing)
+        {
+            _loggerFactory.Dispose();
+        }
+
+        _disposed = true;
     }
 
     [Fact]
@@ -419,17 +491,41 @@ public class DTqc003ATests
 /// Unit tests for EarningsDateValidator (DTqc004A).
 /// Validates earnings date accuracy rules.
 /// </summary>
-public class DTqc004ATests
+public sealed class DTqc004ATests : IDisposable
 {
     private readonly EarningsDateValidator _validator;
+    private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<EarningsDateValidator> _logger;
     private readonly ITimeProvider _timeProvider;
+    private bool _disposed;
 
     public DTqc004ATests()
     {
-        _logger = new LoggerFactory().CreateLogger<EarningsDateValidator>();
+        _loggerFactory = new LoggerFactory();
+        _logger = _loggerFactory.CreateLogger<EarningsDateValidator>();
         _timeProvider = new LiveTimeProvider();
         _validator = new EarningsDateValidator(_logger, _timeProvider);
+    }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    private void Dispose(bool disposing)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        if (disposing)
+        {
+            _loggerFactory.Dispose();
+        }
+
+        _disposed = true;
     }
 
     [Fact]

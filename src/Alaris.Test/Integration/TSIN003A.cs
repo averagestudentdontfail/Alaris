@@ -18,13 +18,37 @@ namespace Alaris.Test.Integration;
 /// Integration tests for AlarisDataBridge (DTbr001A).
 /// Uses mock providers to test data aggregation and validation pipeline.
 /// </summary>
-public sealed class DTbr001ATests
+public sealed class DTbr001ATests : IDisposable
 {
+    private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<AlarisDataBridge> _logger;
+    private bool _disposed;
 
     public DTbr001ATests()
     {
-        _logger = new LoggerFactory().CreateLogger<AlarisDataBridge>();
+        _loggerFactory = new LoggerFactory();
+        _logger = _loggerFactory.CreateLogger<AlarisDataBridge>();
+    }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    private void Dispose(bool disposing)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        if (disposing)
+        {
+            _loggerFactory.Dispose();
+        }
+
+        _disposed = true;
     }
 
     [Fact]

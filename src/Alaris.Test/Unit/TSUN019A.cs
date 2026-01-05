@@ -20,13 +20,37 @@ namespace Alaris.Test.Unit;
 /// Note: Full universe selection testing requires LEAN framework components.
 /// These tests focus on the earnings provider integration and constructor validation.
 /// </remarks>
-public sealed class STUN001ATests
+public sealed class STUN001ATests : IDisposable
 {
+    private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<STUN001A> _logger;
+    private bool _disposed;
 
     public STUN001ATests()
     {
-        _logger = new LoggerFactory().CreateLogger<STUN001A>();
+        _loggerFactory = new LoggerFactory();
+        _logger = _loggerFactory.CreateLogger<STUN001A>();
+    }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    private void Dispose(bool disposing)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        if (disposing)
+        {
+            _loggerFactory.Dispose();
+        }
+
+        _disposed = true;
     }
 
     [Fact]
