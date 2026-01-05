@@ -116,3 +116,7 @@ logs/
 # Alaris Session Data (runtime artifacts, not committed)
 ses/
 storage/
+
+# Simulation Output (may contain sensitive data in logs)
+**/Output/
+**/Results/

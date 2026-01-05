@@ -144,7 +144,7 @@ External system integration:
 | Responsibility | Description |
 |----------------|-------------|
 | Market data | Polygon.io integration for quotes and chains |
-| Earnings data | FMP integration for earnings calendar |
+| Earnings data | Earnings calendar integration |
 | Persistence | File-based and database persistence |
 | Messaging | Event publication and subscription |
 | Caching | In-memory caching with expiration |
@@ -465,9 +465,9 @@ User secrets are stored outside the repository in:
 For production deployments, use environment variables:
 
 ```bash
-export POLYGON__APIKEY="your-api-key"
-export FMP__APIKEY="your-api-key"
-export INTERACTIVEBROKERS__ACCOUNT="your-account"
+export POLYGON__APIKEY="your-polygon-key"
+export INTERACTIVEBROKERS__ACCOUNT="your-ib-account"
+export INTERACTIVEBROKERS__USERID="your-ib-userid"
 ```
 
 Configuration providers are loaded in order; environment variables override file-based settings.

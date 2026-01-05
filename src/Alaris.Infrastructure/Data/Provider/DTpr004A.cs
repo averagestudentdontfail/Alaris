@@ -9,7 +9,7 @@ using Alaris.Infrastructure.Data.Model;
 namespace Alaris.Infrastructure.Data.Provider;
 
 /// <summary>
-/// Interface for earnings calendar providers (FMP, etc.).
+/// Interface for earnings calendar providers.
 /// </summary>
 /// <remarks>
 /// <para>

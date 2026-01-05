@@ -555,7 +555,7 @@ public class DTqc004ATests
                 FiscalQuarter = "Q1",
                 FiscalYear = 2025,
                 Timing = EarningsTiming.AfterMarketClose,
-                Source = "FMP",
+                Source = "EarningsCalendar",
                 FetchedAt = DateTime.UtcNow.AddDays(-fetchedDaysAgo)
             },
             HistoricalEarnings = new List<EarningsEvent>
@@ -567,7 +567,7 @@ public class DTqc004ATests
                     FiscalQuarter = "Q4",
                     FiscalYear = 2024,
                     Timing = EarningsTiming.AfterMarketClose,
-                    Source = "FMP",
+                    Source = "EarningsCalendar",
                     FetchedAt = DateTime.UtcNow.AddDays(-90)
                 }
             }

@@ -63,8 +63,8 @@ The following are explicitly outside scope:
 
 | Data Element | Source | Frequency |
 |--------------|--------|-----------|
-| Earnings dates | FMP or equivalent | Daily refresh |
-| Earnings timing | FMP (BMO/AMC) | Daily refresh |
+| Earnings dates | Earnings calendar provider | Daily refresh |
+| Earnings timing | BMO/AMC indicator | Daily refresh |
 | Dividend dates | Provider dependent | Daily refresh |
 
 ### 3.3 Data Validation

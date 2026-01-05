@@ -19,7 +19,7 @@ namespace Alaris.Infrastructure.Data.Bridge;
 /// </summary>
 /// <remarks>
 /// Responsibilities:
-/// - Aggregates data from multiple providers (Polygon, FMP, IBKR)
+/// - Aggregates data from multiple providers (Polygon, IBKR)
 /// - Runs data quality validation pipeline
 /// - Provides unified MarketDataSnapshot for strategy evaluation
 /// - Integrates with Lean's SubscriptionDataSource when needed
@@ -44,7 +44,7 @@ public sealed class AlarisDataBridge
     /// Initializes a new instance of the <see cref="AlarisDataBridge"/> class.
     /// </summary>
     /// <param name="marketDataProvider">Market data provider (Polygon).</param>
-    /// <param name="earningsProvider">Earnings calendar provider (FMP).</param>
+    /// <param name="earningsProvider">Earnings calendar provider.</param>
     /// <param name="riskFreeRateProvider">Risk-free rate provider.</param>
     /// <param name="validators">Data quality validators.</param>
     /// <param name="logger">Logger instance.</param>
