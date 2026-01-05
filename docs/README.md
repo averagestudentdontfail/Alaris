@@ -8,6 +8,7 @@ This directory contains the comprehensive documentation for the Alaris trading s
 |----------|---------|----------|
 | [Philosophy](philosophy.md) | Why the system exists; design principles | All readers |
 | [Foundations](foundations.md) | Mathematical theory | Quantitative practitioners |
+| [Types](types.md) | Type system, units, and domain modelling | Developers |
 | [Specification](specification.md) | Formal system requirements | Implementers |
 | [Guide](guide.md) | Practical operation | Operators |
 | [Standard](standard.md) | Coding conventions | Developers |
@@ -15,18 +16,20 @@ This directory contains the comprehensive documentation for the Alaris trading s
 ## Reading Order
 
 **For understanding the system:**
-1. Philosophy — establishes the worldview and design rationale
-2. Foundations — develops the mathematical machinery
-3. Guide — explains practical operation
+1. Philosophy: establishes the worldview and design rationale
+2. Foundations: develops the mathematical machinery
+3. Types: builds the type system from primitives to domain abstractions
+4. Guide: explains practical operation
 
 **For contributing to the codebase:**
-1. Philosophy — understand the design principles
-2. Standard — learn the coding conventions
-3. Specification — understand the formal requirements
+1. Philosophy: understand the design principles
+2. Types: understand the type system and invariants
+3. Standard: learn the coding conventions
+4. Specification: understand the formal requirements
 
 **For operating the system:**
-1. Guide — primary reference for daily operation
-2. Specification — reference for configuration and limits
+1. Guide: primary reference for daily operation
+2. Specification: reference for configuration and limits
 
 ## Document Summaries
 
@@ -37,6 +40,10 @@ Explores the philosophical foundations: market behaviour, edge, risk versus vola
 ### Foundations
 
 Develops the mathematical theory from first principles: probability, stochastic processes, option pricing, volatility estimation, and spectral methods. This document provides the theoretical grounding for all computational methods.
+
+### Types
+
+Defines the type system from first principles through domain abstractions, with guidance on units, invariants, and boundary validation.
 
 ### Specification
 

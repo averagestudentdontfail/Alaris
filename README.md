@@ -74,6 +74,7 @@ Alaris/
 ├── docs/                    # Comprehensive documentation
 │   ├── philosophy.md        # Design philosophy and worldview
 │   ├── foundations.md       # Mathematical theory from first principles
+│   ├── types.md             # Type system, units, and domain modelling
 │   ├── specification.md     # Formal system requirements
 │   ├── guide.md             # Practical operation guide
 │   ├── standard.md          # Coding conventions
@@ -111,17 +112,19 @@ See [Architecture](docs/architecture.md) for the complete naming specification.
 
 The documentation is designed to be read in order, building from philosophical foundations through mathematical theory to practical operation:
 
-1. **[Philosophy](docs/philosophy.md)** — explores the worldview underlying the system: markets, risk, uncertainty, and design principles.
+1. **[Philosophy](docs/philosophy.md)**: explores the worldview underlying the system, including markets, risk, uncertainty, and design principles.
 
-2. **[Foundations](docs/foundations.md)** — develops the mathematical theory from probability and stochastic processes through option pricing and volatility estimation.
+2. **[Foundations](docs/foundations.md)**: develops the mathematical theory from probability and stochastic processes through option pricing and volatility estimation.
 
-3. **[Specification](docs/specification.md)** — provides formal definitions of signal criteria, position sizing rules, risk limits, and configuration parameters.
+3. **[Types](docs/types.md)**: defines the type system from first principles, including units, invariants, and domain abstractions.
 
-4. **[Guide](docs/guide.md)** — covers practical patterns for signal interpretation, position management, backtesting, and troubleshooting.
+4. **[Specification](docs/specification.md)**: provides formal definitions of signal criteria, position sizing rules, risk limits, and configuration parameters.
 
-5. **[Standard](docs/standard.md)** — codifies conventions for high-integrity trading system development.
+5. **[Guide](docs/guide.md)**: covers practical patterns for signal interpretation, position management, backtesting, and troubleshooting.
 
-6. **[Architecture](docs/architecture.md)** — describes the structural design and component responsibilities.
+6. **[Standard](docs/standard.md)**: codifies conventions for high-integrity trading system development.
+
+7. **[Architecture](docs/architecture.md)**: describes the structural design and component responsibilities.
 
 ## Building
 

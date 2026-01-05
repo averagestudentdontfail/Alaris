@@ -9,7 +9,7 @@
 
 Programming trading systems differs from ordinary software development. A bug in conventional code causes incorrect output. A bug in Alaris can cause financial loss, regulatory violation, or silent portfolio degradation over time.
 
-This standard exists to prevent trading catastrophes. It codifies practices for building systems where correctness is paramount and failures must be detected, contained, and recovered from gracefully.
+This standard exists to prevent trading catastrophes. It codifies practices for building systems where correctness is paramount and failures must be detected, contained, and recovered from gracefully. See [Types](types.md) for type design, units, and invariants.
 
 The rules are organised by severity:
 
