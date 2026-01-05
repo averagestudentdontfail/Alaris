@@ -13,6 +13,7 @@
             "MaxCoarseSymbols": 500,
             "EvaluationTimeHour": 9,
             "EvaluationTimeMinute": 31,
+            "OptionRight": "Call",
             "RealisedVolatilityWindowDays": 30,
             "DefaultImpliedVolatility": 0.20
         },
@@ -55,6 +56,7 @@
             "MinimumOpenInterest": 100,
             "MaxVegaCorrelation": 0.70,
             "MinimumVegaObservations": 20,
+            "VegaCorrelationLookbackDays": 45,
             "MaxPositionToVolumeRatio": 0.05,
             "MaxPositionToOpenInterestRatio": 0.02,
             "DeltaRehedgeThreshold": 0.10,

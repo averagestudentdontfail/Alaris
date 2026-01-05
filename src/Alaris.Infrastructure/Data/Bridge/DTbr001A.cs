@@ -211,6 +211,18 @@ public sealed class AlarisDataBridge
     }
 
     /// <summary>
+    /// Gets an option chain snapshot for a given symbol and evaluation date.
+    /// Uses session cache when configured.
+    /// </summary>
+    public Task<OptionChainSnapshot> GetOptionChainSnapshotAsync(
+        string symbol,
+        DateTime evaluationDate,
+        CancellationToken cancellationToken = default)
+    {
+        return GetOptionChainWithCacheFallbackAsync(symbol, evaluationDate, cancellationToken);
+    }
+
+    /// <summary>
     /// Gets option chain with cache fallback for backtest mode.
     /// Loads from session cache if available, otherwise falls back to live API.
     /// Supports three cache formats:

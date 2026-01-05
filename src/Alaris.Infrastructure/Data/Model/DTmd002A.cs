@@ -19,8 +19,8 @@ public sealed record DTmd002A
     /// <summary>Gets the back month quote.</summary>
     public required OptionContract BackLeg { get; init; }
     
-    /// <summary>Gets the spread bid (buy back at ask, sell front at bid).</summary>
-    public decimal SpreadBid => BackLeg.Ask - FrontLeg.Bid;
+    /// <summary>Gets the spread bid (sell back at bid, buy front at ask).</summary>
+    public decimal SpreadBid => BackLeg.Bid - FrontLeg.Ask;
     
     /// <summary>Gets the spread ask (buy back at ask, sell front at bid).</summary>
     public decimal SpreadAsk => BackLeg.Ask - FrontLeg.Bid;

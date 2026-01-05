@@ -21,6 +21,7 @@ using StrategyPriceBar = Alaris.Strategy.Bridge.PriceBar;
 using StrategyOptionChain = Alaris.Strategy.Model.STDT002A;
 using AlarisTimeProvider = Alaris.Core.Time.ITimeProvider;
 using Alaris.Core.Time;
+using Alaris.Core.Options;
 using Alaris.Infrastructure.Data.Bridge;
 using Alaris.Infrastructure.Data.Model;
 using Alaris.Infrastructure.Data.Provider;
@@ -96,6 +97,7 @@ public sealed class STLN001A : QCAlgorithm
     private STCR001A? _signalGenerator;
     private DataBridgeMarketDataAdapter? _marketDataAdapter;
     private STRK001A? _positionSizer;
+    private STBR001A? _pricingEngine;
     
     // Production Validation
     private STHD005A? _productionValidator;
@@ -223,6 +225,8 @@ public sealed class STLN001A : QCAlgorithm
         Log($"  Final Portfolio Value: {Portfolio.TotalPortfolioValue:C}");
         Log($"  Total Trades Executed: {Transactions.OrdersCount}");
         Log("═══════════════════════════════════════════════════════════════════");
+
+        _pricingEngine?.Dispose();
         
         base.OnEndOfAlgorithm();
     }
@@ -334,6 +338,10 @@ public sealed class STLN001A : QCAlgorithm
         
         // Term structure analyser
         _termStructureAnalyzer = new STTM001A();
+
+        // Pricing engine for IV and Greeks
+        _pricingEngine = new STBR001A(
+            _loggerFactory!.CreateLogger<STBR001A>());
         
         // Signal generator (requires market data adapter)
         _marketDataAdapter = new DataBridgeMarketDataAdapter(_dataBridge!);
@@ -542,6 +550,7 @@ public sealed class STLN001A : QCAlgorithm
             MaxCoarseSymbols: GetRequiredInt(configuration, "Alaris:Strategy:MaxCoarseSymbols"),
             EvaluationTimeHour: GetRequiredInt(configuration, "Alaris:Strategy:EvaluationTimeHour"),
             EvaluationTimeMinute: GetRequiredInt(configuration, "Alaris:Strategy:EvaluationTimeMinute"),
+            OptionRight: GetRequiredOptionRight(configuration, "Alaris:Strategy:OptionRight"),
             RealisedVolatilityWindowDays: GetRequiredInt(configuration, "Alaris:Strategy:RealisedVolatilityWindowDays"),
             DefaultImpliedVolatility: GetRequiredDouble(configuration, "Alaris:Strategy:DefaultImpliedVolatility"));
         _strategySettings.Validate();
@@ -573,6 +582,7 @@ public sealed class STLN001A : QCAlgorithm
         _validationSettings = new ValidationSettings(
             MaxVegaCorrelation: GetRequiredDouble(configuration, "Alaris:Validation:MaxVegaCorrelation"),
             MinimumVegaObservations: GetRequiredInt(configuration, "Alaris:Validation:MinimumVegaObservations"),
+            VegaCorrelationLookbackDays: GetRequiredInt(configuration, "Alaris:Validation:VegaCorrelationLookbackDays"),
             MaxPositionToVolumeRatio: GetRequiredDouble(configuration, "Alaris:Validation:MaxPositionToVolumeRatio"),
             MaxPositionToOpenInterestRatio: GetRequiredDouble(configuration, "Alaris:Validation:MaxPositionToOpenInterestRatio"),
             DeltaRehedgeThreshold: GetRequiredDouble(configuration, "Alaris:Validation:DeltaRehedgeThreshold"),
@@ -701,27 +711,16 @@ public sealed class STLN001A : QCAlgorithm
         var ticker = symbol.Value;
         
         Log($"STLN001A: Evaluating {ticker}...");
-        
-        // Backtest Mode: Use LEAN's native data instead of external APIs
-        
-        if (!LiveMode)
-        {
-            // In backtest mode, we use LEAN's built-in data
-            // This avoids calling external APIs with DateTime.UtcNow
-            return EvaluateSymbolBacktestMode(symbol);
-        }
-        
-        // Live/Paper Mode: Use external APIs (Polygon, NASDAQ, etc.)
-        
+
         // Phase 1: Market Data Acquisition
-        
+
         MarketDataSnapshot snapshot;
         try
         {
             using var cts = new CancellationTokenSource(_dataProviderSettings.MarketDataTimeout);
-            // Pass Time (simulation time) for consistency, even in live mode
-            snapshot = _dataBridge!.GetMarketDataSnapshotAsync(ticker, Time, cts.Token)
-                .GetAwaiter().GetResult();
+            var evaluationDate = Time;
+            _marketDataAdapter?.SetEvaluationDate(evaluationDate);
+            snapshot = _marketDataAdapter!.GetSnapshot(ticker, evaluationDate, cts.Token);
         }
         catch (OperationCanceledException)
         {
@@ -739,38 +738,146 @@ public sealed class STLN001A : QCAlgorithm
             Log($"  {ticker}: No upcoming earnings found");
             return result;
         }
-        
+
+        return EvaluateSnapshot(symbol, snapshot, useExecutionQuoteProvider: LiveMode);
+    }
+
+    private EvaluationResult EvaluateSnapshot(Symbol symbol, MarketDataSnapshot snapshot, bool useExecutionQuoteProvider)
+    {
+        var result = new EvaluationResult();
+        var ticker = symbol.Value;
+
         // Phase 2: Realised Volatility Calculation
-        
+
         var priceBars = ConvertToPriceBars(snapshot.HistoricalBars);
+        var minimumBars = _strategySettings.RealisedVolatilityWindowDays + 1;
+        if (priceBars.Count < minimumBars)
+        {
+            Log($"  {ticker}: Insufficient price history ({priceBars.Count} bars, need {minimumBars}+)");
+            return result;
+        }
+
         var rv = _yangZhangEstimator!.Calculate(priceBars, _strategySettings.RealisedVolatilityWindowDays, true);
         Log($"  {ticker}: {_strategySettings.RealisedVolatilityWindowDays}-day RV = {rv:P2}");
-        
+
         // Phase 3: Term Structure Analysis
-        
-        var termStructure = _termStructureAnalyzer!.Analyze(ConvertToTermStructurePoints(snapshot.OptionChain));
-        Log($"  {ticker}: Term structure = {termStructure.GetIVAt(30):P2} / {termStructure.GetIVAt(60):P2} / {termStructure.GetIVAt(90):P2}");
-        
+
+        var termPoints = ConvertToTermStructurePoints(snapshot.OptionChain, snapshot.Timestamp);
+        if (termPoints.Count >= 2)
+        {
+            var termStructure = _termStructureAnalyzer!.Analyze(termPoints);
+            Log($"  {ticker}: Term structure = {termStructure.GetIVAt(30):P2} / {termStructure.GetIVAt(60):P2} / {termStructure.GetIVAt(90):P2}");
+        }
+        else
+        {
+            Log($"  {ticker}: Insufficient term structure points for analysis");
+        }
+
         // Phase 4: Signal Generation
-        
+
+        var historicalEarningsDates = snapshot.HistoricalEarnings
+            .Select(e => e.Date)
+            .ToList();
+
         var signal = _signalGenerator!.Generate(
             ticker,
-            snapshot.NextEarnings.Date,
-            Time);
-        
+            snapshot.NextEarnings!.Date,
+            snapshot.Timestamp,
+            historicalEarningsDates);
+
         Log($"  {ticker}: Signal = {signal.Strength} (IV/RV = {signal.IVRVRatio:F3})");
         result.SignalGenerated = true;
-        
+
         if (signal.Strength != STCR004AStrength.Recommended)
         {
             Log($"  {ticker}: Signal not recommended, skipping");
             return result;
         }
-        
-        // Phase 5: Production Validation
-        
-        var validation = ValidateForProduction(signal, snapshot);
-        
+
+        if (!TrySelectCalendarSpread(snapshot, signal.EarningsDate, _strategySettings.OptionRight, out var selection, out var selectionDetail))
+        {
+            Log($"  {ticker}: {selectionDetail}");
+            return result;
+        }
+
+        PopulateSignalLegs(signal, selection);
+
+        if (selection.BackLeg.Volume <= 0 || selection.BackLeg.OpenInterest <= 0)
+        {
+            Log($"  {ticker}: Back leg liquidity unavailable (vol={selection.BackLeg.Volume}, OI={selection.BackLeg.OpenInterest})");
+            return result;
+        }
+
+        // Phase 5: Execution Pricing
+
+        DTmd002A? spreadQuote = GetSpreadQuote(selection, useExecutionQuoteProvider);
+        if (spreadQuote == null)
+        {
+            Log($"  {ticker}: No execution quote available");
+            return result;
+        }
+        if (spreadQuote.SpreadAsk <= 0m || spreadQuote.SpreadAsk < spreadQuote.SpreadBid)
+        {
+            Log($"  {ticker}: Invalid spread quote (bid/ask: ${spreadQuote.SpreadBid:F4}/${spreadQuote.SpreadAsk:F4})");
+            return result;
+        }
+        if (spreadQuote.SpreadMid <= 0m)
+        {
+            Log($"  {ticker}: Invalid spread mid price ({spreadQuote.SpreadMid:F4})");
+            return result;
+        }
+
+        Log($"  {ticker}: Spread quote = ${spreadQuote.SpreadMid:F2} (bid/ask: ${spreadQuote.SpreadBid:F2}/${spreadQuote.SpreadAsk:F2})");
+
+        // Phase 6: Position Sizing
+
+        var portfolioValue = Portfolio.TotalPortfolioValue;
+        var spreadMid = spreadQuote.SpreadMid;
+        var sizing = _positionSizer!.CalculateFromHistory(
+            portfolioValue: (double)portfolioValue,
+            historicalTrades: Array.Empty<Alaris.Strategy.Risk.Trade>(),
+            spreadCost: (double)spreadMid,
+            signal: signal);
+
+        if (sizing.Contracts <= 0)
+        {
+            Log($"  {ticker}: Position sizing returned 0 contracts");
+            return result;
+        }
+
+        var allocationPercent = sizing.AllocationPercent;
+        var maxAllocationPercent = (double)_strategySettings.MaxPositionAllocation;
+        var proposedContracts = sizing.Contracts;
+        if (allocationPercent > maxAllocationPercent && allocationPercent > 0)
+        {
+            var scale = maxAllocationPercent / allocationPercent;
+            proposedContracts = (int)Math.Floor(sizing.Contracts * scale);
+        }
+
+        if (proposedContracts <= 0)
+        {
+            Log($"  {ticker}: Position sizing reduced to 0 contracts by allocation limits");
+            return result;
+        }
+
+        // Phase 7: Production Validation
+
+        STHD006A validation;
+        try
+        {
+            validation = ValidateForProduction(signal, snapshot, selection, proposedContracts);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Log($"  {ticker}: Production validation error - {ex.Message}");
+            return result;
+        }
+        catch (ArgumentException ex)
+        {
+            Log($"  {ticker}: Production validation error - {ex.Message}");
+            return result;
+        }
+
         if (!validation.ProductionReady)
         {
             Log($"  {ticker}: Failed production validation");
@@ -778,7 +885,6 @@ public sealed class STLN001A : QCAlgorithm
             {
                 Log($"    - {check.Name}: {check.Detail}");
             }
-            // Log warning to audit trail
             _auditLogger?.LogAsync(new Alaris.Infrastructure.Events.Core.AuditEntry
             {
                 AuditId = Guid.NewGuid(),
@@ -793,90 +899,37 @@ public sealed class STLN001A : QCAlgorithm
             });
             return result;
         }
-        
-        Log($"  {ticker}: Passed all production validation checks");
-        
-        // Phase 6: Execution Pricing
-        
-        DTmd002A? spreadQuote;
-        try
-        {
-            using var cts = new CancellationTokenSource(_dataProviderSettings.ExecutionQuoteTimeout);
-            spreadQuote = _executionQuoteProvider!.GetDTmd002AAsync(
-                ticker,
-                signal.Strike,
-                signal.FrontExpiry,
-                signal.BackExpiry,
-                AlarisOptionRight.Call,
-                cts.Token)
-                .GetAwaiter().GetResult();
-        }
-        catch (Exception ex)
-        {
-            Log($"  {ticker}: Failed to get execution quote - {ex.Message}");
-            return result;
-        }
-        
-        if (spreadQuote == null)
-        {
-            Log($"  {ticker}: No execution quote available");
-            return result;
-        }
-        
-        Log($"  {ticker}: Spread quote = ${spreadQuote.SpreadMid:F2} (bid/ask: ${spreadQuote.SpreadBid:F2}/${spreadQuote.SpreadAsk:F2})");
-        
-        // Phase 7: Position Sizing
-        
-        var portfolioValue = Portfolio.TotalPortfolioValue;
-        var spreadMid = spreadQuote.SpreadMid;
-        var sizing = _positionSizer!.CalculateFromHistory(
-            portfolioValue: (double)portfolioValue,
-            historicalTrades: Array.Empty<Alaris.Strategy.Risk.Trade>(),
-            spreadCost: (double)spreadMid,
-            signal: signal);
-        
-        if (sizing.Contracts <= 0)
-        {
-            Log($"  {ticker}: Position sizing returned 0 contracts");
-            return result;
-        }
-        
-        var allocationPercent = sizing.AllocationPercent;
-        var maxAllocationPercent = (double)_strategySettings.MaxPositionAllocation;
-        var cappedContracts = sizing.Contracts;
-        if (allocationPercent > maxAllocationPercent && allocationPercent > 0)
-        {
-            var scale = maxAllocationPercent / allocationPercent;
-            cappedContracts = (int)Math.Floor(sizing.Contracts * scale);
-        }
 
-        var finalContracts = Math.Min(cappedContracts, validation.RecommendedContracts);
+        var finalContracts = Math.Min(proposedContracts, validation.RecommendedContracts);
         if (finalContracts <= 0)
         {
-            Log($"  {ticker}: Position sizing reduced to 0 contracts by allocation limits");
+            Log($"  {ticker}: Position sizing reduced to 0 contracts by validation limits");
             return result;
         }
 
-        var effectiveAllocationPercent = cappedContracts < sizing.Contracts && allocationPercent > 0
-            ? maxAllocationPercent
-            : allocationPercent;
+        var effectiveAllocationPercent = allocationPercent;
+        if (proposedContracts > 0 && finalContracts < proposedContracts && allocationPercent > 0)
+        {
+            effectiveAllocationPercent = allocationPercent * ((double)finalContracts / proposedContracts);
+        }
+
         Log($"  {ticker}: Position size = {finalContracts} contracts ({effectiveAllocationPercent:P2} of portfolio)");
-        
+        Log($"  {ticker}: Passed all production validation checks");
+
         // Phase 8: Order Execution
-        
+
         var orderResult = ExecuteCalendarSpread(
             symbol,
-            signal,
+            selection,
             spreadQuote,
             finalContracts);
-        
+
         if (orderResult.Success)
         {
             result.OrderSubmitted = true;
             _activePositions.Add(symbol);
             _positionEntryDates[symbol] = Time;
-            
-            // Log to audit trail
+
             _auditLogger?.LogAsync(new Alaris.Infrastructure.Events.Core.AuditEntry
             {
                 AuditId = Guid.NewGuid(),
@@ -892,146 +945,17 @@ public sealed class STLN001A : QCAlgorithm
                 {
                     ["Contracts"] = finalContracts.ToString(),
                     ["Price"] = spreadQuote.SpreadMid.ToString(),
-                    ["FrontExpiry"] = signal.FrontExpiry.ToString("O"),
-                    ["BackExpiry"] = signal.BackExpiry.ToString("O")
+                    ["FrontExpiry"] = selection.FrontExpiry.ToString("O"),
+                    ["BackExpiry"] = selection.BackExpiry.ToString("O")
                 }
             });
-            
+
             Log($"  {ticker}: Order submitted successfully");
         }
         else
         {
             Log($"  {ticker}: Order submission failed - {orderResult.Message}");
         }
-        
-        return result;
-    }
-
-    /// <summary>
-    /// Evaluates a symbol in backtest mode using LEAN's native data.
-    /// Does not call external APIs - uses History API and cached earnings data.
-    /// </summary>
-    /// <param name="symbol">The symbol to evaluate.</param>
-    /// <returns>Evaluation result.</returns>
-    private EvaluationResult EvaluateSymbolBacktestMode(Symbol symbol)
-    {
-        var result = new EvaluationResult();
-        var ticker = symbol.Value;
-
-        // Use current simulation time from LEAN (not DateTime.UtcNow)
-        var simulationDate = Time;
-
-        // Step 1: Get historical bars from LEAN (no external API call)
-        
-        var historyBars = History<QuantConnect.Data.Market.TradeBar>(
-            symbol,
-            _backtestSettings.HistoryLookbackDays,
-            Resolution.Daily);
-        var barList = historyBars.ToList();
-
-        var minimumBars = _strategySettings.RealisedVolatilityWindowDays + 1;
-        if (barList.Count < minimumBars)
-        {
-            Log($"  {ticker}: Insufficient LEAN history ({barList.Count} bars, need {minimumBars}+)");
-            return result;
-        }
-
-        // Get current price from LEAN Securities (subscribed via universe)
-        if (!Securities.ContainsKey(symbol) || Securities[symbol].Price == 0)
-        {
-            Log($"  {ticker}: No price data in LEAN Securities");
-            return result;
-        }
-        var spotPrice = Securities[symbol].Price;
-
-        Log($"  {ticker}: LEAN data - {barList.Count} bars, spot=${spotPrice:F2}");
-
-        // Step 2: Get earnings data from cache (NASDAQ provider in cache-only mode)
-        // Pass simulation date as anchor so we search for earnings relative to backtest time
-        
-        EarningsEvent? nextEarnings = null;
-        try
-        {
-            using var cts = new CancellationTokenSource(_backtestSettings.EarningsQueryTimeout);
-            
-            // Search for earnings: 2 years before simulation AND up to 90 days after
-            // This finds both historical (for Leung-Santoli) and upcoming (for signals)
-            var lookaheadDays = _backtestSettings.EarningsLookaheadDays;
-            var lookbackDays = _backtestSettings.EarningsLookbackDays + lookaheadDays;
-            var earnings = _earningsProvider!.GetHistoricalEarningsAsync(
-                ticker,
-                simulationDate.AddDays(lookaheadDays),
-                lookbackDays,
-                cts.Token).GetAwaiter().GetResult();
-
-            // Find the next earnings AFTER current simulation date
-            nextEarnings = earnings
-                .Where(e => e.Date > simulationDate.Date)
-                .OrderBy(e => e.Date)
-                .FirstOrDefault();
-        }
-        catch (Exception ex)
-        {
-            Log($"  {ticker}: Error fetching earnings: {ex.Message}");
-        }
-
-        if (nextEarnings == null)
-        {
-            Log($"  {ticker}: No upcoming earnings found in cache");
-            return result;
-        }
-
-        var daysToEarnings = (nextEarnings.Date - simulationDate.Date).Days;
-        Log($"  {ticker}: Next earnings {nextEarnings.Date:yyyy-MM-dd} ({daysToEarnings} days away)");
-
-        // Step 3: Calculate Realised Volatility using LEAN bars
-        
-        var priceBars = barList.Select(b => new StrategyPriceBar
-        {
-            Date = b.Time,
-            Open = (double)b.Open,
-            High = (double)b.High,
-            Low = (double)b.Low,
-            Close = (double)b.Close,
-            Volume = 0 // Not needed for Yang-Zhang RV
-        }).ToList();
-
-        var rv = _yangZhangEstimator!.Calculate(priceBars, _strategySettings.RealisedVolatilityWindowDays, true);
-        Log($"  {ticker}: {_strategySettings.RealisedVolatilityWindowDays}-day RV = {rv:P2}");
-
-        // Step 4: Signal Generation (simplified for backtest)
-        
-        // Check if within target window for earnings
-        if (daysToEarnings < _strategySettings.DaysBeforeEarningsMin
-            || daysToEarnings > _strategySettings.DaysBeforeEarningsMax)
-        {
-            Log($"  {ticker}: Not in target window ({_strategySettings.DaysBeforeEarningsMin}-{_strategySettings.DaysBeforeEarningsMax} days before earnings)");
-            return result;
-        }
-
-        // Generate signal - update adapter with simulation time first
-        _marketDataAdapter?.SetEvaluationDate(simulationDate);
-        var signal = _signalGenerator!.Generate(ticker, nextEarnings.Date, simulationDate);
-        Log($"  {ticker}: Signal = {signal.Strength} (IV/RV = {signal.IVRVRatio:F3})");
-        result.SignalGenerated = true;
-
-        if (signal.Strength != STCR004AStrength.Recommended)
-        {
-            Log($"  {ticker}: Signal not recommended, skipping");
-            return result;
-        }
-
-        // Step 5: Backtest-mode order simulation (no real execution)
-        
-        // In backtest mode, we record the signal as generated but don't execute
-        // Full execution would require options data which isn't available
-        Log($"  {ticker}: BACKTEST - Signal would trigger calendar spread entry");
-        Log($"    Strike: ${signal.Strike:F2}, Front: {signal.FrontExpiry:yyyy-MM-dd}, Back: {signal.BackExpiry:yyyy-MM-dd}");
-
-        // Note: For full backtest with order execution, we would need
-        // options chain data from LEAN's Options History API
-        // This simplified version validates that earnings detection and
-        // signal generation work correctly
 
         return result;
     }
@@ -1044,7 +968,9 @@ public sealed class STLN001A : QCAlgorithm
     private bool AreComponentsInitialised()
     {
         return _dataBridge != null
+            && _marketDataAdapter != null
             && _signalGenerator != null
+            && _pricingEngine != null
             && _productionValidator != null
             && _positionSizer != null
             && _executionQuoteProvider != null;
@@ -1067,101 +993,499 @@ public sealed class STLN001A : QCAlgorithm
     /// <summary>
     /// Validates a signal for production using STHD005A.
     /// </summary>
-    private STHD006A ValidateForProduction(STCR004A signal, MarketDataSnapshot snapshot)
+    private STHD006A ValidateForProduction(
+        STCR004A signal,
+        MarketDataSnapshot snapshot,
+        CalendarSpreadSelection selection,
+        int proposedContracts)
     {
-        // Build validation parameters from snapshot
-        // This is a simplified version - full implementation would extract
-        // all required parameters from the snapshot and signal
-        
-        var spotPrice = snapshot.SpotPrice;
-        var strikePrice = signal.Strike;
+        var (frontIVHistory, backIVHistory) = BuildIvHistory(selection, snapshot);
+        var frontLegParams = BuildOptionParams(
+            selection.FrontLeg,
+            Alaris.Strategy.Cost.OrderDirection.Sell,
+            signal.Symbol,
+            proposedContracts);
+        var backLegParams = BuildOptionParams(
+            selection.BackLeg,
+            Alaris.Strategy.Cost.OrderDirection.Buy,
+            signal.Symbol,
+            proposedContracts);
+        var spreadGreeks = ComputeSpreadGreeks(selection, snapshot);
 
-        var backMonthVolume = GetBackMonthVolume(snapshot.OptionChain, signal.BackExpiry);
-        var backMonthOpenInterest = GetBackMonthOpenInterest(snapshot.OptionChain, signal.BackExpiry);
+        var backMonthVolume = selection.BackLeg.Volume > int.MaxValue
+            ? int.MaxValue
+            : (int)selection.BackLeg.Volume;
+        var backMonthOpenInterest = selection.BackLeg.OpenInterest > int.MaxValue
+            ? int.MaxValue
+            : (int)selection.BackLeg.OpenInterest;
 
         return _productionValidator!.Validate(
             signal,
-            frontLegParams: CreateOptionParams(signal, true),
-            backLegParams: CreateOptionParams(signal, false),
-            frontIVHistory: Array.Empty<double>(),  // Would come from historical data
-            backIVHistory: Array.Empty<double>(),
+            frontLegParams: frontLegParams,
+            backLegParams: backLegParams,
+            frontIVHistory: frontIVHistory,
+            backIVHistory: backIVHistory,
             backMonthVolume: backMonthVolume,
             backMonthOpenInterest: backMonthOpenInterest,
-            spotPrice: Convert.ToDouble(spotPrice),
-            strikePrice: Convert.ToDouble(strikePrice),
-            spreadGreeks: ComputeSpreadGreeks(signal, snapshot),
-            daysToEarnings: (signal.EarningsDate - Time).Days);
+            spotPrice: Convert.ToDouble(snapshot.SpotPrice),
+            strikePrice: Convert.ToDouble(selection.Strike),
+            spreadGreeks: spreadGreeks,
+            daysToEarnings: Math.Max(0, (signal.EarningsDate - snapshot.Timestamp).Days));
     }
 
-    private static int GetBackMonthVolume(OptionChainSnapshot optionChain, DateTime backExpiry)
+    private bool TrySelectCalendarSpread(
+        MarketDataSnapshot snapshot,
+        DateTime earningsDate,
+        AlarisOptionRight right,
+        out CalendarSpreadSelection selection,
+        out string detail)
     {
-        long totalVolume = 0;
-        foreach (var contract in optionChain.Contracts)
+        selection = null!;
+        detail = "Unable to select calendar spread legs.";
+
+        var contracts = snapshot.OptionChain.Contracts;
+        if (contracts.Count == 0)
         {
-            if (contract.Expiration.Date != backExpiry.Date)
-                continue;
-            totalVolume += contract.Volume;
+            detail = "No option contracts available for selection";
+            return false;
         }
 
-        if (totalVolume <= 0)
-            return 0;
-        return totalVolume > int.MaxValue ? int.MaxValue : (int)totalVolume;
-    }
+        var expiries = contracts
+            .Where(c => c.Right == right)
+            .Select(c => c.Expiration.Date)
+            .Distinct()
+            .OrderBy(d => d)
+            .ToList();
 
-    private static int GetBackMonthOpenInterest(OptionChainSnapshot optionChain, DateTime backExpiry)
-    {
-        long maxOpenInterest = 0;
-        foreach (var contract in optionChain.Contracts)
+        if (expiries.Count == 0)
         {
-            if (contract.Expiration.Date != backExpiry.Date)
-                continue;
-            if (contract.OpenInterest > maxOpenInterest)
-                maxOpenInterest = contract.OpenInterest;
+            detail = "No expiries available for selected option right";
+            return false;
         }
 
-        if (maxOpenInterest <= 0)
-            return 0;
-        return maxOpenInterest > int.MaxValue ? int.MaxValue : (int)maxOpenInterest;
+        var frontExpiry = expiries.FirstOrDefault(d => d >= earningsDate.Date);
+        if (frontExpiry == default)
+        {
+            detail = "No expiry available on or after earnings date";
+            return false;
+        }
+
+        var backExpiry = expiries.FirstOrDefault(d => d > frontExpiry);
+        if (backExpiry == default)
+        {
+            detail = "No back-month expiry available after front expiry";
+            return false;
+        }
+
+        var frontContracts = contracts
+            .Where(c => c.Right == right && c.Expiration.Date == frontExpiry)
+            .ToList();
+        var backContracts = contracts
+            .Where(c => c.Right == right && c.Expiration.Date == backExpiry)
+            .ToList();
+
+        if (frontContracts.Count == 0 || backContracts.Count == 0)
+        {
+            detail = "Missing contracts for front or back expiry";
+            return false;
+        }
+
+        var backByStrike = new Dictionary<decimal, OptionContract>(backContracts.Count);
+        foreach (var back in backContracts)
+        {
+            if (!IsQuoteValid(back))
+                continue;
+            backByStrike[back.Strike] = back;
+        }
+
+        OptionContract? bestFront = null;
+        OptionContract? bestBack = null;
+        double bestFrontIv = 0;
+        double bestBackIv = 0;
+        bool bestUsesSyntheticIv = false;
+        decimal bestDistance = decimal.MaxValue;
+        var spot = snapshot.SpotPrice;
+        if (spot <= 0m)
+        {
+            detail = "Spot price unavailable for selection";
+            return false;
+        }
+        var spotPrice = Convert.ToDouble(spot);
+        var riskFreeRate = Convert.ToDouble(snapshot.RiskFreeRate);
+        var dividendYield = Convert.ToDouble(snapshot.DividendYield);
+        var valuationDate = snapshot.Timestamp;
+
+        foreach (var front in frontContracts)
+        {
+            if (!IsQuoteValid(front))
+                continue;
+            if (!backByStrike.TryGetValue(front.Strike, out var back))
+                continue;
+
+            var distance = Math.Abs(front.Strike - spot);
+            if (distance >= bestDistance)
+                continue;
+
+            if (!TryResolveImpliedVolatility(
+                front,
+                spotPrice,
+                riskFreeRate,
+                dividendYield,
+                valuationDate,
+                right,
+                out var frontIv,
+                out var frontSynthetic))
+                continue;
+            if (!TryResolveImpliedVolatility(
+                back,
+                spotPrice,
+                riskFreeRate,
+                dividendYield,
+                valuationDate,
+                right,
+                out var backIv,
+                out var backSynthetic))
+                continue;
+
+            bestDistance = distance;
+            bestFront = front;
+            bestBack = back;
+            bestFrontIv = frontIv;
+            bestBackIv = backIv;
+            bestUsesSyntheticIv = frontSynthetic || backSynthetic;
+        }
+
+        if (bestFront == null || bestBack == null)
+        {
+            detail = "No matching front/back strikes with valid quotes and IV";
+            return false;
+        }
+
+        selection = new CalendarSpreadSelection(
+            snapshot.Symbol,
+            bestFront,
+            bestBack,
+            bestFront.Strike,
+            frontExpiry,
+            backExpiry,
+            right,
+            bestUsesSyntheticIv,
+            bestFrontIv,
+            bestBackIv);
+        detail = "Calendar spread legs selected";
+        return true;
     }
 
-    /// <summary>
-    /// Creates order parameters for validation.
-    /// </summary>
-    private STCS002A CreateOptionParams(STCR004A signal, bool isFrontMonth)
+    private void PopulateSignalLegs(STCR004A signal, CalendarSpreadSelection selection)
     {
-        var expiry = isFrontMonth ? signal.FrontExpiry : signal.BackExpiry;
-        var iv = isFrontMonth ? signal.FrontIV : signal.BackIV;
-        
-        // Estimate contract prices from IV (simplified)
-        var midPrice = iv * 0.1; // Simplified estimate
-        var spread = midPrice * 0.05; // 5% bid-ask spread estimate
-        
+        signal.Strike = selection.Strike;
+        signal.FrontExpiry = selection.FrontExpiry;
+        signal.BackExpiry = selection.BackExpiry;
+        signal.FrontIV = selection.FrontIV;
+        signal.BackIV = selection.BackIV;
+        signal.UsingSyntheticIV = selection.UsesSyntheticIv;
+    }
+
+    private DTmd002A? GetSpreadQuote(CalendarSpreadSelection selection, bool useExecutionQuoteProvider)
+    {
+        if (useExecutionQuoteProvider)
+        {
+            try
+            {
+                using var cts = new CancellationTokenSource(_dataProviderSettings.ExecutionQuoteTimeout);
+                var quote = _executionQuoteProvider!.GetDTmd002AAsync(
+                    selection.Symbol,
+                    selection.Strike,
+                    selection.FrontExpiry,
+                    selection.BackExpiry,
+                    selection.Right,
+                    cts.Token)
+                    .GetAwaiter().GetResult();
+
+                if (quote != null)
+                {
+                    return quote;
+                }
+            }
+            catch (Exception ex)
+            {
+                Log($"  {selection.Symbol}: Execution quote provider failed - {ex.Message}");
+            }
+        }
+
+        return BuildSpreadQuote(selection);
+    }
+
+    private static DTmd002A? BuildSpreadQuote(CalendarSpreadSelection selection)
+    {
+        var spreadBid = selection.BackLeg.Bid - selection.FrontLeg.Ask;
+        var spreadAsk = selection.BackLeg.Ask - selection.FrontLeg.Bid;
+        var spreadMid = (spreadBid + spreadAsk) / 2m;
+
+        if (spreadAsk <= 0m || spreadAsk < spreadBid || spreadMid <= 0m)
+        {
+            return null;
+        }
+
+        return new DTmd002A
+        {
+            UnderlyingSymbol = selection.Symbol,
+            Strike = selection.Strike,
+            FrontLeg = selection.FrontLeg,
+            BackLeg = selection.BackLeg,
+            Timestamp = selection.BackLeg.Timestamp > selection.FrontLeg.Timestamp
+                ? selection.BackLeg.Timestamp
+                : selection.FrontLeg.Timestamp
+        };
+    }
+
+    private (IReadOnlyList<double> FrontIVHistory, IReadOnlyList<double> BackIVHistory) BuildIvHistory(
+        CalendarSpreadSelection selection,
+        MarketDataSnapshot snapshot)
+    {
+        var requiredLevels = _validationSettings.MinimumVegaObservations + 1;
+        var lookbackDays = _validationSettings.VegaCorrelationLookbackDays;
+
+        var frontLevels = new List<double>(requiredLevels);
+        var backLevels = new List<double>(requiredLevels);
+
+        for (int offset = 0; offset <= lookbackDays && frontLevels.Count < requiredLevels; offset++)
+        {
+            var date = snapshot.Timestamp.Date.AddDays(-offset);
+
+            MarketDataSnapshot dailySnapshot;
+            try
+            {
+                dailySnapshot = _dataBridge!.GetMarketDataSnapshotAsync(selection.Symbol, date)
+                    .GetAwaiter().GetResult();
+            }
+            catch
+            {
+                continue;
+            }
+
+            var chain = dailySnapshot.OptionChain;
+            if (chain.Contracts.Count == 0)
+                continue;
+
+            if (!TryGetContractForStrike(chain, selection.FrontExpiry, selection.Strike, selection.Right, out var front))
+                continue;
+            if (!TryGetContractForStrike(chain, selection.BackExpiry, selection.Strike, selection.Right, out var back))
+                continue;
+
+            var spotPrice = Convert.ToDouble(chain.SpotPrice);
+            if (spotPrice <= 0)
+                continue;
+
+            var riskFreeRate = Convert.ToDouble(dailySnapshot.RiskFreeRate);
+            var dividendYield = Convert.ToDouble(dailySnapshot.DividendYield);
+            if (!TryResolveImpliedVolatility(
+                front,
+                spotPrice,
+                riskFreeRate,
+                dividendYield,
+                dailySnapshot.Timestamp,
+                selection.Right,
+                out var frontIv,
+                out _))
+                continue;
+            if (!TryResolveImpliedVolatility(
+                back,
+                spotPrice,
+                riskFreeRate,
+                dividendYield,
+                dailySnapshot.Timestamp,
+                selection.Right,
+                out var backIv,
+                out _))
+                continue;
+
+            frontLevels.Add(frontIv);
+            backLevels.Add(backIv);
+        }
+
+        frontLevels.Reverse();
+        backLevels.Reverse();
+
+        return (frontLevels, backLevels);
+    }
+
+    private static STCS002A BuildOptionParams(
+        OptionContract contract,
+        Alaris.Strategy.Cost.OrderDirection direction,
+        string symbol,
+        int contracts)
+    {
+        var bid = (double)contract.Bid;
+        var ask = (double)contract.Ask;
+        var mid = (double)contract.Mid;
+
         return new STCS002A
         {
-            Contracts = 1,
-            MidPrice = midPrice,
-            BidPrice = midPrice - (spread / 2),
-            AskPrice = midPrice + (spread / 2),
-            Direction = isFrontMonth ? Alaris.Strategy.Cost.OrderDirection.Sell : Alaris.Strategy.Cost.OrderDirection.Buy,
-            Premium = midPrice,
-            Symbol = signal.Symbol
+            Contracts = contracts,
+            MidPrice = mid,
+            BidPrice = bid,
+            AskPrice = ask,
+            Direction = direction,
+            Premium = mid,
+            Symbol = symbol
         };
     }
 
-    /// <summary>
-    /// Computes spread Greeks for validation.
-    /// </summary>
-    private SpreadGreeks ComputeSpreadGreeks(STCR004A signal, MarketDataSnapshot snapshot)
+    private SpreadGreeks ComputeSpreadGreeks(CalendarSpreadSelection selection, MarketDataSnapshot snapshot)
     {
-        // Simplified Greeks computation
-        // Full implementation would use Alaris.Strategy pricing engine
+        var frontPricing = _pricingEngine!.PriceOption(BuildPricingParameters(
+                snapshot,
+                selection.FrontLeg,
+                selection.Right,
+                selection.FrontIV))
+            .GetAwaiter()
+            .GetResult();
+
+        var backPricing = _pricingEngine!.PriceOption(BuildPricingParameters(
+                snapshot,
+                selection.BackLeg,
+                selection.Right,
+                selection.BackIV))
+            .GetAwaiter()
+            .GetResult();
+
         return new SpreadGreeks
         {
-            Delta = 0.0,  // Calendar spreads are approximately delta-neutral
-            Gamma = 0.01,
-            Vega = 0.05,
-            Theta = -0.02
+            Delta = backPricing.Delta - frontPricing.Delta,
+            Gamma = backPricing.Gamma - frontPricing.Gamma,
+            Vega = backPricing.Vega - frontPricing.Vega,
+            Theta = backPricing.Theta - frontPricing.Theta
         };
+    }
+
+    private Alaris.Strategy.Model.STDT003A BuildPricingParameters(
+        MarketDataSnapshot snapshot,
+        OptionContract contract,
+        AlarisOptionRight right,
+        double impliedVolatility)
+    {
+        return new Alaris.Strategy.Model.STDT003A
+        {
+            UnderlyingPrice = Convert.ToDouble(snapshot.SpotPrice),
+            Strike = Convert.ToDouble(contract.Strike),
+            Expiry = CRTM005A.FromDateTime(contract.Expiration),
+            ImpliedVolatility = impliedVolatility,
+            RiskFreeRate = Convert.ToDouble(snapshot.RiskFreeRate),
+            DividendYield = Convert.ToDouble(snapshot.DividendYield),
+            OptionType = ToOptionType(right),
+            ValuationDate = CRTM005A.FromDateTime(snapshot.Timestamp)
+        };
+    }
+
+    private bool TryResolveImpliedVolatility(
+        OptionContract contract,
+        double spotPrice,
+        double riskFreeRate,
+        double dividendYield,
+        DateTime valuationDate,
+        AlarisOptionRight right,
+        out double impliedVolatility,
+        out bool usedSynthetic)
+    {
+        if (contract.ImpliedVolatility.HasValue && contract.ImpliedVolatility.Value > 0m)
+        {
+            impliedVolatility = (double)contract.ImpliedVolatility.Value;
+            usedSynthetic = false;
+            return true;
+        }
+
+        if (contract.Mid <= 0m)
+        {
+            impliedVolatility = 0;
+            usedSynthetic = false;
+            return false;
+        }
+
+        try
+        {
+            var valuation = CRTM005A.FromDateTime(valuationDate);
+            var expiry = CRTM005A.FromDateTime(contract.Expiration);
+            if (expiry.SerialNumber <= valuation.SerialNumber)
+            {
+                impliedVolatility = 0;
+                usedSynthetic = false;
+                return false;
+            }
+
+            var parameters = new Alaris.Strategy.Model.STDT003A
+            {
+                UnderlyingPrice = spotPrice,
+                Strike = Convert.ToDouble(contract.Strike),
+                Expiry = CRTM005A.FromDateTime(contract.Expiration),
+                ImpliedVolatility = 0,
+                RiskFreeRate = riskFreeRate,
+                DividendYield = dividendYield,
+                OptionType = ToOptionType(right),
+                ValuationDate = CRTM005A.FromDateTime(valuationDate)
+            };
+
+            impliedVolatility = _pricingEngine!.CalculateImpliedVolatility((double)contract.Mid, parameters)
+                .GetAwaiter()
+                .GetResult();
+            usedSynthetic = true;
+        }
+        catch
+        {
+            impliedVolatility = 0;
+            usedSynthetic = false;
+            return false;
+        }
+
+        if (double.IsNaN(impliedVolatility) || impliedVolatility <= 0)
+        {
+            impliedVolatility = 0;
+            usedSynthetic = false;
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool TryGetContractForStrike(
+        OptionChainSnapshot chain,
+        DateTime expiry,
+        decimal strike,
+        AlarisOptionRight right,
+        out OptionContract contract)
+    {
+        const decimal strikeTolerance = 0.0001m;
+
+        foreach (var candidate in chain.Contracts)
+        {
+            if (candidate.Right != right)
+                continue;
+            if (candidate.Expiration.Date != expiry.Date)
+                continue;
+            if (Math.Abs(candidate.Strike - strike) > strikeTolerance)
+                continue;
+
+            contract = candidate;
+            return true;
+        }
+
+        contract = null!;
+        return false;
+    }
+
+    private static bool IsQuoteValid(OptionContract contract)
+    {
+        return contract.Bid > 0m && contract.Ask > 0m && contract.Ask >= contract.Bid;
+    }
+
+    private static QCOptionRight ToQcOptionRight(AlarisOptionRight right)
+    {
+        return right == AlarisOptionRight.Call ? QCOptionRight.Call : QCOptionRight.Put;
+    }
+
+    private static OptionType ToOptionType(AlarisOptionRight right)
+    {
+        return right == AlarisOptionRight.Call ? OptionType.Call : OptionType.Put;
     }
 
     /// <summary>
@@ -1196,29 +1520,54 @@ public sealed class STLN001A : QCAlgorithm
         
         // Use provided evaluationDate, fallback to snapshot timestamp (already contains simulation time)
         var referenceDate = (evaluationDate ?? optionChain.Timestamp).Date;
-        
-        // Group by expiration and calculate average IV at ATM strikes
+
+        var spot = optionChain.SpotPrice;
+
+        // Group by expiration and compute ATM call/put IV average
         var byExpiry = optionChain.Contracts
             .GroupBy(c => c.Expiration.Date)
             .OrderBy(g => g.Key);
-        
+
         foreach (var group in byExpiry)
         {
             var daysToExpiry = (group.Key - referenceDate).Days;
-            if (daysToExpiry <= 0) continue;
-            
-            // Average IV across ATM options
-            var avgIV = group
-                .Where(c => c.ImpliedVolatility.HasValue && c.ImpliedVolatility > 0)
-                .Select(c => (double)c.ImpliedVolatility!.Value)
-                .DefaultIfEmpty(_strategySettings.DefaultImpliedVolatility)
-                .Average();
-            
+            if (daysToExpiry <= 0)
+                continue;
+
+            OptionContract? atmCall = null;
+            OptionContract? atmPut = null;
+            decimal callDistance = decimal.MaxValue;
+            decimal putDistance = decimal.MaxValue;
+
+            foreach (var contract in group)
+            {
+                if (contract.ImpliedVolatility is null || contract.ImpliedVolatility <= 0m)
+                    continue;
+                if (contract.OpenInterest <= 0)
+                    continue;
+
+                var distance = Math.Abs(contract.Strike - spot);
+                if (contract.Right == AlarisOptionRight.Call && distance < callDistance)
+                {
+                    callDistance = distance;
+                    atmCall = contract;
+                }
+                else if (contract.Right == AlarisOptionRight.Put && distance < putDistance)
+                {
+                    putDistance = distance;
+                    atmPut = contract;
+                }
+            }
+
+            if (atmCall == null || atmPut == null)
+                continue;
+
+            var avgIV = ((double)atmCall.ImpliedVolatility!.Value + (double)atmPut.ImpliedVolatility!.Value) / 2.0;
             points.Add(new STTM001APoint
             {
                 DaysToExpiry = daysToExpiry,
                 ImpliedVolatility = avgIV,
-                Strike = (double)optionChain.Contracts[0].Strike
+                Strike = (double)atmCall.Strike
             });
         }
         
@@ -1230,7 +1579,7 @@ public sealed class STLN001A : QCAlgorithm
     /// </summary>
     private OrderExecutionResult ExecuteCalendarSpread(
         Symbol underlyingSymbol,
-        STCR004A signal,
+        CalendarSpreadSelection selection,
         DTmd002A quote,
         int contracts)
     {
@@ -1239,15 +1588,15 @@ public sealed class STLN001A : QCAlgorithm
             // Create option symbols
             var frontOption = CreateOptionSymbol(
                 underlyingSymbol,
-                signal.Strike,
-                signal.FrontExpiry,
-                QCOptionRight.Call);
+                selection.Strike,
+                selection.FrontExpiry,
+                ToQcOptionRight(selection.Right));
 
             var backOption = CreateOptionSymbol(
                 underlyingSymbol,
-                signal.Strike,
-                signal.BackExpiry,
-                QCOptionRight.Call);
+                selection.Strike,
+                selection.BackExpiry,
+                ToQcOptionRight(selection.Right));
 
             // Add option contracts to universe
             AddOptionContract(frontOption);
@@ -1342,6 +1691,18 @@ public sealed class STLN001A : QCAlgorithm
 
     // Supporting Types
     
+    private sealed record CalendarSpreadSelection(
+        string Symbol,
+        OptionContract FrontLeg,
+        OptionContract BackLeg,
+        decimal Strike,
+        DateTime FrontExpiry,
+        DateTime BackExpiry,
+        AlarisOptionRight Right,
+        bool UsesSyntheticIv,
+        double FrontIV,
+        double BackIV);
+
     /// <summary>Result of symbol evaluation.</summary>
     private sealed class EvaluationResult
     {
@@ -1369,11 +1730,12 @@ public sealed class STLN001A : QCAlgorithm
         int MaxCoarseSymbols,
         int EvaluationTimeHour,
         int EvaluationTimeMinute,
+        AlarisOptionRight OptionRight,
         int RealisedVolatilityWindowDays,
         double DefaultImpliedVolatility)
     {
         public static StrategySettings Empty => new(
-            0, 0, 0m, 0m, 0m, 0m, 0, 0, 0, 0, 0, 0, 0.0);
+            0, 0, 0m, 0m, 0m, 0m, 0, 0, 0, 0, 0, AlarisOptionRight.Call, 0, 0.0);
 
         public void Validate()
         {
@@ -1401,6 +1763,8 @@ public sealed class STLN001A : QCAlgorithm
                 throw new InvalidOperationException("EvaluationTimeHour must be between 0 and 23.");
             if (EvaluationTimeMinute < 0 || EvaluationTimeMinute > 59)
                 throw new InvalidOperationException("EvaluationTimeMinute must be between 0 and 59.");
+            if (!Enum.IsDefined(OptionRight))
+                throw new InvalidOperationException("OptionRight must be Call or Put.");
             if (RealisedVolatilityWindowDays <= 0)
                 throw new InvalidOperationException("RealisedVolatilityWindowDays must be positive.");
             if (DefaultImpliedVolatility <= 0)
@@ -1493,13 +1857,14 @@ public sealed class STLN001A : QCAlgorithm
     private sealed record ValidationSettings(
         double MaxVegaCorrelation,
         int MinimumVegaObservations,
+        int VegaCorrelationLookbackDays,
         double MaxPositionToVolumeRatio,
         double MaxPositionToOpenInterestRatio,
         double DeltaRehedgeThreshold,
         double GammaWarningThreshold,
         double MoneynessAlertThreshold)
     {
-        public static ValidationSettings Empty => new(0, 0, 0, 0, 0, 0, 0);
+        public static ValidationSettings Empty => new(0, 0, 0, 0, 0, 0, 0, 0);
 
         public void Validate()
         {
@@ -1507,6 +1872,8 @@ public sealed class STLN001A : QCAlgorithm
                 throw new InvalidOperationException("MaxVegaCorrelation must be between 0 and 1.");
             if (MinimumVegaObservations <= 0)
                 throw new InvalidOperationException("MinimumVegaObservations must be positive.");
+            if (VegaCorrelationLookbackDays < MinimumVegaObservations)
+                throw new InvalidOperationException("VegaCorrelationLookbackDays must be at least MinimumVegaObservations.");
             if (MaxPositionToVolumeRatio <= 0 || MaxPositionToVolumeRatio > 1)
                 throw new InvalidOperationException("MaxPositionToVolumeRatio must be between 0 and 1.");
             if (MaxPositionToOpenInterestRatio <= 0 || MaxPositionToOpenInterestRatio > 1)
@@ -1583,6 +1950,14 @@ public sealed class STLN001A : QCAlgorithm
         var value = GetRequiredValue(configuration, key);
         if (!Uri.TryCreate(value, UriKind.Absolute, out var parsed))
             throw new InvalidOperationException($"Invalid URI for {key}: {value}");
+        return parsed;
+    }
+
+    private static AlarisOptionRight GetRequiredOptionRight(IConfiguration configuration, string key)
+    {
+        var value = GetRequiredValue(configuration, key);
+        if (!Enum.TryParse<AlarisOptionRight>(value, true, out var parsed))
+            throw new InvalidOperationException($"Invalid option right for {key}: {value}");
         return parsed;
     }
 }
@@ -1667,6 +2042,9 @@ internal sealed class DataBridgeMarketDataAdapter : STDT001A
 {
     private readonly AlarisDataBridge _bridge;
     private DateTime _evaluationDate = DateTime.UtcNow;
+    private string? _cachedSymbol;
+    private DateTime _cachedEvaluationDate;
+    private MarketDataSnapshot? _cachedSnapshot;
 
     public DataBridgeMarketDataAdapter(AlarisDataBridge bridge)
     {
@@ -1676,11 +2054,28 @@ internal sealed class DataBridgeMarketDataAdapter : STDT001A
     /// <summary>
     /// Sets the evaluation date for market data queries (use LEAN's Time for backtests).
     /// </summary>
-    public void SetEvaluationDate(DateTime date) => _evaluationDate = date;
-
-    public StrategyOptionChain GetSTDT002A(string symbol, DateTime expirationDate)
+    public void SetEvaluationDate(DateTime date)
     {
-        var snapshot = _bridge.GetMarketDataSnapshotAsync(symbol, _evaluationDate).GetAwaiter().GetResult();
+        if (_evaluationDate == date)
+        {
+            return;
+        }
+
+        _evaluationDate = date;
+        _cachedSnapshot = null;
+        _cachedSymbol = null;
+    }
+
+    public MarketDataSnapshot GetSnapshot(string symbol, DateTime evaluationDate, CancellationToken cancellationToken)
+    {
+        _evaluationDate = evaluationDate;
+        return GetSnapshotInternal(symbol, evaluationDate, cancellationToken);
+    }
+
+    public StrategyOptionChain GetSTDT002A(string symbol, DateTime evaluationDate)
+    {
+        _evaluationDate = evaluationDate;
+        var snapshot = GetSnapshotInternal(symbol, evaluationDate, CancellationToken.None);
         
         var chain = new StrategyOptionChain
         {
@@ -1689,42 +2084,51 @@ internal sealed class DataBridgeMarketDataAdapter : STDT001A
             Timestamp = snapshot.Timestamp
         };
         
-        if (snapshot.OptionChain != null)
+        if (snapshot.OptionChain == null)
         {
-            var contracts = snapshot.OptionChain.Contracts
-                .Where(c => c.Expiration.Date == expirationDate.Date)
-                .ToList();
+            return chain;
+        }
 
-            if (contracts.Count > 0)
+        var byExpiry = snapshot.OptionChain.Contracts
+            .GroupBy(c => c.Expiration.Date)
+            .OrderBy(g => g.Key);
+
+        foreach (var group in byExpiry)
+        {
+            var expiry = new Alaris.Strategy.Model.OptionExpiry
             {
-                var expiry = new Alaris.Strategy.Model.OptionExpiry
+                ExpiryDate = group.Key
+            };
+
+            foreach (var c in group)
+            {
+                var contract = new Alaris.Strategy.Model.OptionContract
                 {
-                    ExpiryDate = expirationDate
+                    Strike = (double)c.Strike,
+                    Bid = (double)c.Bid,
+                    Ask = (double)c.Ask,
+                    LastPrice = (double)(c.Last ?? 0m),
+                    ImpliedVolatility = (double)(c.ImpliedVolatility ?? 0m),
+                    Delta = (double)(c.Delta ?? 0m),
+                    Gamma = (double)(c.Gamma ?? 0m),
+                    Vega = (double)(c.Vega ?? 0m),
+                    Theta = (double)(c.Theta ?? 0m),
+                    OpenInterest = (int)c.OpenInterest,
+                    Volume = (int)c.Volume
                 };
 
-                foreach (var c in contracts)
+                if (c.Right == AlarisOptionRight.Call)
                 {
-                    var contract = new Alaris.Strategy.Model.OptionContract
-                    {
-                        Strike = (double)c.Strike,
-                        Bid = (double)c.Bid,
-                        Ask = (double)c.Ask,
-                        LastPrice = (double)(c.Last ?? 0m),
-                        ImpliedVolatility = (double)(c.ImpliedVolatility ?? 0m),
-                        Delta = (double)(c.Delta ?? 0m),
-                        Gamma = (double)(c.Gamma ?? 0m),
-                        Vega = (double)(c.Vega ?? 0m),
-                        Theta = (double)(c.Theta ?? 0m),
-                        OpenInterest = (int)c.OpenInterest,
-                        Volume = (int)c.Volume
-                    };
-
-                    if (c.Right == AlarisOptionRight.Call)
-                        expiry.Calls.Add(contract);
-                    else
-                        expiry.Puts.Add(contract);
+                    expiry.Calls.Add(contract);
                 }
+                else
+                {
+                    expiry.Puts.Add(contract);
+                }
+            }
 
+            if (expiry.Calls.Count > 0 || expiry.Puts.Count > 0)
+            {
                 chain.Expiries.Add(expiry);
             }
         }
@@ -1734,9 +2138,9 @@ internal sealed class DataBridgeMarketDataAdapter : STDT001A
 
     public IReadOnlyList<StrategyPriceBar> GetHistoricalPrices(string symbol, int days)
     {
-        var snapshot = _bridge.GetMarketDataSnapshotAsync(symbol, _evaluationDate).GetAwaiter().GetResult();
-        
-        return snapshot.HistoricalBars
+        var snapshot = GetSnapshotInternal(symbol, _evaluationDate, CancellationToken.None);
+
+        var bars = snapshot.HistoricalBars
             .Select(b => new StrategyPriceBar
             {
                 Date = b.Timestamp,
@@ -1748,17 +2152,26 @@ internal sealed class DataBridgeMarketDataAdapter : STDT001A
             })
             .OrderBy(b => b.Date)
             .ToList();
+
+        if (days <= 0 || bars.Count <= days)
+        {
+            return bars;
+        }
+
+        return bars
+            .Skip(bars.Count - days)
+            .ToList();
     }
 
     public double GetCurrentPrice(string symbol)
     {
-        var snapshot = _bridge.GetMarketDataSnapshotAsync(symbol, _evaluationDate).GetAwaiter().GetResult();
+        var snapshot = GetSnapshotInternal(symbol, _evaluationDate, CancellationToken.None);
         return (double)snapshot.SpotPrice;
     }
 
     public async Task<IReadOnlyList<DateTime>> GetEarningsDates(string symbol)
     {
-        var snapshot = await _bridge.GetMarketDataSnapshotAsync(symbol, _evaluationDate);
+        var snapshot = await GetSnapshotInternalAsync(symbol, _evaluationDate, CancellationToken.None);
         var dates = new List<DateTime>();
         if (snapshot.NextEarnings != null)
         {
@@ -1769,7 +2182,7 @@ internal sealed class DataBridgeMarketDataAdapter : STDT001A
 
     public async Task<IReadOnlyList<DateTime>> GetHistoricalEarningsDates(string symbol, int lookbackQuarters = 12)
     {
-        var snapshot = await _bridge.GetMarketDataSnapshotAsync(symbol, _evaluationDate);
+        var snapshot = await GetSnapshotInternalAsync(symbol, _evaluationDate, CancellationToken.None);
         return snapshot.HistoricalEarnings
             .Select(e => e.Date)
             .OrderByDescending(d => d)
@@ -1780,5 +2193,43 @@ internal sealed class DataBridgeMarketDataAdapter : STDT001A
     public async Task<bool> IsDataAvailable(string symbol)
     {
         return await _bridge.MeetsBasicCriteriaAsync(symbol);
+    }
+
+    private MarketDataSnapshot GetSnapshotInternal(string symbol, DateTime evaluationDate, CancellationToken cancellationToken)
+    {
+        _evaluationDate = evaluationDate;
+        if (_cachedSnapshot != null && _cachedSymbol == symbol && _cachedEvaluationDate == evaluationDate)
+        {
+            return _cachedSnapshot;
+        }
+
+        var snapshot = _bridge.GetMarketDataSnapshotAsync(symbol, evaluationDate, cancellationToken)
+            .GetAwaiter()
+            .GetResult();
+
+        _cachedSnapshot = snapshot;
+        _cachedSymbol = symbol;
+        _cachedEvaluationDate = evaluationDate;
+        return snapshot;
+    }
+
+    private async Task<MarketDataSnapshot> GetSnapshotInternalAsync(
+        string symbol,
+        DateTime evaluationDate,
+        CancellationToken cancellationToken)
+    {
+        _evaluationDate = evaluationDate;
+        if (_cachedSnapshot != null && _cachedSymbol == symbol && _cachedEvaluationDate == evaluationDate)
+        {
+            return _cachedSnapshot;
+        }
+
+        var snapshot = await _bridge.GetMarketDataSnapshotAsync(symbol, evaluationDate, cancellationToken)
+            .ConfigureAwait(false);
+
+        _cachedSnapshot = snapshot;
+        _cachedSymbol = symbol;
+        _cachedEvaluationDate = evaluationDate;
+        return snapshot;
     }
 }
