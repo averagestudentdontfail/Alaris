@@ -861,23 +861,26 @@ Dependencies MUST flow inward: Infrastructure → Strategy → Core.
 
 **Rationale:** Core contains pure logic with no dependencies. Strategy depends on Core. Infrastructure depends on both; neither depends on it.
 
-```
-┌─────────────────────────────────────────┐
-│            Infrastructure               │
-│  (HTTP, Database, Message Queues)       │
-└─────────────────────────────────────────┘
-                    │
-                    ▼
-┌─────────────────────────────────────────┐
-│              Strategy                   │
-│  (Signal Generation, Risk Management)   │
-└─────────────────────────────────────────┘
-                    │
-                    ▼
-┌─────────────────────────────────────────┐
-│                Core                     │
-│  (Pricing, Greeks, Volatility)          │
-└─────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph Infrastructure["Infrastructure Layer"]
+        I["HTTP, Database, Message Queues"]
+    end
+
+    subgraph Strategy["Strategy Layer"]
+        S["Signal Generation, Risk Management"]
+    end
+
+    subgraph Core["Core Layer"]
+        C["Pricing, Greeks, Volatility"]
+    end
+
+    Infrastructure --> Strategy
+    Strategy --> Core
+
+    style Infrastructure fill:#fce4ec
+    style Strategy fill:#fff3e0
+    style Core fill:#e8f5e9
 ```
 
 ### Rule 27: Single Responsibility
