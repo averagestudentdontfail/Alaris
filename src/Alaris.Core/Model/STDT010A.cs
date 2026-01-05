@@ -196,7 +196,7 @@ public sealed record STDT010A
 
     private static bool ContainsSymbol(IReadOnlyList<string> symbols, string benchmarkSymbol)
     {
-        var comparer = StringComparer.OrdinalIgnoreCase;
+        StringComparer comparer = StringComparer.OrdinalIgnoreCase;
 
         for (int i = 0; i < symbols.Count; i++)
         {
