@@ -37,7 +37,7 @@ public sealed class CLtr002A : Command<TradeStatusSettings>
         }
 
         // Would show real-time positions from LEAN/IBKR
-        var table = new Table()
+        Table table = new Table()
             .Border(TableBorder.Rounded)
             .BorderColor(Color.Grey)
             .Title("[bold]Open Positions[/]");

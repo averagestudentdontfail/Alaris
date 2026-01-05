@@ -4,7 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
-using System.Linq;
 using System.Globalization;
 using System.Net.Http;
 using System.Text;
@@ -50,41 +49,52 @@ public sealed class APsv002A : IDisposable
     /// </summary>
     public async Task DownloadEquityDataAsync(string sessionDataPath, IEnumerable<string> symbols, DateTime start, DateTime end)
     {
-        var symbolList = symbols.ToList();
-        var total = symbolList.Count;
-        var current = 0;
+        ArgumentException.ThrowIfNullOrWhiteSpace(sessionDataPath);
+        ArgumentNullException.ThrowIfNull(symbols);
+        if (end < start)
+        {
+            throw new ArgumentOutOfRangeException(nameof(end), "End date must be on or after start date.");
+        }
 
+        List<string> symbolList = new List<string>(symbols);
+        if (symbolList.Count == 0)
+        {
+            return;
+        }
+
+        int total = symbolList.Count;
+        int current = 0;
 
         // Path: session/data/equity/usa/daily
-        var dailyPath = System.IO.Path.Combine(sessionDataPath, "equity", "usa", "daily");
+        string dailyPath = Path.Combine(sessionDataPath, "equity", "usa", "daily");
         Directory.CreateDirectory(dailyPath);
 
         // NOTE: Earnings data comes from 'alaris earnings bootstrap' command
         // using cache-first pattern in DTea001C. Not downloaded here.
 
         // Path: session/data/options
-        var optionsPath = System.IO.Path.Combine(sessionDataPath, "options");
+        string optionsPath = Path.Combine(sessionDataPath, "options");
         Directory.CreateDirectory(optionsPath);
 
         // Copy system files first (so we can overwrite/add to them)
         CopySystemFiles(sessionDataPath);
 
         // Path: session/data/equity/usa/map_files
-        var mapFilesPath = System.IO.Path.Combine(sessionDataPath, "equity", "usa", "map_files");
+        string mapFilesPath = Path.Combine(sessionDataPath, "equity", "usa", "map_files");
         Directory.CreateDirectory(mapFilesPath);
 
         // Path: session/data/equity/usa/factor_files
-        var factorFilesPath = System.IO.Path.Combine(sessionDataPath, "equity", "usa", "factor_files");
+        string factorFilesPath = Path.Combine(sessionDataPath, "equity", "usa", "factor_files");
         Directory.CreateDirectory(factorFilesPath);
 
         await AnsiConsole.Progress()
             .StartAsync(async ctx =>
             {
-                var taskData = ctx.AddTask($"[green]Downloading Price Data ({total} symbols)...[/]");
-                var taskOptions = ctx.AddTask($"[green]Downloading Options Data...[/]");
-                var taskRates = _treasuryClient != null ? ctx.AddTask($"[green]Downloading Interest Rates...[/]") : null;
+                ProgressTask taskData = ctx.AddTask($"[green]Downloading Price Data ({total} symbols)...[/]");
+                ProgressTask taskOptions = ctx.AddTask($"[green]Downloading Options Data...[/]");
+                ProgressTask? taskRates = _treasuryClient != null ? ctx.AddTask($"[green]Downloading Interest Rates...[/]") : null;
                 
-                foreach (var symbol in symbolList)
+                foreach (string symbol in symbolList)
                 {
                     current++;
                     taskData.Description = $"[green]Downloading prices for {symbol} ({current}/{total})...[/]";
@@ -100,11 +110,11 @@ public sealed class APsv002A : IDisposable
                     try
                     {
                         // Add buffer for warmup (120 days) to ensure sufficient history
-                        var minAllowedDate = DateTime.UtcNow.AddYears(-2).Date;
-                        var lookbackStart = start.AddDays(-120);
-                        var requestStart = lookbackStart < minAllowedDate ? minAllowedDate : lookbackStart;
+                        DateTime minAllowedDate = DateTime.UtcNow.AddYears(-2).Date;
+                        DateTime lookbackStart = start.AddDays(-120);
+                        DateTime requestStart = lookbackStart < minAllowedDate ? minAllowedDate : lookbackStart;
                         
-                        var bars = await _polygonClient.GetHistoricalBarsAsync(symbol, requestStart, end);
+                        IReadOnlyList<PriceBar> bars = await _polygonClient.GetHistoricalBarsAsync(symbol, requestStart, end);
                         if (bars.Count > 0)
                         {
                             await SaveAsLeanZipAsync(symbol, bars, dailyPath);
@@ -124,14 +134,14 @@ public sealed class APsv002A : IDisposable
                         
                         // Polygon's Options Starter plan has a 2-year limit for options aggregates.
                         // Apply a 1-month buffer to avoid hitting the boundary.
-                        var optionsMinDate = DateTime.UtcNow.AddYears(-2).AddMonths(1).Date;
-                        var effectiveOptionsDate = start < optionsMinDate ? optionsMinDate : start;
+                        DateTime optionsMinDate = DateTime.UtcNow.AddYears(-2).AddMonths(1).Date;
+                        DateTime effectiveOptionsDate = start < optionsMinDate ? optionsMinDate : start;
                         
-                        var optionChain = await _polygonClient.GetHistoricalOptionChainAsync(symbol, effectiveOptionsDate);
+                        OptionChainSnapshot optionChain = await _polygonClient.GetHistoricalOptionChainAsync(symbol, effectiveOptionsDate);
                         if (optionChain.Contracts.Count > 0)
                         {
-                            var jsonPath = System.IO.Path.Combine(optionsPath, $"{symbol.ToLowerInvariant()}.json");
-                            var json = JsonSerializer.Serialize(optionChain, JsonOptions);
+                            string jsonPath = Path.Combine(optionsPath, $"{symbol.ToLowerInvariant()}.json");
+                            string json = JsonSerializer.Serialize(optionChain, JsonOptions);
                             await File.WriteAllTextAsync(jsonPath, json);
                         }
                     }
@@ -148,22 +158,24 @@ public sealed class APsv002A : IDisposable
                     try
                     {
                         taskRates.IsIndeterminate = true;
-                        var ratePath = System.IO.Path.Combine(sessionDataPath, "alternative", "interest-rate", "usa");
+                        string ratePath = Path.Combine(sessionDataPath, "alternative", "interest-rate", "usa");
                         Directory.CreateDirectory(ratePath);
-                        var csvPath = System.IO.Path.Combine(ratePath, "interest-rate.csv");
+                        string csvPath = Path.Combine(ratePath, "interest-rate.csv");
 
                         // Look back 2 years + buffer from Start Date, or just fetch large history
                         // Rates are global, not per-symbol.
-                        var rates = await _treasuryClient.GetHistoricalRatesAsync(start.AddYears(-2), end);
+                        IReadOnlyDictionary<DateTime, decimal> rates = await _treasuryClient.GetHistoricalRatesAsync(start.AddYears(-2), end);
                         
                         if (rates.Count > 0)
                         {
                             // Write CSV: Date(yyyyMMdd),Rate(decimal)
                             // Sort by date
-                            var sb = new StringBuilder();
-                            foreach (var kvp in rates.OrderBy(x => x.Key))
+                            StringBuilder sb = new StringBuilder();
+                            List<DateTime> rateDates = new List<DateTime>(rates.Keys);
+                            rateDates.Sort();
+                            foreach (DateTime rateDate in rateDates)
                             {
-                                sb.AppendLine($"{kvp.Key:yyyyMMdd},{kvp.Value}");
+                                sb.AppendLine($"{rateDate:yyyyMMdd},{rates[rateDate]}");
                             }
                             await File.WriteAllTextAsync(csvPath, sb.ToString());
                         }
@@ -187,13 +199,13 @@ public sealed class APsv002A : IDisposable
     /// </summary>
     private async Task GenerateMapFileAsync(string symbol, string mapFilesPath)
     {
-        var ticker = symbol.ToLowerInvariant();
-        var path = System.IO.Path.Combine(mapFilesPath, $"{ticker}.csv");
+        string ticker = symbol.ToLowerInvariant();
+        string path = Path.Combine(mapFilesPath, $"{ticker}.csv");
         
         // Simple map file: valid provided ticker for all history, default to NASDAQ (Q)
         // 19980101,ticker,Q
         // 20501231,ticker,Q
-        var content = $"19980101,{ticker},Q\n20501231,{ticker},Q";
+        string content = $"19980101,{ticker},Q\n20501231,{ticker},Q";
         
         await File.WriteAllTextAsync(path, content);
     }
@@ -205,13 +217,13 @@ public sealed class APsv002A : IDisposable
     /// </summary>
     private async Task GenerateFactorFileAsync(string symbol, string factorFilesPath)
     {
-        var ticker = symbol.ToLowerInvariant();
-        var path = System.IO.Path.Combine(factorFilesPath, $"{ticker}.csv");
+        string ticker = symbol.ToLowerInvariant();
+        string path = Path.Combine(factorFilesPath, $"{ticker}.csv");
         
         // Simple factor file: no adjustments (1,1) for all history
         // 19980101,1,1,1
         // 20501231,1,1,1
-        var content = "19980101,1,1,1\n20501231,1,1,1";
+        string content = "19980101,1,1,1\n20501231,1,1,1";
         
         await File.WriteAllTextAsync(path, content);
     }
@@ -231,12 +243,18 @@ public sealed class APsv002A : IDisposable
         string outputPath,
         CancellationToken cancellationToken = default)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(outputPath);
+        if (endDate < startDate)
+        {
+            throw new ArgumentOutOfRangeException(nameof(endDate), "End date must be on or after start date.");
+        }
+
         if (_earningsClient == null)
         {
             throw new InvalidOperationException("Earnings client not configured");
         }
 
-        string nasdaqPath = System.IO.Path.Combine(outputPath, "earnings", "nasdaq");
+        string nasdaqPath = Path.Combine(outputPath, "earnings", "nasdaq");
         Directory.CreateDirectory(nasdaqPath);
 
         int totalWeekdays = 0;
@@ -266,7 +284,7 @@ public sealed class APsv002A : IDisposable
                 new SpinnerColumn())
             .StartAsync(async ctx =>
             {
-                var task = ctx.AddTask("Downloading Earnings Calendar", maxValue: totalWeekdays);
+                ProgressTask task = ctx.AddTask("Downloading Earnings Calendar", maxValue: totalWeekdays);
 
                 for (DateTime date = startDate; date <= endDate; date = date.AddDays(1))
                 {
@@ -278,7 +296,7 @@ public sealed class APsv002A : IDisposable
                         continue;
                     }
 
-                    string cachePath = System.IO.Path.Combine(nasdaqPath, $"{date:yyyy-MM-dd}.json");
+                    string cachePath = Path.Combine(nasdaqPath, $"{date:yyyy-MM-dd}.json");
 
                     // Skip if already cached
                     if (File.Exists(cachePath))
@@ -293,7 +311,7 @@ public sealed class APsv002A : IDisposable
                         // Rate limit: 1 request per second
                         await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
 
-                        var earnings = await _earningsClient.FetchAndCacheAsync(
+                        IReadOnlyList<EarningsEvent> earnings = await _earningsClient.FetchAndCacheAsync(
                             date, outputPath, cancellationToken);
 
                         downloadedDays++;
@@ -334,15 +352,26 @@ public sealed class APsv002A : IDisposable
         string sessionDataPath,
         CancellationToken cancellationToken = default)
     {
-        var symbolList = symbols.ToList();
-        var dateList = dates.Distinct().OrderBy(d => d).ToList();
+        ArgumentNullException.ThrowIfNull(symbols);
+        ArgumentNullException.ThrowIfNull(dates);
+        ArgumentException.ThrowIfNullOrWhiteSpace(sessionDataPath);
+
+        List<string> symbolList = new List<string>(symbols);
+        HashSet<DateTime> uniqueDates = new HashSet<DateTime>();
+        foreach (DateTime date in dates)
+        {
+            uniqueDates.Add(date);
+        }
+
+        List<DateTime> dateList = new List<DateTime>(uniqueDates);
+        dateList.Sort();
         
         if (symbolList.Count == 0 || dateList.Count == 0)
         {
             return 0;
         }
 
-        var optionsPath = System.IO.Path.Combine(sessionDataPath, "options");
+        string optionsPath = Path.Combine(sessionDataPath, "options");
         Directory.CreateDirectory(optionsPath);
 
         int totalDownloaded = 0;
@@ -350,7 +379,7 @@ public sealed class APsv002A : IDisposable
         int totalFailed = 0;
 
         // Apply 2-year limit buffer (Polygon Options Starter plan)
-        var optionsMinDate = DateTime.UtcNow.AddYears(-2).AddMonths(1).Date;
+        DateTime optionsMinDate = DateTime.UtcNow.AddYears(-2).AddMonths(1).Date;
 
         _logger?.LogInformation(
             "Bootstrap options: {SymbolCount} symbols × {DateCount} dates",
@@ -365,19 +394,19 @@ public sealed class APsv002A : IDisposable
                 new SpinnerColumn())
             .StartAsync(async ctx =>
             {
-                var task = ctx.AddTask("Downloading Options Data", maxValue: symbolList.Count * dateList.Count);
+                ProgressTask task = ctx.AddTask("Downloading Options Data", maxValue: symbolList.Count * dateList.Count);
 
-                foreach (var symbol in symbolList)
+                foreach (string symbol in symbolList)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    foreach (var date in dateList)
+                    foreach (DateTime date in dateList)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
 
-                        var symbolLower = symbol.ToLowerInvariant();
-                        var dateSuffix = date.ToString("yyyyMMdd");
-                        var cachePath = System.IO.Path.Combine(optionsPath, $"{symbolLower}_{dateSuffix}.json");
+                        string symbolLower = symbol.ToLowerInvariant();
+                        string dateSuffix = date.ToString("yyyyMMdd");
+                        string cachePath = Path.Combine(optionsPath, $"{symbolLower}_{dateSuffix}.json");
 
                         // Skip if already cached
                         if (File.Exists(cachePath))
@@ -399,11 +428,11 @@ public sealed class APsv002A : IDisposable
                         {
                             task.Description = $"Options: {symbol} @ {date:yyyy-MM-dd}";
 
-                            var optionChain = await _polygonClient.GetHistoricalOptionChainAsync(symbol, date, cancellationToken);
+                            OptionChainSnapshot optionChain = await _polygonClient.GetHistoricalOptionChainAsync(symbol, date, cancellationToken);
                             
                             if (optionChain.Contracts.Count > 0)
                             {
-                                var json = JsonSerializer.Serialize(optionChain, JsonOptions);
+                                string json = JsonSerializer.Serialize(optionChain, JsonOptions);
                                 await File.WriteAllTextAsync(cachePath, json, cancellationToken);
                                 totalDownloaded++;
                                 _logger?.LogDebug("Cached {Count} options for {Symbol} @ {Date}", 
@@ -455,13 +484,15 @@ public sealed class APsv002A : IDisposable
         ArgumentNullException.ThrowIfNull(requirements);
         ArgumentException.ThrowIfNullOrWhiteSpace(sessionDataPath);
         
-        var (isValid, error) = requirements.Validate();
-        if (!isValid)
-            throw new ArgumentException(error, nameof(requirements));
+        (bool IsValid, string? Error) validation = requirements.Validate();
+        if (!validation.IsValid)
+        {
+            throw new ArgumentException(validation.Error ?? "Invalid bootstrap requirements.", nameof(requirements));
+        }
         
         _logger?.LogInformation("Starting unified bootstrap: {Summary}", requirements.GetSummary());
         
-        var report = new BootstrapReport
+        BootstrapReport report = new BootstrapReport
         {
             StartedAt = DateTime.UtcNow,
             SessionDataPath = sessionDataPath
@@ -493,7 +524,7 @@ public sealed class APsv002A : IDisposable
             
             // Phase 4: Compute options-required dates from earnings
             AnsiConsole.MarkupLine("[blue]Phase 4:[/] Computing options-required dates...");
-            var optionsDates = ComputeOptionsRequiredDates(
+            IReadOnlyList<DateTime> optionsDates = ComputeOptionsRequiredDates(
                 sessionDataPath,
                 requirements.Symbols,
                 requirements.StartDate,
@@ -551,34 +582,37 @@ public sealed class APsv002A : IDisposable
         string sessionDataPath,
         CancellationToken cancellationToken)
     {
-        var dailyPath = System.IO.Path.Combine(sessionDataPath, "equity", "usa", "daily");
+        ArgumentNullException.ThrowIfNull(requirements);
+        ArgumentException.ThrowIfNullOrWhiteSpace(sessionDataPath);
+
+        string dailyPath = Path.Combine(sessionDataPath, "equity", "usa", "daily");
         Directory.CreateDirectory(dailyPath);
         
-        var mapFilesPath = System.IO.Path.Combine(sessionDataPath, "equity", "usa", "map_files");
+        string mapFilesPath = Path.Combine(sessionDataPath, "equity", "usa", "map_files");
         Directory.CreateDirectory(mapFilesPath);
         
-        var factorFilesPath = System.IO.Path.Combine(sessionDataPath, "equity", "usa", "factor_files");
+        string factorFilesPath = Path.Combine(sessionDataPath, "equity", "usa", "factor_files");
         Directory.CreateDirectory(factorFilesPath);
         
-        var allSymbols = requirements.AllSymbols;
+        IReadOnlyList<string> allSymbols = requirements.AllSymbols;
         int downloaded = 0;
         
         // Apply 2-year limit for Polygon
-        var minAllowedDate = DateTime.UtcNow.AddYears(-2).Date;
-        var requestStart = requirements.PriceDataStart < minAllowedDate 
+        DateTime minAllowedDate = DateTime.UtcNow.AddYears(-2).Date;
+        DateTime requestStart = requirements.PriceDataStart < minAllowedDate 
             ? minAllowedDate 
             : requirements.PriceDataStart;
         
         await AnsiConsole.Progress()
             .StartAsync(async ctx =>
             {
-                var task = ctx.AddTask($"[green]Downloading prices ({allSymbols.Count} symbols)...[/]");
+                ProgressTask task = ctx.AddTask($"[green]Downloading prices ({allSymbols.Count} symbols)...[/]");
                 
                 for (int i = 0; i < allSymbols.Count; i++)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     
-                    var symbol = allSymbols[i];
+                    string symbol = allSymbols[i];
                     task.Description = $"[green]Price data: {symbol} ({i + 1}/{allSymbols.Count})[/]";
                     task.Value = (double)(i + 1) / allSymbols.Count * 100;
                     
@@ -589,7 +623,7 @@ public sealed class APsv002A : IDisposable
                         await GenerateFactorFileAsync(symbol, factorFilesPath);
                         
                         // Download price data
-                        var bars = await _polygonClient.GetHistoricalBarsAsync(
+                        IReadOnlyList<PriceBar> bars = await _polygonClient.GetHistoricalBarsAsync(
                             symbol, requestStart, requirements.EndDate);
                         
                         if (bars.Count > 0)
@@ -618,19 +652,21 @@ public sealed class APsv002A : IDisposable
     {
         try
         {
-            var ratePath = System.IO.Path.Combine(sessionDataPath, "alternative", "interest-rate", "usa");
+            string ratePath = Path.Combine(sessionDataPath, "alternative", "interest-rate", "usa");
             Directory.CreateDirectory(ratePath);
-            var csvPath = System.IO.Path.Combine(ratePath, "interest-rate.csv");
+            string csvPath = Path.Combine(ratePath, "interest-rate.csv");
             
-            var rates = await _treasuryClient!.GetHistoricalRatesAsync(
+            IReadOnlyDictionary<DateTime, decimal> rates = await _treasuryClient!.GetHistoricalRatesAsync(
                 requirements.PriceDataStart, requirements.EndDate, cancellationToken);
             
             if (rates.Count > 0)
             {
-                var sb = new StringBuilder();
-                foreach (var kvp in rates.OrderBy(x => x.Key))
+                StringBuilder sb = new StringBuilder();
+                List<DateTime> rateDates = new List<DateTime>(rates.Keys);
+                rateDates.Sort();
+                foreach (DateTime rateDate in rateDates)
                 {
-                    sb.AppendLine($"{kvp.Key:yyyyMMdd},{kvp.Value}");
+                    sb.AppendLine($"{rateDate:yyyyMMdd},{rates[rateDate]}");
                 }
                 await File.WriteAllTextAsync(csvPath, sb.ToString(), cancellationToken);
                 return true;
@@ -657,8 +693,19 @@ public sealed class APsv002A : IDisposable
         int minDays,
         int maxDays)
     {
-        var dates = new HashSet<DateTime>();
-        var nasdaqPath = System.IO.Path.Combine(sessionDataPath, "earnings", "nasdaq");
+        ArgumentException.ThrowIfNullOrWhiteSpace(sessionDataPath);
+        ArgumentNullException.ThrowIfNull(symbols);
+        if (endDate < startDate)
+        {
+            throw new ArgumentOutOfRangeException(nameof(endDate), "End date must be on or after start date.");
+        }
+        ArgumentOutOfRangeException.ThrowIfNegative(minDays);
+        ArgumentOutOfRangeException.ThrowIfNegative(maxDays);
+        ArgumentOutOfRangeException.ThrowIfLessThan(maxDays, minDays, nameof(maxDays));
+
+        HashSet<DateTime> dates = new HashSet<DateTime>();
+        HashSet<string> symbolSet = new HashSet<string>(symbols, StringComparer.OrdinalIgnoreCase);
+        string nasdaqPath = Path.Combine(sessionDataPath, "earnings", "nasdaq");
         
         if (!Directory.Exists(nasdaqPath))
         {
@@ -667,26 +714,27 @@ public sealed class APsv002A : IDisposable
         }
         
         // Read all earnings files and find dates for our symbols
-        foreach (var file in Directory.GetFiles(nasdaqPath, "*.json"))
+        string[] files = Directory.GetFiles(nasdaqPath, "*.json");
+        foreach (string file in files)
         {
             try
             {
-                var json = File.ReadAllText(file);
-                var cached = JsonSerializer.Deserialize<CachedEarningsDay>(json);
+                string json = File.ReadAllText(file);
+                CachedEarningsDay? cached = JsonSerializer.Deserialize<CachedEarningsDay>(json);
                 
                 if (cached?.Earnings == null)
                     continue;
                 
-                foreach (var earning in cached.Earnings)
+                foreach (CachedEarningsEvent earning in cached.Earnings)
                 {
                     // Check if this symbol is in our universe
-                    if (!symbols.Contains(earning.Symbol, StringComparer.OrdinalIgnoreCase))
+                    if (!symbolSet.Contains(earning.Symbol))
                         continue;
                     
                     // For this earnings date, compute evaluation dates
                     for (int d = minDays; d <= maxDays; d++)
                     {
-                        var evalDate = earning.Date.AddDays(-d);
+                        DateTime evalDate = earning.Date.AddDays(-d);
                         
                         // Only include if within session range
                         if (evalDate >= startDate && evalDate <= endDate)
@@ -708,7 +756,9 @@ public sealed class APsv002A : IDisposable
         }
         
         _logger?.LogInformation("Computed {Count} options-required dates from earnings calendar", dates.Count);
-        return dates.OrderBy(d => d).ToList();
+        List<DateTime> orderedDates = new List<DateTime>(dates);
+        orderedDates.Sort();
+        return orderedDates;
     }
 
     /// <summary>
@@ -737,18 +787,22 @@ public sealed class APsv002A : IDisposable
     /// </summary>
     private static async Task SaveAsLeanZipAsync(string symbol, IEnumerable<PriceBar> bars, string outputDir)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(symbol);
+        ArgumentNullException.ThrowIfNull(bars);
+        ArgumentException.ThrowIfNullOrWhiteSpace(outputDir);
+
         // LEAN format: ticker.zip containing ticker.csv
-        var ticker = symbol.ToLowerInvariant();
-        var zipPath = System.IO.Path.Combine(outputDir, $"{ticker}.zip");
+        string ticker = symbol.ToLowerInvariant();
+        string zipPath = Path.Combine(outputDir, $"{ticker}.zip");
 
-        using var memoryStream = new MemoryStream();
-        using (var archive = new ZipArchive(memoryStream, ZipArchiveMode.Create, true))
+        using MemoryStream memoryStream = new MemoryStream();
+        using (ZipArchive archive = new ZipArchive(memoryStream, ZipArchiveMode.Create, true))
         {
-            var entry = archive.CreateEntry($"{ticker}.csv");
-            using var entryStream = entry.Open();
-            using var writer = new StreamWriter(entryStream);
+            ZipArchiveEntry entry = archive.CreateEntry($"{ticker}.csv");
+            using Stream entryStream = entry.Open();
+            using StreamWriter writer = new StreamWriter(entryStream);
 
-            foreach (var bar in bars)
+            foreach (PriceBar bar in bars)
             {
                 // Format: Date,Open,High,Low,Close,Volume
                 // Date format: yyyyMMdd HH:mm
@@ -756,23 +810,18 @@ public sealed class APsv002A : IDisposable
                 // but strictly speaking typical daily CSV is 
                 // yyyyMMdd 00:00,open*10000,high*10000,low*10000,close*10000,volume
                 
-                // Assuming 'bar' is StrategyPriceBar or similar with Open, High, Low, Close, Volume, Date
-                // Since I can't see StrategyPriceBar def right now, I'll assume standard properties.
-                // Using dynamic to avoid circular dependency if Model is in another project, 
-                // but ideally should verify type.
-                
                 // LEAN Daily resolution expects 'TwelveCharacter' format: "yyyyMMdd HH:mm"
                 // TradeBar.cs ParseEquity uses default scaling (x10000)
                 // CRITICAL: Daily bars must use 00:00 (exchange timezone midnight), not actual UTC timestamp
-                var dateStr = bar.Timestamp.Date.ToString("yyyyMMdd", CultureInfo.InvariantCulture) + " 00:00";
+                string dateStr = bar.Timestamp.Date.ToString("yyyyMMdd", CultureInfo.InvariantCulture) + " 00:00";
                 
                 // Scale by 10000 to match LEAN default scale factor (1/10000)
                 // When LEAN reads this, it divides by 10000 to get the original price.
-                var open = (long)(bar.Open * 10000);
-                var high = (long)(bar.High * 10000);
-                var low = (long)(bar.Low * 10000);
-                var close = (long)(bar.Close * 10000);
-                var volume = (long)bar.Volume;
+                long open = (long)(bar.Open * 10000);
+                long high = (long)(bar.High * 10000);
+                long low = (long)(bar.Low * 10000);
+                long close = (long)(bar.Close * 10000);
+                long volume = (long)bar.Volume;
 
                 await writer.WriteLineAsync(string.Format(CultureInfo.InvariantCulture, 
                     "{0},{1},{2},{3},{4},{5}", 
@@ -791,14 +840,14 @@ public sealed class APsv002A : IDisposable
     private void CopySystemFiles(string sessionDataPath)
     {
         // Find source Alaris.Lean/Data
-        var sourcePath = FindLeanDataPath();
+        string? sourcePath = FindLeanDataPath();
         if (string.IsNullOrEmpty(sourcePath))
         {
             _logger?.LogWarning("Could not find Alaris.Lean/Data to copy system files. Backtest may fail.");
             return;
         }
 
-        var foldersToCopy = new[] 
+        string[] foldersToCopy = new[] 
         { 
             "market-hours", 
             "symbol-properties",
@@ -806,10 +855,10 @@ public sealed class APsv002A : IDisposable
             "equity/usa/factor_files"
         };
 
-        foreach (var folder in foldersToCopy)
+        foreach (string folder in foldersToCopy)
         {
-            var sourceDir = System.IO.Path.Combine(sourcePath, folder);
-            var destDir = System.IO.Path.Combine(sessionDataPath, folder);
+            string sourceDir = Path.Combine(sourcePath, folder);
+            string destDir = Path.Combine(sessionDataPath, folder);
 
             if (Directory.Exists(sourceDir))
             {
@@ -826,17 +875,20 @@ public sealed class APsv002A : IDisposable
     private static string? FindLeanDataPath()
     {
         // Try common locations
-        var candidates = new[]
+        string[] candidates = new[]
         {
             "Alaris.Lean/Data",
             "../Alaris.Lean/Data",
             "../../Alaris.Lean/Data"
         };
 
-        foreach (var candidate in candidates)
+        foreach (string candidate in candidates)
         {
-            if (Directory.Exists(System.IO.Path.GetFullPath(candidate)))
-                return System.IO.Path.GetFullPath(candidate);
+            string fullPath = Path.GetFullPath(candidate);
+            if (Directory.Exists(fullPath))
+            {
+                return fullPath;
+            }
         }
 
         return null;
@@ -846,15 +898,17 @@ public sealed class APsv002A : IDisposable
     {
         Directory.CreateDirectory(destDir);
 
-        foreach (var file in Directory.GetFiles(sourceDir))
+        string[] files = Directory.GetFiles(sourceDir);
+        foreach (string file in files)
         {
-            var destFile = System.IO.Path.Combine(destDir, System.IO.Path.GetFileName(file));
+            string destFile = Path.Combine(destDir, Path.GetFileName(file));
             File.Copy(file, destFile, true);
         }
 
-        foreach (var subDir in Directory.GetDirectories(sourceDir))
+        string[] subDirs = Directory.GetDirectories(sourceDir);
+        foreach (string subDir in subDirs)
         {
-            var destSubDir = System.IO.Path.Combine(destDir, System.IO.Path.GetFileName(subDir));
+            string destSubDir = Path.Combine(destDir, Path.GetFileName(subDir));
             CopyDirectory(subDir, destSubDir);
         }
     }
@@ -884,4 +938,3 @@ public sealed class BootstrapReport
         $"Prices={PricesDownloaded}, Earnings={EarningsDaysDownloaded} days, " +
         $"Options={OptionsDownloaded} (from {OptionsRequiredDatesComputed} dates)";
 }
-

@@ -4,7 +4,6 @@ using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 using System.Threading;
 using Alaris.Host.Application.Model;
@@ -62,16 +61,16 @@ public sealed class BacktestCreateCommand : AsyncCommand<BacktestCreateSettings>
     public override async Task<int> ExecuteAsync(CommandContext context, BacktestCreateSettings settings)
     {
         // Resolve date range: --years > --start/--end > default (2 years)
-        var (startDate, endDate) = ResolveDateRange(settings);
+        (DateTime startDate, DateTime endDate) = ResolveDateRange(settings);
         
         if (startDate == DateTime.MinValue || endDate == DateTime.MinValue)
         {
             return 1; // Error already printed
         }
 
-        var symbols = settings.Symbols?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        string[]? symbols = settings.Symbols?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-        var service = new APsv001A();
+        APsv001A service = new APsv001A();
 
         try
         {
@@ -99,19 +98,19 @@ public sealed class BacktestCreateCommand : AsyncCommand<BacktestCreateSettings>
                 AnsiConsole.WriteLine();
                 
                 // Determine symbols: use provided symbols OR run screener
-                string[] targets;
+                List<string> targets;
                 if (symbols?.Length > 0)
                 {
-                    targets = symbols;
+                    targets = new List<string>(symbols);
                     AnsiConsole.MarkupLine($"[yellow]Using specified symbols: {string.Join(", ", targets)}[/]");
                 }
                 else
                 {
                     AnsiConsole.MarkupLine("[yellow]Running screener to discover tradeable symbols...[/]");
-                    using var screener = DependencyFactory.CreateScreener();
-                    var screenedSymbols = await screener.ScreenAsync(startDate, maxSymbols: 50);
-                    targets = screenedSymbols.ToArray();
-                    AnsiConsole.MarkupLine($"[green]✓[/] Screened {targets.Length} symbols");
+                    using APsv002B screener = DependencyFactory.CreateScreener();
+                    List<string> screenedSymbols = await screener.ScreenAsync(startDate, maxSymbols: 50);
+                    targets = screenedSymbols;
+                    AnsiConsole.MarkupLine($"[green]✓[/] Screened {targets.Count} symbols");
                     
                     // Update session with screened symbols
                     session = session with { Symbols = screenedSymbols };
@@ -119,18 +118,18 @@ public sealed class BacktestCreateCommand : AsyncCommand<BacktestCreateSettings>
                 }
                 
                 // Build requirements model for unified bootstrap
-                var requirements = new Alaris.Core.Model.STDT010A
+                Alaris.Core.Model.STDT010A requirements = new Alaris.Core.Model.STDT010A
                 {
                     StartDate = startDate,
                     EndDate = endDate,
-                    Symbols = targets.ToList()
+                    Symbols = targets
                 };
                 
                 AnsiConsole.MarkupLine("[yellow]Starting unified data bootstrap...[/]");
                 AnsiConsole.MarkupLine($"[grey]  Requirements: {requirements.GetSummary()}[/]");
                 
-                using var dataService = DependencyFactory.CreateAPsv002A();
-                var bootstrapReport = await dataService.BootstrapSessionDataAsync(
+                using APsv002A dataService = DependencyFactory.CreateAPsv002A();
+                BootstrapReport bootstrapReport = await dataService.BootstrapSessionDataAsync(
                     requirements,
                     service.GetDataPath(session.SessionId),
                     CancellationToken.None);
@@ -173,12 +172,12 @@ public sealed class BacktestCreateCommand : AsyncCommand<BacktestCreateSettings>
         // Option 1: --years specified (e.g., "2024" or "2023,2024")
         if (!string.IsNullOrEmpty(settings.Years))
         {
-            var yearStrings = settings.Years.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            var years = new List<int>();
+            string[] yearStrings = settings.Years.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            List<int> years = new List<int>();
             
-            foreach (var yearStr in yearStrings)
+            foreach (string yearStr in yearStrings)
             {
-                if (int.TryParse(yearStr, out var year) && year >= 2000 && year <= 2100)
+                if (int.TryParse(yearStr, out int year) && year >= 2000 && year <= 2100)
                 {
                     years.Add(year);
                 }
@@ -195,11 +194,25 @@ public sealed class BacktestCreateCommand : AsyncCommand<BacktestCreateSettings>
                 return (DateTime.MinValue, DateTime.MinValue);
             }
 
-            var minYear = years.Min();
-            var maxYear = years.Max();
-            var startDate = new DateTime(minYear, 1, 1);
-            var endDate = maxYear == DateTime.Now.Year 
-                ? DateTime.Now.Date.AddDays(-1)  // Current year: end yesterday
+            int minYear = years[0];
+            int maxYear = years[0];
+            for (int i = 1; i < years.Count; i++)
+            {
+                int year = years[i];
+                if (year < minYear)
+                {
+                    minYear = year;
+                }
+                if (year > maxYear)
+                {
+                    maxYear = year;
+                }
+            }
+
+            DateTime startDate = new DateTime(minYear, 1, 1);
+            DateTime nowDate = DateTime.Now.Date;
+            DateTime endDate = maxYear == nowDate.Year 
+                ? nowDate.AddDays(-1)  // Current year: end yesterday
                 : new DateTime(maxYear, 12, 31); // Past years: end Dec 31
             
             AnsiConsole.MarkupLine($"[cyan]Using year range: {minYear}-{maxYear}[/]");
@@ -209,15 +222,21 @@ public sealed class BacktestCreateCommand : AsyncCommand<BacktestCreateSettings>
         // Option 2: Explicit --start/--end
         if (!string.IsNullOrEmpty(settings.StartDate) || !string.IsNullOrEmpty(settings.EndDate))
         {
-            if (string.IsNullOrEmpty(settings.StartDate) || !DateTime.TryParse(settings.StartDate, out var start))
+            if (string.IsNullOrEmpty(settings.StartDate) || !DateTime.TryParse(settings.StartDate, out DateTime start))
             {
                 AnsiConsole.MarkupLine("[red]Invalid or missing start date. Use YYYY-MM-DD format[/]");
                 return (DateTime.MinValue, DateTime.MinValue);
             }
 
-            if (string.IsNullOrEmpty(settings.EndDate) || !DateTime.TryParse(settings.EndDate, out var end))
+            if (string.IsNullOrEmpty(settings.EndDate) || !DateTime.TryParse(settings.EndDate, out DateTime end))
             {
                 AnsiConsole.MarkupLine("[red]Invalid or missing end date. Use YYYY-MM-DD format[/]");
+                return (DateTime.MinValue, DateTime.MinValue);
+            }
+
+            if (end < start)
+            {
+                AnsiConsole.MarkupLine("[red]End date must be on or after start date.[/]");
                 return (DateTime.MinValue, DateTime.MinValue);
             }
 
@@ -227,10 +246,36 @@ public sealed class BacktestCreateCommand : AsyncCommand<BacktestCreateSettings>
         // Option 3: Default - 2 years ending yesterday (with 1-month buffer for options data)
         // Polygon's Options Starter plan has a 2-year limit, but options aggregate data
         // at the boundary often returns 403. Using 23 months ensures reliable data access.
-        var yesterday = DateTime.Now.Date.AddDays(-1);
-        var twoYearsAgo = yesterday.AddYears(-2).AddMonths(1); // 23 months instead of 24
+        DateTime yesterday = DateTime.Now.Date.AddDays(-1);
+        DateTime twoYearsAgo = yesterday.AddYears(-2).AddMonths(1); // 23 months instead of 24
         AnsiConsole.MarkupLine($"[cyan]Using default 2-year range: {twoYearsAgo:yyyy-MM-dd} to {yesterday:yyyy-MM-dd}[/]");
         return (twoYearsAgo, yesterday);
+    }
+}
+
+file static class BacktestFormatting
+{
+    public static string BuildSymbolPreview(IReadOnlyList<string> symbols, int maxSymbols)
+    {
+        if (symbols.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        int count = symbols.Count < maxSymbols ? symbols.Count : maxSymbols;
+        string[] preview = new string[count];
+        for (int i = 0; i < count; i++)
+        {
+            preview[i] = symbols[i];
+        }
+
+        string result = string.Join(", ", preview);
+        if (symbols.Count > maxSymbols)
+        {
+            result += "...";
+        }
+
+        return result;
     }
 }
 
@@ -247,8 +292,8 @@ public sealed class BacktestPrepareCommand : AsyncCommand<BacktestPrepareSetting
 {
     public override async Task<int> ExecuteAsync(CommandContext context, BacktestPrepareSettings settings)
     {
-        var service = new APsv001A();
-        var session = await service.GetAsync(settings.SessionId);
+        APsv001A service = new APsv001A();
+        APmd001A? session = await service.GetAsync(settings.SessionId);
 
         if (session == null)
         {
@@ -257,17 +302,18 @@ public sealed class BacktestPrepareCommand : AsyncCommand<BacktestPrepareSetting
         }
 
         // Determine symbols: use session symbols OR run screener
-        IEnumerable<string> targets;
+        List<string> targets;
         if (session.Symbols.Count > 0)
         {
-            targets = session.Symbols;
-            AnsiConsole.MarkupLine($"[yellow]Using session symbols: {string.Join(", ", targets.Take(10))}...[/]");
+            targets = new List<string>(session.Symbols);
+            string symbolPreview = BacktestFormatting.BuildSymbolPreview(session.Symbols, 10);
+            AnsiConsole.MarkupLine($"[yellow]Using session symbols: {symbolPreview}[/]");
         }
         else
         {
             AnsiConsole.MarkupLine("[yellow]Running screener to discover tradeable symbols...[/]");
-            using var screener = DependencyFactory.CreateScreener();
-            var screenedSymbols = await screener.ScreenAsync(session.StartDate, maxSymbols: 50);
+            using APsv002B screener = DependencyFactory.CreateScreener();
+            List<string> screenedSymbols = await screener.ScreenAsync(session.StartDate, maxSymbols: 50);
             targets = screenedSymbols;
             AnsiConsole.MarkupLine($"[green]✓[/] Screened {screenedSymbols.Count} symbols");
             
@@ -277,17 +323,17 @@ public sealed class BacktestPrepareCommand : AsyncCommand<BacktestPrepareSetting
         }
 
         // Build requirements model for unified bootstrap
-        var requirements = new Alaris.Core.Model.STDT010A
+        Alaris.Core.Model.STDT010A requirements = new Alaris.Core.Model.STDT010A
         {
             StartDate = session.StartDate,
             EndDate = session.EndDate,
-            Symbols = targets.ToList()
+            Symbols = targets
         };
         
-        using var dataService = DependencyFactory.CreateAPsv002A();
+        using APsv002A dataService = DependencyFactory.CreateAPsv002A();
         AnsiConsole.MarkupLine($"[yellow]Starting unified bootstrap for session {session.SessionId}...[/]");
         
-        var bootstrapReport = await dataService.BootstrapSessionDataAsync(
+        BootstrapReport bootstrapReport = await dataService.BootstrapSessionDataAsync(
             requirements,
             service.GetDataPath(session.SessionId),
             CancellationToken.None);
@@ -311,34 +357,35 @@ public sealed class BacktestPrepareCommand : AsyncCommand<BacktestPrepareSetting
     /// </summary>
     private static IReadOnlyList<DateTime> GetOptionsRequiredDatesFromSession(string sessionDataPath, IEnumerable<string> symbols)
     {
-        var dates = new HashSet<DateTime>();
-        var nasdaqPath = System.IO.Path.Combine(sessionDataPath, "earnings", "nasdaq");
+        HashSet<DateTime> dates = new HashSet<DateTime>();
+        string nasdaqPath = System.IO.Path.Combine(sessionDataPath, "earnings", "nasdaq");
         
         if (!Directory.Exists(nasdaqPath))
         {
             return Array.Empty<DateTime>();
         }
         
-        var symbolSet = new HashSet<string>(symbols, StringComparer.OrdinalIgnoreCase);
+        HashSet<string> symbolSet = new HashSet<string>(symbols, StringComparer.OrdinalIgnoreCase);
         
-        foreach (var file in Directory.GetFiles(nasdaqPath, "*.json"))
+        string[] files = Directory.GetFiles(nasdaqPath, "*.json");
+        foreach (string file in files)
         {
             try
             {
-                var json = File.ReadAllText(file);
+                string json = File.ReadAllText(file);
                 // Simple parsing - look for symbol matches
-                foreach (var symbol in symbolSet)
+                foreach (string symbol in symbolSet)
                 {
                     if (json.Contains($"\"{symbol}\"", StringComparison.OrdinalIgnoreCase))
                     {
                         // Extract date from filename
-                        var dateStr = System.IO.Path.GetFileNameWithoutExtension(file);
-                        if (DateTime.TryParse(dateStr, out var earningsDate))
+                        string dateStr = System.IO.Path.GetFileNameWithoutExtension(file);
+                        if (DateTime.TryParse(dateStr, out DateTime earningsDate))
                         {
                             // Add evaluation dates (5-7 days before)
                             for (int d = 5; d <= 7; d++)
                             {
-                                var evalDate = earningsDate.AddDays(-d);
+                                DateTime evalDate = earningsDate.AddDays(-d);
                                 if (evalDate.DayOfWeek != DayOfWeek.Saturday && 
                                     evalDate.DayOfWeek != DayOfWeek.Sunday)
                                 {
@@ -355,7 +402,9 @@ public sealed class BacktestPrepareCommand : AsyncCommand<BacktestPrepareSetting
             }
         }
         
-        return dates.OrderBy(d => d).ToList();
+        List<DateTime> orderedDates = new List<DateTime>(dates);
+        orderedDates.Sort();
+        return orderedDates;
     }
 }
 
@@ -384,24 +433,24 @@ internal static class DependencyFactory
     [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "Services persist for command duration")]
     public static APsv002A CreateAPsv002A()
     {
-        var config = GetConfig();
-        var loggerFactory = GetLoggerFactory();
+        IConfiguration config = GetConfig();
+        ILoggerFactory loggerFactory = GetLoggerFactory();
         
         // Create Refit clients for each API
-        var polygonApi = CreatePolygonApi();
-        var nasdaqApi = CreateNasdaqApi();
-        var treasuryApi = CreateTreasuryApi();
+        IPolygonApi polygonApi = CreatePolygonApi();
+        INasdaqCalendarApi nasdaqApi = CreateNasdaqApi();
+        ITreasuryDirectApi treasuryApi = CreateTreasuryApi();
         
-        var polygonClient = new PolygonApiClient(
+        PolygonApiClient polygonClient = new PolygonApiClient(
             polygonApi, 
             config, 
             loggerFactory.CreateLogger<PolygonApiClient>());
 
-        var earningsClient = new NasdaqEarningsProvider(
+        NasdaqEarningsProvider earningsClient = new NasdaqEarningsProvider(
             nasdaqApi,
             loggerFactory.CreateLogger<NasdaqEarningsProvider>());
 
-        var treasuryClient = new TreasuryDirectRateProvider(
+        TreasuryDirectRateProvider treasuryClient = new TreasuryDirectRateProvider(
             treasuryApi,
             loggerFactory.CreateLogger<TreasuryDirectRateProvider>());
 
@@ -414,14 +463,14 @@ internal static class DependencyFactory
     
     private static IPolygonApi CreatePolygonApi()
     {
-        var httpClient = new HttpClient { BaseAddress = new Uri("https://api.polygon.io") };
+        HttpClient httpClient = new HttpClient { BaseAddress = new Uri("https://api.polygon.io") };
         httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Alaris/1.0 (Quantitative Trading System)");
         return RestService.For<IPolygonApi>(httpClient);
     }
     
     private static INasdaqCalendarApi CreateNasdaqApi()
     {
-        var httpClient = new HttpClient { BaseAddress = new Uri("https://api.nasdaq.com") };
+        HttpClient httpClient = new HttpClient { BaseAddress = new Uri("https://api.nasdaq.com") };
         httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
         httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         return RestService.For<INasdaqCalendarApi>(httpClient);
@@ -429,7 +478,7 @@ internal static class DependencyFactory
     
     private static ITreasuryDirectApi CreateTreasuryApi()
     {
-        var httpClient = new HttpClient { BaseAddress = new Uri("https://www.treasurydirect.gov/TA_WS/securities") };
+        HttpClient httpClient = new HttpClient { BaseAddress = new Uri("https://www.treasurydirect.gov/TA_WS/securities") };
         httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Alaris/1.0 (Quantitative Trading System)");
         return RestService.For<ITreasuryDirectApi>(httpClient);
     }
@@ -478,21 +527,21 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
     public override async Task<int> ExecuteAsync(CommandContext context, BacktestRunSettings settings)
     {
         // Initialize FSM for deterministic state tracking
-        var fsm = PLWF002A.Create();
+        PLWF002A fsm = PLWF002A.Create();
         fsm.OnTransition += record => 
         {
             if (record.Succeeded)
                 AnsiConsole.MarkupLine($"[grey]FSM: {record.FromState} → {record.ToState}[/]");
         };
         
-        var service = new APsv001A();
+        APsv001A service = new APsv001A();
 
         string? sessionId = settings.SessionId;
 
         if (settings.Latest || string.IsNullOrEmpty(sessionId))
         {
-            var sessions = await service.ListAsync();
-            var latest = sessions.Count > 0 ? sessions[0] : null;
+            IReadOnlyList<APmd001A> sessions = await service.ListAsync();
+            APmd001A? latest = sessions.Count > 0 ? sessions[0] : null;
 
             if (latest == null)
             {
@@ -504,7 +553,7 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
             AnsiConsole.MarkupLine($"[grey]Using latest session: {sessionId}[/]");
         }
 
-        var session = await service.GetAsync(sessionId);
+        APmd001A? session = await service.GetAsync(sessionId);
         if (session == null)
         {
             AnsiConsole.MarkupLine($"[red]Session not found: {sessionId}[/]");
@@ -516,14 +565,16 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
 
         AnsiConsole.MarkupLine($"[blue]Running session:[/] {session.SessionId}");
         AnsiConsole.MarkupLine($"[blue]Date Range:[/] {session.StartDate:yyyy-MM-dd} to {session.EndDate:yyyy-MM-dd}");
-        AnsiConsole.MarkupLine($"[blue]Symbols:[/] {string.Join(", ", session.Symbols.Take(10))}{(session.Symbols.Count > 10 ? "..." : "")}");
+        string symbolPreview = BacktestFormatting.BuildSymbolPreview(session.Symbols, 10);
+        string symbolDisplay = symbolPreview.Length == 0 ? "(none)" : symbolPreview;
+        AnsiConsole.MarkupLine($"[blue]Symbols:[/] {symbolDisplay}");
         AnsiConsole.WriteLine();
 
         // FSM: SessionSelected → DataChecking
         fsm.Fire(BacktestEvent.CheckData);
 
-        var dataPath = service.GetDataPath(session.SessionId);
-        var (pricesMissing, earningsMissing, optionsMissing) = CheckDataAvailability(dataPath, session);
+        string dataPath = service.GetDataPath(session.SessionId);
+        (bool pricesMissing, bool earningsMissing, bool optionsMissing) = CheckDataAvailability(dataPath, session);
 
         if (pricesMissing || earningsMissing || optionsMissing)
         {
@@ -555,7 +606,7 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
             }
             else
             {
-                var download = AnsiConsole.Confirm("Download missing data now?", defaultValue: true);
+                bool download = AnsiConsole.Confirm("Download missing data now?", defaultValue: true);
                 if (download)
                 {
                     try
@@ -614,7 +665,7 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
         }
 
         // Update status based on result
-        var finalStatus = exitCode == 0 ? SessionStatus.Completed : SessionStatus.Failed;
+        SessionStatus finalStatus = exitCode == 0 ? SessionStatus.Completed : SessionStatus.Failed;
         await service.UpdateAsync(session with 
         { 
             Status = finalStatus, 
@@ -640,16 +691,16 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
     private static (bool pricesMissing, bool earningsMissing, bool optionsMissing) CheckDataAvailability(string dataPath, APmd001A session)
     {
         // Check for price data (LEAN equity folder structure)
-        var equityPath = System.IO.Path.Combine(dataPath, "equity", "usa", "daily");
-        var hasPrices = Directory.Exists(equityPath) && Directory.GetFiles(equityPath, "*.zip").Length > 0;
+        string equityPath = System.IO.Path.Combine(dataPath, "equity", "usa", "daily");
+        bool hasPrices = Directory.Exists(equityPath) && Directory.GetFiles(equityPath, "*.zip").Length > 0;
 
         // Check for earnings cache
-        var earningsPath = System.IO.Path.Combine(dataPath, "earnings", "nasdaq");
-        var hasEarnings = Directory.Exists(earningsPath) && Directory.GetFiles(earningsPath, "*.json").Length > 0;
+        string earningsPath = System.IO.Path.Combine(dataPath, "earnings", "nasdaq");
+        bool hasEarnings = Directory.Exists(earningsPath) && Directory.GetFiles(earningsPath, "*.json").Length > 0;
 
         // Check for options data (mandatory for strategy)
-        var optionsPath = System.IO.Path.Combine(dataPath, "options");
-        var hasOptions = Directory.Exists(optionsPath) && Directory.GetFiles(optionsPath, "*.json").Length > 0;
+        string optionsPath = System.IO.Path.Combine(dataPath, "options");
+        bool hasOptions = Directory.Exists(optionsPath) && Directory.GetFiles(optionsPath, "*.json").Length > 0;
 
         return (!hasPrices, !hasEarnings, !hasOptions);
     }
@@ -660,30 +711,30 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
         AnsiConsole.WriteLine();
         
         // Create configuration
-        var config = new ConfigurationBuilder()
+        IConfiguration config = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.jsonc", optional: true)
             .AddJsonFile("appsettings.local.jsonc", optional: true)
             .AddEnvironmentVariables("ALARIS_")
             .Build();
 
-        var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Warning));
+        ILoggerFactory loggerFactory = LoggerFactory.Create(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Warning));
         
         // Create Polygon client for price data
-        var polygonHttpClient = new HttpClient { BaseAddress = new Uri("https://api.polygon.io") };
+        HttpClient polygonHttpClient = new HttpClient { BaseAddress = new Uri("https://api.polygon.io") };
         polygonHttpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Alaris/1.0");
-        var polygonApi = RestService.For<IPolygonApi>(polygonHttpClient);
-        var polygonClient = new PolygonApiClient(polygonApi, config, loggerFactory.CreateLogger<PolygonApiClient>());
+        IPolygonApi polygonApi = RestService.For<IPolygonApi>(polygonHttpClient);
+        PolygonApiClient polygonClient = new PolygonApiClient(polygonApi, config, loggerFactory.CreateLogger<PolygonApiClient>());
 
         // Create NASDAQ client for earnings calendar
-        var nasdaqHttpClient = new HttpClient { BaseAddress = new Uri("https://api.nasdaq.com") };
+        HttpClient nasdaqHttpClient = new HttpClient { BaseAddress = new Uri("https://api.nasdaq.com") };
         nasdaqHttpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
         nasdaqHttpClient.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
-        var nasdaqApi = RestService.For<INasdaqCalendarApi>(nasdaqHttpClient);
-        var earningsProvider = new NasdaqEarningsProvider(nasdaqApi, loggerFactory.CreateLogger<NasdaqEarningsProvider>());
+        INasdaqCalendarApi nasdaqApi = RestService.For<INasdaqCalendarApi>(nasdaqHttpClient);
+        NasdaqEarningsProvider earningsProvider = new NasdaqEarningsProvider(nasdaqApi, loggerFactory.CreateLogger<NasdaqEarningsProvider>());
 
         // Create data service with both providers
-        using var dataService = new APsv002A(
+        using APsv002A dataService = new APsv002A(
             polygonClient, 
             earningsProvider, 
             null, 
@@ -705,7 +756,7 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
         AnsiConsole.WriteLine();
         
         // Use data path so algorithm can find cached earnings at {data}/earnings/nasdaq/
-        var daysDownloaded = await dataService.BootstrapEarningsCalendarAsync(
+        int daysDownloaded = await dataService.BootstrapEarningsCalendarAsync(
             session.StartDate,
             session.EndDate.AddDays(120), // Fetch 120 days of future earnings for lookahead logic
             dataPath,
@@ -721,17 +772,17 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
         AnsiConsole.MarkupLine("[grey]  (Uses market prices to calculate Black-Scholes IV)[/]");
         AnsiConsole.WriteLine();
         
-        var earningsDates = GetEarningsDatesFromCache(dataPath, session.StartDate, session.EndDate);
+        List<DateTime> earningsDates = GetEarningsDatesFromCache(dataPath, session.StartDate, session.EndDate);
         if (earningsDates.Count > 0)
         {
             // For each earnings date, get options for evaluation dates 7-21 days before (strategy entry window)
-            var evaluationDates = new HashSet<DateTime>();
-            foreach (var earningsDate in earningsDates)
+            HashSet<DateTime> evaluationDates = new HashSet<DateTime>();
+            foreach (DateTime earningsDate in earningsDates)
             {
                 // Strategy evaluates 7-21 days before earnings
                 for (int daysBeforeEarnings = 7; daysBeforeEarnings <= 21; daysBeforeEarnings += 7)
                 {
-                    var evalDate = earningsDate.AddDays(-daysBeforeEarnings).Date;
+                    DateTime evalDate = earningsDate.AddDays(-daysBeforeEarnings).Date;
                     if (evalDate >= session.StartDate && evalDate <= session.EndDate)
                     {
                         evaluationDates.Add(evalDate);
@@ -741,9 +792,11 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
             
             if (evaluationDates.Count > 0)
             {
-                var optionsDownloaded = await dataService.BootstrapOptionsDataAsync(
+                List<DateTime> orderedDates = new List<DateTime>(evaluationDates);
+                orderedDates.Sort();
+                int optionsDownloaded = await dataService.BootstrapOptionsDataAsync(
                     session.Symbols,
-                    evaluationDates.OrderBy(d => d),
+                    orderedDates,
                     dataPath,
                     CancellationToken.None);
                     
@@ -767,25 +820,26 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
     /// </summary>
     private static List<DateTime> GetEarningsDatesFromCache(string dataPath, DateTime startDate, DateTime endDate)
     {
-        var earningsDates = new List<DateTime>();
-        var earningsPath = System.IO.Path.Combine(dataPath, "earnings", "nasdaq");
+        List<DateTime> earningsDates = new List<DateTime>();
+        string earningsPath = System.IO.Path.Combine(dataPath, "earnings", "nasdaq");
         
         if (!Directory.Exists(earningsPath))
         {
             return earningsDates;
         }
         
-        foreach (var file in Directory.GetFiles(earningsPath, "*.json"))
+        string[] files = Directory.GetFiles(earningsPath, "*.json");
+        foreach (string file in files)
         {
-            var filename = System.IO.Path.GetFileNameWithoutExtension(file);
-            if (DateTime.TryParseExact(filename, "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out var date))
+            string filename = System.IO.Path.GetFileNameWithoutExtension(file);
+            if (DateTime.TryParseExact(filename, "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out DateTime date))
             {
                 if (date >= startDate && date <= endDate)
                 {
                     // Check if file has any earnings events
                     try
                     {
-                        var content = File.ReadAllText(file);
+                        string content = File.ReadAllText(file);
                         if (content.Length > 10 && !content.Contains("[]")) // Not empty
                         {
                             earningsDates.Add(date);
@@ -805,7 +859,7 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
     private static async Task<int> ExecuteLeanWithMonitoringAsync(APmd001A session, APsv001A service)
     {
         // Create monitoring panel
-        var rule = new Rule($"[blue]BACKTEST: {session.SessionId}[/]") { Justification = Justify.Left };
+        Rule rule = new Rule($"[blue]BACKTEST: {session.SessionId}[/]") { Justification = Justify.Left };
         AnsiConsole.Write(rule);
         AnsiConsole.MarkupLine($"[grey]Press Ctrl+C to cancel[/]");
         AnsiConsole.WriteLine();
@@ -817,8 +871,8 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
     private static async Task<int> ExecuteLeanForSession(APmd001A session, APsv001A service)
     {
         // Find config and launcher
-        var configPath = FindConfigPath();
-        var launcherPath = FindLeanLauncher();
+        string? configPath = FindConfigPath();
+        string? launcherPath = FindLeanLauncher();
 
         if (configPath == null || launcherPath == null)
         {
@@ -830,9 +884,9 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
         // Environment variables (QC_DATA_FOLDER) do NOT work - LEAN reads from config.json only
         // Config.Set() also doesn't work because it only affects THIS process, not the subprocess
         // Solution: Pass --data-folder as a command-line argument to the LEAN subprocess
-        var sessionDataPath = service.GetDataPath(session.SessionId);
+        string sessionDataPath = service.GetDataPath(session.SessionId);
 
-        var psi = new ProcessStartInfo
+        ProcessStartInfo psi = new ProcessStartInfo
         {
             FileName = "dotnet",
             Arguments = $"run --project \"{launcherPath}\" -- --data-folder \"{sessionDataPath}\" --close-automatically true",
@@ -856,7 +910,7 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
         psi.Environment["ALARIS_BACKTEST_STARTDATE"] = session.StartDate.ToString("yyyy-MM-dd");
         psi.Environment["ALARIS_BACKTEST_ENDDATE"] = session.EndDate.ToString("yyyy-MM-dd");
 
-        using var process = Process.Start(psi);
+        using Process? process = Process.Start(psi);
         if (process == null)
         {
             return 1;
@@ -871,7 +925,7 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
         {
             if (e.Data != null)
             {
-                var escaped = Markup.Escape(e.Data);
+                string escaped = Markup.Escape(e.Data);
                 AnsiConsole.MarkupLine($"[red]{escaped}[/]");
             }
         };
@@ -885,19 +939,33 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
 
     private static string? FindConfigPath()
     {
-        var paths = new[] { "config.json", "../config.json", "../../config.json" };
-        return paths.FirstOrDefault(File.Exists) is string p ? System.IO.Path.GetFullPath(p) : null;
+        string[] paths = new[] { "config.json", "../config.json", "../../config.json" };
+        foreach (string path in paths)
+        {
+            if (File.Exists(path))
+            {
+                return System.IO.Path.GetFullPath(path);
+            }
+        }
+        return null;
     }
 
     private static string? FindLeanLauncher()
     {
-        var paths = new[] 
+        string[] paths = new[] 
         { 
             "Alaris.Lean/Launcher/QuantConnect.Lean.Launcher.csproj",
             "../Alaris.Lean/Launcher/QuantConnect.Lean.Launcher.csproj",
             "../../Alaris.Lean/Launcher/QuantConnect.Lean.Launcher.csproj"
         };
-        return paths.FirstOrDefault(File.Exists) is string p ? System.IO.Path.GetFullPath(p) : null;
+        foreach (string path in paths)
+        {
+            if (File.Exists(path))
+            {
+                return System.IO.Path.GetFullPath(path);
+            }
+        }
+        return null;
     }
 }
 
@@ -921,8 +989,8 @@ public sealed class BacktestListCommand : AsyncCommand<BacktestListSettings>
 {
     public override async Task<int> ExecuteAsync(CommandContext context, BacktestListSettings settings)
     {
-        var service = new APsv001A();
-        var sessions = await service.ListAsync();
+        APsv001A service = new APsv001A();
+        IReadOnlyList<APmd001A> sessions = await service.ListAsync();
 
         if (sessions.Count == 0)
         {
@@ -931,7 +999,7 @@ public sealed class BacktestListCommand : AsyncCommand<BacktestListSettings>
             return 0;
         }
 
-        var table = new Table()
+        Table table = new Table()
             .Border(TableBorder.Rounded)
             .AddColumn("[bold]Session ID[/]")
             .AddColumn("[bold]Date Range[/]")
@@ -939,9 +1007,9 @@ public sealed class BacktestListCommand : AsyncCommand<BacktestListSettings>
             .AddColumn("[bold]Created[/]")
             .AddColumn("[bold]Symbols[/]");
 
-        foreach (var session in sessions)
+        foreach (APmd001A session in sessions)
         {
-            var statusColor = session.Status switch
+            string statusColor = session.Status switch
             {
                 SessionStatus.Completed => "green",
                 SessionStatus.Failed => "red",
@@ -988,8 +1056,8 @@ public sealed class BacktestDeleteCommand : AsyncCommand<BacktestDeleteSettings>
 {
     public override async Task<int> ExecuteAsync(CommandContext context, BacktestDeleteSettings settings)
     {
-        var service = new APsv001A();
-        var session = await service.GetAsync(settings.SessionId);
+        APsv001A service = new APsv001A();
+        APmd001A? session = await service.GetAsync(settings.SessionId);
 
         if (session == null)
         {
@@ -999,7 +1067,7 @@ public sealed class BacktestDeleteCommand : AsyncCommand<BacktestDeleteSettings>
 
         if (!settings.Force)
         {
-            var confirm = AnsiConsole.Confirm(
+            bool confirm = AnsiConsole.Confirm(
                 $"[yellow]Delete session {session.SessionId} and all its data?[/]",
                 defaultValue: false);
 
@@ -1048,8 +1116,8 @@ public sealed class BacktestViewCommand : AsyncCommand<BacktestViewSettings>
 {
     public override async Task<int> ExecuteAsync(CommandContext context, BacktestViewSettings settings)
     {
-        var service = new APsv001A();
-        var session = await service.GetAsync(settings.SessionId);
+        APsv001A service = new APsv001A();
+        APmd001A? session = await service.GetAsync(settings.SessionId);
 
         if (session == null)
         {
@@ -1058,14 +1126,17 @@ public sealed class BacktestViewCommand : AsyncCommand<BacktestViewSettings>
         }
 
         // Session details panel
-        var panel = new Panel(new Markup(
+        string symbolPreview = BacktestFormatting.BuildSymbolPreview(session.Symbols, 10);
+        string symbolDisplay = symbolPreview.Length == 0 ? "(none)" : symbolPreview;
+
+        Panel panel = new Panel(new Markup(
             $"[bold]Session ID:[/] {session.SessionId}\n" +
             $"[bold]Date Range:[/] {session.StartDate:yyyy-MM-dd} to {session.EndDate:yyyy-MM-dd}\n" +
             $"[bold]Status:[/] {session.Status}\n" +
             $"[bold]Created:[/] {session.CreatedAt:yyyy-MM-dd HH:mm:ss}\n" +
             $"[bold]Updated:[/] {session.UpdatedAt:yyyy-MM-dd HH:mm:ss}\n" +
             $"[bold]Path:[/] {session.SessionPath}\n" +
-            $"[bold]Symbols:[/] {(session.Symbols.Count > 0 ? string.Join(", ", session.Symbols.Take(10)) + (session.Symbols.Count > 10 ? "..." : "") : "(none)")}"
+            $"[bold]Symbols:[/] {symbolDisplay}"
         ))
         {
             Header = new PanelHeader($"[bold blue]{session.SessionId}[/]"),
@@ -1080,7 +1151,7 @@ public sealed class BacktestViewCommand : AsyncCommand<BacktestViewSettings>
             AnsiConsole.WriteLine();
             AnsiConsole.MarkupLine("[bold]Statistics:[/]");
             
-            var statsTable = new Table()
+            Table statsTable = new Table()
                 .Border(TableBorder.None)
                 .HideHeaders()
                 .AddColumn("Metric")
@@ -1099,15 +1170,16 @@ public sealed class BacktestViewCommand : AsyncCommand<BacktestViewSettings>
         // Show logs if requested
         if (settings.ShowLogs)
         {
-            var logPath = System.IO.Path.Combine(service.GetResultsPath(session.SessionId), "log.txt");
+            string logPath = System.IO.Path.Combine(service.GetResultsPath(session.SessionId), "log.txt");
             if (File.Exists(logPath))
             {
                 AnsiConsole.WriteLine();
                 AnsiConsole.MarkupLine("[bold]Logs (last 50 lines):[/]");
-                var lines = await File.ReadAllLinesAsync(logPath);
-                foreach (var line in lines.TakeLast(50))
+                string[] lines = await File.ReadAllLinesAsync(logPath);
+                int start = lines.Length > 50 ? lines.Length - 50 : 0;
+                for (int i = start; i < lines.Length; i++)
                 {
-                    AnsiConsole.WriteLine(line);
+                    AnsiConsole.WriteLine(lines[i]);
                 }
             }
         }

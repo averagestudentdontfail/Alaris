@@ -19,8 +19,8 @@ public sealed class CLbt002A : AsyncCommand<BacktestAnalyzeSettings>
         CLif003A.Info($"Analyzing backtest results: {settings.SessionId}");
         AnsiConsole.WriteLine();
 
-        var sessionService = new APsv001A();
-        var session = await sessionService.GetAsync(settings.SessionId);
+        APsv001A sessionService = new APsv001A();
+        APmd001A? session = await sessionService.GetAsync(settings.SessionId);
 
         if (session == null)
         {
@@ -43,17 +43,28 @@ public sealed class CLbt002A : AsyncCommand<BacktestAnalyzeSettings>
         }
 
         // Parse statistics from latest result
-        string latestResult = jsonFiles.OrderByDescending(f => File.GetLastWriteTime(f)).First();
+        string latestResult = jsonFiles[0];
+        DateTime latestWrite = File.GetLastWriteTime(latestResult);
+        for (int i = 1; i < jsonFiles.Length; i++)
+        {
+            string candidate = jsonFiles[i];
+            DateTime candidateWrite = File.GetLastWriteTime(candidate);
+            if (candidateWrite > latestWrite)
+            {
+                latestWrite = candidateWrite;
+                latestResult = candidate;
+            }
+        }
         
         try
         {
             string content = await File.ReadAllTextAsync(latestResult);
-            var doc = System.Text.Json.JsonDocument.Parse(content);
+            System.Text.Json.JsonDocument doc = System.Text.Json.JsonDocument.Parse(content);
 
             // Extract key metrics
-            var metrics = new List<(string Key, string Value)>();
+            List<(string Key, string Value)> metrics = new List<(string Key, string Value)>();
 
-            if (doc.RootElement.TryGetProperty("Statistics", out var stats))
+            if (doc.RootElement.TryGetProperty("Statistics", out System.Text.Json.JsonElement stats))
             {
                 string[] keyMetrics = {
                     "Total Trades", "Average Win", "Average Loss", "Win Rate",
@@ -63,7 +74,7 @@ public sealed class CLbt002A : AsyncCommand<BacktestAnalyzeSettings>
 
                 foreach (string metric in keyMetrics)
                 {
-                    if (stats.TryGetProperty(metric, out var value))
+                    if (stats.TryGetProperty(metric, out System.Text.Json.JsonElement value))
                     {
                         string formattedValue = value.GetString() ?? value.ToString();
                         metrics.Add((metric, formattedValue));
@@ -81,8 +92,8 @@ public sealed class CLbt002A : AsyncCommand<BacktestAnalyzeSettings>
             }
 
             // Show equity summary if available
-            if (doc.RootElement.TryGetProperty("Charts", out var charts) &&
-                charts.TryGetProperty("Strategy Equity", out var equityChart))
+            if (doc.RootElement.TryGetProperty("Charts", out System.Text.Json.JsonElement charts) &&
+                charts.TryGetProperty("Strategy Equity", out System.Text.Json.JsonElement equityChart))
             {
                 AnsiConsole.WriteLine();
                 CLif003A.Info("Equity data available. Use '--format json' for full data.");

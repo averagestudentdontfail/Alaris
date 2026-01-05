@@ -14,7 +14,7 @@ public sealed class CLst001A : Command<CLif004A>
 {
     public override int Execute(CommandContext context, CLif004A settings)
     {
-        var table = new Table()
+        Table table = new Table()
             .Border(TableBorder.Rounded)
             .BorderColor(Color.Grey)
             .Title("[bold]Available Strategies[/]");

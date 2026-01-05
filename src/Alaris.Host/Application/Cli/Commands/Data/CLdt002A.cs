@@ -16,8 +16,9 @@ public sealed class CLdt002A : AsyncCommand<DataStatusSettings>
 {
     public override async Task<int> ExecuteAsync(CommandContext context, DataStatusSettings settings)
     {
-        var sessionService = new APsv001A();
-        var sessions = await sessionService.ListAsync();
+        APsv001A sessionService = new APsv001A();
+        IReadOnlyList<APmd001A> allSessions = await sessionService.ListAsync();
+        List<APmd001A> sessions = new List<APmd001A>(allSessions);
 
         if (sessions.Count == 0)
         {
@@ -28,7 +29,15 @@ public sealed class CLdt002A : AsyncCommand<DataStatusSettings>
         // Filter if session specified
         if (!string.IsNullOrEmpty(settings.SessionId))
         {
-            sessions = sessions.Where(s => s.SessionId == settings.SessionId).ToList();
+            List<APmd001A> filtered = new List<APmd001A>();
+            foreach (APmd001A session in sessions)
+            {
+                if (session.SessionId == settings.SessionId)
+                {
+                    filtered.Add(session);
+                }
+            }
+            sessions = filtered;
             if (sessions.Count == 0)
             {
                 CLif003A.Error($"Session not found: {settings.SessionId}");
@@ -37,7 +46,7 @@ public sealed class CLdt002A : AsyncCommand<DataStatusSettings>
         }
 
         // Build status table
-        var table = new Table()
+        Table table = new Table()
             .Border(TableBorder.Rounded)
             .BorderColor(Color.Grey)
             .Title("[bold]Data Status[/]");
@@ -49,7 +58,7 @@ public sealed class CLdt002A : AsyncCommand<DataStatusSettings>
         table.AddColumn("[grey]Options[/]");
         table.AddColumn("[grey]Earnings[/]");
 
-        foreach (var session in sessions)
+        foreach (APmd001A session in sessions)
         {
             string dataPath = sessionService.GetDataPath(session.SessionId);
             

@@ -16,8 +16,8 @@ public sealed class CLbt003A : AsyncCommand<BacktestListSettings>
 {
     public override async Task<int> ExecuteAsync(CommandContext context, BacktestListSettings settings)
     {
-        var sessionService = new APsv001A();
-        var sessions = await sessionService.ListAsync();
+        APsv001A sessionService = new APsv001A();
+        IReadOnlyList<APmd001A> sessions = await sessionService.ListAsync();
 
         if (sessions.Count == 0)
         {
@@ -28,12 +28,16 @@ public sealed class CLbt003A : AsyncCommand<BacktestListSettings>
         }
 
         // Sort by creation date (newest first) and limit
-        var displaySessions = sessions
-            .OrderByDescending(s => s.CreatedAt)
-            .Take(settings.Limit)
-            .ToList();
+        List<APmd001A> displaySessions = new List<APmd001A>(sessions);
+        displaySessions.Sort((left, right) => right.CreatedAt.CompareTo(left.CreatedAt));
 
-        var table = new Table()
+        int limit = settings.Limit < 0 ? 0 : settings.Limit;
+        if (limit == 0 || limit > displaySessions.Count)
+        {
+            limit = displaySessions.Count;
+        }
+
+        Table table = new Table()
             .Border(TableBorder.Rounded)
             .BorderColor(Color.Grey)
             .Title("[bold]Backtest Sessions[/]");
@@ -44,8 +48,9 @@ public sealed class CLbt003A : AsyncCommand<BacktestListSettings>
         table.AddColumn(new TableColumn("[grey]Created[/]").Centered());
         table.AddColumn(new TableColumn("[grey]Status[/]").Centered());
 
-        foreach (var session in displaySessions)
+        for (int i = 0; i < limit; i++)
         {
+            APmd001A session = displaySessions[i];
             string dataPath = sessionService.GetDataPath(session.SessionId);
             string resultsPath = System.IO.Path.Combine(dataPath, "..", "results");
 
@@ -68,10 +73,10 @@ public sealed class CLbt003A : AsyncCommand<BacktestListSettings>
 
         AnsiConsole.Write(table);
 
-        if (sessions.Count > settings.Limit)
+        if (sessions.Count > limit)
         {
             AnsiConsole.WriteLine();
-            CLif003A.Info($"Showing {settings.Limit} of {sessions.Count} sessions. Use --limit to see more.");
+            CLif003A.Info($"Showing {limit} of {sessions.Count} sessions. Use --limit to see more.");
         }
 
         return 0;

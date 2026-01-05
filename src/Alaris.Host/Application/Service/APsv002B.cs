@@ -3,7 +3,6 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -53,6 +52,21 @@ public sealed class APsv002B : IDisposable
         int maxSymbols = DefaultMaxSymbols,
         CancellationToken cancellationToken = default)
     {
+        if (maxSymbols <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maxSymbols), "Max symbols must be positive.");
+        }
+
+        if (minPrice < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(minPrice), "Minimum price must be non-negative.");
+        }
+
+        if (minDollarVolume < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(minDollarVolume), "Minimum dollar volume must be non-negative.");
+        }
+
         if (string.IsNullOrEmpty(_apiKey))
         {
             _logger.LogError("Polygon API key not configured. Cannot perform stock screening.");
@@ -64,19 +78,19 @@ public sealed class APsv002B : IDisposable
         {
             // Use the most recent trading day considering holidays
             // Retry up to 5 days back if market is closed (Polygon returns 0 results)
-            var currentParamsDate = GetMostRecentTradingDay(date);
+            DateTime currentParamsDate = GetMostRecentTradingDay(date);
             PolygonGroupedResponse? response = null;
-            var attempts = 0;
+            int attempts = 0;
             const int MaxAttempts = 5;
 
             while (attempts < MaxAttempts)
             {
-                var dateStr = currentParamsDate.ToString("yyyy-MM-dd");
+                string dateStr = currentParamsDate.ToString("yyyy-MM-dd");
                 
                 _logger.LogInformation("Screening stocks for {Date} (Attempt {Attempt}/{Max})", dateStr, attempts + 1, MaxAttempts);
                 
-                var url = $"https://api.polygon.io/v2/aggs/grouped/locale/us/market/stocks/{dateStr}?adjusted=true&apiKey={_apiKey}";
-                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = false };
+                string url = $"https://api.polygon.io/v2/aggs/grouped/locale/us/market/stocks/{dateStr}?adjusted=true&apiKey={_apiKey}";
+                JsonSerializerOptions options = new JsonSerializerOptions { PropertyNameCaseInsensitive = false };
                 
                 try 
                 {
@@ -112,16 +126,41 @@ public sealed class APsv002B : IDisposable
             }
             
             // Filter and sort by dollar volume
-            var filteredSymbols = response.Results
-                .Where(r => !string.IsNullOrEmpty(r.Ticker))
-                .Where(r => !r.Ticker!.Contains('.'))  // Exclude preferred/class shares
-                .Where(r => r.Ticker!.Length <= 5)     // Exclude warrants/units (usually > 5 chars)
-                .Where(r => r.Close >= minPrice)
-                .Where(r => r.Close * (decimal)r.Volume >= minDollarVolume)
-                .OrderByDescending(r => r.Close * (decimal)r.Volume)
-                .Take(maxSymbols)
-                .Select(r => r.Ticker!.ToUpperInvariant())
-                .ToList();
+            List<(string Symbol, decimal DollarVolume)> eligible = new List<(string Symbol, decimal DollarVolume)>();
+            PolygonGroupedResult[] results = response.Results;
+
+            for (int i = 0; i < results.Length; i++)
+            {
+                PolygonGroupedResult result = results[i];
+                string? ticker = result.Ticker;
+
+                if (!IsEligibleTicker(ticker))
+                {
+                    continue;
+                }
+
+                if (result.Close < minPrice)
+                {
+                    continue;
+                }
+
+                decimal dollarVolume = result.Close * (decimal)result.Volume;
+                if (dollarVolume < minDollarVolume)
+                {
+                    continue;
+                }
+
+                eligible.Add((ticker!.ToUpperInvariant(), dollarVolume));
+            }
+
+            eligible.Sort(static (left, right) => right.DollarVolume.CompareTo(left.DollarVolume));
+
+            int takeCount = Math.Min(maxSymbols, eligible.Count);
+            List<string> filteredSymbols = new List<string>(takeCount);
+            for (int i = 0; i < takeCount; i++)
+            {
+                filteredSymbols.Add(eligible[i].Symbol);
+            }
             
             _logger.LogInformation("Screened {Count} symbols from {Total} total", 
                 filteredSymbols.Count, response.Results.Length);
@@ -155,7 +194,7 @@ public sealed class APsv002B : IDisposable
     /// </summary>
     private static DateTime GetMostRecentTradingDay(DateTime date)
     {
-        var current = date.Date;
+        DateTime current = date.Date;
         
         // If date is in future, use yesterday
         if (current >= DateTime.Today)
@@ -170,6 +209,21 @@ public sealed class APsv002B : IDisposable
         }
         
         return current;
+    }
+
+    private static bool IsEligibleTicker(string? ticker)
+    {
+        if (string.IsNullOrWhiteSpace(ticker))
+        {
+            return false;
+        }
+
+        if (ticker.Contains('.', StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        return ticker.Length <= 5;
     }
     
     public void Dispose()

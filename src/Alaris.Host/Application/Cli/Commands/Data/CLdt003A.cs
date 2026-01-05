@@ -19,8 +19,8 @@ public sealed class CLdt003A : AsyncCommand<DataValidateSettings>
         CLif003A.Info($"Validating data for session: {settings.SessionId}");
         AnsiConsole.WriteLine();
 
-        var sessionService = new APsv001A();
-        var session = await sessionService.GetAsync(settings.SessionId);
+        APsv001A sessionService = new APsv001A();
+        APmd001A? session = await sessionService.GetAsync(settings.SessionId);
 
         if (session == null)
         {
@@ -34,19 +34,19 @@ public sealed class CLdt003A : AsyncCommand<DataValidateSettings>
 
         await CLif003A.WithProgressAsync("Validating", async ctx =>
         {
-            var task = ctx.AddTask("[blue]Checking data integrity[/]", maxValue: 4);
+            ProgressTask task = ctx.AddTask("[blue]Checking data integrity[/]", maxValue: 4);
 
             // 1. Check price data
             task.Description = "[blue]Checking price data...[/]";
             string pricesPath = System.IO.Path.Combine(dataPath, "equity", "usa", "daily");
             if (Directory.Exists(pricesPath))
             {
-                var zipFiles = Directory.GetFiles(pricesPath, "*.zip");
-                foreach (var zip in zipFiles)
+                string[] zipFiles = Directory.GetFiles(pricesPath, "*.zip");
+                foreach (string zip in zipFiles)
                 {
                     try
                     {
-                        using var archive = System.IO.Compression.ZipFile.OpenRead(zip);
+                        using System.IO.Compression.ZipArchive archive = System.IO.Compression.ZipFile.OpenRead(zip);
                         if (archive.Entries.Count == 0)
                         {
                             warnings++;
@@ -73,8 +73,8 @@ public sealed class CLdt003A : AsyncCommand<DataValidateSettings>
             string optionsPath = System.IO.Path.Combine(dataPath, "options");
             if (Directory.Exists(optionsPath))
             {
-                var jsonFiles = Directory.GetFiles(optionsPath, "*.json");
-                foreach (var json in jsonFiles)
+                string[] jsonFiles = Directory.GetFiles(optionsPath, "*.json");
+                foreach (string json in jsonFiles)
                 {
                     try
                     {
@@ -98,7 +98,7 @@ public sealed class CLdt003A : AsyncCommand<DataValidateSettings>
             // 3. Check system files
             task.Description = "[blue]Checking system files...[/]";
             string[] requiredDirs = { "market-hours", "symbol-properties" };
-            foreach (var dir in requiredDirs)
+            foreach (string dir in requiredDirs)
             {
                 string path = System.IO.Path.Combine(dataPath, dir);
                 if (!Directory.Exists(path))

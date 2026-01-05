@@ -19,7 +19,7 @@ public sealed class CLtr003A : Command<TradeSignalsSettings>
         AnsiConsole.WriteLine();
 
         // Would read from live signal queue
-        var table = new Table()
+        Table table = new Table()
             .Border(TableBorder.Rounded)
             .BorderColor(Color.Grey)
             .Title("[bold]Trading Signals[/]");

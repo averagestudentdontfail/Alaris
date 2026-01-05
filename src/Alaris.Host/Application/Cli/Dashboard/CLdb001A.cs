@@ -81,7 +81,7 @@ public sealed class CLdb001A : IDisposable
 
     private IRenderable BuildDashboard()
     {
-        var layout = new Layout("Root")
+        Layout layout = new Layout("Root")
             .SplitRows(
                 new Layout("Header").Size(3),
                 new Layout("Content").SplitColumns(
@@ -111,7 +111,7 @@ public sealed class CLdb001A : IDisposable
             double progress = _lastStatus?.ProgressPercent ?? 0;
             string remaining = _lastStatus?.EstimatedRemaining?.ToString(@"hh\:mm\:ss") ?? "--:--:--";
 
-            var content = new Markup(
+            Markup content = new Markup(
                 $"[bold blue]ALARIS[/] │ Mode: [yellow]{mode}[/] │ " +
                 $"Status: [green]{status}[/] │ " +
                 $"Progress: [blue]{progress:F1}%[/] │ " +
@@ -137,24 +137,41 @@ public sealed class CLdb001A : IDisposable
             }
 
             // Build simple text-based chart using bar characters
-            decimal maxEquity = _equityHistory.Max(e => e.Equity);
-            decimal minEquity = _equityHistory.Min(e => e.Equity);
+            decimal maxEquity = decimal.MinValue;
+            decimal minEquity = decimal.MaxValue;
+            for (int i = 0; i < _equityHistory.Count; i++)
+            {
+                decimal equity = _equityHistory[i].Equity;
+                if (equity > maxEquity)
+                {
+                    maxEquity = equity;
+                }
+                if (equity < minEquity)
+                {
+                    minEquity = equity;
+                }
+            }
             decimal range = maxEquity - minEquity;
             
             if (range == 0) range = 1;
 
             const int chartHeight = 8;
-            var chartLines = new string[chartHeight];
+            string[] chartLines = new string[chartHeight];
             
             // Sample points for display
-            var points = _equityHistory.TakeLast(50).ToList();
+            int pointCount = _equityHistory.Count > 50 ? 50 : _equityHistory.Count;
+            List<EquityUpdate> points = new List<EquityUpdate>(pointCount);
+            for (int i = _equityHistory.Count - pointCount; i < _equityHistory.Count; i++)
+            {
+                points.Add(_equityHistory[i]);
+            }
             
             for (int row = 0; row < chartHeight; row++)
             {
                 decimal threshold = maxEquity - (range * row / (chartHeight - 1));
-                var line = new System.Text.StringBuilder();
+                System.Text.StringBuilder line = new System.Text.StringBuilder();
                 
-                foreach (var point in points)
+                foreach (EquityUpdate point in points)
                 {
                     char c = point.Equity >= threshold ? '█' : ' ';
                     line.Append(c);
@@ -163,12 +180,12 @@ public sealed class CLdb001A : IDisposable
                 chartLines[row] = line.ToString();
             }
 
-            decimal currentEquity = _equityHistory.Last().Equity;
-            decimal startEquity = _equityHistory.First().Equity;
+            decimal currentEquity = _equityHistory[_equityHistory.Count - 1].Equity;
+            decimal startEquity = _equityHistory[0].Equity;
             decimal pnl = currentEquity - startEquity;
             string pnlColor = pnl >= 0 ? "green" : "red";
 
-            var content = new Rows(
+            Rows content = new Rows(
                 new Text(string.Join("\n", chartLines)),
                 new Markup($"\n[bold]Current:[/] ${currentEquity:N2} ([{pnlColor}]{pnl:+#,##0.00;-#,##0.00}[/])"));
 
@@ -191,21 +208,21 @@ public sealed class CLdb001A : IDisposable
                     .BorderColor(Color.Grey);
             }
 
-            decimal startEquity = _equityHistory.First().Equity;
-            decimal currentEquity = _equityHistory.Last().Equity;
+            decimal startEquity = _equityHistory[0].Equity;
+            decimal currentEquity = _equityHistory[_equityHistory.Count - 1].Equity;
             decimal returnPct = startEquity > 0 ? (currentEquity - startEquity) / startEquity * 100 : 0;
 
             // Calculate drawdown
             decimal peak = startEquity;
             decimal maxDrawdown = 0;
-            foreach (var e in _equityHistory)
+            foreach (EquityUpdate e in _equityHistory)
             {
                 if (e.Equity > peak) peak = e.Equity;
                 decimal dd = (peak - e.Equity) / peak * 100;
                 if (dd > maxDrawdown) maxDrawdown = dd;
             }
 
-            var table = new Table()
+            Table table = new Table()
                 .Border(TableBorder.None)
                 .HideHeaders()
                 .AddColumn("Metric")
@@ -216,8 +233,14 @@ public sealed class CLdb001A : IDisposable
             table.AddRow("Max DD", $"[red]{maxDrawdown:F2}%[/]");
             table.AddRow("Trades", $"{_trades.Count}");
             
-            int winners = _trades.Count(t => t.PnL > 0);
-            int losers = _trades.Count(t => t.PnL < 0);
+            int winners = 0;
+            foreach (TradeUpdate trade in _trades)
+            {
+                if (trade.PnL > 0)
+                {
+                    winners++;
+                }
+            }
             double winRate = _trades.Count > 0 ? (double)winners / _trades.Count * 100 : 0;
             table.AddRow("Win Rate", $"{winRate:F0}%");
 
@@ -232,7 +255,7 @@ public sealed class CLdb001A : IDisposable
     {
         lock (_lock)
         {
-            var table = new Table()
+            Table table = new Table()
                 .Border(TableBorder.Simple)
                 .BorderColor(Color.Grey)
                 .AddColumn("[grey]Time[/]")
@@ -241,8 +264,10 @@ public sealed class CLdb001A : IDisposable
                 .AddColumn("[grey]Qty[/]")
                 .AddColumn("[grey]Price[/]");
 
-            foreach (var trade in _trades.TakeLast(10))
+            int tradeCount = _trades.Count > 10 ? 10 : _trades.Count;
+            for (int i = _trades.Count - tradeCount; i < _trades.Count; i++)
             {
+                TradeUpdate trade = _trades[i];
                 string dirColor = trade.Direction == "BUY" ? "green" : "red";
                 table.AddRow(
                     $"{trade.Timestamp:HH:mm:ss}",

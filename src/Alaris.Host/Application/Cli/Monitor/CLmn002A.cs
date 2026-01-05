@@ -60,8 +60,6 @@ public sealed class CLmn002A : CLmn001A, IDisposable
 
     private async Task MonitorLoopAsync(CancellationToken ct)
     {
-        var sw = Stopwatch.StartNew();
-
         while (!ct.IsCancellationRequested)
         {
             try
@@ -90,8 +88,10 @@ public sealed class CLmn002A : CLmn001A, IDisposable
             string[] lines = await File.ReadAllLinesAsync(logPath, ct);
             
             // Parse equity updates from log
-            foreach (string line in lines.TakeLast(20))
+            int start = lines.Length > 20 ? lines.Length - 20 : 0;
+            for (int i = start; i < lines.Length; i++)
             {
+                string line = lines[i];
                 if (line.Contains("Total Performance"))
                 {
                     // Parse performance line

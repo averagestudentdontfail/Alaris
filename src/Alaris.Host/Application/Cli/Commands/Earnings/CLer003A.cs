@@ -19,8 +19,8 @@ public sealed class CLer003A : AsyncCommand<EarningsCheckSettings>
         CLif003A.Info($"Checking earnings coverage for session: {settings.SessionId}");
         AnsiConsole.WriteLine();
 
-        var sessionService = new APsv001A();
-        var session = await sessionService.GetAsync(settings.SessionId);
+        APsv001A sessionService = new APsv001A();
+        APmd001A? session = await sessionService.GetAsync(settings.SessionId);
 
         if (session == null)
         {
@@ -33,28 +33,38 @@ public sealed class CLer003A : AsyncCommand<EarningsCheckSettings>
 
         // Calculate required dates
         int totalDays = (session.EndDate - session.StartDate).Days + 1;
-        int weekdays = Enumerable.Range(0, totalDays)
-            .Select(d => session.StartDate.AddDays(d))
-            .Count(d => d.DayOfWeek != DayOfWeek.Saturday && d.DayOfWeek != DayOfWeek.Sunday);
+        int weekdays = 0;
+        for (DateTime date = session.StartDate; date <= session.EndDate; date = date.AddDays(1))
+        {
+            if (date.DayOfWeek != DayOfWeek.Saturday && date.DayOfWeek != DayOfWeek.Sunday)
+            {
+                weekdays++;
+            }
+        }
 
         // Count cached dates
         int cachedDates = 0;
-        var missingDates = new List<DateTime>();
+        List<DateTime> missingDates = new List<DateTime>();
 
         if (Directory.Exists(nasdaqPath))
         {
-            var cachedFiles = Directory.GetFiles(nasdaqPath, "*.json")
-                .Select(f => System.IO.Path.GetFileNameWithoutExtension(f))
-                .Where(f => DateTime.TryParse(f, out _))
-                .Select(f => DateTime.Parse(f))
-                .ToHashSet();
+            string[] cachedFiles = Directory.GetFiles(nasdaqPath, "*.json");
+            HashSet<DateTime> cachedDatesSet = new HashSet<DateTime>();
+            foreach (string file in cachedFiles)
+            {
+                string name = System.IO.Path.GetFileNameWithoutExtension(file);
+                if (DateTime.TryParse(name, out DateTime parsed))
+                {
+                    cachedDatesSet.Add(parsed.Date);
+                }
+            }
 
             for (DateTime date = session.StartDate; date <= session.EndDate; date = date.AddDays(1))
             {
                 if (date.DayOfWeek == DayOfWeek.Saturday || date.DayOfWeek == DayOfWeek.Sunday)
                     continue;
 
-                if (cachedFiles.Contains(date))
+                if (cachedDatesSet.Contains(date.Date))
                     cachedDates++;
                 else
                     missingDates.Add(date);
@@ -87,9 +97,10 @@ public sealed class CLer003A : AsyncCommand<EarningsCheckSettings>
             AnsiConsole.WriteLine();
             CLif003A.Warning($"{missingDates.Count} missing dates. Sample:");
             
-            foreach (var date in missingDates.Take(5))
+            int sampleCount = missingDates.Count > 5 ? 5 : missingDates.Count;
+            for (int i = 0; i < sampleCount; i++)
             {
-                AnsiConsole.MarkupLine($"  [grey]• {date:yyyy-MM-dd}[/]");
+                AnsiConsole.MarkupLine($"  [grey]• {missingDates[i]:yyyy-MM-dd}[/]");
             }
             
             if (missingDates.Count > 5)

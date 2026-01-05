@@ -71,34 +71,39 @@ public sealed class APcm003A : Command<DataSettings>
 
     private static int DownloadData(DataSettings settings)
     {
-        var tickers = settings.Tickers ?? settings.Ticker;
-        if (tickers is null)
+        string? tickers = settings.Tickers ?? settings.Ticker;
+        if (string.IsNullOrWhiteSpace(tickers))
         {
             AnsiConsole.MarkupLine("[red]Ticker required. Use --ticker AAPL or --tickers AAPL,MSFT[/]");
             return 1;
         }
 
         // Validate dates
-        var fromDate = settings.FromDate ?? DateTime.Now.AddYears(-1).ToString("yyyyMMdd");
-        var toDate = settings.ToDate ?? DateTime.Now.ToString("yyyyMMdd");
+        string fromDate = settings.FromDate ?? DateTime.Now.AddYears(-1).ToString("yyyyMMdd");
+        string toDate = settings.ToDate ?? DateTime.Now.ToString("yyyyMMdd");
 
         // Parse dates
-        if (!DateTime.TryParseExact(fromDate, "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var startDate))
+        if (!DateTime.TryParseExact(fromDate, "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime startDate))
         {
             AnsiConsole.MarkupLine($"[red]Invalid from date: {fromDate}. Use YYYYMMDD format.[/]");
             return 1;
         }
 
-        if (!DateTime.TryParseExact(toDate, "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var endDate))
+        if (!DateTime.TryParseExact(toDate, "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime endDate))
         {
             AnsiConsole.MarkupLine($"[red]Invalid to date: {toDate}. Use YYYYMMDD format.[/]");
+            return 1;
+        }
+        if (endDate < startDate)
+        {
+            AnsiConsole.MarkupLine("[red]End date must be on or after start date.[/]");
             return 1;
         }
 
         AnsiConsole.MarkupLine("[bold blue]Polygon Data Download[/]");
         AnsiConsole.WriteLine();
 
-        var table = new Table();
+        Table table = new Table();
         table.AddColumn("[grey]Parameter[/]");
         table.AddColumn("[white]Value[/]");
         table.AddRow("Source", settings.Source);
@@ -111,7 +116,7 @@ public sealed class APcm003A : Command<DataSettings>
         AnsiConsole.WriteLine();
 
         // Get Polygon API key
-        var apiKey = GetPolygonApiKey();
+        string? apiKey = GetPolygonApiKey();
         if (string.IsNullOrEmpty(apiKey))
         {
             AnsiConsole.MarkupLine("[red]Polygon API key not found![/]");
@@ -123,18 +128,23 @@ public sealed class APcm003A : Command<DataSettings>
         AnsiConsole.WriteLine();
 
         // Download data for each ticker with rate limiting
-        var tickerList = tickers.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        var dataPath = FindOrCreateDataPath();
-        var totalBars = 0;
-        var tickerCount = 0;
+        string[] tickerList = tickers.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (tickerList.Length == 0)
+        {
+            AnsiConsole.MarkupLine("[red]No valid tickers provided.[/]");
+            return 1;
+        }
+        string dataPath = FindOrCreateDataPath();
+        int totalBars = 0;
+        int tickerCount = 0;
 
         AnsiConsole.MarkupLine($"[grey]Downloading {tickerList.Length} tickers (with rate limiting)...[/]");
         AnsiConsole.WriteLine();
 
-        foreach (var ticker in tickerList)
+        foreach (string ticker in tickerList)
         {
             tickerCount++;
-            var bars = DownloadTickerData(ticker.Trim().ToUpperInvariant(), startDate, endDate, settings.Resolution, apiKey, dataPath);
+            int bars = DownloadTickerData(ticker.Trim().ToUpperInvariant(), startDate, endDate, settings.Resolution, apiKey, dataPath);
             totalBars += bars;
 
             // Rate limiting: wait 12 seconds between requests for free Polygon tier (5 calls/min)
@@ -158,21 +168,36 @@ public sealed class APcm003A : Command<DataSettings>
             {
                 try
                 {
-                    using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
+                    using HttpClient httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
 
                     // Map resolution to Polygon timespan
-                    var (multiplier, timespan) = resolution.ToLowerInvariant() switch
+                    string resolutionKey = resolution.ToLowerInvariant();
+                    int multiplier;
+                    string timespan;
+                    switch (resolutionKey)
                     {
-                        "minute" => (1, "minute"),
-                        "hour" => (1, "hour"),
-                        "daily" => (1, "day"),
-                        _ => (1, "day")
-                    };
+                        case "minute":
+                            multiplier = 1;
+                            timespan = "minute";
+                            break;
+                        case "hour":
+                            multiplier = 1;
+                            timespan = "hour";
+                            break;
+                        case "daily":
+                            multiplier = 1;
+                            timespan = "day";
+                            break;
+                        default:
+                            multiplier = 1;
+                            timespan = "day";
+                            break;
+                    }
 
                     // Polygon aggregates endpoint
-                    var url = $"https://api.polygon.io/v2/aggs/ticker/{ticker}/range/{multiplier}/{timespan}/{startDate:yyyy-MM-dd}/{endDate:yyyy-MM-dd}?adjusted=true&sort=asc&limit=50000&apiKey={apiKey}";
+                    string url = $"https://api.polygon.io/v2/aggs/ticker/{ticker}/range/{multiplier}/{timespan}/{startDate:yyyy-MM-dd}/{endDate:yyyy-MM-dd}?adjusted=true&sort=asc&limit=50000&apiKey={apiKey}";
 
-                    var response = httpClient.GetFromJsonAsync<PolygonAggregatesResponse>(url).GetAwaiter().GetResult();
+                    PolygonAggregatesResponse? response = httpClient.GetFromJsonAsync<PolygonAggregatesResponse>(url).GetAwaiter().GetResult();
 
                     if (response?.Results == null || response.Results.Length == 0)
                     {
@@ -181,32 +206,41 @@ public sealed class APcm003A : Command<DataSettings>
                     }
 
                     // Create output directory
-                    var securityType = "equity";
-                    var market = "usa";
-                    var leanResolution = resolution.ToLowerInvariant() switch
+                    string securityType = "equity";
+                    string market = "usa";
+                    string leanResolution;
+                    switch (resolutionKey)
                     {
-                        "minute" => "minute",
-                        "hour" => "hour",
-                        "daily" => "daily",
-                        _ => "daily"
-                    };
+                        case "minute":
+                            leanResolution = "minute";
+                            break;
+                        case "hour":
+                            leanResolution = "hour";
+                            break;
+                        case "daily":
+                            leanResolution = "daily";
+                            break;
+                        default:
+                            leanResolution = "daily";
+                            break;
+                    }
 
-                    var outputDir = System.IO.Path.Combine(dataPath, securityType, market, leanResolution, ticker.ToLowerInvariant());
+                    string outputDir = System.IO.Path.Combine(dataPath, securityType, market, leanResolution, ticker.ToLowerInvariant());
                     System.IO.Directory.CreateDirectory(outputDir);
 
                     // Write data in LEAN format
-                    var barCount = 0;
+                    int barCount = 0;
                     if (leanResolution == "daily")
                     {
                         // Daily format: single CSV file
-                        var filePath = System.IO.Path.Combine(outputDir, $"{ticker.ToLowerInvariant()}.csv");
-                        using var writer = new System.IO.StreamWriter(filePath);
+                        string filePath = System.IO.Path.Combine(outputDir, $"{ticker.ToLowerInvariant()}.csv");
+                        using System.IO.StreamWriter writer = new System.IO.StreamWriter(filePath);
 
-                        foreach (var bar in response.Results)
+                        foreach (PolygonBar bar in response.Results)
                         {
-                            var date = DateTimeOffset.FromUnixTimeMilliseconds(bar.Timestamp).UtcDateTime;
+                            DateTime date = DateTimeOffset.FromUnixTimeMilliseconds(bar.Timestamp).UtcDateTime;
                             // LEAN daily format: Date,Open,High,Low,Close,Volume (all prices * 10000)
-                            var line = $"{date:yyyyMMdd 00:00},{bar.Open * 10000m:F0},{bar.High * 10000m:F0},{bar.Low * 10000m:F0},{bar.Close * 10000m:F0},{bar.Volume}";
+                            string line = $"{date:yyyyMMdd 00:00},{bar.Open * 10000m:F0},{bar.High * 10000m:F0},{bar.Low * 10000m:F0},{bar.Close * 10000m:F0},{bar.Volume}";
                             writer.WriteLine(line);
                             barCount++;
                         }
@@ -214,22 +248,36 @@ public sealed class APcm003A : Command<DataSettings>
                     else
                     {
                         // Minute/Hour format: files by date
-                        var barsByDate = response.Results.GroupBy(b =>
-                            DateTimeOffset.FromUnixTimeMilliseconds(b.Timestamp).UtcDateTime.Date);
-
-                        foreach (var dateGroup in barsByDate)
+                        Dictionary<DateTime, List<PolygonBar>> barsByDate = new Dictionary<DateTime, List<PolygonBar>>();
+                        foreach (PolygonBar bar in response.Results)
                         {
-                            var fileName = $"{dateGroup.Key:yyyyMMdd}_{ticker.ToLowerInvariant()}_trade.csv";
-                            var filePath = System.IO.Path.Combine(outputDir, fileName);
-
-                            using var writer = new System.IO.StreamWriter(filePath);
-
-                            foreach (var bar in dateGroup.OrderBy(b => b.Timestamp))
+                            DateTime date = DateTimeOffset.FromUnixTimeMilliseconds(bar.Timestamp).UtcDateTime.Date;
+                            if (!barsByDate.TryGetValue(date, out List<PolygonBar>? dayBars))
                             {
-                                var time = DateTimeOffset.FromUnixTimeMilliseconds(bar.Timestamp).UtcDateTime;
+                                dayBars = new List<PolygonBar>();
+                                barsByDate.Add(date, dayBars);
+                            }
+                            dayBars.Add(bar);
+                        }
+
+                        List<DateTime> dateKeys = new List<DateTime>(barsByDate.Keys);
+                        dateKeys.Sort();
+
+                        foreach (DateTime dateKey in dateKeys)
+                        {
+                            List<PolygonBar> dayBars = barsByDate[dateKey];
+                            dayBars.Sort((left, right) => left.Timestamp.CompareTo(right.Timestamp));
+
+                            string fileName = $"{dateKey:yyyyMMdd}_{ticker.ToLowerInvariant()}_trade.csv";
+                            string filePath = System.IO.Path.Combine(outputDir, fileName);
+                            using System.IO.StreamWriter writer = new System.IO.StreamWriter(filePath);
+
+                            foreach (PolygonBar bar in dayBars)
+                            {
+                                DateTime time = DateTimeOffset.FromUnixTimeMilliseconds(bar.Timestamp).UtcDateTime;
                                 // LEAN minute format: Milliseconds,Open,High,Low,Close,Volume
-                                var ms = (long)(time - dateGroup.Key).TotalMilliseconds;
-                                var line = $"{ms},{bar.Open * 10000m:F0},{bar.High * 10000m:F0},{bar.Low * 10000m:F0},{bar.Close * 10000m:F0},{bar.Volume}";
+                                long ms = (long)(time - dateKey).TotalMilliseconds;
+                                string line = $"{ms},{bar.Open * 10000m:F0},{bar.High * 10000m:F0},{bar.Low * 10000m:F0},{bar.Close * 10000m:F0},{bar.Volume}";
                                 writer.WriteLine(line);
                                 barCount++;
                             }
@@ -249,7 +297,7 @@ public sealed class APcm003A : Command<DataSettings>
 
     private static int ListData()
     {
-        var dataPath = FindDataPath();
+        string? dataPath = FindDataPath();
         if (dataPath is null)
         {
             AnsiConsole.MarkupLine("[red]Could not find data folder[/]");
@@ -266,18 +314,23 @@ public sealed class APcm003A : Command<DataSettings>
         }
 
         // Show data categories with file counts
-        var table = new Table();
+        Table table = new Table();
         table.AddColumn("[grey]Category[/]");
         table.AddColumn("[grey]Files[/]");
         table.AddColumn("[grey]Size[/]");
 
-        var dirs = System.IO.Directory.GetDirectories(dataPath);
-        foreach (var dir in dirs.OrderBy(d => d))
+        string[] dirs = System.IO.Directory.GetDirectories(dataPath);
+        Array.Sort(dirs, StringComparer.OrdinalIgnoreCase);
+        foreach (string dir in dirs)
         {
-            var name = System.IO.Path.GetFileName(dir);
-            var files = System.IO.Directory.GetFiles(dir, "*", System.IO.SearchOption.AllDirectories);
-            var size = files.Sum(f => new System.IO.FileInfo(f).Length);
-            var sizeStr = FormatSize(size);
+            string name = System.IO.Path.GetFileName(dir);
+            string[] files = System.IO.Directory.GetFiles(dir, "*", System.IO.SearchOption.AllDirectories);
+            long size = 0;
+            foreach (string file in files)
+            {
+                size += new System.IO.FileInfo(file).Length;
+            }
+            string sizeStr = FormatSize(size);
             table.AddRow($"[blue]{name}/[/]", files.Length.ToString(), sizeStr);
         }
 
@@ -287,18 +340,18 @@ public sealed class APcm003A : Command<DataSettings>
 
     private static int ShowDataStatus()
     {
-        var dataPath = FindDataPath();
+        string? dataPath = FindDataPath();
 
         AnsiConsole.MarkupLine("[bold blue]Data Status[/]");
         AnsiConsole.WriteLine();
 
-        var table = new Table();
+        Table table = new Table();
         table.AddColumn("[grey]Setting[/]");
         table.AddColumn("[white]Value[/]");
 
         table.AddRow("Data Folder", dataPath ?? "(not found)");
 
-        var polygonKey = GetPolygonApiKey();
+        string? polygonKey = GetPolygonApiKey();
         table.AddRow("Polygon API Key", string.IsNullOrEmpty(polygonKey) ? "[red]Not configured[/]" : "[green]Configured[/]");
 
         AnsiConsole.Write(table);
@@ -314,14 +367,14 @@ public sealed class APcm003A : Command<DataSettings>
 
     private static string? FindDataPath()
     {
-        var paths = new[]
+        string[] paths = new[]
         {
             "Alaris.Lean/Data",
             "../Alaris.Lean/Data",
             "../../Alaris.Lean/Data"
         };
 
-        foreach (var path in paths)
+        foreach (string path in paths)
         {
             if (System.IO.Directory.Exists(path))
             {
@@ -334,16 +387,19 @@ public sealed class APcm003A : Command<DataSettings>
 
     private static string FindOrCreateDataPath()
     {
-        var existing = FindDataPath();
-        if (existing != null) return existing;
+        string? existing = FindDataPath();
+        if (existing != null)
+        {
+            return existing;
+        }
 
         // Create default data path
-        var defaultPath = "Alaris.Lean/Data";
-        var paths = new[] { defaultPath, "../Alaris.Lean/Data", "../../Alaris.Lean/Data" };
+        string defaultPath = "Alaris.Lean/Data";
+        string[] paths = new[] { defaultPath, "../Alaris.Lean/Data", "../../Alaris.Lean/Data" };
 
-        foreach (var path in paths)
+        foreach (string path in paths)
         {
-            var parentDir = System.IO.Path.GetDirectoryName(path);
+            string? parentDir = System.IO.Path.GetDirectoryName(path);
             if (parentDir != null && System.IO.Directory.Exists(parentDir))
             {
                 System.IO.Directory.CreateDirectory(path);
@@ -357,26 +413,26 @@ public sealed class APcm003A : Command<DataSettings>
     private static string? GetPolygonApiKey()
     {
         // Try to find and read appsettings.local.jsonc
-        var paths = new[]
+        string[] paths = new[]
         {
             "appsettings.local.jsonc",
             "../appsettings.local.jsonc",
             "../../appsettings.local.jsonc"
         };
 
-        foreach (var path in paths)
+        foreach (string path in paths)
         {
             if (System.IO.File.Exists(path))
             {
                 try
                 {
-                    var json = System.IO.File.ReadAllText(path);
+                    string json = System.IO.File.ReadAllText(path);
                     // Simple extraction - look for "ApiKey" in Polygon section
-                    var lines = json.Split('\n');
-                    var inPolygon = false;
-                    foreach (var line in lines)
+                    string[] lines = json.Split('\n');
+                    bool inPolygon = false;
+                    foreach (string line in lines)
                     {
-                        var trimmed = line.Trim();
+                        string trimmed = line.Trim();
                         if (trimmed.StartsWith("//")) continue;
 
                         if (trimmed.Contains("\"Polygon\""))
@@ -385,10 +441,10 @@ public sealed class APcm003A : Command<DataSettings>
                         }
                         else if (inPolygon && trimmed.Contains("\"ApiKey\""))
                         {
-                            var colonIdx = trimmed.IndexOf(':');
+                            int colonIdx = trimmed.IndexOf(':');
                             if (colonIdx > 0)
                             {
-                                var value = trimmed[(colonIdx + 1)..].Trim().Trim(',', '"', ' ');
+                                string value = trimmed[(colonIdx + 1)..].Trim().Trim(',', '"', ' ');
                                 if (!string.IsNullOrEmpty(value))
                                     return value;
                             }

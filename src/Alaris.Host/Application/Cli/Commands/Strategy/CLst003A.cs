@@ -20,7 +20,7 @@ public sealed class CLst003A : Command<StrategyEvaluateSettings>
         AnsiConsole.WriteLine();
 
         // This would integrate with the actual strategy evaluation pipeline
-        var results = new List<(string Step, string Status, string Value)>
+        List<(string Step, string Status, string Value)> results = new List<(string Step, string Status, string Value)>
         {
             ("Universe Check", "[green]PASS[/]", "In S&P 500"),
             ("Earnings Date", "[green]FOUND[/]", "Jan 30, 2025 AMC"),
@@ -32,7 +32,7 @@ public sealed class CLst003A : Command<StrategyEvaluateSettings>
             ("Term Structure", "[yellow]PENDING[/]", "0.018 (threshold: 0.02)")
         };
 
-        var table = new Table()
+        Table table = new Table()
             .Border(TableBorder.Rounded)
             .BorderColor(Color.Grey)
             .Title($"[bold]Signal Evaluation: {symbol}[/]");
@@ -41,19 +41,32 @@ public sealed class CLst003A : Command<StrategyEvaluateSettings>
         table.AddColumn("[grey]Result[/]");
         table.AddColumn("[grey]Value[/]");
 
-        foreach (var (step, status, value) in results)
+        int passed = 0;
+        int pending = 0;
+        int failed = 0;
+
+        foreach ((string step, string status, string value) in results)
         {
             table.AddRow(step, status, value);
+
+            if (status.Contains("PASS", StringComparison.Ordinal))
+            {
+                passed++;
+            }
+            else if (status.Contains("PENDING", StringComparison.Ordinal))
+            {
+                pending++;
+            }
+            else if (status.Contains("FAIL", StringComparison.Ordinal))
+            {
+                failed++;
+            }
         }
 
         AnsiConsole.Write(table);
         AnsiConsole.WriteLine();
 
         // Summary
-        int passed = results.Count(r => r.Status.Contains("PASS"));
-        int pending = results.Count(r => r.Status.Contains("PENDING"));
-        int failed = results.Count(r => r.Status.Contains("FAIL"));
-
         if (failed > 0)
         {
             CLif003A.Error($"Symbol rejected: {failed} criteria failed.");

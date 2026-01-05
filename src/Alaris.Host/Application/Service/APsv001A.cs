@@ -3,7 +3,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Alaris.Host.Application.Model;
@@ -56,12 +55,12 @@ public sealed class APsv001A
     {
         if (endDate <= startDate)
         {
-            throw new ArgumentException("End date must be after start date");
+            throw new ArgumentException("End date must be after start date", nameof(endDate));
         }
 
         // Generate session ID
-        var sessionId = await GenerateSessionIdAsync(startDate, endDate);
-        var sessionPath = System.IO.Path.Combine(_sessionsRoot, sessionId);
+        string sessionId = await GenerateSessionIdAsync(startDate, endDate);
+        string sessionPath = System.IO.Path.Combine(_sessionsRoot, sessionId);
 
         _logger?.LogInformation("Creating session {SessionId} at {Path}", sessionId, sessionPath);
 
@@ -72,9 +71,9 @@ public sealed class APsv001A
         Directory.CreateDirectory(System.IO.Path.Combine(sessionPath, "results"));
         Directory.CreateDirectory(System.IO.Path.Combine(sessionPath, "earnings"));
 
-        var symbolList = symbols?.ToList() ?? new List<string>();
+        List<string> symbolList = symbols is null ? new List<string>() : new List<string>(symbols);
 
-        var session = new APmd001A
+        APmd001A session = new APmd001A
         {
             SessionId = sessionId,
             StartDate = startDate,
@@ -102,15 +101,17 @@ public sealed class APsv001A
     /// </summary>
     public async Task<APmd001A?> GetAsync(string sessionId)
     {
-        var sessionPath = System.IO.Path.Combine(_sessionsRoot, sessionId);
-        var metadataPath = System.IO.Path.Combine(sessionPath, "session.json");
+        ArgumentException.ThrowIfNullOrWhiteSpace(sessionId);
+
+        string sessionPath = System.IO.Path.Combine(_sessionsRoot, sessionId);
+        string metadataPath = System.IO.Path.Combine(sessionPath, "session.json");
 
         if (!File.Exists(metadataPath))
         {
             return null;
         }
 
-        var json = await File.ReadAllTextAsync(metadataPath);
+        string json = await File.ReadAllTextAsync(metadataPath);
         return JsonSerializer.Deserialize<APmd001A>(json, JsonOptions);
     }
 
@@ -124,25 +125,26 @@ public sealed class APsv001A
             return Array.Empty<APmd001A>();
         }
 
-        var json = await File.ReadAllTextAsync(_indexPath);
-        var index = JsonSerializer.Deserialize<SessionIndex>(json, JsonOptions);
+        string json = await File.ReadAllTextAsync(_indexPath);
+        SessionIndex? index = JsonSerializer.Deserialize<SessionIndex>(json, JsonOptions);
         
         if (index?.Sessions == null)
         {
             return Array.Empty<APmd001A>();
         }
 
-        var sessions = new List<APmd001A>();
-        foreach (var sessionId in index.Sessions)
+        List<APmd001A> sessions = new List<APmd001A>();
+        foreach (string sessionId in index.Sessions)
         {
-            var session = await GetAsync(sessionId);
+            APmd001A? session = await GetAsync(sessionId);
             if (session != null)
             {
                 sessions.Add(session);
             }
         }
 
-        return sessions.OrderByDescending(s => s.CreatedAt).ToList();
+        sessions.Sort(static (left, right) => right.CreatedAt.CompareTo(left.CreatedAt));
+        return sessions;
     }
 
     /// <summary>
@@ -150,7 +152,7 @@ public sealed class APsv001A
     /// </summary>
     public async Task UpdateAsync(APmd001A session)
     {
-        var updated = session with { UpdatedAt = DateTime.UtcNow };
+        APmd001A updated = session with { UpdatedAt = DateTime.UtcNow };
         await SaveSessionMetadataAsync(updated);
         _logger?.LogDebug("Session {SessionId} updated to status {Status}", session.SessionId, session.Status);
     }
@@ -160,7 +162,8 @@ public sealed class APsv001A
     /// </summary>
     public async Task DeleteAsync(string sessionId)
     {
-        var sessionPath = System.IO.Path.Combine(_sessionsRoot, sessionId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(sessionId);
+        string sessionPath = System.IO.Path.Combine(_sessionsRoot, sessionId);
 
         if (!Directory.Exists(sessionPath))
         {
@@ -183,6 +186,7 @@ public sealed class APsv001A
     /// </summary>
     public string GetDataPath(string sessionId)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(sessionId);
         return System.IO.Path.Combine(_sessionsRoot, sessionId, "data");
     }
 
@@ -191,6 +195,7 @@ public sealed class APsv001A
     /// </summary>
     public string GetResultsPath(string sessionId)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(sessionId);
         return System.IO.Path.Combine(_sessionsRoot, sessionId, "results");
     }
 
@@ -199,15 +204,21 @@ public sealed class APsv001A
     /// </summary>
     private async Task<int> GetNextSequenceAsync()
     {
-        var sessions = await ListAsync();
+        IReadOnlyList<APmd001A> sessions = await ListAsync();
         if (sessions.Count == 0)
         {
             return 1;
         }
 
-        var maxSequence = sessions
-            .Select(s => ParseSequenceFromId(s.SessionId))
-            .Max();
+        int maxSequence = 0;
+        for (int i = 0; i < sessions.Count; i++)
+        {
+            int sequence = ParseSequenceFromId(sessions[i].SessionId);
+            if (sequence > maxSequence)
+            {
+                maxSequence = sequence;
+            }
+        }
 
         return maxSequence + 1;
     }
@@ -218,11 +229,11 @@ public sealed class APsv001A
     /// </summary>
     private async Task<string> GenerateSessionIdAsync(DateTime startDate, DateTime endDate)
     {
-        var sequence = await GetNextSequenceAsync();
-        var sequenceStr = sequence.ToString("D3"); // 001, 002, etc.
-        var variant = "A"; // Primary variant
-        var startStr = startDate.ToString("yyyyMMdd");
-        var endStr = endDate.ToString("yyyyMMdd");
+        int sequence = await GetNextSequenceAsync();
+        string sequenceStr = sequence.ToString("D3"); // 001, 002, etc.
+        const string variant = "A"; // Primary variant
+        string startStr = startDate.ToString("yyyyMMdd");
+        string endStr = endDate.ToString("yyyyMMdd");
 
         return $"BT{sequenceStr}{variant}-{startStr}-{endStr}";
     }
@@ -235,8 +246,8 @@ public sealed class APsv001A
         // Format: BT001A-YYYYMMDD-YYYYMMDD
         if (sessionId.Length >= 5 && sessionId.StartsWith("BT", StringComparison.Ordinal))
         {
-            var sequenceStr = sessionId.Substring(2, 3);
-            if (int.TryParse(sequenceStr, out var sequence))
+            string sequenceStr = sessionId.Substring(2, 3);
+            if (int.TryParse(sequenceStr, out int sequence))
             {
                 return sequence;
             }
@@ -249,8 +260,8 @@ public sealed class APsv001A
     /// </summary>
     private async Task SaveSessionMetadataAsync(APmd001A session)
     {
-        var metadataPath = System.IO.Path.Combine(session.SessionPath, "session.json");
-        var json = JsonSerializer.Serialize(session, JsonOptions);
+        string metadataPath = System.IO.Path.Combine(session.SessionPath, "session.json");
+        string json = JsonSerializer.Serialize(session, JsonOptions);
         await File.WriteAllTextAsync(metadataPath, json);
     }
 
@@ -259,7 +270,7 @@ public sealed class APsv001A
     /// </summary>
     private async Task AddToIndexAsync(APmd001A session)
     {
-        var index = await LoadIndexAsync();
+        SessionIndex index = await LoadIndexAsync();
         if (!index.Sessions.Contains(session.SessionId))
         {
             index.Sessions.Add(session.SessionId);
@@ -272,7 +283,7 @@ public sealed class APsv001A
     /// </summary>
     private async Task RemoveFromIndexAsync(string sessionId)
     {
-        var index = await LoadIndexAsync();
+        SessionIndex index = await LoadIndexAsync();
         index.Sessions.Remove(sessionId);
         await SaveIndexAsync(index);
     }
@@ -287,7 +298,7 @@ public sealed class APsv001A
             return new SessionIndex { Sessions = new List<string>() };
         }
 
-        var json = await File.ReadAllTextAsync(_indexPath);
+        string json = await File.ReadAllTextAsync(_indexPath);
         return JsonSerializer.Deserialize<SessionIndex>(json, JsonOptions) 
                ?? new SessionIndex { Sessions = new List<string>() };
     }
@@ -297,7 +308,7 @@ public sealed class APsv001A
     /// </summary>
     private async Task SaveIndexAsync(SessionIndex index)
     {
-        var json = JsonSerializer.Serialize(index, JsonOptions);
+        string json = JsonSerializer.Serialize(index, JsonOptions);
         await File.WriteAllTextAsync(_indexPath, json);
     }
 
@@ -307,12 +318,12 @@ public sealed class APsv001A
     private static string FindSessionsRoot()
     {
         // Look for Alaris.Sessions in parent directories
-        var current = Directory.GetCurrentDirectory();
+        string current = Directory.GetCurrentDirectory();
         
         for (int i = 0; i < 5; i++)
         {
-            var candidate = System.IO.Path.Combine(current, "Alaris.Sessions");
-            var configPath = System.IO.Path.Combine(current, "config.json");
+            string candidate = System.IO.Path.Combine(current, "Alaris.Sessions");
+            string configPath = System.IO.Path.Combine(current, "config.json");
             
             // If we find config.json, this is likely the project root
             if (File.Exists(configPath))
@@ -320,7 +331,7 @@ public sealed class APsv001A
                 return candidate;
             }
             
-            var parent = Directory.GetParent(current);
+            DirectoryInfo? parent = Directory.GetParent(current);
             if (parent == null) break;
             current = parent.FullName;
         }

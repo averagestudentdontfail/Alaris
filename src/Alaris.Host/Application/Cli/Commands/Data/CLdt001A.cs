@@ -21,8 +21,8 @@ public sealed class CLdt001A : AsyncCommand<DataBootstrapSettings>
         AnsiConsole.WriteLine();
 
         // Load session
-        var sessionService = new APsv001A();
-        var session = await sessionService.GetAsync(settings.SessionId);
+        APsv001A sessionService = new APsv001A();
+        APmd001A? session = await sessionService.GetAsync(settings.SessionId);
 
         if (session == null)
         {
@@ -47,8 +47,8 @@ public sealed class CLdt001A : AsyncCommand<DataBootstrapSettings>
         try
         {
             // Create download service
-            using var downloadService = DependencyFactory.CreateAPsv002A();
-            var dataPath = sessionService.GetDataPath(session.SessionId);
+            using APsv002A downloadService = DependencyFactory.CreateAPsv002A();
+            string dataPath = sessionService.GetDataPath(session.SessionId);
 
             await downloadService.DownloadEquityDataAsync(
                 dataPath,

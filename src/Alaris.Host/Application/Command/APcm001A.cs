@@ -40,7 +40,7 @@ public sealed class APcm001A : Command<RunSettings>
 {
     public override int Execute(CommandContext context, RunSettings settings)
     {
-        var mode = settings.Mode.ToLowerInvariant();
+        string mode = settings.Mode.ToLowerInvariant();
 
         // Validate mode
         if (mode is not ("backtest" or "paper" or "live"))
@@ -50,7 +50,7 @@ public sealed class APcm001A : Command<RunSettings>
         }
 
         // Map mode to LEAN environment
-        var environment = mode switch
+        string environment = mode switch
         {
             "backtest" => "backtesting",
             "paper" => "live-paper",
@@ -74,7 +74,7 @@ public sealed class APcm001A : Command<RunSettings>
         AnsiConsole.WriteLine();
 
         // Build configuration
-        var configPath = settings.ConfigPath ?? FindConfigPath();
+        string? configPath = settings.ConfigPath ?? FindConfigPath();
         if (configPath is null)
         {
             AnsiConsole.MarkupLine("[red]Could not find config.json[/]");
@@ -89,7 +89,7 @@ public sealed class APcm001A : Command<RunSettings>
 
     private static string? FindConfigPath()
     {
-        var paths = new[]
+        string[] paths = new[]
         {
             "config.json",
             "../config.json",
@@ -97,7 +97,7 @@ public sealed class APcm001A : Command<RunSettings>
             System.IO.Path.Combine(AppContext.BaseDirectory, "config.json")
         };
 
-        foreach (var path in paths)
+        foreach (string path in paths)
         {
             if (File.Exists(path))
             {
@@ -122,7 +122,7 @@ public sealed class APcm001A : Command<RunSettings>
             });
 
         // Find LEAN launcher
-        var launcherPath = FindLeanLauncher();
+        string? launcherPath = FindLeanLauncher();
         if (launcherPath is null)
         {
             AnsiConsole.MarkupLine("[red]Could not find LEAN Launcher[/]");
@@ -132,7 +132,7 @@ public sealed class APcm001A : Command<RunSettings>
         AnsiConsole.MarkupLine($"[grey]Launcher: {launcherPath}[/]");
 
         // Start LEAN process
-        var psi = new ProcessStartInfo
+        ProcessStartInfo psi = new ProcessStartInfo
         {
             FileName = "dotnet",
             Arguments = $"run --project \"{launcherPath}\"",
@@ -155,7 +155,7 @@ public sealed class APcm001A : Command<RunSettings>
             psi.Environment["ALARIS_BACKTEST_ENDDATE"] = settings.EndDate;
         }
 
-        using var process = Process.Start(psi);
+        using Process? process = Process.Start(psi);
         if (process is null)
         {
             AnsiConsole.MarkupLine("[red]Failed to start LEAN process[/]");
@@ -177,7 +177,7 @@ public sealed class APcm001A : Command<RunSettings>
             {
                 // Escape markup characters to prevent Spectre.Console parsing errors
                 // LEAN output often contains <TypeName> patterns that break markup
-                var escaped = Markup.Escape(e.Data);
+                string escaped = Markup.Escape(e.Data);
                 AnsiConsole.MarkupLine($"[red]{escaped}[/]");
             }
         };
@@ -191,14 +191,14 @@ public sealed class APcm001A : Command<RunSettings>
 
     private static string? FindLeanLauncher()
     {
-        var paths = new[]
+        string[] paths = new[]
         {
             "Alaris.Lean/Launcher/QuantConnect.Lean.Launcher.csproj",
             "../Alaris.Lean/Launcher/QuantConnect.Lean.Launcher.csproj",
             "../../Alaris.Lean/Launcher/QuantConnect.Lean.Launcher.csproj"
         };
 
-        foreach (var path in paths)
+        foreach (string path in paths)
         {
             if (File.Exists(path))
             {

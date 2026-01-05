@@ -31,7 +31,7 @@ public static class APap001A
             return RunInteractiveMode();
         }
 
-        var app = new CommandApp();
+        CommandApp app = new CommandApp();
         app.Configure(ConfigureCommands);
         return app.Run(args);
     }
@@ -134,8 +134,8 @@ public static class APap001A
 
     private static int RunInteractiveMode()
     {
-        var running = true;
-        var lastExitCode = 0;
+        bool running = true;
+        int lastExitCode = 0;
 
         // Initial system check
         CheckSystemStatus();
@@ -146,7 +146,7 @@ public static class APap001A
             RenderStatusBar();
             RenderBanner();
 
-            var selection = AnsiConsole.Prompt(
+            string selection = AnsiConsole.Prompt(
                 new SelectionPrompt<string>()
                     .Title("[green]Select an option:[/]")
                     .PageSize(10)
@@ -161,7 +161,7 @@ public static class APap001A
                         "6. Exit"
                     }));
 
-            var choice = selection.Split('.')[0].Trim();
+            string choice = selection.Split('.')[0].Trim();
 
             switch (choice)
             {
@@ -194,18 +194,18 @@ public static class APap001A
 
     private static void RenderStatusBar()
     {
-        var modeColor = _currentMode switch
+        string modeColor = _currentMode switch
         {
             "Live" => "red",
             "Paper" => "yellow",
             _ => "grey"
         };
 
-        var connectionStatus = _isConnected 
+        string connectionStatus = _isConnected 
             ? "[green]● Connected[/]" 
             : "[red]○ Disconnected[/]";
 
-        var table = new Table()
+        Table table = new Table()
             .Border(TableBorder.Rounded)
             .BorderColor(Color.Blue)
             .Width(60);
@@ -245,8 +245,8 @@ public static class APap001A
 
     private static int ShowTradingMenu()
     {
-        var running = true;
-        var exitCode = 0;
+        bool running = true;
+        int exitCode = 0;
 
         while (running)
         {
@@ -255,7 +255,7 @@ public static class APap001A
             AnsiConsole.MarkupLine("[bold blue]Trading[/]");
             AnsiConsole.WriteLine();
 
-            var selection = AnsiConsole.Prompt(
+            string selection = AnsiConsole.Prompt(
                 new SelectionPrompt<string>()
                     .Title("[green]Select trading mode:[/]")
                     .AddChoices(new[]
@@ -265,7 +265,7 @@ public static class APap001A
                         "3. Back to Main Menu"
                     }));
 
-            var choice = selection.Split('.')[0].Trim();
+            string choice = selection.Split('.')[0].Trim();
 
             switch (choice)
             {
@@ -326,8 +326,8 @@ public static class APap001A
 
     private static int ShowBacktestMenu()
     {
-        var running = true;
-        var exitCode = 0;
+        bool running = true;
+        int exitCode = 0;
 
         while (running)
         {
@@ -336,7 +336,7 @@ public static class APap001A
             AnsiConsole.MarkupLine("[bold blue]Backtest Management[/]");
             AnsiConsole.WriteLine();
 
-            var selection = AnsiConsole.Prompt(
+            string selection = AnsiConsole.Prompt(
                 new SelectionPrompt<string>()
                     .Title("[green]Select an option:[/]")
                     .AddChoices(new[]
@@ -349,7 +349,7 @@ public static class APap001A
                         "6. Back to Main Menu"
                     }));
 
-            var choice = selection.Split('.')[0].Trim();
+            string choice = selection.Split('.')[0].Trim();
 
             switch (choice)
             {
@@ -389,7 +389,7 @@ public static class APap001A
         AnsiConsole.WriteLine();
 
         // Date range selection
-        var dateOption = AnsiConsole.Prompt(
+        string dateOption = AnsiConsole.Prompt(
             new SelectionPrompt<string>()
                 .Title("[green]Select date range:[/]")
                 .AddChoices(new[]
@@ -399,20 +399,20 @@ public static class APap001A
                     "3. Custom date range"
                 }));
 
-        var dateChoice = dateOption.Split('.')[0].Trim();
+        string dateChoice = dateOption.Split('.')[0].Trim();
         string[] dateArgs;
 
         switch (dateChoice)
         {
             case "2":
-                var years = AnsiConsole.Ask<string>("[green]Enter year(s)[/] (e.g., 2024 or 2023,2024):");
+                string years = AnsiConsole.Ask<string>("[green]Enter year(s)[/] (e.g., 2024 or 2023,2024):");
                 dateArgs = new[] { "--years", years };
                 break;
             case "3":
-                var defaultStart = DateTime.Now.AddYears(-2).AddMonths(1).ToString("yyyy-MM-dd");
-                var defaultEnd = DateTime.Now.AddDays(-1).ToString("yyyy-MM-dd");
-                var start = AnsiConsole.Ask("[green]Start Date[/] (YYYY-MM-DD):", defaultStart);
-                var end = AnsiConsole.Ask("[green]End Date[/] (YYYY-MM-DD):", defaultEnd);
+                string defaultStart = DateTime.Now.AddYears(-2).AddMonths(1).ToString("yyyy-MM-dd");
+                string defaultEnd = DateTime.Now.AddDays(-1).ToString("yyyy-MM-dd");
+                string start = AnsiConsole.Ask("[green]Start Date[/] (YYYY-MM-DD):", defaultStart);
+                string end = AnsiConsole.Ask("[green]End Date[/] (YYYY-MM-DD):", defaultEnd);
                 dateArgs = new[] { "--start", start, "--end", end };
                 break;
             default:
@@ -421,7 +421,7 @@ public static class APap001A
         }
 
         // Symbol selection
-        var symbolOption = AnsiConsole.Prompt(
+        string symbolOption = AnsiConsole.Prompt(
             new SelectionPrompt<string>()
                 .Title("[green]Symbol selection:[/]")
                 .AddChoices(new[]
@@ -430,12 +430,12 @@ public static class APap001A
                     "2. Specify symbols manually"
                 }));
 
-        var args = new List<string> { "backtest", "create" };
+        List<string> args = new List<string> { "backtest", "create" };
         args.AddRange(dateArgs);
 
         if (symbolOption.StartsWith("2"))
         {
-            var symbols = AnsiConsole.Ask<string>("[green]Enter symbols[/] (comma-separated):");
+            string symbols = AnsiConsole.Ask<string>("[green]Enter symbols[/] (comma-separated):");
             args.AddRange(new[] { "--symbols", symbols });
         }
 
@@ -452,7 +452,7 @@ public static class APap001A
 
     private static int RunSessionInteractive()
     {
-        var sessionId = SelectSession("Run");
+        string? sessionId = SelectSession("Run");
         if (string.IsNullOrEmpty(sessionId)) return 0;
 
         _currentMode = "Backtest";
@@ -461,14 +461,14 @@ public static class APap001A
 
     private static int ViewSessionInteractive()
     {
-        var sessionId = SelectSession("View");
+        string? sessionId = SelectSession("View");
         if (string.IsNullOrEmpty(sessionId)) return 0;
         return Main(new[] { "backtest", "view", sessionId });
     }
 
     private static int DeleteSessionInteractive()
     {
-        var sessionId = SelectSession("Delete");
+        string? sessionId = SelectSession("Delete");
         if (string.IsNullOrEmpty(sessionId)) return 0;
 
         if (!AnsiConsole.Confirm($"[red]Delete session {sessionId}?[/]", false))
@@ -482,8 +482,8 @@ public static class APap001A
 
     private static string? SelectSession(string action)
     {
-        var service = new APsv001A();
-        var sessions = service.ListAsync().Result;
+        APsv001A service = new APsv001A();
+        IReadOnlyList<APmd001A> sessions = service.ListAsync().Result;
 
         if (sessions.Count == 0)
         {
@@ -491,12 +491,14 @@ public static class APap001A
             return null;
         }
 
-        var choices = sessions
-            .Select(s => $"{s.SessionId} | {s.StartDate:yyyy-MM-dd} → {s.EndDate:yyyy-MM-dd} | {s.Status}")
-            .ToList();
+        List<string> choices = new List<string>(sessions.Count + 1);
+        foreach (APmd001A session in sessions)
+        {
+            choices.Add($"{session.SessionId} | {session.StartDate:yyyy-MM-dd} → {session.EndDate:yyyy-MM-dd} | {session.Status}");
+        }
         choices.Add("Cancel");
 
-        var selection = AnsiConsole.Prompt(
+        string selection = AnsiConsole.Prompt(
             new SelectionPrompt<string>()
                 .Title($"[green]Select session to {action}:[/]")
                 .PageSize(15)
@@ -523,7 +525,7 @@ public static class APap001A
         }
 
         // Mock position data - would connect to real IBKR data
-        var table = new Table()
+        Table table = new Table()
             .Border(TableBorder.Rounded)
             .Title("[bold]Current Positions[/]");
 
@@ -541,7 +543,7 @@ public static class APap001A
         AnsiConsole.Write(table);
 
         AnsiConsole.WriteLine();
-        var totalPnl = new Panel("[bold green]Total P&L: +$180.00 (+1.45%)[/]")
+        Panel totalPnl = new Panel("[bold green]Total P&L: +$180.00 (+1.45%)[/]")
             .Border(BoxBorder.Rounded)
             .BorderColor(Color.Green);
         AnsiConsole.Write(totalPnl);
@@ -554,7 +556,7 @@ public static class APap001A
 
     private static int ShowConfigurationMenu()
     {
-        var running = true;
+        bool running = true;
 
         while (running)
         {
@@ -563,7 +565,7 @@ public static class APap001A
             AnsiConsole.MarkupLine("[bold blue]Configuration[/]");
             AnsiConsole.WriteLine();
 
-            var selection = AnsiConsole.Prompt(
+            string selection = AnsiConsole.Prompt(
                 new SelectionPrompt<string>()
                     .Title("[green]Select an option:[/]")
                     .AddChoices(new[]
@@ -575,7 +577,7 @@ public static class APap001A
                         "5. Back to Main Menu"
                     }));
 
-            var choice = selection.Split('.')[0].Trim();
+            string choice = selection.Split('.')[0].Trim();
 
             switch (choice)
             {
@@ -607,7 +609,7 @@ public static class APap001A
         AnsiConsole.WriteLine();
 
         AnsiConsole.MarkupLine("[grey]Current: Polygon API Key = ••••••••[/]");
-        var newKey = AnsiConsole.Prompt(
+        string newKey = AnsiConsole.Prompt(
             new TextPrompt<string>("[green]New Polygon API Key[/] (Enter to keep current):")
                 .AllowEmpty()
                 .Secret());
@@ -630,9 +632,9 @@ public static class APap001A
         AnsiConsole.MarkupLine("[yellow]Edit Strategy Parameters[/]");
         AnsiConsole.WriteLine();
 
-        var ivThreshold = AnsiConsole.Ask("[green]IV/RV Threshold[/]:", 1.25);
-        var maxPositions = AnsiConsole.Ask("[green]Max Concurrent Positions[/]:", 5);
-        var kellyFraction = AnsiConsole.Ask("[green]Kelly Fraction[/]:", 0.25);
+        double ivThreshold = AnsiConsole.Ask("[green]IV/RV Threshold[/]:", 1.25);
+        int maxPositions = AnsiConsole.Ask("[green]Max Concurrent Positions[/]:", 5);
+        double kellyFraction = AnsiConsole.Ask("[green]Kelly Fraction[/]:", 0.25);
 
         AnsiConsole.MarkupLine($"[green]✓ Parameters updated:[/]");
         AnsiConsole.MarkupLine($"  IV/RV Threshold: {ivThreshold}");
@@ -647,9 +649,9 @@ public static class APap001A
         AnsiConsole.MarkupLine("[yellow]Edit IBKR Settings[/]");
         AnsiConsole.WriteLine();
 
-        var host = AnsiConsole.Ask("[green]TWS Host[/]:", "127.0.0.1");
-        var port = AnsiConsole.Ask("[green]TWS Port[/]:", 7497);
-        var account = AnsiConsole.Ask<string>("[green]Account ID[/]:");
+        string host = AnsiConsole.Ask("[green]TWS Host[/]:", "127.0.0.1");
+        int port = AnsiConsole.Ask("[green]TWS Port[/]:", 7497);
+        string account = AnsiConsole.Ask<string>("[green]Account ID[/]:");
 
         AnsiConsole.MarkupLine($"[green]✓ IBKR settings updated:[/]");
         AnsiConsole.MarkupLine($"  Host: {host}:{port}");
@@ -662,7 +664,7 @@ public static class APap001A
 
     private static int ShowSystemMenu()
     {
-        var running = true;
+        bool running = true;
 
         while (running)
         {
@@ -671,7 +673,7 @@ public static class APap001A
             AnsiConsole.MarkupLine("[bold blue]System[/]");
             AnsiConsole.WriteLine();
 
-            var selection = AnsiConsole.Prompt(
+            string selection = AnsiConsole.Prompt(
                 new SelectionPrompt<string>()
                     .Title("[green]Select an option:[/]")
                     .AddChoices(new[]
@@ -682,7 +684,7 @@ public static class APap001A
                         "4. Back to Main Menu"
                     }));
 
-            var choice = selection.Split('.')[0].Trim();
+            string choice = selection.Split('.')[0].Trim();
 
             switch (choice)
             {
@@ -712,7 +714,7 @@ public static class APap001A
         AnsiConsole.MarkupLine("[yellow]Running System Health Check...[/]");
         AnsiConsole.WriteLine();
 
-        var table = new Table()
+        Table table = new Table()
             .Border(TableBorder.Rounded)
             .Title("[bold]System Status[/]");
 
@@ -721,21 +723,21 @@ public static class APap001A
         table.AddColumn("Details");
 
         // Check config files
-        var configOk = File.Exists("appsettings.jsonc");
+        bool configOk = File.Exists("appsettings.jsonc");
         table.AddRow("Configuration",
             configOk ? "[green]✓ OK[/]" : "[red]✗ Missing[/]",
             configOk ? "appsettings.jsonc found" : "Create appsettings.jsonc");
 
         // Check data directory
-        var dataDir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+        string dataDir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
             ".project/Alaris/Alaris.Sessions");
-        var dataOk = Directory.Exists(dataDir);
+        bool dataOk = Directory.Exists(dataDir);
         table.AddRow("Sessions Directory",
             dataOk ? "[green]✓ OK[/]" : "[yellow]○ Empty[/]",
             dataOk ? $"{Directory.GetDirectories(dataDir).Length} sessions" : "No sessions yet");
 
         // Check LEAN
-        var leanOk = Directory.Exists("Alaris.Lean");
+        bool leanOk = Directory.Exists("Alaris.Lean");
         table.AddRow("LEAN Engine",
             leanOk ? "[green]✓ OK[/]" : "[red]✗ Missing[/]",
             leanOk ? "LEAN directory found" : "LEAN not installed");
@@ -755,34 +757,34 @@ public static class APap001A
         AnsiConsole.MarkupLine("[yellow]Recent System Activity[/]");
         AnsiConsole.WriteLine();
 
-        var logPath = System.IO.Path.Combine("Alaris.Simulation", "Output", "Logs");
+        string logPath = System.IO.Path.Combine("Alaris.Simulation", "Output", "Logs");
         if (!Directory.Exists(logPath))
         {
             AnsiConsole.MarkupLine("[grey]No logs found.[/]");
             return;
         }
 
-        var logs = Directory.GetFiles(logPath, "*.log")
-            .OrderByDescending(f => File.GetLastWriteTime(f))
-            .Take(5)
-            .ToList();
-
-        if (logs.Count == 0)
+        string[] logs = Directory.GetFiles(logPath, "*.log");
+        if (logs.Length == 0)
         {
             AnsiConsole.MarkupLine("[grey]No log files found.[/]");
             return;
         }
 
-        foreach (var log in logs)
+        Array.Sort(logs, (left, right) => File.GetLastWriteTime(right).CompareTo(File.GetLastWriteTime(left)));
+
+        int logCount = logs.Length < 5 ? logs.Length : 5;
+        for (int i = 0; i < logCount; i++)
         {
-            var lastWrite = File.GetLastWriteTime(log);
+            string log = logs[i];
+            DateTime lastWrite = File.GetLastWriteTime(log);
             AnsiConsole.MarkupLine($"[blue]{System.IO.Path.GetFileName(log)}[/] - {lastWrite:yyyy-MM-dd HH:mm}");
         }
     }
 
     private static void ShowAbout()
     {
-        var panel = new Panel(
+        Panel panel = new Panel(
             new Markup(
                 "[bold blue]Alaris Trading System[/]\n\n" +
                 $"Version: {Version}\n" +

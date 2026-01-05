@@ -94,7 +94,7 @@ public static class CLif003A
     /// </summary>
     public static void WriteKeyValueTable(string title, IEnumerable<(string Key, string Value)> items)
     {
-        var table = new Table()
+        Table table = new Table()
             .Border(TableBorder.Rounded)
             .BorderColor(Color.Grey)
             .Title($"[bold]{title}[/]")
@@ -117,19 +117,23 @@ public static class CLif003A
         IEnumerable<T> items,
         params (string Header, Func<T, string> Selector)[] columns)
     {
-        var table = new Table()
+        Table table = new Table()
             .Border(TableBorder.Rounded)
             .BorderColor(Color.Grey)
             .Title($"[bold]{title}[/]");
 
-        foreach ((string header, _) in columns)
+        foreach ((string Header, Func<T, string> Selector) column in columns)
         {
-            table.AddColumn(new TableColumn($"[grey]{header}[/]"));
+            table.AddColumn(new TableColumn($"[grey]{column.Header}[/]"));
         }
 
         foreach (T item in items)
         {
-            string[] values = columns.Select(c => c.Selector(item)).ToArray();
+            string[] values = new string[columns.Length];
+            for (int i = 0; i < columns.Length; i++)
+            {
+                values[i] = columns[i].Selector(item);
+            }
             table.AddRow(values);
         }
 
@@ -149,7 +153,7 @@ public static class CLif003A
     /// </summary>
     public static void WritePanel(string title, string content, Color? borderColor = null)
     {
-        var panel = new Panel(content)
+        Panel panel = new Panel(content)
             .Header($"[bold]{title}[/]")
             .Border(BoxBorder.Rounded)
             .BorderColor(borderColor ?? Color.Blue)

@@ -29,7 +29,7 @@ public sealed class CLst002A : Command<StrategyInfoSettings>
 
         AnsiConsole.WriteLine();
 
-        var entryTable = new Table()
+        Table entryTable = new Table()
             .Border(TableBorder.Rounded)
             .BorderColor(Color.Grey)
             .Title("[bold]Entry Criteria[/]");
@@ -47,7 +47,7 @@ public sealed class CLst002A : Command<StrategyInfoSettings>
         AnsiConsole.Write(entryTable);
         AnsiConsole.WriteLine();
 
-        var exitTable = new Table()
+        Table exitTable = new Table()
             .Border(TableBorder.Rounded)
             .BorderColor(Color.Grey)
             .Title("[bold]Exit Rules[/]");

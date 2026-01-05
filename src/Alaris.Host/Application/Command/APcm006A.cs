@@ -50,20 +50,46 @@ public sealed class BootstrapEarningsCommand : AsyncCommand<BootstrapEarningsSet
         AnsiConsole.WriteLine();
 
         // Resolve date range
-        DateTime endDate = string.IsNullOrEmpty(settings.EndDate)
-            ? DateTime.Today.AddDays(-1)
-            : DateTime.Parse(settings.EndDate);
+        DateTime endDate;
+        if (string.IsNullOrEmpty(settings.EndDate))
+        {
+            endDate = DateTime.Today.AddDays(-1);
+        }
+        else if (!DateTime.TryParse(settings.EndDate, out endDate))
+        {
+            AnsiConsole.MarkupLine("[red]Invalid end date. Use YYYY-MM-DD format.[/]");
+            return 1;
+        }
         
-        DateTime startDate = string.IsNullOrEmpty(settings.StartDate)
-            ? endDate.AddYears(-settings.Years)
-            : DateTime.Parse(settings.StartDate);
+        DateTime startDate;
+        if (string.IsNullOrEmpty(settings.StartDate))
+        {
+            if (settings.Years <= 0)
+            {
+                AnsiConsole.MarkupLine("[red]Years must be greater than zero.[/]");
+                return 1;
+            }
+            startDate = endDate.AddYears(-settings.Years);
+        }
+        else if (!DateTime.TryParse(settings.StartDate, out startDate))
+        {
+            AnsiConsole.MarkupLine("[red]Invalid start date. Use YYYY-MM-DD format.[/]");
+            return 1;
+        }
+
+        if (endDate < startDate)
+        {
+            AnsiConsole.MarkupLine("[red]End date must be on or after start date.[/]");
+            return 1;
+        }
 
         // Resolve output path
-        string outputDir = settings.OutputPath
-            ?? Environment.GetEnvironmentVariable("ALARIS_SESSION_DATA")
-            ?? System.IO.Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                ".project", "Alaris", "Alaris.Sessions", "earnings-cache");
+        string outputDir = string.IsNullOrWhiteSpace(settings.OutputPath)
+            ? (Environment.GetEnvironmentVariable("ALARIS_SESSION_DATA")
+               ?? System.IO.Path.Combine(
+                   Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                   ".project", "Alaris", "Alaris.Sessions", "earnings-cache"))
+            : settings.OutputPath;
 
         AnsiConsole.MarkupLine($"[grey]Date range: {startDate:yyyy-MM-dd} → {endDate:yyyy-MM-dd}[/]");
         AnsiConsole.MarkupLine($"[grey]Output: {outputDir}[/]");
@@ -71,7 +97,7 @@ public sealed class BootstrapEarningsCommand : AsyncCommand<BootstrapEarningsSet
 
         try
         {
-            using var service = DependencyFactory.CreateAPsv002A();
+            using APsv002A service = DependencyFactory.CreateAPsv002A();
             
             int downloaded = await service.BootstrapEarningsCalendarAsync(
                 startDate,

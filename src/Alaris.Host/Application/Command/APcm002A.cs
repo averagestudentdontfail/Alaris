@@ -94,7 +94,7 @@ public sealed class APcm002A : Command<ConfigSettings>
         }
 
         // Show file locations
-        var table = new Table()
+        Table table = new Table()
             .Title("[bold]Configuration Files[/]")
             .AddColumn("File")
             .AddColumn("Status");
@@ -114,7 +114,7 @@ public sealed class APcm002A : Command<ConfigSettings>
         JsonNode? localConfig = localPath != null ? LoadJsonc(localPath) : null;
 
         // Show key configuration values
-        var configTable = new Table()
+        Table configTable = new Table()
             .Title("[bold]Settings[/]")
             .AddColumn("Key")
             .AddColumn("Value")
@@ -203,7 +203,7 @@ public sealed class APcm002A : Command<ConfigSettings>
         }
 
         // Save file
-        var options = new JsonSerializerOptions
+        JsonSerializerOptions options = new JsonSerializerOptions
         {
             WriteIndented = true
         };
@@ -326,7 +326,7 @@ public sealed class APcm002A : Command<ConfigSettings>
 
     private static string StripJsonComments(string json)
     {
-        var result = new System.Text.StringBuilder();
+        System.Text.StringBuilder result = new System.Text.StringBuilder();
         bool inString = false;
         bool inLineComment = false;
         bool inBlockComment = false;
