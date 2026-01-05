@@ -17,7 +17,7 @@
     <AssemblyName>Alaris.Infrastructure</AssemblyName>
     <RootNamespace>Alaris.Infrastructure</RootNamespace>
     <Version>1.0.0</Version>
-    <Authors>Kiran K. Nath</Authors>
+    <Authors>Sunny</Authors>
     <Company>Alaris Quantitative Systems</Company>
     <Description>
       Consolidated infrastructure layer for Alaris trading system.

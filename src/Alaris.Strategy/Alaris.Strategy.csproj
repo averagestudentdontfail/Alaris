@@ -13,7 +13,7 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
 
     <Description>Earnings volatility calendar spread trading strategies based on academic research</Description>
-    <Authors>Kiran K. Nath</Authors>
+    <Authors>Sunny</Authors>
     <Version>1.0.0</Version>
     <!-- Suppress XML documentation warnings and SBE struct pattern analyzer rules -->
     <!-- CA1051: SBE structs intentionally expose fields for zero-copy access -->

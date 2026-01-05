@@ -9,7 +9,7 @@
     <RootNamespace>Alaris.Algorithm</RootNamespace>
     <AssemblyName>Alaris.Algorithm</AssemblyName>
     <Version>1.0.0</Version>
-    <Authors>Kiran K. Nath</Authors>
+    <Authors>Sunny</Authors>
     <Description>
       Alaris LEAN Algorithm implementation.
       Contains trading algorithms for backtesting and live trading via LEAN.

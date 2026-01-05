@@ -10,7 +10,7 @@
     <RootNamespace>Alaris.Host</RootNamespace>
     <AssemblyName>Alaris.Host</AssemblyName>
     <Version>1.0.0</Version>
-    <Authors>Kiran K. Nath</Authors>
+    <Authors>Sunny</Authors>
     <Description>
       Alaris Trading System CLI and LEAN Algorithm Host.
       Consolidates Application (CLI/UI) and Algorithm (LEAN integration).

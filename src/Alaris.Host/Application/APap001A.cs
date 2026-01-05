@@ -786,7 +786,7 @@ public static class APap001A
             new Markup(
                 "[bold blue]Alaris Trading System[/]\n\n" +
                 $"Version: {Version}\n" +
-                "Author: Kiran K. Nath\n\n" +
+                "Author: Sunny\n\n" +
                 "[grey]Quantitative earnings volatility trading system\n" +
                 "implementing Atilgan (2014) calendar spread strategy\n" +
                 "with Leung-Santoli (2016) volatility decomposition.[/]"))

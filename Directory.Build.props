@@ -42,10 +42,10 @@
 
   <PropertyGroup Label="Common Metadata">
     <!-- Default metadata for all projects -->
-    <Authors>Kiran K. Nath</Authors>
+    <Authors>Sunny</Authors>
     <Company>Alaris</Company>
     <Product>Alaris Options Pricing System</Product>
-    <Copyright>Copyright © 2025 Kiran K. Nath</Copyright>
+    <Copyright>Copyright © 2025 Sunny</Copyright>
   </PropertyGroup>
 
   <!--
