@@ -49,26 +49,3 @@ Covers practical patterns for signal interpretation, position management, risk c
 ### Standard
 
 Codifies conventions for high-integrity trading system development: financial precision, error handling, immutability, testing, logging, and code organisation. This document establishes the quality standards for all code contributions.
-
-## Conventions
-
-The documents follow these conventions:
-
-**Severity Levels:**
-- **MUST** — mandatory; violation indicates incorrectness
-- **SHOULD** — strongly recommended; violation may cause issues
-- **MAY** — optional best practice
-
-**Mathematical Notation:**
-- LaTeX syntax for equations
-- Consistent symbol usage (see Appendix A of Foundations)
-
-**Code Examples:**
-- C# for implementation examples
-- Bash for command-line examples
-- Pseudocode for algorithm descriptions
-
-**Language:**
-- Australian English (Macquarie Dictionary) as primary
-- Oxford English (Oxford Dictionary) as secondary reference
-- Traditional grammar with semicolons for related clauses
