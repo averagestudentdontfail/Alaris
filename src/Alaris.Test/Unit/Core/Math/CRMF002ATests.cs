@@ -196,7 +196,7 @@ public class CRMF002ATests
         double σ = 0.0;
 
         // Act & Assert
-        Assert.Throws<ArgumentException>(() => CRMF002A.SolveCharacteristic(r, q, σ));
+        Assert.Throws<ArgumentOutOfRangeException>(() => CRMF002A.SolveCharacteristic(r, q, σ));
     }
 
     [Fact]
@@ -208,7 +208,7 @@ public class CRMF002ATests
         double σ = -0.30;
 
         // Act & Assert
-        Assert.Throws<ArgumentException>(() => CRMF002A.SolveCharacteristic(r, q, σ));
+        Assert.Throws<ArgumentOutOfRangeException>(() => CRMF002A.SolveCharacteristic(r, q, σ));
     }
 
     #endregion

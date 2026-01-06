@@ -14,7 +14,7 @@ set -euo pipefail
 
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_PATH="${SCRIPT_DIR}/Alaris.Host"
+PROJECT_PATH="${SCRIPT_DIR}/src/Alaris.Host"
 CONFIG_FILE="${SCRIPT_DIR}/appsettings.jsonc"
 BUILD_CONFIG="${ALARIS_BUILD_CONFIG:-Release}"
 
@@ -47,7 +47,7 @@ check_prerequisites() {
 
 # Build the project if needed
 ensure_built() {
-    local dll_path="${PROJECT_PATH}/bin/${BUILD_CONFIG}/net9.0/Alaris.Host.dll"
+    local dll_path="${PROJECT_PATH}/bin/${BUILD_CONFIG}/net10.0/Alaris.Host.dll"
     local csproj_path="${PROJECT_PATH}/Alaris.Host.csproj"
     
     # Check if rebuild needed
