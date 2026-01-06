@@ -160,152 +160,17 @@ public sealed class IvArbitrageValidator : DTqc002A
     {
         System.Collections.Generic.List<string> warnings = new System.Collections.Generic.List<string>();
 
-        // Check put-call parity for each expiration and strike
-        System.Collections.Generic.HashSet<DateTime> expirationSet = new System.Collections.Generic.HashSet<DateTime>();
-        System.Collections.Generic.List<DateTime> expirations = new System.Collections.Generic.List<DateTime>();
-        foreach (OptionContract contract in snapshot.OptionChain.Contracts)
+        System.Collections.Generic.List<DateTime> expirations =
+            GetExpirations(snapshot.OptionChain.Contracts);
+        for (int i = 0; i < expirations.Count; i++)
         {
-            if (expirationSet.Add(contract.Expiration))
-            {
-                expirations.Add(contract.Expiration);
-            }
+            DateTime expiration = expirations[i];
+            System.Collections.Generic.List<OptionContract> contracts =
+                FilterByExpiration(snapshot.OptionChain.Contracts, expiration);
+            AddParityWarnings(snapshot, expiration, contracts, warnings);
         }
 
-        foreach (DateTime expiration in expirations)
-        {
-            System.Collections.Generic.List<OptionContract> contracts = new System.Collections.Generic.List<OptionContract>();
-            foreach (OptionContract contract in snapshot.OptionChain.Contracts)
-            {
-                if (contract.Expiration == expiration)
-                {
-                    contracts.Add(contract);
-                }
-            }
-
-            System.Collections.Generic.HashSet<decimal> strikeSet = new System.Collections.Generic.HashSet<decimal>();
-            System.Collections.Generic.List<decimal> strikes = new System.Collections.Generic.List<decimal>();
-            foreach (OptionContract contract in contracts)
-            {
-                if (strikeSet.Add(contract.Strike))
-                {
-                    strikes.Add(contract.Strike);
-                }
-            }
-
-            foreach (decimal strike in strikes)
-            {
-                OptionContract? call = null;
-                OptionContract? put = null;
-                foreach (OptionContract contract in contracts)
-                {
-                    if (contract.Strike != strike)
-                    {
-                        continue;
-                    }
-
-                    if (contract.Right == OptionRight.Call)
-                    {
-                        call = contract;
-                    }
-                    else if (contract.Right == OptionRight.Put)
-                    {
-                        put = contract;
-                    }
-
-                    if (call != null && put != null)
-                    {
-                        break;
-                    }
-                }
-
-                if (call == null || put == null)
-                    continue;
-
-                // Put-call parity: C - P = S - K * exp(-r*T)
-                // For short-dated options, approximate: C - P ≈ S - K
-                decimal lhs = call.Mid - put.Mid;
-                decimal rhs = snapshot.SpotPrice - strike;
-                decimal parityDiff = Math.Abs(lhs - rhs);
-                decimal parityErrorPct = parityDiff / Math.Max(call.Mid, put.Mid);
-
-                if (parityErrorPct > 0.02m) // 2% threshold
-                {
-                    warnings.Add($"Put-call parity violation: {strike} exp={expiration:yyyy-MM-dd}, error={parityErrorPct:P2}");
-                }
-            }
-        }
-
-        // Check calendar spread IV term structure
-        System.Collections.Generic.List<OptionContract> atmCandidates = new System.Collections.Generic.List<OptionContract>();
-        foreach (OptionContract contract in snapshot.OptionChain.Contracts)
-        {
-            if (contract.ImpliedVolatility.HasValue)
-            {
-                atmCandidates.Add(contract);
-            }
-        }
-
-        atmCandidates.Sort((left, right) =>
-        {
-            decimal leftDistance = Math.Abs(left.Strike - snapshot.SpotPrice);
-            decimal rightDistance = Math.Abs(right.Strike - snapshot.SpotPrice);
-            return leftDistance.CompareTo(rightDistance);
-        });
-
-        int atmCount = atmCandidates.Count > 10 ? 10 : atmCandidates.Count;
-        System.Collections.Generic.List<OptionContract> atm = new System.Collections.Generic.List<OptionContract>(atmCount);
-        for (int i = 0; i < atmCount; i++)
-        {
-            atm.Add(atmCandidates[i]);
-        }
-
-        if (atm.Count >= 2)
-        {
-            System.Collections.Generic.Dictionary<DateTime, (decimal Sum, int Count)> ivByExpiration =
-                new System.Collections.Generic.Dictionary<DateTime, (decimal Sum, int Count)>();
-
-            foreach (OptionContract contract in atm)
-            {
-                if (!contract.ImpliedVolatility.HasValue)
-                {
-                    continue;
-                }
-
-                DateTime expiration = contract.Expiration;
-                decimal iv = contract.ImpliedVolatility.Value;
-                if (ivByExpiration.TryGetValue(expiration, out (decimal Sum, int Count) aggregate))
-                {
-                    ivByExpiration[expiration] = (aggregate.Sum + iv, aggregate.Count + 1);
-                }
-                else
-                {
-                    ivByExpiration.Add(expiration, (iv, 1));
-                }
-            }
-
-            System.Collections.Generic.List<(DateTime Expiration, decimal AvgIv)> ivs =
-                new System.Collections.Generic.List<(DateTime Expiration, decimal AvgIv)>();
-            foreach (System.Collections.Generic.KeyValuePair<DateTime, (decimal Sum, int Count)> kvp in ivByExpiration)
-            {
-                if (kvp.Value.Count > 0)
-                {
-                    ivs.Add((kvp.Key, kvp.Value.Sum / kvp.Value.Count));
-                }
-            }
-
-            ivs.Sort((left, right) => left.Expiration.CompareTo(right.Expiration));
-
-            for (int i = 1; i < ivs.Count; i++)
-            {
-                decimal ivChange = ivs[i].AvgIv - ivs[i - 1].AvgIv;
-
-                // Expect IV to decrease or stay flat with longer expiry (absent earnings)
-                if (ivChange > 0.05m) // >5% IV increase
-                {
-                    warnings.Add($"Unusual IV term structure: {ivs[i].Expiration:yyyy-MM-dd} IV={ivs[i].AvgIv:P2} vs {ivs[i-1].Expiration:yyyy-MM-dd} IV={ivs[i-1].AvgIv:P2}");
-                }
-            }
-        }
+        AddTermStructureWarnings(snapshot, warnings);
 
         ValidationStatus status = warnings.Count > 0 ? ValidationStatus.PassedWithWarnings : ValidationStatus.Passed;
         return new DataQualityResult
@@ -316,6 +181,227 @@ public sealed class IvArbitrageValidator : DTqc002A
             Warnings = warnings,
             DataElement = "OptionChain"
         };
+    }
+
+    private static System.Collections.Generic.List<DateTime> GetExpirations(
+        System.Collections.Generic.IReadOnlyList<OptionContract> contracts)
+    {
+        System.Collections.Generic.HashSet<DateTime> expirationSet = new System.Collections.Generic.HashSet<DateTime>();
+        System.Collections.Generic.List<DateTime> expirations = new System.Collections.Generic.List<DateTime>();
+        foreach (OptionContract contract in contracts)
+        {
+            if (expirationSet.Add(contract.Expiration))
+            {
+                expirations.Add(contract.Expiration);
+            }
+        }
+
+        return expirations;
+    }
+
+    private static System.Collections.Generic.List<OptionContract> FilterByExpiration(
+        System.Collections.Generic.IReadOnlyList<OptionContract> contracts,
+        DateTime expiration)
+    {
+        System.Collections.Generic.List<OptionContract> filtered = new System.Collections.Generic.List<OptionContract>();
+        foreach (OptionContract contract in contracts)
+        {
+            if (contract.Expiration == expiration)
+            {
+                filtered.Add(contract);
+            }
+        }
+
+        return filtered;
+    }
+
+    private static System.Collections.Generic.List<decimal> GetStrikes(
+        System.Collections.Generic.List<OptionContract> contracts)
+    {
+        System.Collections.Generic.HashSet<decimal> strikeSet = new System.Collections.Generic.HashSet<decimal>();
+        System.Collections.Generic.List<decimal> strikes = new System.Collections.Generic.List<decimal>();
+        foreach (OptionContract contract in contracts)
+        {
+            if (strikeSet.Add(contract.Strike))
+            {
+                strikes.Add(contract.Strike);
+            }
+        }
+
+        return strikes;
+    }
+
+    private static bool TryGetCallPut(
+        System.Collections.Generic.List<OptionContract> contracts,
+        decimal strike,
+        out OptionContract call,
+        out OptionContract put)
+    {
+        call = null!;
+        put = null!;
+
+        foreach (OptionContract contract in contracts)
+        {
+            if (contract.Strike != strike)
+            {
+                continue;
+            }
+
+            if (contract.Right == OptionRight.Call)
+            {
+                call = contract;
+            }
+            else if (contract.Right == OptionRight.Put)
+            {
+                put = contract;
+            }
+
+            if (call != null && put != null)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static void AddParityWarnings(
+        MarketDataSnapshot snapshot,
+        DateTime expiration,
+        System.Collections.Generic.List<OptionContract> contracts,
+        System.Collections.Generic.List<string> warnings)
+    {
+        System.Collections.Generic.List<decimal> strikes = GetStrikes(contracts);
+        for (int i = 0; i < strikes.Count; i++)
+        {
+            decimal strike = strikes[i];
+            if (!TryGetCallPut(contracts, strike, out OptionContract call, out OptionContract put))
+            {
+                continue;
+            }
+
+            decimal lhs = call.Mid - put.Mid;
+            decimal rhs = snapshot.SpotPrice - strike;
+            decimal parityDiff = Math.Abs(lhs - rhs);
+            decimal parityErrorPct = parityDiff / Math.Max(call.Mid, put.Mid);
+
+            if (parityErrorPct > 0.02m)
+            {
+                warnings.Add($"Put-call parity violation: {strike} exp={expiration:yyyy-MM-dd}, error={parityErrorPct:P2}");
+            }
+        }
+    }
+
+    private static void AddTermStructureWarnings(
+        MarketDataSnapshot snapshot,
+        System.Collections.Generic.List<string> warnings)
+    {
+        System.Collections.Generic.List<OptionContract> atmCandidates =
+            GetAtmCandidates(snapshot.OptionChain.Contracts);
+        System.Collections.Generic.List<OptionContract> atm =
+            TakeAtmCandidates(atmCandidates, 10, snapshot.SpotPrice);
+
+        if (atm.Count < 2)
+        {
+            return;
+        }
+
+        System.Collections.Generic.Dictionary<DateTime, (decimal Sum, int Count)> ivByExpiration =
+            BuildIvAggregates(atm);
+        System.Collections.Generic.List<(DateTime Expiration, decimal AvgIv)> averages =
+            BuildIvAverages(ivByExpiration);
+
+        for (int i = 1; i < averages.Count; i++)
+        {
+            decimal ivChange = averages[i].AvgIv - averages[i - 1].AvgIv;
+            if (ivChange > 0.05m)
+            {
+                warnings.Add(
+                    $"Unusual IV term structure: {averages[i].Expiration:yyyy-MM-dd} IV={averages[i].AvgIv:P2} vs {averages[i - 1].Expiration:yyyy-MM-dd} IV={averages[i - 1].AvgIv:P2}");
+            }
+        }
+    }
+
+    private static System.Collections.Generic.List<OptionContract> GetAtmCandidates(
+        System.Collections.Generic.IReadOnlyList<OptionContract> contracts)
+    {
+        System.Collections.Generic.List<OptionContract> candidates = new System.Collections.Generic.List<OptionContract>();
+        foreach (OptionContract contract in contracts)
+        {
+            if (contract.ImpliedVolatility.HasValue)
+            {
+                candidates.Add(contract);
+            }
+        }
+
+        return candidates;
+    }
+
+    private static System.Collections.Generic.List<OptionContract> TakeAtmCandidates(
+        System.Collections.Generic.List<OptionContract> candidates,
+        int maxCount,
+        decimal spotPrice)
+    {
+        candidates.Sort((left, right) =>
+        {
+            decimal leftDistance = Math.Abs(left.Strike - spotPrice);
+            decimal rightDistance = Math.Abs(right.Strike - spotPrice);
+            return leftDistance.CompareTo(rightDistance);
+        });
+
+        int takeCount = candidates.Count > maxCount ? maxCount : candidates.Count;
+        System.Collections.Generic.List<OptionContract> result = new System.Collections.Generic.List<OptionContract>(takeCount);
+        for (int i = 0; i < takeCount; i++)
+        {
+            result.Add(candidates[i]);
+        }
+
+        return result;
+    }
+
+    private static System.Collections.Generic.Dictionary<DateTime, (decimal Sum, int Count)> BuildIvAggregates(
+        System.Collections.Generic.List<OptionContract> atm)
+    {
+        System.Collections.Generic.Dictionary<DateTime, (decimal Sum, int Count)> ivByExpiration =
+            new System.Collections.Generic.Dictionary<DateTime, (decimal Sum, int Count)>();
+
+        foreach (OptionContract contract in atm)
+        {
+            if (!contract.ImpliedVolatility.HasValue)
+            {
+                continue;
+            }
+
+            DateTime expiration = contract.Expiration;
+            decimal iv = contract.ImpliedVolatility.Value;
+            if (ivByExpiration.TryGetValue(expiration, out (decimal Sum, int Count) aggregate))
+            {
+                ivByExpiration[expiration] = (aggregate.Sum + iv, aggregate.Count + 1);
+            }
+            else
+            {
+                ivByExpiration.Add(expiration, (iv, 1));
+            }
+        }
+
+        return ivByExpiration;
+    }
+
+    private static System.Collections.Generic.List<(DateTime Expiration, decimal AvgIv)> BuildIvAverages(
+        System.Collections.Generic.Dictionary<DateTime, (decimal Sum, int Count)> ivByExpiration)
+    {
+        System.Collections.Generic.List<(DateTime Expiration, decimal AvgIv)> ivs =
+            new System.Collections.Generic.List<(DateTime Expiration, decimal AvgIv)>();
+        foreach (System.Collections.Generic.KeyValuePair<DateTime, (decimal Sum, int Count)> kvp in ivByExpiration)
+        {
+            if (kvp.Value.Count > 0)
+            {
+                ivs.Add((kvp.Key, kvp.Value.Sum / kvp.Value.Count));
+            }
+        }
+
+        ivs.Sort((left, right) => left.Expiration.CompareTo(right.Expiration));
+        return ivs;
     }
 }
 

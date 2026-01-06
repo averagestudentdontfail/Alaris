@@ -95,7 +95,7 @@ public sealed class PolygonApiClient : DTpr003A
             }
 
             List<PriceBar> bars = new List<PriceBar>(response.Results.Length);
-            foreach (PolygonAggregateResult result in response.Results)
+            foreach (PolygonBar result in response.Results)
             {
                 PriceBar bar = new PriceBar
                 {

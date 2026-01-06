@@ -104,7 +104,10 @@ public sealed class AlarisDataBridge
                 GetOptionChainWithCacheFallbackAsync(symbol, effectiveDate, cancellationToken);
             Task<(EarningsEvent? next, IReadOnlyList<EarningsEvent> historical)> earningsTask =
                 GetEarningsDataAsync(symbol, effectiveDate, cancellationToken);
-            Task<long> avgVolumeTask = _marketDataProvider.GetAverageVolume30DayAsync(symbol, effectiveDate, cancellationToken);
+            Task<decimal> avgVolumeTask = _marketDataProvider.GetAverageVolume30DayAsync(
+                symbol,
+                effectiveDate,
+                cancellationToken);
 
             await Task.WhenAll(
                 historicalBarsTask,
@@ -115,7 +118,7 @@ public sealed class AlarisDataBridge
             IReadOnlyList<PriceBar> historicalBars = await historicalBarsTask;
             OptionChainSnapshot optionChain = await optionChainTask;
             (EarningsEvent? nextEarnings, IReadOnlyList<EarningsEvent> historicalEarnings) = await earningsTask;
-            long avgVolume = await avgVolumeTask;
+            decimal avgVolume = await avgVolumeTask;
             
             // Derive spot price from the most recent bar's close price
             // This works for both live (recent bars) and backtesting (historical bars)
@@ -273,6 +276,60 @@ public sealed class AlarisDataBridge
 
         DateTime effectiveDate = evaluationDate.Date;
         Dictionary<DateTime, List<OptionContract>> contractsByExpiration =
+            BuildContractsByExpiration(contracts, effectiveDate);
+
+        if (contractsByExpiration.Count == 0)
+        {
+            _logger.LogWarning("No future expirations available for dividend yield estimate for {Symbol}", optionChain.Symbol);
+            return 0m;
+        }
+
+        List<DateTime> expirations = GetSortedExpirations(contractsByExpiration);
+
+        for (int i = 0; i < expirations.Count; i++)
+        {
+            DateTime expiration = expirations[i];
+            List<OptionContract> bucket = contractsByExpiration[expiration];
+
+            if (!TrySelectAtmPair(bucket, spotPrice, out OptionContract call, out OptionContract put, out decimal strike))
+            {
+                continue;
+            }
+
+            if (!TryComputeImpliedDividendYield(
+                    call,
+                    put,
+                    strike,
+                    spotPrice,
+                    riskFreeRate,
+                    effectiveDate,
+                    expiration,
+                    out decimal impliedDividendYield))
+            {
+                continue;
+            }
+
+            if (impliedDividendYield < 0m)
+            {
+                _logger.LogWarning(
+                    "Implied dividend yield is negative for {Symbol} ({Yield:P2}); using 0",
+                    optionChain.Symbol,
+                    impliedDividendYield);
+                return 0m;
+            }
+
+            return impliedDividendYield;
+        }
+
+        _logger.LogWarning("Unable to estimate dividend yield for {Symbol}; using 0", optionChain.Symbol);
+        return 0m;
+    }
+
+    private static Dictionary<DateTime, List<OptionContract>> BuildContractsByExpiration(
+        IReadOnlyList<OptionContract> contracts,
+        DateTime effectiveDate)
+    {
+        Dictionary<DateTime, List<OptionContract>> contractsByExpiration =
             new Dictionary<DateTime, List<OptionContract>>();
 
         for (int i = 0; i < contracts.Count; i++)
@@ -293,131 +350,127 @@ public sealed class AlarisDataBridge
             bucket.Add(contract);
         }
 
-        if (contractsByExpiration.Count == 0)
-        {
-            _logger.LogWarning("No future expirations available for dividend yield estimate for {Symbol}", optionChain.Symbol);
-            return 0m;
-        }
+        return contractsByExpiration;
+    }
 
+    private static List<DateTime> GetSortedExpirations(Dictionary<DateTime, List<OptionContract>> contractsByExpiration)
+    {
         List<DateTime> expirations = new List<DateTime>(contractsByExpiration.Count);
         foreach (DateTime expiration in contractsByExpiration.Keys)
         {
             expirations.Add(expiration);
         }
+
         expirations.Sort();
+        return expirations;
+    }
 
-        for (int i = 0; i < expirations.Count; i++)
+    private static bool TrySelectAtmPair(
+        List<OptionContract> bucket,
+        decimal spotPrice,
+        out OptionContract call,
+        out OptionContract put,
+        out decimal strike)
+    {
+        Dictionary<decimal, OptionContract> calls = new Dictionary<decimal, OptionContract>();
+        Dictionary<decimal, OptionContract> puts = new Dictionary<decimal, OptionContract>();
+
+        for (int i = 0; i < bucket.Count; i++)
         {
-            DateTime expiration = expirations[i];
-            List<OptionContract> bucket = contractsByExpiration[expiration];
-            Dictionary<decimal, OptionContract> calls = new Dictionary<decimal, OptionContract>();
-            Dictionary<decimal, OptionContract> puts = new Dictionary<decimal, OptionContract>();
-
-            for (int j = 0; j < bucket.Count; j++)
+            OptionContract contract = bucket[i];
+            if (contract.Right == OptionRight.Call)
             {
-                OptionContract contract = bucket[j];
-                if (contract.Right == OptionRight.Call)
-                {
-                    if (!calls.ContainsKey(contract.Strike))
-                    {
-                        calls.Add(contract.Strike, contract);
-                    }
-                }
-                else if (contract.Right == OptionRight.Put)
-                {
-                    if (!puts.ContainsKey(contract.Strike))
-                    {
-                        puts.Add(contract.Strike, contract);
-                    }
-                }
+                calls.TryAdd(contract.Strike, contract);
             }
-
-            if (calls.Count == 0 || puts.Count == 0)
+            else if (contract.Right == OptionRight.Put)
             {
-                continue;
+                puts.TryAdd(contract.Strike, contract);
             }
-
-            OptionContract? bestCall = null;
-            OptionContract? bestPut = null;
-            decimal bestStrike = 0m;
-            decimal bestDistance = decimal.MaxValue;
-
-            foreach (KeyValuePair<decimal, OptionContract> callEntry in calls)
-            {
-                decimal strike = callEntry.Key;
-                if (!puts.TryGetValue(strike, out OptionContract? put))
-                {
-                    continue;
-                }
-
-                decimal distance = Math.Abs(strike - spotPrice);
-                if (distance < bestDistance)
-                {
-                    bestDistance = distance;
-                    bestStrike = strike;
-                    bestCall = callEntry.Value;
-                    bestPut = put;
-                }
-            }
-
-            if (bestCall == null || bestPut == null)
-            {
-                continue;
-            }
-
-            decimal callMid = (bestCall.Bid + bestCall.Ask) / 2m;
-            decimal putMid = (bestPut.Bid + bestPut.Ask) / 2m;
-            if (callMid <= 0m || putMid <= 0m)
-            {
-                continue;
-            }
-
-            double timeToExpiry = (expiration - effectiveDate).TotalDays / 365.0;
-            if (timeToExpiry <= 0.0)
-            {
-                continue;
-            }
-
-            double spot = (double)spotPrice;
-            double strikeValue = (double)bestStrike;
-            double callValue = (double)callMid;
-            double putValue = (double)putMid;
-            double riskFree = (double)riskFreeRate;
-
-            double discountedStrike = strikeValue * Math.Exp(-riskFree * timeToExpiry);
-            double forward = callValue - putValue + discountedStrike;
-            if (forward <= 0.0 || spot <= 0.0)
-            {
-                continue;
-            }
-
-            double ratio = forward / spot;
-            if (ratio <= 0.0)
-            {
-                continue;
-            }
-
-            double implied = -Math.Log(ratio) / timeToExpiry;
-            if (double.IsNaN(implied) || double.IsInfinity(implied))
-            {
-                continue;
-            }
-
-            decimal impliedDividendYield = (decimal)implied;
-            if (impliedDividendYield < 0m)
-            {
-                _logger.LogWarning(
-                    "Implied dividend yield is negative for {Symbol} ({Yield:P2}); using 0",
-                    optionChain.Symbol,
-                    impliedDividendYield);
-                return 0m;
-            }
-
-            return impliedDividendYield;
         }
 
-        _logger.LogWarning("Unable to estimate dividend yield for {Symbol}; using 0", optionChain.Symbol);
-        return 0m;
+        call = null!;
+        put = null!;
+        strike = 0m;
+
+        if (calls.Count == 0 || puts.Count == 0)
+        {
+            return false;
+        }
+
+        decimal bestDistance = decimal.MaxValue;
+        foreach (KeyValuePair<decimal, OptionContract> callEntry in calls)
+        {
+            decimal candidateStrike = callEntry.Key;
+            if (!puts.TryGetValue(candidateStrike, out OptionContract? putCandidate))
+            {
+                continue;
+            }
+
+            decimal distance = Math.Abs(candidateStrike - spotPrice);
+            if (distance < bestDistance)
+            {
+                bestDistance = distance;
+                strike = candidateStrike;
+                call = callEntry.Value;
+                put = putCandidate;
+            }
+        }
+
+        return bestDistance != decimal.MaxValue;
+    }
+
+    private static bool TryComputeImpliedDividendYield(
+        OptionContract call,
+        OptionContract put,
+        decimal strike,
+        decimal spotPrice,
+        decimal riskFreeRate,
+        DateTime effectiveDate,
+        DateTime expiration,
+        out decimal impliedDividendYield)
+    {
+        impliedDividendYield = 0m;
+
+        decimal callMid = (call.Bid + call.Ask) / 2m;
+        decimal putMid = (put.Bid + put.Ask) / 2m;
+        if (callMid <= 0m || putMid <= 0m)
+        {
+            return false;
+        }
+
+        double timeToExpiry = (expiration - effectiveDate).TotalDays / 365.0;
+        if (timeToExpiry <= 0.0)
+        {
+            return false;
+        }
+
+        double spot = (double)spotPrice;
+        double strikeValue = (double)strike;
+        double callValue = (double)callMid;
+        double putValue = (double)putMid;
+        double riskFree = (double)riskFreeRate;
+
+        double discountedStrike = strikeValue * Math.Exp(-riskFree * timeToExpiry);
+        double forward = callValue - putValue + discountedStrike;
+        if (forward <= 0.0 || spot <= 0.0)
+        {
+            return false;
+        }
+
+        double ratio = forward / spot;
+        if (ratio <= 0.0)
+        {
+            return false;
+        }
+
+        double implied = -Math.Log(ratio) / timeToExpiry;
+        if (double.IsNaN(implied) || double.IsInfinity(implied))
+        {
+            return false;
+        }
+
+        impliedDividendYield = (decimal)implied;
+        return true;
     }
 
     /// <summary>
@@ -615,7 +668,7 @@ public sealed class AlarisDataBridge
             // Find nearest date <= evaluationDate, or if none, nearest date > evaluationDate
             bool hasEarlier = false;
             DateTime nearestEarlierDate = DateTime.MinValue;
-            (DateTime date, string path, bool isBinary) selected = default;
+            (DateTime date, string path, bool isBinary) selected = availableDates[0];
 
             for (int i = 0; i < availableDates.Count; i++)
             {
@@ -903,12 +956,12 @@ public sealed class AlarisDataBridge
             }
 
             // Check 2: Sufficient average volume (Atilgan threshold: 1.5M)
-            long avgVolume = await _marketDataProvider.GetAverageVolume30DayAsync(
+            decimal avgVolume = await _marketDataProvider.GetAverageVolume30DayAsync(
                 symbol,
                 null, // Use current date for live pre-filtering
                 cancellationToken);
 
-            if (avgVolume < 1_500_000)
+            if (avgVolume < 1_500_000m)
             {
                 _logger.LogDebug("{Symbol}: Insufficient volume ({Volume:N0})", symbol, avgVolume);
                 return false;
