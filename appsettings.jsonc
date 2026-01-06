@@ -88,6 +88,23 @@
             "RetentionDays": 90
         }
     },
+    // Polygon tuning (global, used by data bootstrap + Polygon API client)
+    "Polygon": {
+        "RequestsPerSecond": 100,
+        "MaxConcurrentRequests": 50,
+        "OptionsChainParallelism": 8,
+        "OptionsChainDelayMs": 0,
+        "OptionsContractLimit": 20,
+        "OptionsContractsPerExpiryRight": 2,
+        "OptionsMaxExpirations": 3,
+        "OptionsContractListCacheDays": 14,
+        "OptionsRightFilter": "both",
+        "OptionsBootstrapStrideDays": 1,
+        "EndpointWeightDailyBars": 1,
+        "EndpointWeightOptionsContracts": 1,
+        "EndpointWeightOptionAggregates": 6,
+        "EndpointWeightPreviousDay": 1
+    },
     // Interactive Brokers Gateway
     // Credentials loaded from user-secrets or environment:
     //   InteractiveBrokers:Account

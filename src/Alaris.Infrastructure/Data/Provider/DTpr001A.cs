@@ -49,8 +49,18 @@ public sealed class PolygonApiClient : DTpr003A
     private readonly int _optionsBootstrapStrideDays;
     private readonly int _optionsContractListCacheDays;
     private readonly OptionsRightFilter _optionsRightFilter;
-    private readonly SemaphoreSlim _rateLimiter;
-    private readonly CancellationTokenSource _rateLimitCts = new();
+    private readonly TimeSpan _requestInterval;
+    private readonly CancellationTokenSource _schedulerCts = new();
+    private readonly ConcurrentQueue<RequestTicket>[] _endpointQueues;
+    private readonly int[] _endpointWeights;
+    private readonly int[] _endpointCurrents;
+    private readonly int _endpointTotalWeight;
+    private readonly ConcurrentQueue<string> _optionAggregateSymbols =
+        new ConcurrentQueue<string>();
+    private readonly ConcurrentDictionary<string, ConcurrentQueue<RequestTicket>> _optionAggregateQueues =
+        new ConcurrentDictionary<string, ConcurrentQueue<RequestTicket>>(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, byte> _optionAggregateInQueue =
+        new ConcurrentDictionary<string, byte>(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, ContractCacheEntry> _contractCache =
         new ConcurrentDictionary<string, ContractCacheEntry>(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _contractCacheLocks =
@@ -85,8 +95,29 @@ public sealed class PolygonApiClient : DTpr003A
         _optionsContractListCacheDays = Math.Max(0, configuration.GetValue("Polygon:OptionsContractListCacheDays", 7));
         _optionsRightFilter = ParseOptionsRightFilter(configuration.GetValue("Polygon:OptionsRightFilter", "both"));
 
-        _rateLimiter = new SemaphoreSlim(_requestsPerSecond, _requestsPerSecond);
-        _ = Task.Run(async () => await RunRateLimitRefillAsync());
+        _requestInterval = TimeSpan.FromMilliseconds(Math.Max(1, 1000.0 / _requestsPerSecond));
+        int endpointCount = Enum.GetValues<EndpointKind>().Length;
+        _endpointQueues = new ConcurrentQueue<RequestTicket>[endpointCount];
+        _endpointWeights = new int[endpointCount];
+        _endpointCurrents = new int[endpointCount];
+
+        for (int i = 0; i < endpointCount; i++)
+        {
+            _endpointQueues[i] = new ConcurrentQueue<RequestTicket>();
+            _endpointCurrents[i] = 0;
+        }
+
+        _endpointWeights[(int)EndpointKind.DailyBars] =
+            Math.Max(1, configuration.GetValue("Polygon:EndpointWeightDailyBars", 1));
+        _endpointWeights[(int)EndpointKind.OptionsContracts] =
+            Math.Max(1, configuration.GetValue("Polygon:EndpointWeightOptionsContracts", 1));
+        _endpointWeights[(int)EndpointKind.OptionAggregates] =
+            Math.Max(1, configuration.GetValue("Polygon:EndpointWeightOptionAggregates", 6));
+        _endpointWeights[(int)EndpointKind.PreviousDay] =
+            Math.Max(1, configuration.GetValue("Polygon:EndpointWeightPreviousDay", 1));
+
+        _endpointTotalWeight = _endpointWeights.Sum();
+        _ = Task.Run(async () => await RunRequestSchedulerAsync(_schedulerCts.Token));
     }
 
     /// <inheritdoc/>
@@ -115,7 +146,7 @@ public sealed class PolygonApiClient : DTpr003A
 
         try
         {
-            await WaitForRateLimitAsync(cancellationToken);
+            await WaitForRateLimitAsync(EndpointKind.DailyBars, cancellationToken);
             PolygonAggregatesResponse response = await _api.GetDailyBarsAsync(
                 symbol,
                 startDate.ToString("yyyy-MM-dd"),
@@ -286,7 +317,7 @@ public sealed class PolygonApiClient : DTpr003A
                 await semaphore.WaitAsync(cancellationToken);
                 try
                 {
-                    await WaitForRateLimitAsync(cancellationToken);
+                    await WaitForRateLimitAsync(EndpointKind.OptionAggregates, cancellationToken, symbol);
                     PolygonAggregatesResponse aggResponse = await _api.GetTickerAggregatesAsync(
                         refContract.Ticker,
                         dateStr,
@@ -378,7 +409,7 @@ public sealed class PolygonApiClient : DTpr003A
 
         try
         {
-            await WaitForRateLimitAsync(cancellationToken);
+            await WaitForRateLimitAsync(EndpointKind.PreviousDay, cancellationToken);
             PolygonAggregatesResponse response = await _api.GetPreviousDayAsync(
                 symbol,
                 adjusted: true,
@@ -582,7 +613,7 @@ public sealed class PolygonApiClient : DTpr003A
                 return cached;
             }
 
-            await WaitForRateLimitAsync(cancellationToken);
+            await WaitForRateLimitAsync(EndpointKind.OptionsContracts, cancellationToken);
             PolygonOptionsContractsResponse refResponse = await _api.GetOptionsContractsAsync(
                 underlyingTicker: symbol,
                 asOfDate: asOfDate.ToString("yyyy-MM-dd"),
@@ -717,17 +748,23 @@ public sealed class PolygonApiClient : DTpr003A
         return OptionsRightFilter.Both;
     }
 
-    private async Task RunRateLimitRefillAsync()
+    private async Task RunRequestSchedulerAsync(CancellationToken cancellationToken)
     {
-        using PeriodicTimer timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        using PeriodicTimer timer = new PeriodicTimer(_requestInterval);
         try
         {
-            while (await timer.WaitForNextTickAsync(_rateLimitCts.Token))
+            while (await timer.WaitForNextTickAsync(cancellationToken))
             {
-                int toRelease = _requestsPerSecond - _rateLimiter.CurrentCount;
-                if (toRelease > 0)
+                int selected = SelectNextEndpoint();
+                if (selected < 0)
                 {
-                    _rateLimiter.Release(toRelease);
+                    continue;
+                }
+
+                EndpointKind kind = (EndpointKind)selected;
+                if (TryDequeueForEndpoint(kind, out RequestTicket? ticket))
+                {
+                    ticket.Gate.TrySetResult(true);
                 }
             }
         }
@@ -737,9 +774,122 @@ public sealed class PolygonApiClient : DTpr003A
         }
     }
 
-    private ValueTask WaitForRateLimitAsync(CancellationToken cancellationToken)
+    private async ValueTask WaitForRateLimitAsync(
+        EndpointKind kind,
+        CancellationToken cancellationToken,
+        string? symbol = null)
     {
-        return new ValueTask(_rateLimiter.WaitAsync(cancellationToken));
+        TaskCompletionSource<bool> gate =
+            new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using CancellationTokenRegistration reg =
+            cancellationToken.Register(() => gate.TrySetCanceled(cancellationToken));
+
+        EnqueueRequestTicket(kind, new RequestTicket(kind, gate), symbol);
+        await gate.Task;
+    }
+
+    private sealed record RequestTicket(EndpointKind Kind, TaskCompletionSource<bool> Gate);
+
+    private void EnqueueRequestTicket(EndpointKind kind, RequestTicket ticket, string? symbol)
+    {
+        if (kind == EndpointKind.OptionAggregates)
+        {
+            if (string.IsNullOrWhiteSpace(symbol))
+            {
+                throw new ArgumentException("Symbol is required for option aggregate scheduling.", nameof(symbol));
+            }
+
+            ConcurrentQueue<RequestTicket> queue = _optionAggregateQueues.GetOrAdd(
+                symbol,
+                _ => new ConcurrentQueue<RequestTicket>());
+            queue.Enqueue(ticket);
+
+            if (_optionAggregateInQueue.TryAdd(symbol, 0))
+            {
+                _optionAggregateSymbols.Enqueue(symbol);
+            }
+
+            return;
+        }
+
+        _endpointQueues[(int)kind].Enqueue(ticket);
+    }
+
+    private bool TryDequeueForEndpoint(EndpointKind kind, out RequestTicket? ticket)
+    {
+        if (kind == EndpointKind.OptionAggregates)
+        {
+            return TryDequeueOptionAggregate(out ticket);
+        }
+
+        return _endpointQueues[(int)kind].TryDequeue(out ticket);
+    }
+
+    private bool TryDequeueOptionAggregate(out RequestTicket? ticket)
+    {
+        ticket = null;
+
+        while (_optionAggregateSymbols.TryDequeue(out string? symbol))
+        {
+            if (!_optionAggregateQueues.TryGetValue(symbol, out ConcurrentQueue<RequestTicket>? queue))
+            {
+                _optionAggregateInQueue.TryRemove(symbol, out _);
+                continue;
+            }
+
+            if (!queue.TryDequeue(out ticket))
+            {
+                _optionAggregateInQueue.TryRemove(symbol, out _);
+                continue;
+            }
+
+            if (queue.TryPeek(out _))
+            {
+                _optionAggregateSymbols.Enqueue(symbol);
+            }
+            else
+            {
+                _optionAggregateInQueue.TryRemove(symbol, out _);
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool HasPending(EndpointKind kind)
+    {
+        if (kind == EndpointKind.OptionAggregates)
+        {
+            return !_optionAggregateSymbols.IsEmpty;
+        }
+
+        return _endpointQueues[(int)kind].TryPeek(out _);
+    }
+
+    private int SelectNextEndpoint()
+    {
+        int selected = -1;
+        int maxCurrent = int.MinValue;
+
+        for (int i = 0; i < _endpointQueues.Length; i++)
+        {
+            _endpointCurrents[i] += _endpointWeights[i];
+            EndpointKind kind = (EndpointKind)i;
+            if (HasPending(kind) && _endpointCurrents[i] > maxCurrent)
+            {
+                selected = i;
+                maxCurrent = _endpointCurrents[i];
+            }
+        }
+
+        if (selected >= 0)
+        {
+            _endpointCurrents[selected] -= _endpointTotalWeight;
+        }
+
+        return selected;
     }
 
 
@@ -748,6 +898,14 @@ public sealed class PolygonApiClient : DTpr003A
         Both,
         Call,
         Put
+    }
+
+    private enum EndpointKind
+    {
+        DailyBars,
+        OptionsContracts,
+        OptionAggregates,
+        PreviousDay
     }
 
     private sealed class ContractCacheEntry

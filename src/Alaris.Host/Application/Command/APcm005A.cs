@@ -418,6 +418,7 @@ internal static class DependencyFactory
     {
         return _config ??= new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.jsonc", optional: true)
             .AddJsonFile("appsettings.json", optional: true)
             .AddJsonFile("config.json", optional: true)
             .AddJsonFile("appsettings.local.json", optional: true)

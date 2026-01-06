@@ -90,6 +90,30 @@ public sealed class PolygonOptions
     /// Right filter for option contracts: "both", "call", or "put".
     /// </summary>
     public string OptionsRightFilter { get; init; } = "both";
+
+    /// <summary>
+    /// Scheduler weight for daily bars endpoint.
+    /// </summary>
+    [Range(1, 20)]
+    public int EndpointWeightDailyBars { get; init; } = 1;
+
+    /// <summary>
+    /// Scheduler weight for options contracts reference endpoint.
+    /// </summary>
+    [Range(1, 20)]
+    public int EndpointWeightOptionsContracts { get; init; } = 1;
+
+    /// <summary>
+    /// Scheduler weight for option aggregates endpoint.
+    /// </summary>
+    [Range(1, 50)]
+    public int EndpointWeightOptionAggregates { get; init; } = 6;
+
+    /// <summary>
+    /// Scheduler weight for previous-day endpoint.
+    /// </summary>
+    [Range(1, 20)]
+    public int EndpointWeightPreviousDay { get; init; } = 1;
 }
 
 /// <summary>
