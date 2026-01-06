@@ -15,7 +15,7 @@ namespace Alaris.Infrastructure.Events.Infrastructure;
 /// </remarks>
 public sealed class EVIF002A : EVCR004A
 {
-    private readonly ConcurrentBag<AuditEntry> _entries = new();
+    private readonly ConcurrentBag<AuditEntry> _entries = new ConcurrentBag<AuditEntry>();
 
     public Task LogAsync(AuditEntry entry, CancellationToken cancellationToken = default)
     {
@@ -28,24 +28,36 @@ public sealed class EVIF002A : EVCR004A
         string entityId,
         CancellationToken cancellationToken = default)
     {
-        IReadOnlyList<AuditEntry> entries = _entries
-            .Where(e => e.EntityType == entityType && e.EntityId == entityId)
-            .OrderBy(e => e.OccurredAtUtc)
-            .ToList();
+        List<AuditEntry> entries = new List<AuditEntry>();
+        foreach (AuditEntry entry in _entries)
+        {
+            if (entry.EntityType == entityType && entry.EntityId == entityId)
+            {
+                entries.Add(entry);
+            }
+        }
 
-        return Task.FromResult(entries);
+        entries.Sort(static (left, right) => left.OccurredAtUtc.CompareTo(right.OccurredAtUtc));
+
+        return Task.FromResult((IReadOnlyList<AuditEntry>)entries);
     }
 
     public Task<IReadOnlyList<AuditEntry>> GetEntriesByInitiatorAsync(
         string initiatedBy,
         CancellationToken cancellationToken = default)
     {
-        IReadOnlyList<AuditEntry> entries = _entries
-            .Where(e => e.InitiatedBy == initiatedBy)
-            .OrderBy(e => e.OccurredAtUtc)
-            .ToList();
+        List<AuditEntry> entries = new List<AuditEntry>();
+        foreach (AuditEntry entry in _entries)
+        {
+            if (entry.InitiatedBy == initiatedBy)
+            {
+                entries.Add(entry);
+            }
+        }
 
-        return Task.FromResult(entries);
+        entries.Sort(static (left, right) => left.OccurredAtUtc.CompareTo(right.OccurredAtUtc));
+
+        return Task.FromResult((IReadOnlyList<AuditEntry>)entries);
     }
 
     public Task<IReadOnlyList<AuditEntry>> GetEntriesByTimeRangeAsync(
@@ -53,11 +65,17 @@ public sealed class EVIF002A : EVCR004A
         DateTime toUtc,
         CancellationToken cancellationToken = default)
     {
-        IReadOnlyList<AuditEntry> entries = _entries
-            .Where(e => e.OccurredAtUtc >= fromUtc && e.OccurredAtUtc <= toUtc)
-            .OrderBy(e => e.OccurredAtUtc)
-            .ToList();
+        List<AuditEntry> entries = new List<AuditEntry>();
+        foreach (AuditEntry entry in _entries)
+        {
+            if (entry.OccurredAtUtc >= fromUtc && entry.OccurredAtUtc <= toUtc)
+            {
+                entries.Add(entry);
+            }
+        }
 
-        return Task.FromResult(entries);
+        entries.Sort(static (left, right) => left.OccurredAtUtc.CompareTo(right.OccurredAtUtc));
+
+        return Task.FromResult((IReadOnlyList<AuditEntry>)entries);
     }
 }

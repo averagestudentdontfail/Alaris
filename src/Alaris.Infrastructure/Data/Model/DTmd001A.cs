@@ -93,18 +93,77 @@ public sealed class OptionChainSnapshot
     public required IReadOnlyList<OptionContract> Contracts { get; init; }
 
     /// <summary>Gets contracts by expiration date.</summary>
-    public IReadOnlyDictionary<DateTime, IReadOnlyList<OptionContract>> ByExpiration =>
-        Contracts
-            .GroupBy(c => c.Expiration)
-            .ToDictionary(g => g.Key, g => (IReadOnlyList<OptionContract>)g.ToList());
+    public IReadOnlyDictionary<DateTime, IReadOnlyList<OptionContract>> ByExpiration
+    {
+        get
+        {
+            Dictionary<DateTime, List<OptionContract>> grouped = new Dictionary<DateTime, List<OptionContract>>();
+            IReadOnlyList<OptionContract> contracts = Contracts;
+
+            for (int i = 0; i < contracts.Count; i++)
+            {
+                OptionContract contract = contracts[i];
+                if (!grouped.TryGetValue(contract.Expiration, out List<OptionContract>? bucket))
+                {
+                    bucket = new List<OptionContract>();
+                    grouped.Add(contract.Expiration, bucket);
+                }
+
+                bucket.Add(contract);
+            }
+
+            Dictionary<DateTime, IReadOnlyList<OptionContract>> result =
+                new Dictionary<DateTime, IReadOnlyList<OptionContract>>(grouped.Count);
+            foreach (KeyValuePair<DateTime, List<OptionContract>> kvp in grouped)
+            {
+                result.Add(kvp.Key, kvp.Value);
+            }
+
+            return result;
+        }
+    }
 
     /// <summary>Gets only call contracts.</summary>
-    public IReadOnlyList<OptionContract> Calls =>
-        Contracts.Where(c => c.Right == OptionRight.Call).ToList();
+    public IReadOnlyList<OptionContract> Calls
+    {
+        get
+        {
+            List<OptionContract> calls = new List<OptionContract>();
+            IReadOnlyList<OptionContract> contracts = Contracts;
+
+            for (int i = 0; i < contracts.Count; i++)
+            {
+                OptionContract contract = contracts[i];
+                if (contract.Right == OptionRight.Call)
+                {
+                    calls.Add(contract);
+                }
+            }
+
+            return calls;
+        }
+    }
 
     /// <summary>Gets only put contracts.</summary>
-    public IReadOnlyList<OptionContract> Puts =>
-        Contracts.Where(c => c.Right == OptionRight.Put).ToList();
+    public IReadOnlyList<OptionContract> Puts
+    {
+        get
+        {
+            List<OptionContract> puts = new List<OptionContract>();
+            IReadOnlyList<OptionContract> contracts = Contracts;
+
+            for (int i = 0; i < contracts.Count; i++)
+            {
+                OptionContract contract = contracts[i];
+                if (contract.Right == OptionRight.Put)
+                {
+                    puts.Add(contract);
+                }
+            }
+
+            return puts;
+        }
+    }
 }
 
 /// <summary>

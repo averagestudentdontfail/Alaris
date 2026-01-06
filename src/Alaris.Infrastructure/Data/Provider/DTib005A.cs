@@ -52,11 +52,6 @@ public sealed class InteractiveBrokersSnapshotProvider : DTpr002A
     private readonly TimeSpan _connectionTimeout = TimeSpan.FromSeconds(10);
     private readonly TimeSpan _quoteTimeout = TimeSpan.FromSeconds(10);
 
-    // IB Gateway client - will be null in backtest mode
-    // Note: In production, this uses IBApi.EClientSocket from CSharpAPI.dll
-    // For now, we implement a clean abstraction that can be swapped
-    private readonly object _clientLock = new();
-
     /// <summary>
     /// Initializes a new instance for live/paper trading with IB Gateway connection.
     /// </summary>
@@ -209,9 +204,8 @@ public sealed class InteractiveBrokersSnapshotProvider : DTpr002A
             }
             else if (!_isConnected)
             {
-                // Not connected - fallback to simulated quote with warning
-                _logger.LogWarning("IB Gateway not connected - using simulated quote for {Symbol}", underlyingSymbol);
-                await GenerateBacktestQuoteAsync(reqId, state);
+                _logger.LogError("IB Gateway not connected; cannot request live quote for {Symbol}", underlyingSymbol);
+                throw new InvalidOperationException("IB Gateway not connected; cannot request live quote.");
             }
             else
             {
@@ -292,17 +286,15 @@ public sealed class InteractiveBrokersSnapshotProvider : DTpr002A
     /// </summary>
     private Task RequestLiveQuoteAsync(int reqId, QuoteState state)
     {
-        // In production, this would use:
-        // var contract = CreateOptionContract(state);
-        // lock (_clientLock)
-        // {
-        //     _client.reqMktData(reqId, contract, "100,101", true, false, null);
-        // }
-
-        // For now, we use simulated data as placeholder
-        // TODO: Integrate with actual IBApi when CSharpAPI.dll is properly referenced
-        _logger.LogDebug("Requesting live quote from IB Gateway for request {RequestId}", reqId);
-        return GenerateBacktestQuoteAsync(reqId, state);
+        _logger.LogDebug(
+            "Requesting live quote from IB Gateway for request {RequestId} ({Symbol} {Strike} {Right} {Expiration:yyyy-MM-dd})",
+            reqId,
+            state.UnderlyingSymbol,
+            state.Strike,
+            state.Right,
+            state.Expiration);
+        throw new NotSupportedException(
+            "Interactive Brokers live quotes require IBApi integration; add IBApi and wire EClientSocket to enable live requests.");
     }
 
     private static string FormatOptionSymbol(QuoteState state)

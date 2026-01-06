@@ -681,7 +681,7 @@ public readonly record struct TransitionResult<TState, TEvent>
     /// <summary>Creates a successful transition result.</summary>
     [SuppressMessage("Design", "CA1000:Do not declare static members on generic types", Justification = "Factory method pattern")]
     public static TransitionResult<TState, TEvent> Success(TState from, TEvent on, TState to)
-        => new() 
+        => new TransitionResult<TState, TEvent> 
         { 
             Succeeded = true, 
             FromState = from,
@@ -693,7 +693,7 @@ public readonly record struct TransitionResult<TState, TEvent>
     /// <summary>Creates an invalid transition result (no transition defined).</summary>
     [SuppressMessage("Design", "CA1000:Do not declare static members on generic types", Justification = "Factory method pattern")]
     public static TransitionResult<TState, TEvent> InvalidTransition(TState from, TEvent on)
-        => new() 
+        => new TransitionResult<TState, TEvent> 
         { 
             Succeeded = false, 
             FromState = from,
@@ -704,7 +704,7 @@ public readonly record struct TransitionResult<TState, TEvent>
     /// <summary>Creates a guard-failed result.</summary>
     [SuppressMessage("Design", "CA1000:Do not declare static members on generic types", Justification = "Factory method pattern")]
     public static TransitionResult<TState, TEvent> GuardFailed(TState from, TEvent on, TState to)
-        => new() 
+        => new TransitionResult<TState, TEvent> 
         { 
             Succeeded = false, 
             FromState = from,
@@ -716,7 +716,7 @@ public readonly record struct TransitionResult<TState, TEvent>
     /// <summary>Creates an action-failed result.</summary>
     [SuppressMessage("Design", "CA1000:Do not declare static members on generic types", Justification = "Factory method pattern")]
     public static TransitionResult<TState, TEvent> ActionFailed(TState from, TEvent on, Exception ex, string? context = null)
-        => new() 
+        => new TransitionResult<TState, TEvent> 
         { 
             Succeeded = false, 
             FromState = from,

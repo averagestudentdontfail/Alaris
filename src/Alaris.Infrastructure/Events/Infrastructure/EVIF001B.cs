@@ -117,7 +117,7 @@ public sealed class EVIF001B : EVCR002A, IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentException.ThrowIfNullOrWhiteSpace(aggregateId);
 
-        List<EVCR003A> result = [];
+        List<EVCR003A> result = new List<EVCR003A>();
 
         await _readSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
@@ -135,7 +135,8 @@ public sealed class EVIF001B : EVCR002A, IDisposable
             _readSemaphore.Release();
         }
 
-        return result.OrderBy(e => e.SequenceNumber).ToList();
+        result.Sort(static (left, right) => left.SequenceNumber.CompareTo(right.SequenceNumber));
+        return result;
     }
 
     /// <inheritdoc/>
@@ -146,7 +147,7 @@ public sealed class EVIF001B : EVCR002A, IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
-        List<EVCR003A> result = [];
+        List<EVCR003A> result = new List<EVCR003A>();
 
         await _readSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
@@ -168,7 +169,8 @@ public sealed class EVIF001B : EVCR002A, IDisposable
             _readSemaphore.Release();
         }
 
-        return result.OrderBy(e => e.SequenceNumber).ToList();
+        result.Sort(static (left, right) => left.SequenceNumber.CompareTo(right.SequenceNumber));
+        return result;
     }
 
     /// <inheritdoc/>
@@ -186,7 +188,7 @@ public sealed class EVIF001B : EVCR002A, IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
 
-        List<EVCR003A> result = [];
+        List<EVCR003A> result = new List<EVCR003A>();
 
         await _readSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
@@ -204,7 +206,8 @@ public sealed class EVIF001B : EVCR002A, IDisposable
             _readSemaphore.Release();
         }
 
-        return result.OrderBy(e => e.SequenceNumber).ToList();
+        result.Sort(static (left, right) => left.SequenceNumber.CompareTo(right.SequenceNumber));
+        return result;
     }
 
     /// <inheritdoc/>
@@ -215,7 +218,7 @@ public sealed class EVIF001B : EVCR002A, IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
-        List<EVCR003A> result = [];
+        List<EVCR003A> result = new List<EVCR003A>();
 
         await _readSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
@@ -233,7 +236,8 @@ public sealed class EVIF001B : EVCR002A, IDisposable
             _readSemaphore.Release();
         }
 
-        return result.OrderBy(e => e.SequenceNumber).ToList();
+        result.Sort(static (left, right) => left.SequenceNumber.CompareTo(right.SequenceNumber));
+        return result;
     }
 
 

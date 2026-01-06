@@ -230,10 +230,10 @@ internal static class SMSM001A
     /// </remarks>
     private static SimulatedMarketData GenerateMarketData(DateTime evaluationDate, DateTime earningsDate)
     {
-        var random = new Random(42); // Deterministic seed for reproducible simulation
+        Random random = new Random(42); // Deterministic seed for reproducible simulation
 
         // Generate historical earnings dates (quarterly)
-        var historicalEarnings = new List<DateTime>
+        List<DateTime> historicalEarnings = new List<DateTime>
         {
             earningsDate.AddMonths(-3),
             earningsDate.AddMonths(-6),
@@ -242,12 +242,16 @@ internal static class SMSM001A
         };
 
         // Convert to HashSet for O(1) lookup
-        var earningsDateSet = new HashSet<DateTime>(historicalEarnings.Select(d => d.Date));
+        HashSet<DateTime> earningsDateSet = new HashSet<DateTime>();
+        for (int i = 0; i < historicalEarnings.Count; i++)
+        {
+            earningsDateSet.Add(historicalEarnings[i].Date);
+        }
 
         // Generate 365 days of price history to capture all 4 quarterly earnings dates
         // This ensures proper Leung-Santoli calibration with sufficient samples
         const int PriceHistoryDays = 365;
-        var priceHistory = new List<PriceBar>();
+        List<PriceBar> priceHistory = new List<PriceBar>();
         double currentPrice = 150.00;
         DateTime startDate = evaluationDate.AddDays(-PriceHistoryDays);
 
@@ -322,8 +326,8 @@ internal static class SMSM001A
         double spotPrice,
         DateTime earningsDate)
     {
-        var expiries = new List<OptionExpiry>();
-        var random = new Random(42);
+        List<OptionExpiry> expiries = new List<OptionExpiry>();
+        Random random = new Random(42);
 
         int daysToEarnings = (earningsDate - evaluationDate).Days;
 
@@ -332,8 +336,8 @@ internal static class SMSM001A
         {
             DateTime expiryDate = evaluationDate.AddDays(monthOffset * 30);
             int dte = monthOffset * 30;
-            var calls = new List<OptionContract>();
-            var puts = new List<OptionContract>();
+            List<OptionContract> calls = new List<OptionContract>();
+            List<OptionContract> puts = new List<OptionContract>();
 
             // Base IV decreases with time for inverted structure
             // Front month (30 DTE): ~28% IV (elevated due to earnings)
@@ -459,8 +463,11 @@ internal static class SMSM001A
         int historicalSamples = 0;
         double sumSquaredReturns = 0.0;
 
-        var earningsDateSet = new HashSet<DateTime>(
-            marketData.HistoricalEarningsDates.Select(d => d.Date));
+        HashSet<DateTime> earningsDateSet = new HashSet<DateTime>();
+        for (int i = 0; i < marketData.HistoricalEarningsDates.Count; i++)
+        {
+            earningsDateSet.Add(marketData.HistoricalEarningsDates[i].Date);
+        }
 
         for (int i = 1; i < marketData.PriceHistory.Count; i++)
         {
@@ -546,23 +553,19 @@ internal static class SMSM001A
         OptionChain chain = marketData.OptionChain;
         double spot = chain.UnderlyingPrice;
 
-        // Find ATM strike
-        double atmStrike = chain.Expiries[0].Calls
-            .OrderBy(c => Math.Abs(c.Strike - spot))
-            .First().Strike;
-
         // Get front and back month expiries
         OptionExpiry frontExpiry = chain.Expiries[0];
         OptionExpiry backExpiry = chain.Expiries[2];
+
+        OptionContract atmContract = FindClosestStrike(frontExpiry.Calls, spot);
+        double atmStrike = atmContract.Strike;
 
         int frontDte = (int)(frontExpiry.ExpiryDate - evaluationDate).TotalDays;
         int backDte = (int)(backExpiry.ExpiryDate - evaluationDate).TotalDays;
 
         // Get ATM options
-        OptionContract frontCall = frontExpiry.Calls
-            .First(c => Math.Abs(c.Strike - atmStrike) < 0.01);
-        OptionContract backCall = backExpiry.Calls
-            .First(c => Math.Abs(c.Strike - atmStrike) < 0.01);
+        OptionContract frontCall = FindStrikeMatch(frontExpiry.Calls, atmStrike, 0.01);
+        OptionContract backCall = FindStrikeMatch(backExpiry.Calls, atmStrike, 0.01);
 
         // Price with Healy (2021) double boundary method and validated Greeks
         (double frontPrice, double frontDelta, double frontGamma, double frontTheta, double frontVega) =
@@ -805,23 +808,19 @@ internal static class SMSM001A
         OptionChain chain = marketData.OptionChain;
         double spot = chain.UnderlyingPrice;
 
-        // Find ATM strike
-        double atmStrike = chain.Expiries[0].Calls
-            .OrderBy(c => Math.Abs(c.Strike - spot))
-            .First().Strike;
-
         // Get front and back month expiries
         OptionExpiry frontExpiry = chain.Expiries[0];
         OptionExpiry backExpiry = chain.Expiries[2];
+
+        OptionContract atmContract = FindClosestStrike(frontExpiry.Calls, spot);
+        double atmStrike = atmContract.Strike;
 
         int frontDte = (int)(frontExpiry.ExpiryDate - evaluationDate).TotalDays;
         int backDte = (int)(backExpiry.ExpiryDate - evaluationDate).TotalDays;
 
         // Get ATM options
-        OptionContract frontCall = frontExpiry.Calls
-            .First(c => Math.Abs(c.Strike - atmStrike) < 0.01);
-        OptionContract backCall = backExpiry.Calls
-            .First(c => Math.Abs(c.Strike - atmStrike) < 0.01);
+        OptionContract frontCall = FindStrikeMatch(frontExpiry.Calls, atmStrike, 0.01);
+        OptionContract backCall = FindStrikeMatch(backExpiry.Calls, atmStrike, 0.01);
 
         // Price options
         (double frontPrice, double frontDelta, double frontGamma, double frontTheta, double frontVega) =
@@ -1171,7 +1170,12 @@ internal static class SMSM001A
         {
             // Calculate rolling Yang-Zhang
             int rollStart = Math.Max(0, i - windowSize);
-            var window = priceHistory.Skip(rollStart).Take(i - rollStart + 1).ToList();
+            int windowCount = i - rollStart + 1;
+            List<PriceBar> window = new List<PriceBar>(windowCount);
+            for (int j = rollStart; j <= i; j++)
+            {
+                window.Add(priceHistory[j]);
+            }
             
             if (window.Count < 5)
             {
@@ -1487,10 +1491,8 @@ internal static class SMSM001A
         OptionExpiry frontExpiry = marketData.OptionChain.Expiries[0];
         OptionExpiry backExpiry = marketData.OptionChain.Expiries[2];
 
-        OptionContract frontCall = frontExpiry.Calls
-            .First(c => Math.Abs(c.Strike - strike) < 0.01);
-        OptionContract backCall = backExpiry.Calls
-            .First(c => Math.Abs(c.Strike - strike) < 0.01);
+        OptionContract frontCall = FindStrikeMatch(frontExpiry.Calls, strike, 0.01);
+        OptionContract backCall = FindStrikeMatch(backExpiry.Calls, strike, 0.01);
 
         STCS002A frontLegParams = new STCS002A
         {
@@ -1569,9 +1571,9 @@ internal static class SMSM001A
     /// </summary>
     private static (List<double> FrontIVHistory, List<double> BackIVHistory) GenerateSyntheticIVHistory(int days)
     {
-        var random = new Random(42); // Deterministic seed
-        var frontIV = new List<double>();
-        var backIV = new List<double>();
+        Random random = new Random(42); // Deterministic seed
+        List<double> frontIV = new List<double>();
+        List<double> backIV = new List<double>();
 
         double baseFrontIV = 0.28; // Elevated front-month IV
         double baseBackIV = 0.22;  // Normal back-month IV
@@ -1640,38 +1642,100 @@ internal static class SMSM001A
         return Math.Sqrt(variance * TradingCalendarDefaults.TradingDaysPerYear);
     }
 
+    private static OptionContract FindClosestStrike(IReadOnlyList<OptionContract> contracts, double targetStrike)
+    {
+        if (contracts.Count == 0)
+        {
+            throw new InvalidOperationException("Option contract list is empty.");
+        }
+
+        OptionContract closest = contracts[0];
+        double minDistance = Math.Abs(closest.Strike - targetStrike);
+
+        for (int i = 1; i < contracts.Count; i++)
+        {
+            OptionContract contract = contracts[i];
+            double distance = Math.Abs(contract.Strike - targetStrike);
+            if (distance < minDistance)
+            {
+                minDistance = distance;
+                closest = contract;
+            }
+        }
+
+        return closest;
+    }
+
+    private static OptionContract FindStrikeMatch(IReadOnlyList<OptionContract> contracts, double strike, double tolerance)
+    {
+        for (int i = 0; i < contracts.Count; i++)
+        {
+            OptionContract contract = contracts[i];
+            if (Math.Abs(contract.Strike - strike) < tolerance)
+            {
+                return contract;
+            }
+        }
+
+        throw new InvalidOperationException($"No option contract found for strike {strike:F2}.");
+    }
+
     /// <summary>
     /// Analyses term structure from option chain.
     /// </summary>
     private static TermStructureResult AnalyseTermStructure(OptionChain chain, DateTime evalDate)
     {
-        var points = new List<(int dte, double iv)>();
+        List<(int dte, double iv)> points = new List<(int dte, double iv)>();
 
         foreach (OptionExpiry expiry in chain.Expiries)
         {
             int dte = (int)(expiry.ExpiryDate - evalDate).TotalDays;
 
             // Get ATM IV (closest to spot)
-            OptionContract atmCall = expiry.Calls
-                .OrderBy(c => Math.Abs(c.Strike - chain.UnderlyingPrice))
-                .First();
+            OptionContract atmCall = FindClosestStrike(expiry.Calls, chain.UnderlyingPrice);
 
             points.Add((dte, atmCall.ImpliedVolatility));
         }
 
         // Calculate slope using linear regression
         double n = points.Count;
-        double sumX = points.Sum(p => (double)p.dte);
-        double sumY = points.Sum(p => p.iv);
-        double sumXY = points.Sum(p => p.dte * p.iv);
-        double sumX2 = points.Sum(p => (double)p.dte * p.dte);
+        double sumX = 0.0;
+        double sumY = 0.0;
+        double sumXY = 0.0;
+        double sumX2 = 0.0;
+
+        for (int i = 0; i < points.Count; i++)
+        {
+            (int dte, double iv) point = points[i];
+            double dteValue = point.dte;
+            sumX += dteValue;
+            sumY += point.iv;
+            sumXY += dteValue * point.iv;
+            sumX2 += dteValue * dteValue;
+        }
 
         double slope = ((n * sumXY) - (sumX * sumY)) / ((n * sumX2) - (sumX * sumX));
         bool isInverted = slope < 0;
         bool meetsCriterion = slope <= -0.00406;
 
         // 30-day IV
-        double iv30 = points.First(p => p.dte >= 25 && p.dte <= 35).iv;
+        double iv30 = 0.0;
+        bool iv30Found = false;
+        for (int i = 0; i < points.Count; i++)
+        {
+            (int dte, double iv) point = points[i];
+            if (point.dte >= 25 && point.dte <= 35)
+            {
+                iv30 = point.iv;
+                iv30Found = true;
+                break;
+            }
+        }
+
+        if (!iv30Found)
+        {
+            throw new InvalidOperationException("Unable to locate 30-day implied volatility point.");
+        }
 
         return new TermStructureResult
         {
@@ -1695,7 +1759,17 @@ internal static class SMSM001A
         DateTime evaluationDate)
     {
         double ivRvRatio = termResult.IV30 / realisedVolatility;
-        double avgVolume = marketData.PriceHistory.Average(p => p.Volume);
+        double avgVolume = 0.0;
+        if (marketData.PriceHistory.Count > 0)
+        {
+            long volumeSum = 0;
+            for (int i = 0; i < marketData.PriceHistory.Count; i++)
+            {
+                volumeSum += marketData.PriceHistory[i].Volume;
+            }
+
+            avgVolume = volumeSum / (double)marketData.PriceHistory.Count;
+        }
 
         Dictionary<string, (bool Pass, string Value, string Threshold)> criteriaResults =
             new Dictionary<string, (bool Pass, string Value, string Threshold)>
@@ -1705,7 +1779,14 @@ internal static class SMSM001A
             ["Avg Volume"] = (avgVolume >= 1_500_000, $"{avgVolume:N0}", "≥ 1,500,000")
         };
 
-        int passCount = criteriaResults.Values.Count(r => r.Pass);
+        int passCount = 0;
+        foreach (KeyValuePair<string, (bool Pass, string Value, string Threshold)> kvp in criteriaResults)
+        {
+            if (kvp.Value.Pass)
+            {
+                passCount++;
+            }
+        }
 
         SignalStrength strength = passCount switch
         {
@@ -1803,7 +1884,17 @@ internal static class SMSM001A
         Console.WriteLine(FormatBoxLine("Price Bars:          ", marketData.PriceHistory.Count.ToString(CultureInfo.InvariantCulture)));
         Console.WriteLine(FormatBoxLine("Option Expiries:     ", marketData.OptionChain.Expiries.Count.ToString(CultureInfo.InvariantCulture)));
         Console.WriteLine(FormatBoxLine("Historical Earnings: ", marketData.HistoricalEarningsDates.Count.ToString(CultureInfo.InvariantCulture)));
-        Console.WriteLine(FormatBoxLine("30-Day Avg Volume:   ", $"{marketData.PriceHistory.Average(p => p.Volume):N0}"));
+        long volumeSum = 0;
+        for (int i = 0; i < marketData.PriceHistory.Count; i++)
+        {
+            volumeSum += marketData.PriceHistory[i].Volume;
+        }
+
+        double avgVolume = marketData.PriceHistory.Count > 0
+            ? volumeSum / (double)marketData.PriceHistory.Count
+            : 0.0;
+
+        Console.WriteLine(FormatBoxLine("30-Day Avg Volume:   ", $"{avgVolume:N0}"));
         Console.WriteLine("└──────────────────────────────────────────────────────────────────────────────┘");
         Console.WriteLine();
     }

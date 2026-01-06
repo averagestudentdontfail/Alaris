@@ -226,7 +226,19 @@ public sealed class TreasuryDirectRateProvider : DTpr005A
             return 0m;
         }
 
-        string cleaned = new(rateString.Where(c => char.IsDigit(c) || c == '.' || c == '-').ToArray());
+        char[] buffer = new char[rateString.Length];
+        int count = 0;
+        for (int i = 0; i < rateString.Length; i++)
+        {
+            char c = rateString[i];
+            if (char.IsDigit(c) || c == '.' || c == '-')
+            {
+                buffer[count] = c;
+                count++;
+            }
+        }
+
+        string cleaned = count > 0 ? new string(buffer, 0, count) : string.Empty;
 
         if (!decimal.TryParse(cleaned, out decimal rate))
         {

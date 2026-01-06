@@ -208,7 +208,7 @@ public sealed class PolygonApiClient : DTpr003A
             {
                 contractsToFetch[i] = refResponse.Results[i];
             }
-            ConcurrentBag<OptionContract> contracts = new();
+            ConcurrentBag<OptionContract> contracts = new ConcurrentBag<OptionContract>();
             bool subscriptionLimitHit = false;
             
             // Use semaphore to limit concurrent requests (Polygon rate limits apply)
@@ -397,11 +397,23 @@ public sealed class PolygonApiClient : DTpr003A
         {
             char c = ticker[i];
             if ((c == 'C' || c == 'P') && 
-                i + 9 == ticker.Length && // C/P + 8 strike digits = end of string
-                ticker[(i + 1)..].All(char.IsDigit))
+                i + 9 == ticker.Length) // C/P + 8 strike digits = end of string
             {
-                cpIndex = i;
-                break;
+                bool digitsOnly = true;
+                for (int j = i + 1; j < ticker.Length; j++)
+                {
+                    if (!char.IsDigit(ticker[j]))
+                    {
+                        digitsOnly = false;
+                        break;
+                    }
+                }
+
+                if (digitsOnly)
+                {
+                    cpIndex = i;
+                    break;
+                }
             }
         }
         

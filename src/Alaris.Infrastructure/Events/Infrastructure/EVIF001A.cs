@@ -15,9 +15,9 @@ namespace Alaris.Infrastructure.Events.Infrastructure;
 /// </remarks>
 public sealed class EVIF001A : EVCR002A
 {
-    private readonly ConcurrentDictionary<long, EVCR003A> _events = new();
+    private readonly ConcurrentDictionary<long, EVCR003A> _events = new ConcurrentDictionary<long, EVCR003A>();
     private long _currentSequence;
-    private readonly object _lock = new();
+    private readonly object _lock = new object();
 
     public Task<EVCR003A> AppendAsync<TEvent>(
         TEvent domainEvent,
@@ -50,12 +50,18 @@ public sealed class EVIF001A : EVCR002A
         string aggregateId,
         CancellationToken cancellationToken = default)
     {
-        IReadOnlyList<EVCR003A> events = _events.Values
-            .Where(e => e.AggregateId == aggregateId)
-            .OrderBy(e => e.SequenceNumber)
-            .ToList();
+        List<EVCR003A> events = new List<EVCR003A>();
+        foreach (EVCR003A entry in _events.Values)
+        {
+            if (entry.AggregateId == aggregateId)
+            {
+                events.Add(entry);
+            }
+        }
 
-        return Task.FromResult(events);
+        events.Sort(static (left, right) => left.SequenceNumber.CompareTo(right.SequenceNumber));
+
+        return Task.FromResult((IReadOnlyList<EVCR003A>)events);
     }
 
     public Task<IReadOnlyList<EVCR003A>> GetEventsFromSequenceAsync(
@@ -63,13 +69,22 @@ public sealed class EVIF001A : EVCR002A
         int maxCount = 1000,
         CancellationToken cancellationToken = default)
     {
-        IReadOnlyList<EVCR003A> events = _events.Values
-            .Where(e => e.SequenceNumber >= fromSequenceNumber)
-            .OrderBy(e => e.SequenceNumber)
-            .Take(maxCount)
-            .ToList();
+        List<EVCR003A> events = new List<EVCR003A>();
+        foreach (EVCR003A entry in _events.Values)
+        {
+            if (entry.SequenceNumber >= fromSequenceNumber)
+            {
+                events.Add(entry);
+            }
+        }
 
-        return Task.FromResult(events);
+        events.Sort(static (left, right) => left.SequenceNumber.CompareTo(right.SequenceNumber));
+        if (events.Count > maxCount)
+        {
+            events.RemoveRange(maxCount, events.Count - maxCount);
+        }
+
+        return Task.FromResult((IReadOnlyList<EVCR003A>)events);
     }
 
     public Task<long> GetCurrentSequenceNumberAsync(CancellationToken cancellationToken = default)
@@ -81,12 +96,18 @@ public sealed class EVIF001A : EVCR002A
         string correlationId,
         CancellationToken cancellationToken = default)
     {
-        IReadOnlyList<EVCR003A> events = _events.Values
-            .Where(e => e.CorrelationId == correlationId)
-            .OrderBy(e => e.SequenceNumber)
-            .ToList();
+        List<EVCR003A> events = new List<EVCR003A>();
+        foreach (EVCR003A entry in _events.Values)
+        {
+            if (entry.CorrelationId == correlationId)
+            {
+                events.Add(entry);
+            }
+        }
 
-        return Task.FromResult(events);
+        events.Sort(static (left, right) => left.SequenceNumber.CompareTo(right.SequenceNumber));
+
+        return Task.FromResult((IReadOnlyList<EVCR003A>)events);
     }
 
     public Task<IReadOnlyList<EVCR003A>> GetEventsByTimeRangeAsync(
@@ -94,11 +115,17 @@ public sealed class EVIF001A : EVCR002A
         DateTime toUtc,
         CancellationToken cancellationToken = default)
     {
-        IReadOnlyList<EVCR003A> events = _events.Values
-            .Where(e => e.StoredAtUtc >= fromUtc && e.StoredAtUtc <= toUtc)
-            .OrderBy(e => e.SequenceNumber)
-            .ToList();
+        List<EVCR003A> events = new List<EVCR003A>();
+        foreach (EVCR003A entry in _events.Values)
+        {
+            if (entry.StoredAtUtc >= fromUtc && entry.StoredAtUtc <= toUtc)
+            {
+                events.Add(entry);
+            }
+        }
 
-        return Task.FromResult(events);
+        events.Sort(static (left, right) => left.SequenceNumber.CompareTo(right.SequenceNumber));
+
+        return Task.FromResult((IReadOnlyList<EVCR003A>)events);
     }
 }

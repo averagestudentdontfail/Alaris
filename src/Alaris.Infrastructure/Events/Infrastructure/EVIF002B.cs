@@ -90,7 +90,7 @@ public sealed class EVIF002B : EVCR004A, IDisposable
         ArgumentException.ThrowIfNullOrWhiteSpace(entityType);
         ArgumentException.ThrowIfNullOrWhiteSpace(entityId);
 
-        List<AuditEntry> result = [];
+        List<AuditEntry> result = new List<AuditEntry>();
 
         await _readSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
@@ -108,7 +108,8 @@ public sealed class EVIF002B : EVCR004A, IDisposable
             _readSemaphore.Release();
         }
 
-        return result.OrderBy(e => e.OccurredAtUtc).ToList();
+        result.Sort(static (left, right) => left.OccurredAtUtc.CompareTo(right.OccurredAtUtc));
+        return result;
     }
 
     /// <inheritdoc/>
@@ -119,7 +120,7 @@ public sealed class EVIF002B : EVCR004A, IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentException.ThrowIfNullOrWhiteSpace(initiatedBy);
 
-        List<AuditEntry> result = [];
+        List<AuditEntry> result = new List<AuditEntry>();
 
         await _readSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
@@ -137,7 +138,8 @@ public sealed class EVIF002B : EVCR004A, IDisposable
             _readSemaphore.Release();
         }
 
-        return result.OrderBy(e => e.OccurredAtUtc).ToList();
+        result.Sort(static (left, right) => left.OccurredAtUtc.CompareTo(right.OccurredAtUtc));
+        return result;
     }
 
     /// <inheritdoc/>
@@ -148,7 +150,7 @@ public sealed class EVIF002B : EVCR004A, IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
-        List<AuditEntry> result = [];
+        List<AuditEntry> result = new List<AuditEntry>();
 
         await _readSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
@@ -172,7 +174,8 @@ public sealed class EVIF002B : EVCR004A, IDisposable
             _readSemaphore.Release();
         }
 
-        return result.OrderBy(e => e.OccurredAtUtc).ToList();
+        result.Sort(static (left, right) => left.OccurredAtUtc.CompareTo(right.OccurredAtUtc));
+        return result;
     }
 
 
@@ -283,34 +286,43 @@ public sealed class EVIF002B : EVCR004A, IDisposable
     {
         if (!Directory.Exists(_storagePath))
         {
-            return [];
+            return Array.Empty<string>();
         }
 
         // Get all audit files and filter to relevant date range
-        return Directory.GetFiles(_storagePath, "audit-*.bin")
-            .Where(f =>
-            {
-                string fileName = Path.GetFileNameWithoutExtension(f);
-                if (fileName.Length < 12)
-                {
-                    return false;
-                }
+        string[] files = Directory.GetFiles(_storagePath, "audit-*.bin");
+        List<string> filtered = new List<string>();
 
-                // Parse audit-yyyy-MM
-                string dateStr = fileName.Replace("audit-", "");
-                if (DateTime.TryParseExact(dateStr, "yyyy-MM",
+        for (int i = 0; i < files.Length; i++)
+        {
+            string file = files[i];
+            string fileName = Path.GetFileNameWithoutExtension(file);
+            if (fileName.Length < 12)
+            {
+                continue;
+            }
+
+            string dateStr = fileName.Replace("audit-", "");
+            if (!DateTime.TryParseExact(
+                    dateStr,
+                    "yyyy-MM",
                     System.Globalization.CultureInfo.InvariantCulture,
                     System.Globalization.DateTimeStyles.None,
                     out DateTime fileMonth))
-                {
-                    DateTime fileStart = new(fileMonth.Year, fileMonth.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-                    DateTime fileEnd = fileStart.AddMonths(1).AddTicks(-1);
-                    return fileStart <= toUtc && fileEnd >= fromUtc;
-                }
-                return false;
-            })
-            .OrderBy(f => f)
-            .ToArray();
+            {
+                continue;
+            }
+
+            DateTime fileStart = new DateTime(fileMonth.Year, fileMonth.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+            DateTime fileEnd = fileStart.AddMonths(1).AddTicks(-1);
+            if (fileStart <= toUtc && fileEnd >= fromUtc)
+            {
+                filtered.Add(file);
+            }
+        }
+
+        filtered.Sort(StringComparer.Ordinal);
+        return filtered.ToArray();
     }
 
     private async IAsyncEnumerable<AuditEntry> ReadAllEntriesAsync(
@@ -321,7 +333,8 @@ public sealed class EVIF002B : EVCR004A, IDisposable
             yield break;
         }
 
-        string[] logFiles = Directory.GetFiles(_storagePath, "audit-*.bin").OrderBy(f => f).ToArray();
+        string[] logFiles = Directory.GetFiles(_storagePath, "audit-*.bin");
+        Array.Sort(logFiles, StringComparer.Ordinal);
 
         foreach (string logPath in logFiles)
         {
