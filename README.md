@@ -169,10 +169,3 @@ Key configuration parameters are documented in the [Specification](docs/specific
 ## Licence
 
 Copyright © 2024-2025 Sunny. All rights reserved.
-
-## Acknowledgements
-
-- Yang and Zhang (2000) for the minimum-variance volatility estimator
-- Andersen, Lake, and Offengenden (2015) for American option pricing benchmarks
-- QuantConnect for the LEAN algorithmic trading engine
-- The Polygon.io team for market data infrastructure
