@@ -7,6 +7,7 @@ using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using Spectre.Console;
 using Spectre.Console.Cli;
+using Microsoft.Extensions.Configuration;
 
 namespace Alaris.Host.Application.Command;
 
@@ -412,6 +413,21 @@ public sealed class APcm003A : Command<DataSettings>
 
     private static string? GetPolygonApiKey()
     {
+        IConfiguration config = new ConfigurationBuilder()
+            .SetBasePath(System.IO.Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.json", optional: true)
+            .AddJsonFile("config.json", optional: true)
+            .AddJsonFile("appsettings.local.json", optional: true)
+            .AddUserSecrets<Alaris.Host.Application.APap001A>(optional: true)
+            .AddEnvironmentVariables("ALARIS_")
+            .Build();
+
+        string? apiKey = config["Polygon:ApiKey"];
+        if (!string.IsNullOrWhiteSpace(apiKey))
+        {
+            return apiKey;
+        }
+
         // Try to find and read appsettings.local.jsonc
         string[] paths = new[]
         {
