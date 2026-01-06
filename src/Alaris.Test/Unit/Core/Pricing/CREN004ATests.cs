@@ -13,8 +13,8 @@ namespace Alaris.Test.Unit.Core.Pricing;
 /// </summary>
 public class CREN004ATests
 {
-    private readonly CREN004A _fastEngine = new(SpectralScheme.Fast);
-    private readonly CREN004A _accurateEngine = new(SpectralScheme.Accurate);
+    private readonly CREN004A _fastEngine = new CREN004A(SpectralScheme.Fast);
+    private readonly CREN004A _accurateEngine = new CREN004A(SpectralScheme.Accurate);
 
     // ========== Standard Regime Tests (r > 0, q >= 0) ==========
 

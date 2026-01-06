@@ -18,7 +18,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Xunit;
 using FluentAssertions;
 using Alaris.Strategy.Core;
@@ -69,7 +68,7 @@ public sealed class TSUN024A
     public void Heston_ComputeTheoreticalIV_AllValidInputs_ReturnsPositiveIV()
     {
         // Arrange
-        var model = new STIV001A(CreateValidHestonParams());
+        STIV001A model = new STIV001A(CreateValidHestonParams());
 
         // Act & Assert
         foreach (double spot in s_spots)
@@ -96,7 +95,7 @@ public sealed class TSUN024A
     public void Kou_ComputeTheoreticalIV_AllValidInputs_ReturnsPositiveIV()
     {
         // Arrange
-        var model = new STIV002A(CreateValidKouParams());
+        STIV002A model = new STIV002A(CreateValidKouParams());
 
         // Act & Assert
         foreach (double spot in s_spots)
@@ -130,7 +129,7 @@ public sealed class TSUN024A
     public void Heston_ATM_ShortTerm_IVApproximatesInstantaneousVol(double inputVol)
     {
         // Arrange
-        var parameters = new HestonParameters
+        HestonParameters parameters = new HestonParameters
         {
             V0 = inputVol * inputVol,       // V0 = σ²
             Theta = inputVol * inputVol,    // Long-term variance = σ²
@@ -140,7 +139,7 @@ public sealed class TSUN024A
             RiskFreeRate = 0.05,
             DividendYield = 0.02
         };
-        var model = new STIV001A(parameters);
+        STIV001A model = new STIV001A(parameters);
         double spot = 100;
         double strike = 100;  // ATM
         double tte = 7.0 / 252;  // 1 week
@@ -163,7 +162,7 @@ public sealed class TSUN024A
     public void Kou_ATM_LowJumpIntensity_IVApproximatesDiffusiveVol(double sigma)
     {
         // Arrange
-        var parameters = new KouParameters
+        KouParameters parameters = new KouParameters
         {
             Sigma = sigma,
             Lambda = 0.1,   // Very low jump intensity
@@ -173,7 +172,7 @@ public sealed class TSUN024A
             RiskFreeRate = 0.05,
             DividendYield = 0.02
         };
-        var model = new STIV002A(parameters);
+        STIV002A model = new STIV002A(parameters);
         double spot = 100;
         double strike = 100;
         double tte = 30.0 / 252;
@@ -197,14 +196,14 @@ public sealed class TSUN024A
     {
         // Arrange
         double[] sigmaVs = { 0.5, 0.3, 0.1, 0.05, 0.01 };
-        var results = new List<double>();
+        List<double> results = new List<double>();
 
         double spot = 100;
         double tte = 30.0 / 252;
 
         foreach (double sigmaV in sigmaVs)
         {
-            var parameters = new HestonParameters
+            HestonParameters parameters = new HestonParameters
             {
                 V0 = 0.04,
                 Theta = 0.04,
@@ -221,7 +220,7 @@ public sealed class TSUN024A
                 continue;
             }
 
-            var model = new STIV001A(parameters);
+            STIV001A model = new STIV001A(parameters);
 
             // Compute smile width: IV(90) - IV(110)
             double ivOTMPut = model.ComputeTheoreticalIV(spot, 90, tte);
@@ -255,11 +254,11 @@ public sealed class TSUN024A
         double tte = 30.0 / 252;
         double sigma = 0.20;
 
-        var ivResults = new List<double>();
+        List<double> ivResults = new List<double>();
 
         foreach (double lambda in lambdas)
         {
-            var parameters = new KouParameters
+            KouParameters parameters = new KouParameters
             {
                 Sigma = sigma,
                 Lambda = lambda,
@@ -269,14 +268,14 @@ public sealed class TSUN024A
                 RiskFreeRate = 0.05,
                 DividendYield = 0.02
             };
-            var model = new STIV002A(parameters);
+            STIV002A model = new STIV002A(parameters);
 
             double iv = model.ComputeTheoreticalIV(spot, strike, tte);
             ivResults.Add(iv);
         }
 
         // Assert - IV should approach diffusive sigma as lambda → 0
-        double finalIV = ivResults.Last();
+        double finalIV = ivResults[ivResults.Count - 1];
         finalIV.Should().BeApproximately(sigma, sigma * 0.15,
             "As λ→0, Kou IV should converge to diffusive σ");
     }
@@ -291,13 +290,13 @@ public sealed class TSUN024A
     public void Heston_ATM_TermStructure_IsWellBehaved()
     {
         // Arrange
-        var model = new STIV001A(CreateValidHestonParams());
+        STIV001A model = new STIV001A(CreateValidHestonParams());
         double spot = 100;
         double strike = 100;
         double[] ttes = { 7.0 / 252, 14.0 / 252, 30.0 / 252, 60.0 / 252, 90.0 / 252, 180.0 / 252 };
 
         // Act
-        var atmIVs = new List<double>();
+        List<double> atmIVs = new List<double>();
         foreach (double tte in ttes)
         {
             atmIVs.Add(model.ComputeTheoreticalIV(spot, strike, tte));
@@ -334,7 +333,7 @@ public sealed class TSUN024A
     public void Heston_NegativeCorrelation_ProducesNegativeSkew(double rho)
     {
         // Arrange - Parameters that satisfy Feller: 2*3*0.04 = 0.24 > 0.35² = 0.1225
-        var parameters = new HestonParameters
+        HestonParameters parameters = new HestonParameters
         {
             V0 = 0.04,
             Theta = 0.04,
@@ -344,7 +343,7 @@ public sealed class TSUN024A
             RiskFreeRate = 0.05,
             DividendYield = 0.02
         };
-        var model = new STIV001A(parameters);
+        STIV001A model = new STIV001A(parameters);
         double spot = 100;
         double tte = 30.0 / 252;
 
@@ -373,7 +372,7 @@ public sealed class TSUN024A
     public void Kou_DownwardJumpBias_ProducesNegativeSkew()
     {
         // Arrange - More downward jumps (p < 0.5)
-        var parameters = new KouParameters
+        KouParameters parameters = new KouParameters
         {
             Sigma = 0.20,
             Lambda = 5.0,
@@ -383,7 +382,7 @@ public sealed class TSUN024A
             RiskFreeRate = 0.05,
             DividendYield = 0.02
         };
-        var model = new STIV002A(parameters);
+        STIV002A model = new STIV002A(parameters);
         double spot = 100;
         double tte = 30.0 / 252;
 
@@ -408,7 +407,7 @@ public sealed class TSUN024A
     public void HestonParameters_FellerViolation_FailsValidation(double kappa, double theta, double sigmaV)
     {
         // Arrange
-        var parameters = new HestonParameters
+        HestonParameters parameters = new HestonParameters
         {
             V0 = 0.04,
             Theta = theta,
@@ -421,7 +420,7 @@ public sealed class TSUN024A
 
         // Act
         bool fellerSatisfied = parameters.SatisfiesFellerCondition();
-        var validation = parameters.Validate();
+        ValidationResult validation = parameters.Validate();
 
         // Assert
         fellerSatisfied.Should().BeFalse();
@@ -439,7 +438,7 @@ public sealed class TSUN024A
     public void KouParameters_InvalidEta1_FailsValidation(double eta1)
     {
         // Arrange
-        var parameters = new KouParameters
+        KouParameters parameters = new KouParameters
         {
             Sigma = 0.20,
             Lambda = 3.0,
@@ -451,7 +450,7 @@ public sealed class TSUN024A
         };
 
         // Act
-        var validation = parameters.Validate();
+        ValidationResult validation = parameters.Validate();
 
         // Assert
         validation.IsValid.Should().BeFalse();
@@ -467,11 +466,11 @@ public sealed class TSUN024A
     public void Heston_CharacteristicFunction_AtZero_EqualsOne()
     {
         // Arrange
-        var model = new STIV001A(CreateValidHestonParams());
+        STIV001A model = new STIV001A(CreateValidHestonParams());
         double t = 30.0 / 252;
 
         // Act
-        var phi = model.CharacteristicFunction(new System.Numerics.Complex(0, 0), t);
+        System.Numerics.Complex phi = model.CharacteristicFunction(new System.Numerics.Complex(0, 0), t);
 
         // Assert
         phi.Real.Should().BeApproximately(1.0, 1e-10);
@@ -487,14 +486,14 @@ public sealed class TSUN024A
     public void ModelSelector_PreEarnings_PrefersJumpModels()
     {
         // Arrange
-        var selector = new STIV003A();
-        var valuationDate = new DateTime(2024, 1, 15);
-        var earningsDate = new DateTime(2024, 1, 25);  // 10 days to earnings
-        var expirationDate = new DateTime(2024, 2, 16); // ~32 days
+        STIV003A selector = new STIV003A();
+        DateTime valuationDate = new DateTime(2024, 1, 15);
+        DateTime earningsDate = new DateTime(2024, 1, 25);  // 10 days to earnings
+        DateTime expirationDate = new DateTime(2024, 2, 16); // ~32 days
 
-        var timeParams = STTM004A.Create(valuationDate, expirationDate, earningsDate);
+        STTM004A timeParams = STTM004A.Create(valuationDate, expirationDate, earningsDate);
 
-        var context = new ModelSelectionContext
+        ModelSelectionContext context = new ModelSelectionContext
         {
             Spot = 100,
             BaseVolatility = 0.20,
@@ -505,7 +504,7 @@ public sealed class TSUN024A
         };
 
         // Act
-        var result = selector.SelectBestModel(context);
+        ModelSelectionResult result = selector.SelectBestModel(context);
 
         // Assert
         result.Regime.RegimeType.Should().Be(STTM002AType.PreEarnings);
@@ -527,11 +526,11 @@ public sealed class TSUN024A
         double spot = 100;
         double tte = 30.0 / 252;
         double[] sigmaVs = { 0.1, 0.3, 0.5 };
-        var smileWidths = new List<double>();
+        List<double> smileWidths = new List<double>();
 
         foreach (double sigmaV in sigmaVs)
         {
-            var parameters = new HestonParameters
+            HestonParameters parameters = new HestonParameters
             {
                 V0 = 0.04,
                 Theta = 0.04,
@@ -548,7 +547,7 @@ public sealed class TSUN024A
                 continue;
             }
 
-            var model = new STIV001A(parameters);
+            STIV001A model = new STIV001A(parameters);
 
             double ivLowStrike = model.ComputeTheoreticalIV(spot, 85, tte);
             double ivHighStrike = model.ComputeTheoreticalIV(spot, 115, tte);
@@ -581,11 +580,11 @@ public sealed class TSUN024A
         double strike = 100;
         double tte = 30.0 / 252;
         double[] lambdas = { 0.5, 2.0, 5.0, 10.0 };
-        var atmIVs = new List<double>();
+        List<double> atmIVs = new List<double>();
 
         foreach (double lambda in lambdas)
         {
-            var parameters = new KouParameters
+            KouParameters parameters = new KouParameters
             {
                 Sigma = 0.15,   // Low base vol to see jump effect
                 Lambda = lambda,
@@ -595,7 +594,7 @@ public sealed class TSUN024A
                 RiskFreeRate = 0.05,
                 DividendYield = 0.02
             };
-            var model = new STIV002A(parameters);
+            STIV002A model = new STIV002A(parameters);
 
             double iv = model.ComputeTheoreticalIV(spot, strike, tte);
             atmIVs.Add(iv);
@@ -609,7 +608,7 @@ public sealed class TSUN024A
         }
 
         // Final IV should be noticeably higher than initial
-        atmIVs.Last().Should().BeGreaterThan(atmIVs.First(),
+        atmIVs[atmIVs.Count - 1].Should().BeGreaterThan(atmIVs[0],
             "High-jump-intensity ATM IV should exceed low-jump-intensity IV");
     }
 
@@ -622,11 +621,11 @@ public sealed class TSUN024A
     public void Models_ExtremeValidInputs_DoNotProduceNaNOrInfinity()
     {
         // Arrange
-        var hestonModel = new STIV001A(CreateValidHestonParams());
-        var kouModel = new STIV002A(CreateValidKouParams());
+        STIV001A hestonModel = new STIV001A(CreateValidHestonParams());
+        STIV002A kouModel = new STIV002A(CreateValidKouParams());
 
         // Extreme but valid inputs
-        var testCases = new (double spot, double strike, double tte)[]
+        (double spot, double strike, double tte)[] testCases = new (double spot, double strike, double tte)[]
         {
             (100, 50, 7.0 / 252),    // Deep ITM call
             (100, 200, 7.0 / 252),   // Deep OTM call
@@ -636,8 +635,12 @@ public sealed class TSUN024A
         };
 
         // Act & Assert
-        foreach (var (spot, strike, tte) in testCases)
+        for (int i = 0; i < testCases.Length; i++)
         {
+            (double spot, double strike, double tte) testCase = testCases[i];
+            double spot = testCase.spot;
+            double strike = testCase.strike;
+            double tte = testCase.tte;
             double hestonIV = hestonModel.ComputeTheoreticalIV(spot, strike, tte);
             double kouIV = kouModel.ComputeTheoreticalIV(spot, strike, tte);
 
@@ -663,7 +666,7 @@ public sealed class TSUN024A
     public void Kou_SymmetricJumps_KappaApproachesZero()
     {
         // Arrange - Perfectly symmetric: p=0.5, eta1=eta2
-        var parameters = new KouParameters
+        KouParameters parameters = new KouParameters
         {
             Sigma = 0.20,
             Lambda = 3.0,

@@ -244,7 +244,7 @@ public sealed class TSUN028A
     public void PriceBar_OHLCRelationship_IsValid()
     {
         // Arrange
-        var bar = new PriceBar
+        PriceBar bar = new PriceBar
         {
             Date = DateTime.Today,
             Open = 100.0,
@@ -268,7 +268,7 @@ public sealed class TSUN028A
     public void PriceBar_Volume_NonNegative()
     {
         // Arrange
-        var bar = new PriceBar
+        PriceBar bar = new PriceBar
         {
             Date = DateTime.Today,
             Open = 100.0,

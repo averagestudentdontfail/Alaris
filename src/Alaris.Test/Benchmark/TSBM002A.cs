@@ -31,8 +31,6 @@ public class TSBM002A
         _fdEngine = new CREN002A();
     }
 
-    // ========== Accuracy Comparison: Spectral vs FD ==========
-
     [Theory]
     [InlineData(100.0, 100.0, 1.0, 0.05, 0.02, 0.20, OptionType.Put)]
     [InlineData(100.0, 100.0, 0.5, 0.05, 0.02, 0.30, OptionType.Put)]
@@ -79,20 +77,18 @@ public class TSBM002A
         Assert.True(spectralPrice > 0 && fdPrice > 0);
     }
 
-    // ========== Performance Comparison ==========
-
     [Fact]
     public void Performance_SpectralFastVsFD_100Options()
     {
         const int iterations = 100;
-        var random = new Random(42);
+        Random random = new Random(42);
 
         // Warm up
         _ = _spectralFast.Price(100, 100, 1.0, 0.05, 0.02, 0.20, OptionType.Put);
         _ = _fdEngine.Price(100, 100, 1.0, 0.05, 0.02, 0.20, OptionType.Put);
 
         // Generate random option parameters
-        var testCases = new (double Spot, double Strike, double Tau, double R, double Q, double Sigma)[iterations];
+        (double Spot, double Strike, double Tau, double R, double Q, double Sigma)[] testCases = new (double Spot, double Strike, double Tau, double R, double Q, double Sigma)[iterations];
         for (int i = 0; i < iterations; i++)
         {
             testCases[i] = (
@@ -106,21 +102,21 @@ public class TSBM002A
         }
 
         // Spectral Fast timing
-        var swSpectral = Stopwatch.StartNew();
+        Stopwatch swSpectral = Stopwatch.StartNew();
         for (int i = 0; i < iterations; i++)
         {
-            var (spot, strike, tau, r, q, sigma) = testCases[i];
-            _ = _spectralFast.Price(spot, strike, tau, r, q, sigma, OptionType.Put);
+            (double Spot, double Strike, double Tau, double R, double Q, double Sigma) testCase = testCases[i];
+            _ = _spectralFast.Price(testCase.Spot, testCase.Strike, testCase.Tau, testCase.R, testCase.Q, testCase.Sigma, OptionType.Put);
         }
         swSpectral.Stop();
         double spectralAvgMs = swSpectral.Elapsed.TotalMilliseconds / iterations;
 
         // FD timing
-        var swFD = Stopwatch.StartNew();
+        Stopwatch swFD = Stopwatch.StartNew();
         for (int i = 0; i < iterations; i++)
         {
-            var (spot, strike, tau, r, q, sigma) = testCases[i];
-            _ = _fdEngine.Price(spot, strike, tau, r, q, sigma, OptionType.Put);
+            (double Spot, double Strike, double Tau, double R, double Q, double Sigma) testCase = testCases[i];
+            _ = _fdEngine.Price(testCase.Spot, testCase.Strike, testCase.Tau, testCase.R, testCase.Q, testCase.Sigma, OptionType.Put);
         }
         swFD.Stop();
         double fdAvgMs = swFD.Elapsed.TotalMilliseconds / iterations;
@@ -137,8 +133,6 @@ public class TSBM002A
             $"Spectral ({spectralAvgMs:F4}ms) should not be much slower than FD ({fdAvgMs:F4}ms)");
     }
 
-    // ========== Regime Coverage Validation ==========
-
     [Theory]
     [InlineData(0.05, 0.02, false, "Standard Put (r>0, q>0)")]
     [InlineData(0.05, 0.02, true, "Standard Call (r>0, q>0)")]
@@ -148,7 +142,7 @@ public class TSBM002A
     public void RegimeCoverage_AllRegimesProduceValidPrice(
         double r, double q, bool isCall, string regimeDescription)
     {
-        var optionType = isCall ? OptionType.Call : OptionType.Put;
+        OptionType optionType = isCall ? OptionType.Call : OptionType.Put;
 
         try
         {
@@ -168,8 +162,6 @@ public class TSBM002A
             throw;
         }
     }
-
-    // ========== Greeks Sanity Checks ==========
 
     [Theory]
     [InlineData(100.0, 100.0, 1.0, 0.05, 0.02, 0.20, OptionType.Put)]
@@ -198,13 +190,11 @@ public class TSBM002A
         Assert.True(vega >= 0, $"Vega should be non-negative: {vega}");
     }
 
-    // ========== RMSE Calculation ==========
-
     [Fact]
     public void RMSE_SpectralVsFD_Portfolio()
     {
         // Test portfolio of 20 options across different strikes/maturities
-        var testCases = new (double Spot, double Strike, double Tau)[]
+        (double Spot, double Strike, double Tau)[] testCases = new (double Spot, double Strike, double Tau)[]
         {
             (100, 80, 0.25), (100, 90, 0.25), (100, 100, 0.25), (100, 110, 0.25), (100, 120, 0.25),
             (100, 80, 0.50), (100, 90, 0.50), (100, 100, 0.50), (100, 110, 0.50), (100, 120, 0.50),
@@ -216,16 +206,17 @@ public class TSBM002A
         double sumSquaredErrors = 0.0;
         int count = 0;
 
-        foreach (var (spot, strike, tau) in testCases)
+        for (int i = 0; i < testCases.Length; i++)
         {
-            double spectral = _spectralAccurate.Price(spot, strike, tau, r, q, sigma, OptionType.Put);
-            double fd = _fdEngine.Price(spot, strike, tau, r, q, sigma, OptionType.Put);
+            (double Spot, double Strike, double Tau) testCase = testCases[i];
+            double spectral = _spectralAccurate.Price(testCase.Spot, testCase.Strike, testCase.Tau, r, q, sigma, OptionType.Put);
+            double fd = _fdEngine.Price(testCase.Spot, testCase.Strike, testCase.Tau, r, q, sigma, OptionType.Put);
 
             double error = spectral - fd;
             sumSquaredErrors += error * error;
             count++;
 
-            _output.WriteLine($"K={strike:F0}, τ={tau:F2}: Spectral={spectral:F4}, FD={fd:F4}, Diff={error:F4}");
+            _output.WriteLine($"K={testCase.Strike:F0}, τ={testCase.Tau:F2}: Spectral={spectral:F4}, FD={fd:F4}, Diff={error:F4}");
         }
 
         double rmse = System.Math.Sqrt(sumSquaredErrors / count);

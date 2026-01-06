@@ -18,7 +18,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
@@ -46,7 +45,7 @@ public sealed class TSUN029A
     public void OptionContract_Mid_IsAverageOfBidAsk(decimal bid, decimal ask, decimal expectedMid)
     {
         // Arrange
-        var contract = CreateTestOptionContract(bid: bid, ask: ask);
+        OptionContract contract = CreateTestOptionContract(bid: bid, ask: ask);
 
         // Act
         decimal mid = contract.Mid;
@@ -66,7 +65,7 @@ public sealed class TSUN029A
     public void OptionContract_Spread_IsAskMinusBid(decimal bid, decimal ask, decimal expectedSpread)
     {
         // Arrange
-        var contract = CreateTestOptionContract(bid: bid, ask: ask);
+        OptionContract contract = CreateTestOptionContract(bid: bid, ask: ask);
 
         // Act
         decimal spread = contract.Spread;
@@ -82,7 +81,7 @@ public sealed class TSUN029A
     public void OptionContract_SpreadNonNegative_WhenValidBidAsk()
     {
         // Arrange
-        var contract = CreateTestOptionContract(bid: 5.00m, ask: 5.20m);
+        OptionContract contract = CreateTestOptionContract(bid: 5.00m, ask: 5.20m);
 
         // Assert
         contract.Spread.Should().BeGreaterThanOrEqualTo(0);
@@ -97,10 +96,10 @@ public sealed class TSUN029A
     public void OptionChainSnapshot_Calls_ReturnsOnlyCalls()
     {
         // Arrange
-        var chain = CreateTestOptionChain(numStrikes: 5);
+        OptionChainSnapshot chain = CreateTestOptionChain(numStrikes: 5);
 
         // Act
-        var calls = chain.Calls;
+        IReadOnlyList<OptionContract> calls = chain.Calls;
 
         // Assert
         calls.Should().AllSatisfy(c => c.Right.Should().Be(OptionRight.Call));
@@ -114,10 +113,10 @@ public sealed class TSUN029A
     public void OptionChainSnapshot_Puts_ReturnsOnlyPuts()
     {
         // Arrange
-        var chain = CreateTestOptionChain(numStrikes: 5);
+        OptionChainSnapshot chain = CreateTestOptionChain(numStrikes: 5);
 
         // Act
-        var puts = chain.Puts;
+        IReadOnlyList<OptionContract> puts = chain.Puts;
 
         // Assert
         puts.Should().AllSatisfy(c => c.Right.Should().Be(OptionRight.Put));
@@ -131,7 +130,7 @@ public sealed class TSUN029A
     public void OptionChainSnapshot_CallsPlusPuts_EqualsTotal()
     {
         // Arrange
-        var chain = CreateTestOptionChain(numStrikes: 5, numExpiries: 3);
+        OptionChainSnapshot chain = CreateTestOptionChain(numStrikes: 5, numExpiries: 3);
 
         // Act
         int callCount = chain.Calls.Count;
@@ -149,16 +148,16 @@ public sealed class TSUN029A
     public void OptionChainSnapshot_ByExpiration_GroupsCorrectly()
     {
         // Arrange
-        var chain = CreateTestOptionChain(numStrikes: 3, numExpiries: 4);
+        OptionChainSnapshot chain = CreateTestOptionChain(numStrikes: 3, numExpiries: 4);
 
         // Act
-        var byExpiry = chain.ByExpiration;
+        IReadOnlyDictionary<DateTime, IReadOnlyList<OptionContract>> byExpiry = chain.ByExpiration;
 
         // Assert
         byExpiry.Should().HaveCount(4);
-        foreach (var (expiry, contracts) in byExpiry)
+        foreach (KeyValuePair<DateTime, IReadOnlyList<OptionContract>> entry in byExpiry)
         {
-            contracts.Should().AllSatisfy(c => c.Expiration.Should().Be(expiry));
+            entry.Value.Should().AllSatisfy(c => c.Expiration.Should().Be(entry.Key));
         }
     }
 
@@ -171,7 +170,7 @@ public sealed class TSUN029A
     public void PriceBar_OHLCRelationship_IsValid()
     {
         // Arrange
-        var bar = new PriceBar
+        PriceBar bar = new PriceBar
         {
             Symbol = "AAPL",
             Timestamp = DateTime.Today,
@@ -199,7 +198,7 @@ public sealed class TSUN029A
     public void PriceBar_Volume_NonNegative(long volume)
     {
         // Arrange
-        var bar = new PriceBar
+        PriceBar bar = new PriceBar
         {
             Symbol = "AAPL",
             Timestamp = DateTime.Today,
@@ -227,7 +226,7 @@ public sealed class TSUN029A
     public void EarningsEvent_Timing_IsValid(EarningsTiming timing)
     {
         // Arrange
-        var earnings = new EarningsEvent
+        EarningsEvent earnings = new EarningsEvent
         {
             Symbol = "AAPL",
             Date = DateTime.Today.AddDays(7),
@@ -251,7 +250,7 @@ public sealed class TSUN029A
     public void EarningsEvent_FiscalQuarter_IsValid(string quarter)
     {
         // Arrange
-        var earnings = new EarningsEvent
+        EarningsEvent earnings = new EarningsEvent
         {
             Symbol = "AAPL",
             Date = DateTime.Today.AddDays(7),
@@ -274,7 +273,7 @@ public sealed class TSUN029A
     public void MarketDataSnapshot_ContainsAllRequiredData()
     {
         // Arrange
-        var snapshot = CreateTestMarketDataSnapshot();
+        MarketDataSnapshot snapshot = CreateTestMarketDataSnapshot();
 
         // Assert
         snapshot.Symbol.Should().NotBeNullOrEmpty();
@@ -293,7 +292,7 @@ public sealed class TSUN029A
     public void MarketDataSnapshot_HistoricalBars_AreOrdered()
     {
         // Arrange
-        var snapshot = CreateTestMarketDataSnapshot();
+        MarketDataSnapshot snapshot = CreateTestMarketDataSnapshot();
 
         // Assert
         for (int i = 1; i < snapshot.HistoricalBars.Count; i++)
@@ -315,7 +314,7 @@ public sealed class TSUN029A
     public void DataQualityResult_Status_IsValid(ValidationStatus status)
     {
         // Arrange
-        var result = new DataQualityResult
+        DataQualityResult result = new DataQualityResult
         {
             ValidatorId = "TEST001",
             Status = status,
@@ -334,8 +333,8 @@ public sealed class TSUN029A
     public void DataQualityResult_Warnings_CanBeProvided()
     {
         // Arrange
-        var warnings = new[] { "Warning 1", "Warning 2" };
-        var result = new DataQualityResult
+        string[] warnings = new[] { "Warning 1", "Warning 2" };
+        DataQualityResult result = new DataQualityResult
         {
             ValidatorId = "TEST001",
             Status = ValidationStatus.PassedWithWarnings,
@@ -361,7 +360,7 @@ public sealed class TSUN029A
         DTpr003A provider = new MockMarketDataProvider();
 
         // Act
-        var bars = await provider.GetHistoricalBarsAsync(
+        IReadOnlyList<PriceBar> bars = await provider.GetHistoricalBarsAsync(
             "AAPL",
             DateTime.Today.AddDays(-30),
             DateTime.Today);
@@ -381,7 +380,7 @@ public sealed class TSUN029A
         DTpr003A provider = new MockMarketDataProvider();
 
         // Act
-        var chain = await provider.GetOptionChainAsync("AAPL");
+        OptionChainSnapshot chain = await provider.GetOptionChainAsync("AAPL");
 
         // Assert
         chain.Should().NotBeNull();
@@ -399,7 +398,7 @@ public sealed class TSUN029A
         DTpr003A provider = new MockMarketDataProvider();
 
         // Act
-        var price = await provider.GetSpotPriceAsync("AAPL");
+        decimal price = await provider.GetSpotPriceAsync("AAPL");
 
         // Assert
         price.Should().BeGreaterThan(0);
@@ -415,7 +414,7 @@ public sealed class TSUN029A
         DTpr004A provider = new MockEarningsProvider();
 
         // Act
-        var events = await provider.GetUpcomingEarningsAsync("AAPL");
+        IReadOnlyList<EarningsEvent> events = await provider.GetUpcomingEarningsAsync("AAPL");
 
         // Assert
         events.Should().NotBeEmpty();
@@ -432,7 +431,7 @@ public sealed class TSUN029A
         DTpr004A provider = new MockEarningsProvider();
 
         // Act
-        var events = await provider.GetHistoricalEarningsAsync("AAPL");
+        IReadOnlyList<EarningsEvent> events = await provider.GetHistoricalEarningsAsync("AAPL");
 
         // Assert
         events.Should().NotBeEmpty();
@@ -449,7 +448,7 @@ public sealed class TSUN029A
         DTpr005A provider = new MockRiskFreeRateProvider();
 
         // Act
-        var rate = await provider.GetCurrentRateAsync();
+        decimal rate = await provider.GetCurrentRateAsync();
 
         // Assert - Rate should be reasonable (between -5% and 15%)
         rate.Should().BeInRange(-0.05m, 0.15m);
@@ -465,7 +464,7 @@ public sealed class TSUN029A
         DTpr005A provider = new MockRiskFreeRateProvider();
 
         // Act
-        var rates = await provider.GetHistoricalRatesAsync(
+        IReadOnlyDictionary<DateTime, decimal> rates = await provider.GetHistoricalRatesAsync(
             DateTime.Today.AddDays(-30),
             DateTime.Today);
 
@@ -482,7 +481,7 @@ public sealed class TSUN029A
     {
         // Arrange
         DTpr003A provider = new MockMarketDataProvider();
-        using var cts = new CancellationTokenSource();
+        using CancellationTokenSource cts = new CancellationTokenSource();
         await cts.CancelAsync();
 
         // Act & Assert
@@ -515,7 +514,7 @@ public sealed class TSUN029A
         int numStrikes = 5,
         int numExpiries = 2)
     {
-        var contracts = new List<OptionContract>();
+        List<OptionContract> contracts = new List<OptionContract>();
         decimal spotPrice = 150.00m;
 
         for (int e = 0; e < numExpiries; e++)
@@ -565,7 +564,7 @@ public sealed class TSUN029A
 
     private static MarketDataSnapshot CreateTestMarketDataSnapshot()
     {
-        var bars = new List<PriceBar>();
+        List<PriceBar> bars = new List<PriceBar>();
         for (int i = 30; i >= 0; i--)
         {
             bars.Add(new PriceBar
@@ -617,8 +616,8 @@ internal sealed class MockMarketDataProvider : DTpr003A
     {
         cancellationToken.ThrowIfCancellationRequested();
         
-        var bars = new List<PriceBar>();
-        for (var date = startDate; date <= endDate; date = date.AddDays(1))
+        List<PriceBar> bars = new List<PriceBar>();
+        for (DateTime date = startDate; date <= endDate; date = date.AddDays(1))
         {
             if (date.DayOfWeek != DayOfWeek.Saturday && date.DayOfWeek != DayOfWeek.Sunday)
             {
@@ -644,7 +643,7 @@ internal sealed class MockMarketDataProvider : DTpr003A
     {
         cancellationToken.ThrowIfCancellationRequested();
         
-        var contracts = new List<OptionContract>
+        List<OptionContract> contracts = new List<OptionContract>
         {
             new OptionContract
             {
@@ -699,7 +698,7 @@ internal sealed class MockEarningsProvider : DTpr004A
     {
         cancellationToken.ThrowIfCancellationRequested();
         
-        var events = new List<EarningsEvent>
+        List<EarningsEvent> events = new List<EarningsEvent>
         {
             new EarningsEvent
             {
@@ -722,7 +721,7 @@ internal sealed class MockEarningsProvider : DTpr004A
     {
         cancellationToken.ThrowIfCancellationRequested();
         
-        var events = new List<EarningsEvent>();
+        List<EarningsEvent> events = new List<EarningsEvent>();
         for (int q = 1; q <= 4; q++)
         {
             events.Add(new EarningsEvent
@@ -777,8 +776,8 @@ internal sealed class MockRiskFreeRateProvider : DTpr005A
     {
         cancellationToken.ThrowIfCancellationRequested();
         
-        var rates = new Dictionary<DateTime, decimal>();
-        for (var date = startDate; date <= endDate; date = date.AddDays(1))
+        Dictionary<DateTime, decimal> rates = new Dictionary<DateTime, decimal>();
+        for (DateTime date = startDate; date <= endDate; date = date.AddDays(1))
         {
             if (date.DayOfWeek != DayOfWeek.Saturday && date.DayOfWeek != DayOfWeek.Sunday)
             {

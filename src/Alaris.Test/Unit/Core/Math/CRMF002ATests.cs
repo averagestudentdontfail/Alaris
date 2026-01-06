@@ -25,7 +25,9 @@ public class CRMF002ATests
         double σ = 0.30;
 
         // Act
-        var (λ1, λ2) = CRMF002A.SolveCharacteristic(r, q, σ);
+        double λ1;
+        double λ2;
+        (λ1, λ2) = CRMF002A.SolveCharacteristic(r, q, σ);
 
         // Assert: Under positive rates, λ1 > 1 and λ2 < 0
         Assert.True(λ1 > 1.0, $"λ1 should be > 1 for positive rates, but was {λ1}");
@@ -39,7 +41,9 @@ public class CRMF002ATests
     public void SolveCharacteristic_PositiveRates_RootsSatisfyEquation(double r, double q, double σ)
     {
         // Act
-        var (λ1, λ2) = CRMF002A.SolveCharacteristic(r, q, σ);
+        double λ1;
+        double λ2;
+        (λ1, λ2) = CRMF002A.SolveCharacteristic(r, q, σ);
 
         // Assert: Both roots should satisfy the characteristic equation
         Assert.True(CRMF002A.ValidateRoot(r, q, σ, λ1, Tolerance), $"λ1={λ1} does not satisfy equation");
@@ -59,7 +63,9 @@ public class CRMF002ATests
         double σ = 0.30;
 
         // Act
-        var (λ1, λ2) = CRMF002A.SolveCharacteristic(r, q, σ);
+        double λ1;
+        double λ2;
+        (λ1, λ2) = CRMF002A.SolveCharacteristic(r, q, σ);
 
         // Assert: Characteristic equation has two real roots
         // λ1 > λ2 by convention (as per SolveCharacteristic implementation)
@@ -85,7 +91,9 @@ public class CRMF002ATests
         // With r < 0, need |r-q-σ²/2|² > 2σ²|r| which is satisfied for larger σ
         
         // Act
-        var (λ1, λ2) = CRMF002A.SolveCharacteristic(r, q, σ);
+        double λ1;
+        double λ2;
+        (λ1, λ2) = CRMF002A.SolveCharacteristic(r, q, σ);
 
         // Assert - use slightly relaxed tolerance for negative rate edge cases
         Assert.True(CRMF002A.ValidateRoot(r, q, σ, λ1, 1e-8), $"λ1={λ1} does not satisfy equation");
@@ -108,7 +116,9 @@ public class CRMF002ATests
         double expectedSum = (q - r + σ2 / 2.0) / (σ2 / 2.0);
 
         // Act
-        var (λ1, λ2) = CRMF002A.SolveCharacteristic(r, q, σ);
+        double λ1;
+        double λ2;
+        (λ1, λ2) = CRMF002A.SolveCharacteristic(r, q, σ);
         double actualSum = λ1 + λ2;
 
         // Assert
@@ -127,7 +137,9 @@ public class CRMF002ATests
         double expectedProduct = -2.0 * r / σ2;
 
         // Act
-        var (λ1, λ2) = CRMF002A.SolveCharacteristic(r, q, σ);
+        double λ1;
+        double λ2;
+        (λ1, λ2) = CRMF002A.SolveCharacteristic(r, q, σ);
         double actualProduct = λ1 * λ2;
 
         // Assert
@@ -148,7 +160,9 @@ public class CRMF002ATests
         double σ = 0.30;
 
         // Act
-        var (λ1, λ2) = CRMF002A.SolveCharacteristic(r, q, σ);
+        double λ1;
+        double λ2;
+        (λ1, λ2) = CRMF002A.SolveCharacteristic(r, q, σ);
 
         // Assert: Should still produce valid roots
         Assert.True(CRMF002A.ValidateRoot(r, q, σ, λ1, Tolerance));
@@ -164,7 +178,9 @@ public class CRMF002ATests
         double σ = 0.30;
 
         // Act
-        var (λ1, λ2) = CRMF002A.SolveCharacteristic(r, q, σ);
+        double λ1;
+        double λ2;
+        (λ1, λ2) = CRMF002A.SolveCharacteristic(r, q, σ);
 
         // Assert: Roots should still be valid
         Assert.True(CRMF002A.ValidateRoot(r, q, σ, λ1, 1e-8));

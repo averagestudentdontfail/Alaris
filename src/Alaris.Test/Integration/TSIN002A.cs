@@ -21,11 +21,11 @@ public class StrategyIntegrationTests
     public void STCR003A_CalculatesVolatilityCorrectly()
     {
         // Arrange
-        var estimator = new STCR003A();
-        var priceBars = GenerateSamplePriceBars(50);
+        STCR003A estimator = new STCR003A();
+        List<PriceBar> priceBars = GenerateSamplePriceBars(50);
 
         // Act
-        var volatility = estimator.Calculate(priceBars, 30, annualized: true);
+        double volatility = estimator.Calculate(priceBars, 30, annualized: true);
 
         // Assert
         volatility.Should().BeGreaterThan(0);
@@ -36,35 +36,44 @@ public class StrategyIntegrationTests
     public void STCR003A_CalculatesRollingVolatility()
     {
         // Arrange
-        var estimator = new STCR003A();
-        var priceBars = GenerateSamplePriceBars(100);
+        STCR003A estimator = new STCR003A();
+        List<PriceBar> priceBars = GenerateSamplePriceBars(100);
 
         // Act
-        var rollingVol = estimator.CalculateRolling(priceBars, 30, annualized: true);
+        IReadOnlyList<(DateTime Date, double Volatility)> rollingVol = estimator.CalculateRolling(priceBars, 30, annualized: true);
 
         // Assert
         rollingVol.Should().NotBeEmpty();
         rollingVol.Should().HaveCount(100 - 30);
-        rollingVol.All(v => v.Volatility > 0).Should().BeTrue();
+        bool allPositive = true;
+        for (int i = 0; i < rollingVol.Count; i++)
+        {
+            if (rollingVol[i].Volatility <= 0)
+            {
+                allPositive = false;
+                break;
+            }
+        }
+        allPositive.Should().BeTrue();
     }
 
     [Fact]
     public void STTM001A_IdentifiesInvertedStructure()
     {
         // Arrange
-        var analyzer = new STTM001A();
+        STTM001A analyzer = new STTM001A();
         
         // Use steeper inversion to meet -0.00406 threshold (from Atilgan 2014)
-        var points = new List<STTM001APoint>
+        List<STTM001APoint> points = new List<STTM001APoint>
         {
-            new() { DaysToExpiry = 10, ImpliedVolatility = 0.45, Strike = 100 },
-            new() { DaysToExpiry = 20, ImpliedVolatility = 0.37, Strike = 100 },
-            new() { DaysToExpiry = 30, ImpliedVolatility = 0.30, Strike = 100 },
-            new() { DaysToExpiry = 45, ImpliedVolatility = 0.23, Strike = 100 }
+            new STTM001APoint { DaysToExpiry = 10, ImpliedVolatility = 0.45, Strike = 100 },
+            new STTM001APoint { DaysToExpiry = 20, ImpliedVolatility = 0.37, Strike = 100 },
+            new STTM001APoint { DaysToExpiry = 30, ImpliedVolatility = 0.30, Strike = 100 },
+            new STTM001APoint { DaysToExpiry = 45, ImpliedVolatility = 0.23, Strike = 100 }
         };
 
         // Act
-        var analysis = analyzer.Analyze(points);
+        STTM001AAnalysis analysis = analyzer.Analyze(points);
 
         // Assert
         analysis.IsInverted.Should().BeTrue();
@@ -76,17 +85,17 @@ public class StrategyIntegrationTests
     public void STTM001A_IdentifiesNormalStructure()
     {
         // Arrange
-        var analyzer = new STTM001A();
-        var points = new List<STTM001APoint>
+        STTM001A analyzer = new STTM001A();
+        List<STTM001APoint> points = new List<STTM001APoint>
         {
-            new() { DaysToExpiry = 10, ImpliedVolatility = 0.25, Strike = 100 },
-            new() { DaysToExpiry = 20, ImpliedVolatility = 0.28, Strike = 100 },
-            new() { DaysToExpiry = 30, ImpliedVolatility = 0.30, Strike = 100 },
-            new() { DaysToExpiry = 45, ImpliedVolatility = 0.32, Strike = 100 }
+            new STTM001APoint { DaysToExpiry = 10, ImpliedVolatility = 0.25, Strike = 100 },
+            new STTM001APoint { DaysToExpiry = 20, ImpliedVolatility = 0.28, Strike = 100 },
+            new STTM001APoint { DaysToExpiry = 30, ImpliedVolatility = 0.30, Strike = 100 },
+            new STTM001APoint { DaysToExpiry = 45, ImpliedVolatility = 0.32, Strike = 100 }
         };
 
         // Act
-        var analysis = analyzer.Analyze(points);
+        STTM001AAnalysis analysis = analyzer.Analyze(points);
 
         // Assert
         analysis.IsInverted.Should().BeFalse();
@@ -98,16 +107,16 @@ public class StrategyIntegrationTests
     public void STCR001A_GeneratesSTCR004A()
     {
         // Arrange
-        var mockMarketData = new MockMarketDataProvider();
-        var yangZhang = new STCR003A();
-        var termAnalyzer = new STTM001A();
-        var generator = new STCR001A(mockMarketData, yangZhang, termAnalyzer);
+        MockMarketDataProvider mockMarketData = new MockMarketDataProvider();
+        STCR003A yangZhang = new STCR003A();
+        STTM001A termAnalyzer = new STTM001A();
+        STCR001A generator = new STCR001A(mockMarketData, yangZhang, termAnalyzer);
 
-        var earningsDate = new DateTime(2024, 1, 25);
-        var evaluationDate = new DateTime(2024, 1, 24);
+        DateTime earningsDate = new DateTime(2024, 1, 25);
+        DateTime evaluationDate = new DateTime(2024, 1, 24);
 
         // Act
-        var signal = generator.Generate("AAPL", earningsDate, evaluationDate);
+        STCR004A signal = generator.Generate("AAPL", earningsDate, evaluationDate);
 
         // Assert
         signal.Should().NotBeNull();
@@ -122,11 +131,11 @@ public class StrategyIntegrationTests
     public void STRK001A_CalculatesPosition()
     {
         // Arrange
-        var sizer = new STRK001A();
-        var historicalTrades = GenerateSampleTrades(30);
-        var portfolioValue = 100000.0;
-        var spreadCost = 2.50;
-        var signal = new STCR004A
+        STRK001A sizer = new STRK001A();
+        List<Trade> historicalTrades = GenerateSampleTrades(30);
+        double portfolioValue = 100000.0;
+        double spreadCost = 2.50;
+        STCR004A signal = new STCR004A
         {
             Symbol = "AAPL",
             Strength = STCR004AStrength.Recommended,
@@ -135,7 +144,7 @@ public class StrategyIntegrationTests
         };
 
         // Act
-        var position = sizer.CalculateFromHistory(
+        STRK002A position = sizer.CalculateFromHistory(
             portfolioValue,
             historicalTrades,
             spreadCost,
@@ -151,7 +160,7 @@ public class StrategyIntegrationTests
     public void STPR001APricing_ValidatesCorrectly()
     {
         // Arrange
-        var pricing = new STPR001APricing
+        STPR001APricing pricing = new STPR001APricing
         {
             FrontOption = new OptionPricing { Price = 3.00, Delta = 0.50 },
             BackOption = new OptionPricing { Price = 5.50, Delta = 0.45 },
@@ -169,20 +178,20 @@ public class StrategyIntegrationTests
     public async Task STCT001A_EvaluatesOpportunity()
     {
         // Arrange
-        var mockMarketData = new MockMarketDataProvider();
-        var yangZhang = new STCR003A();
-        var termAnalyzer = new STTM001A();
-        var signalGenerator = new STCR001A(mockMarketData, yangZhang, termAnalyzer);
-        var mockPricing = new MockPricingEngine();
-        var sizer = new STRK001A();
-        var control = new STCT001A(signalGenerator, mockPricing, sizer);
+        MockMarketDataProvider mockMarketData = new MockMarketDataProvider();
+        STCR003A yangZhang = new STCR003A();
+        STTM001A termAnalyzer = new STTM001A();
+        STCR001A signalGenerator = new STCR001A(mockMarketData, yangZhang, termAnalyzer);
+        MockPricingEngine mockPricing = new MockPricingEngine();
+        STRK001A sizer = new STRK001A();
+        STCT001A control = new STCT001A(signalGenerator, mockPricing, sizer);
 
-        var historicalTrades = GenerateSampleTrades(25);
-        var earningsDate = new DateTime(2024, 1, 25);
-        var evaluationDate = new DateTime(2024, 1, 24);
+        List<Trade> historicalTrades = GenerateSampleTrades(25);
+        DateTime earningsDate = new DateTime(2024, 1, 25);
+        DateTime evaluationDate = new DateTime(2024, 1, 24);
 
         // Act
-        var opportunity = await control.EvaluateOpportunity(
+        TradingOpportunity opportunity = await control.EvaluateOpportunity(
             "AAPL",
             earningsDate,
             evaluationDate,
@@ -199,11 +208,11 @@ public class StrategyIntegrationTests
     public async Task STBR001A_IntegrationTest_PositiveRates()
     {
         // Arrange - Use native types
-        var valuationDate = new CRTM005A(15, CRTM005AMonth.January, 2024);
+        CRTM005A valuationDate = new CRTM005A(15, CRTM005AMonth.January, 2024);
 
-        using var engine = new STBR001A();
+        using STBR001A engine = new STBR001A();
 
-        var parameters = new STDT003A
+        STDT003A parameters = new STDT003A
         {
             UnderlyingPrice = 150.0,
             Strike = 150.0,
@@ -216,7 +225,7 @@ public class StrategyIntegrationTests
         };
 
         // Act
-        var result = await engine.PriceOption(parameters);
+        OptionPricing result = await engine.PriceOption(parameters);
 
         // Assert
         result.Should().NotBeNull();
@@ -230,11 +239,11 @@ public class StrategyIntegrationTests
     public async Task STBR001A_IntegrationTest_NegativeRates()
     {
         // Arrange: Healy (2021) parameters using native types
-        var valuationDate = new CRTM005A(15, CRTM005AMonth.January, 2024);
+        CRTM005A valuationDate = new CRTM005A(15, CRTM005AMonth.January, 2024);
 
-        using var engine = new STBR001A();
+        using STBR001A engine = new STBR001A();
 
-        var parameters = new STDT003A
+        STDT003A parameters = new STDT003A
         {
             UnderlyingPrice = 100.0,
             Strike = 100.0,
@@ -247,7 +256,7 @@ public class StrategyIntegrationTests
         };
 
         // Act
-        var result = await engine.PriceOption(parameters);
+        OptionPricing result = await engine.PriceOption(parameters);
 
         // Assert
         result.Should().NotBeNull();
@@ -261,11 +270,11 @@ public class StrategyIntegrationTests
     public async Task STBR001A_STPR001A_PositiveRates()
     {
         // Arrange - Use native types
-        var valuationDate = new CRTM005A(15, CRTM005AMonth.January, 2024);
+        CRTM005A valuationDate = new CRTM005A(15, CRTM005AMonth.January, 2024);
 
-        using var engine = new STBR001A();
+        using STBR001A engine = new STBR001A();
 
-        var parameters = new STPR001AParameters
+        STPR001AParameters parameters = new STPR001AParameters
         {
             UnderlyingPrice = 150.0,
             Strike = 150.0,
@@ -279,7 +288,7 @@ public class StrategyIntegrationTests
         };
 
         // Act
-        var result = await engine.PriceSTPR001A(parameters);
+        STPR001APricing result = await engine.PriceSTPR001A(parameters);
 
         // Assert
         result.Should().NotBeNull();
@@ -293,11 +302,11 @@ public class StrategyIntegrationTests
     public async Task STBR001A_STPR001A_NegativeRates()
     {
         // Arrange - Use native types
-        var valuationDate = new CRTM005A(15, CRTM005AMonth.January, 2024);
+        CRTM005A valuationDate = new CRTM005A(15, CRTM005AMonth.January, 2024);
 
-        using var engine = new STBR001A();
+        using STBR001A engine = new STBR001A();
 
-        var parameters = new STPR001AParameters
+        STPR001AParameters parameters = new STPR001AParameters
         {
             UnderlyingPrice = 100.0,
             Strike = 100.0,
@@ -311,7 +320,7 @@ public class StrategyIntegrationTests
         };
 
         // Act
-        var result = await engine.PriceSTPR001A(parameters);
+        STPR001APricing result = await engine.PriceSTPR001A(parameters);
 
         // Assert
         result.Should().NotBeNull();
@@ -324,22 +333,22 @@ public class StrategyIntegrationTests
     public async Task STCT001A_WithSTBR001A_FullWorkflow()
     {
         // Arrange - Use native types
-        var mockMarketData = new MockMarketDataProvider();
-        var yangZhang = new STCR003A();
-        var termAnalyzer = new STTM001A();
-        var signalGenerator = new STCR001A(mockMarketData, yangZhang, termAnalyzer);
+        MockMarketDataProvider mockMarketData = new MockMarketDataProvider();
+        STCR003A yangZhang = new STCR003A();
+        STTM001A termAnalyzer = new STTM001A();
+        STCR001A signalGenerator = new STCR001A(mockMarketData, yangZhang, termAnalyzer);
 
         // Use real STBR001A instead of mock
-        using var pricingEngine = new STBR001A();
-        var sizer = new STRK001A();
-        var control = new STCT001A(signalGenerator, pricingEngine, sizer);
+        using STBR001A pricingEngine = new STBR001A();
+        STRK001A sizer = new STRK001A();
+        STCT001A control = new STCT001A(signalGenerator, pricingEngine, sizer);
 
-        var historicalTrades = GenerateSampleTrades(25);
-        var earningsDate = new DateTime(2024, 1, 25);
-        var evaluationDate = new DateTime(2024, 1, 24);
+        List<Trade> historicalTrades = GenerateSampleTrades(25);
+        DateTime earningsDate = new DateTime(2024, 1, 25);
+        DateTime evaluationDate = new DateTime(2024, 1, 24);
 
         // Act
-        var opportunity = await control.EvaluateOpportunity(
+        TradingOpportunity opportunity = await control.EvaluateOpportunity(
             "AAPL",
             earningsDate,
             evaluationDate,
@@ -362,16 +371,16 @@ public class StrategyIntegrationTests
     // Helper methods
     private static List<PriceBar> GenerateSamplePriceBars(int count)
     {
-        var random = new Random(42);
-        var bars = new List<PriceBar>();
-        var basePrice = 150.0;
+        Random random = new Random(42);
+        List<PriceBar> bars = new List<PriceBar>();
+        double basePrice = 150.0;
 
         for (int i = 0; i < count; i++)
         {
-            var open = basePrice + random.NextDouble() * 5 - 2.5;
-            var close = open + random.NextDouble() * 3 - 1.5;
-            var high = System.Math.Max(open, close) + random.NextDouble() * 2;
-            var low = System.Math.Min(open, close) - random.NextDouble() * 2;
+            double open = basePrice + random.NextDouble() * 5 - 2.5;
+            double close = open + random.NextDouble() * 3 - 1.5;
+            double high = System.Math.Max(open, close) + random.NextDouble() * 2;
+            double low = System.Math.Min(open, close) - random.NextDouble() * 2;
 
             bars.Add(new PriceBar
             {
@@ -391,12 +400,12 @@ public class StrategyIntegrationTests
 
     private static List<Trade> GenerateSampleTrades(int count)
     {
-        var random = new Random(42);
-        var trades = new List<Trade>();
+        Random random = new Random(42);
+        List<Trade> trades = new List<Trade>();
 
         for (int i = 0; i < count; i++)
         {
-            var profitLoss = random.NextDouble() > 0.55 ? // 55% win rate
+            double profitLoss = random.NextDouble() > 0.55 ? // 55% win rate
                 random.NextDouble() * 500 + 100 : // Win
                 -(random.NextDouble() * 300 + 50); // Loss
 
@@ -418,7 +427,7 @@ internal class MockMarketDataProvider : STDT001A
 {
     public STDT002A GetSTDT002A(string symbol, DateTime date)
     {
-        var chain = new STDT002A
+        STDT002A chain = new STDT002A
         {
             Symbol = symbol,
             UnderlyingPrice = 150.0,
@@ -426,7 +435,7 @@ internal class MockMarketDataProvider : STDT001A
         };
 
         // Add sample expiries
-        var expiry1 = new OptionExpiry
+        OptionExpiry expiry1 = new OptionExpiry
         {
             ExpiryDate = date.AddDays(7)
         };
@@ -455,7 +464,7 @@ internal class MockMarketDataProvider : STDT001A
         chain.Expiries.Add(expiry1);
 
         // Add second expiry
-        var expiry2 = new OptionExpiry
+        OptionExpiry expiry2 = new OptionExpiry
         {
             ExpiryDate = date.AddDays(35)
         };
@@ -487,16 +496,16 @@ internal class MockMarketDataProvider : STDT001A
 
     public IReadOnlyList<PriceBar> GetHistoricalPrices(string symbol, int days)
     {
-        var bars = new List<PriceBar>();
-        var random = new Random(42);
-        var basePrice = 150.0;
+        List<PriceBar> bars = new List<PriceBar>();
+        Random random = new Random(42);
+        double basePrice = 150.0;
 
         for (int i = 0; i < days; i++)
         {
-            var open = basePrice + random.NextDouble() * 2 - 1;
-            var close = open + random.NextDouble() * 2 - 1;
-            var high = System.Math.Max(open, close) + random.NextDouble();
-            var low = System.Math.Min(open, close) - random.NextDouble();
+            double open = basePrice + random.NextDouble() * 2 - 1;
+            double close = open + random.NextDouble() * 2 - 1;
+            double high = System.Math.Max(open, close) + random.NextDouble();
+            double low = System.Math.Min(open, close) - random.NextDouble();
 
             bars.Add(new PriceBar
             {
@@ -523,7 +532,7 @@ internal class MockMarketDataProvider : STDT001A
 
     public Task<IReadOnlyList<DateTime>> GetHistoricalEarningsDates(string symbol, int lookbackQuarters = 12)
     {
-        var historicalDates = new List<DateTime>();
+        List<DateTime> historicalDates = new List<DateTime>();
         for (int i = 0; i < lookbackQuarters; i++)
         {
             historicalDates.Add(DateTime.Today.AddDays(-90 * (i + 1)));
@@ -556,7 +565,7 @@ internal class MockPricingEngine : STBR002A
 
     public Task<STPR001APricing> PriceSTPR001A(STPR001AParameters parameters)
     {
-        var frontOption = new OptionPricing
+        OptionPricing frontOption = new OptionPricing
         {
             Price = 3.00,
             Delta = 0.50,
@@ -564,7 +573,7 @@ internal class MockPricingEngine : STBR002A
             Theta = -0.05
         };
 
-        var backOption = new OptionPricing
+        OptionPricing backOption = new OptionPricing
         {
             Price = 5.50,
             Delta = 0.45,

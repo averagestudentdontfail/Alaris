@@ -73,7 +73,7 @@ public sealed class AlgorithmParameterTests
     [InlineData(0.05, 200.00, 10.0)] // 5% of $200 = $10 allocation
     public void PositionAllocation_CalculatesCorrectly(double allocationPercent, double portfolioValue, double expectedAllocation)
     {
-        var allocation = (decimal)allocationPercent * (decimal)portfolioValue;
+        decimal allocation = (decimal)allocationPercent * (decimal)portfolioValue;
         allocation.Should().Be((decimal)expectedAllocation);
     }
 
@@ -103,7 +103,7 @@ public sealed class AtilganStrategyParameterTests
         const int minDays = 5;
         const int maxDays = 7;
 
-        var inRange = days >= minDays && days <= maxDays;
+        bool inRange = days >= minDays && days <= maxDays;
 
         inRange.Should().Be(isValid);
     }
@@ -119,7 +119,7 @@ public sealed class AtilganStrategyParameterTests
         const double minAllocation = 0.02;
         const double maxAllocation = 0.15;
 
-        var inRange = allocation >= minAllocation && allocation <= maxAllocation;
+        bool inRange = allocation >= minAllocation && allocation <= maxAllocation;
 
         inRange.Should().Be(isValid);
     }
@@ -135,7 +135,7 @@ public sealed class AtilganStrategyParameterTests
         const int minPositions = 5;
         const int maxPositions = 20;
 
-        var inRange = positions >= minPositions && positions <= maxPositions;
+        bool inRange = positions >= minPositions && positions <= maxPositions;
 
         inRange.Should().Be(isValid);
     }
@@ -150,7 +150,7 @@ public sealed class AtilganStrategyParameterTests
     {
         const long minVolume = 500_000;
 
-        var acceptable = volume >= minVolume;
+        bool acceptable = volume >= minVolume;
 
         acceptable.Should().Be(isValid);
     }

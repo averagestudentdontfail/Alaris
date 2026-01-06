@@ -23,7 +23,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 using Xunit;
 using FluentAssertions;
@@ -81,7 +80,7 @@ public sealed class TSIN005A : IAsyncLifetime
         DateTime endDate = new DateTime(2024, 3, 31);
 
         // Act
-        var session = await _sessionService.CreateAsync(startDate, endDate);
+        APmd001A session = await _sessionService.CreateAsync(startDate, endDate);
 
         // Assert
         session.Should().NotBeNull();
@@ -100,7 +99,7 @@ public sealed class TSIN005A : IAsyncLifetime
         DateTime endDate = new DateTime(2024, 3, 31);
 
         // Act
-        var session = await _sessionService.CreateAsync(startDate, endDate);
+        APmd001A session = await _sessionService.CreateAsync(startDate, endDate);
 
         // Assert - Check folder structure
         Directory.Exists(session.SessionPath).Should().BeTrue();
@@ -121,13 +120,13 @@ public sealed class TSIN005A : IAsyncLifetime
         DateTime endDate = new DateTime(2024, 3, 31);
 
         // Act
-        var session = await _sessionService.CreateAsync(startDate, endDate);
+        APmd001A session = await _sessionService.CreateAsync(startDate, endDate);
 
         // Assert
-        var metadataPath = System.IO.Path.Combine(session.SessionPath, "session.json");
+        string metadataPath = System.IO.Path.Combine(session.SessionPath, "session.json");
         File.Exists(metadataPath).Should().BeTrue();
         
-        var json = await File.ReadAllTextAsync(metadataPath);
+        string json = await File.ReadAllTextAsync(metadataPath);
         json.Should().Contain("sessionId");
         json.Should().Contain(session.SessionId);
     }
@@ -143,7 +142,7 @@ public sealed class TSIN005A : IAsyncLifetime
         DateTime endDate = new DateTime(2024, 6, 30);
 
         // Act
-        var session = await _sessionService.CreateAsync(startDate, endDate);
+        APmd001A session = await _sessionService.CreateAsync(startDate, endDate);
 
         // Assert
         session.StartDate.Should().Be(startDate);
@@ -162,7 +161,7 @@ public sealed class TSIN005A : IAsyncLifetime
         DateTime endDate = new DateTime(2024, 3, 31);
 
         // Act
-        var session = await _sessionService.CreateAsync(startDate, endDate);
+        APmd001A session = await _sessionService.CreateAsync(startDate, endDate);
 
         // Assert
         session.Status.Should().Be(SessionStatus.Created);
@@ -177,10 +176,10 @@ public sealed class TSIN005A : IAsyncLifetime
         // Arrange
         DateTime startDate = new DateTime(2024, 1, 1);
         DateTime endDate = new DateTime(2024, 3, 31);
-        var symbols = new[] { "AAPL", "MSFT", "GOOGL" };
+        string[] symbols = new[] { "AAPL", "MSFT", "GOOGL" };
 
         // Act
-        var session = await _sessionService.CreateAsync(startDate, endDate, symbols);
+        APmd001A session = await _sessionService.CreateAsync(startDate, endDate, symbols);
 
         // Assert
         session.Symbols.Should().HaveCount(3);
@@ -228,11 +227,11 @@ public sealed class TSIN005A : IAsyncLifetime
     public async Task APsv001A_CreateMultiple_SequenceNumbersIncrease()
     {
         // Arrange & Act - Create multiple sessions
-        var session1 = await _sessionService.CreateAsync(
+        APmd001A session1 = await _sessionService.CreateAsync(
             new DateTime(2024, 1, 1), new DateTime(2024, 1, 31));
-        var session2 = await _sessionService.CreateAsync(
+        APmd001A session2 = await _sessionService.CreateAsync(
             new DateTime(2024, 2, 1), new DateTime(2024, 2, 28));
-        var session3 = await _sessionService.CreateAsync(
+        APmd001A session3 = await _sessionService.CreateAsync(
             new DateTime(2024, 3, 1), new DateTime(2024, 3, 31));
 
         // Assert - Extract sequence numbers
@@ -254,11 +253,11 @@ public sealed class TSIN005A : IAsyncLifetime
     public async Task APsv001A_GetAsync_ReturnsSessionById()
     {
         // Arrange
-        var created = await _sessionService.CreateAsync(
+        APmd001A created = await _sessionService.CreateAsync(
             new DateTime(2024, 1, 1), new DateTime(2024, 3, 31));
 
         // Act
-        var retrieved = await _sessionService.GetAsync(created.SessionId);
+        APmd001A? retrieved = await _sessionService.GetAsync(created.SessionId);
 
         // Assert
         retrieved.Should().NotBeNull();
@@ -275,7 +274,7 @@ public sealed class TSIN005A : IAsyncLifetime
     public async Task APsv001A_GetAsync_ReturnsNullForNonExistent()
     {
         // Act
-        var result = await _sessionService.GetAsync("BT999A-20240101-20240331");
+        APmd001A? result = await _sessionService.GetAsync("BT999A-20240101-20240331");
 
         // Assert
         result.Should().BeNull();
@@ -290,7 +289,7 @@ public sealed class TSIN005A : IAsyncLifetime
     public async Task APsv001A_ListAsync_ReturnsEmptyWhenNoSessions()
     {
         // Act
-        var sessions = await _sessionService.ListAsync();
+        IReadOnlyList<APmd001A> sessions = await _sessionService.ListAsync();
 
         // Assert
         sessions.Should().BeEmpty();
@@ -308,7 +307,7 @@ public sealed class TSIN005A : IAsyncLifetime
         await _sessionService.CreateAsync(new DateTime(2024, 3, 1), new DateTime(2024, 3, 31));
 
         // Act
-        var sessions = await _sessionService.ListAsync();
+        IReadOnlyList<APmd001A> sessions = await _sessionService.ListAsync();
 
         // Assert
         sessions.Should().HaveCount(3);
@@ -321,14 +320,14 @@ public sealed class TSIN005A : IAsyncLifetime
     public async Task APsv001A_ListAsync_ReturnsOrderedByCreatedAt()
     {
         // Arrange - Create sessions with slight delays
-        var s1 = await _sessionService.CreateAsync(new DateTime(2024, 1, 1), new DateTime(2024, 1, 31));
+        APmd001A s1 = await _sessionService.CreateAsync(new DateTime(2024, 1, 1), new DateTime(2024, 1, 31));
         await Task.Delay(50);
-        var s2 = await _sessionService.CreateAsync(new DateTime(2024, 2, 1), new DateTime(2024, 2, 28));
+        APmd001A s2 = await _sessionService.CreateAsync(new DateTime(2024, 2, 1), new DateTime(2024, 2, 28));
         await Task.Delay(50);
-        var s3 = await _sessionService.CreateAsync(new DateTime(2024, 3, 1), new DateTime(2024, 3, 31));
+        APmd001A s3 = await _sessionService.CreateAsync(new DateTime(2024, 3, 1), new DateTime(2024, 3, 31));
 
         // Act
-        var sessions = await _sessionService.ListAsync();
+        IReadOnlyList<APmd001A> sessions = await _sessionService.ListAsync();
 
         // Assert - Most recent first
         sessions[0].SessionId.Should().Be(s3.SessionId);
@@ -345,15 +344,15 @@ public sealed class TSIN005A : IAsyncLifetime
     public async Task APsv001A_UpdateAsync_PersistsStatusChange()
     {
         // Arrange
-        var session = await _sessionService.CreateAsync(
+        APmd001A session = await _sessionService.CreateAsync(
             new DateTime(2024, 1, 1), new DateTime(2024, 3, 31));
         
         // Act
-        var updated = session with { Status = SessionStatus.Running };
+        APmd001A updated = session with { Status = SessionStatus.Running };
         await _sessionService.UpdateAsync(updated);
 
         // Assert
-        var retrieved = await _sessionService.GetAsync(session.SessionId);
+        APmd001A? retrieved = await _sessionService.GetAsync(session.SessionId);
         retrieved!.Status.Should().Be(SessionStatus.Running);
     }
 
@@ -364,17 +363,17 @@ public sealed class TSIN005A : IAsyncLifetime
     public async Task APsv001A_UpdateAsync_UpdatesTimestamp()
     {
         // Arrange
-        var session = await _sessionService.CreateAsync(
+        APmd001A session = await _sessionService.CreateAsync(
             new DateTime(2024, 1, 1), new DateTime(2024, 3, 31));
-        var originalUpdatedAt = session.UpdatedAt;
+        DateTime originalUpdatedAt = session.UpdatedAt;
         await Task.Delay(100);
 
         // Act
-        var updated = session with { Status = SessionStatus.Completed };
+        APmd001A updated = session with { Status = SessionStatus.Completed };
         await _sessionService.UpdateAsync(updated);
 
         // Assert
-        var retrieved = await _sessionService.GetAsync(session.SessionId);
+        APmd001A? retrieved = await _sessionService.GetAsync(session.SessionId);
         retrieved!.UpdatedAt.Should().BeAfter(originalUpdatedAt);
     }
 
@@ -387,9 +386,9 @@ public sealed class TSIN005A : IAsyncLifetime
     public async Task APsv001A_DeleteAsync_RemovesSessionFolder()
     {
         // Arrange
-        var session = await _sessionService.CreateAsync(
+        APmd001A session = await _sessionService.CreateAsync(
             new DateTime(2024, 1, 1), new DateTime(2024, 3, 31));
-        var sessionPath = session.SessionPath;
+        string sessionPath = session.SessionPath;
         Directory.Exists(sessionPath).Should().BeTrue();
 
         // Act
@@ -406,14 +405,14 @@ public sealed class TSIN005A : IAsyncLifetime
     public async Task APsv001A_DeleteAsync_RemovesFromIndex()
     {
         // Arrange
-        var session = await _sessionService.CreateAsync(
+        APmd001A session = await _sessionService.CreateAsync(
             new DateTime(2024, 1, 1), new DateTime(2024, 3, 31));
         
         // Act
         await _sessionService.DeleteAsync(session.SessionId);
 
         // Assert
-        var sessions = await _sessionService.ListAsync();
+        IReadOnlyList<APmd001A> sessions = await _sessionService.ListAsync();
         sessions.Should().NotContain(s => s.SessionId == session.SessionId);
     }
 
@@ -437,11 +436,11 @@ public sealed class TSIN005A : IAsyncLifetime
     public async Task APsv001A_GetDataPath_ReturnsCorrectPath()
     {
         // Arrange
-        var session = await _sessionService.CreateAsync(
+        APmd001A session = await _sessionService.CreateAsync(
             new DateTime(2024, 1, 1), new DateTime(2024, 3, 31));
 
         // Act
-        var dataPath = _sessionService.GetDataPath(session.SessionId);
+        string dataPath = _sessionService.GetDataPath(session.SessionId);
 
         // Assert
         dataPath.Should().EndWith(System.IO.Path.Combine(session.SessionId, "data"));
@@ -455,11 +454,11 @@ public sealed class TSIN005A : IAsyncLifetime
     public async Task APsv001A_GetResultsPath_ReturnsCorrectPath()
     {
         // Arrange
-        var session = await _sessionService.CreateAsync(
+        APmd001A session = await _sessionService.CreateAsync(
             new DateTime(2024, 1, 1), new DateTime(2024, 3, 31));
 
         // Act
-        var resultsPath = _sessionService.GetResultsPath(session.SessionId);
+        string resultsPath = _sessionService.GetResultsPath(session.SessionId);
 
         // Assert
         resultsPath.Should().EndWith(System.IO.Path.Combine(session.SessionId, "results"));
@@ -475,7 +474,7 @@ public sealed class TSIN005A : IAsyncLifetime
     public void APmd001A_IsImmutableRecord()
     {
         // Arrange
-        var session = new APmd001A
+        APmd001A session = new APmd001A
         {
             SessionId = "BT001A-20240101-20240331",
             StartDate = new DateTime(2024, 1, 1),
@@ -485,7 +484,7 @@ public sealed class TSIN005A : IAsyncLifetime
         };
 
         // Act - Use with expression to create modified copy
-        var modified = session with { Status = SessionStatus.Running };
+        APmd001A modified = session with { Status = SessionStatus.Running };
 
         // Assert - Original unchanged
         session.Status.Should().Be(SessionStatus.Created);
@@ -499,7 +498,7 @@ public sealed class TSIN005A : IAsyncLifetime
     public void SessionStatistics_ContainsAllFields()
     {
         // Arrange
-        var stats = new SessionStatistics
+        SessionStatistics stats = new SessionStatistics
         {
             TotalOrders = 100,
             NetProfit = 5000m,
@@ -563,7 +562,7 @@ public sealed class TSIN005A : IAsyncLifetime
         DateTime endDate = new DateTime(2024, 8, 20);
 
         // Act
-        var session = await _sessionService.CreateAsync(startDate, endDate);
+        APmd001A session = await _sessionService.CreateAsync(startDate, endDate);
 
         // Assert
         session.SessionId.Should().Contain("20240715");
@@ -577,7 +576,7 @@ public sealed class TSIN005A : IAsyncLifetime
     public async Task SessionId_HasVariantSuffix()
     {
         // Act
-        var session = await _sessionService.CreateAsync(
+        APmd001A session = await _sessionService.CreateAsync(
             new DateTime(2024, 1, 1), new DateTime(2024, 1, 31));
 
         // Assert - Should have variant 'A'
@@ -593,7 +592,7 @@ public sealed class TSIN005A : IAsyncLifetime
     public async Task APsv001A_ConcurrentCreation_AllSessionsCreated()
     {
         // Arrange
-        var tasks = new List<Task<APmd001A>>();
+        List<Task<APmd001A>> tasks = new List<Task<APmd001A>>();
 
         // Act - Create 5 sessions concurrently
         for (int i = 0; i < 5; i++)
@@ -604,11 +603,15 @@ public sealed class TSIN005A : IAsyncLifetime
                 new DateTime(2024, month, 28)));
         }
 
-        var sessions = await Task.WhenAll(tasks);
+        APmd001A[] sessions = await Task.WhenAll(tasks);
 
         // Assert - All sessions created with unique IDs
-        var sessionIds = sessions.Select(s => s.SessionId).ToList();
-        sessionIds.Distinct().Count().Should().Be(5);
+        HashSet<string> uniqueSessionIds = new HashSet<string>();
+        for (int i = 0; i < sessions.Length; i++)
+        {
+            uniqueSessionIds.Add(sessions[i].SessionId);
+        }
+        uniqueSessionIds.Count.Should().Be(5);
     }
 
     // Helper Methods
@@ -618,8 +621,8 @@ public sealed class TSIN005A : IAsyncLifetime
         // Format: BT001A-YYYYMMDD-YYYYMMDD
         if (sessionId.Length >= 5 && sessionId.StartsWith("BT", StringComparison.Ordinal))
         {
-            var sequenceStr = sessionId.Substring(2, 3);
-            if (int.TryParse(sequenceStr, out var sequence))
+            string sequenceStr = sessionId.Substring(2, 3);
+            if (int.TryParse(sequenceStr, out int sequence))
             {
                 return sequence;
             }

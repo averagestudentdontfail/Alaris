@@ -18,7 +18,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Xunit;
 using FluentAssertions;
@@ -41,14 +40,14 @@ public sealed class TSIN004A
     public async Task EVIF001A_AppendAsync_SequenceNumbersAreMonotonic()
     {
         // Arrange
-        var store = new EVIF001A();
-        var events = new List<EVCR003A>();
+        EVIF001A store = new EVIF001A();
+        List<EVCR003A> events = new List<EVCR003A>();
 
         // Act - Append 10 events
         for (int i = 0; i < 10; i++)
         {
-            var domainEvent = new TestDomainEvent($"Event-{i}");
-            var envelope = await store.AppendAsync(domainEvent, $"agg-{i}", "TestAggregate");
+            TestDomainEvent domainEvent = new TestDomainEvent($"Event-{i}");
+            EVCR003A envelope = await store.AppendAsync(domainEvent, $"agg-{i}", "TestAggregate");
             events.Add(envelope);
         }
 
@@ -67,14 +66,14 @@ public sealed class TSIN004A
     public async Task EVIF001A_AppendAsync_EventIdsAreUnique()
     {
         // Arrange
-        var store = new EVIF001A();
-        var eventIds = new HashSet<Guid>();
+        EVIF001A store = new EVIF001A();
+        HashSet<Guid> eventIds = new HashSet<Guid>();
 
         // Act - Append multiple events
         for (int i = 0; i < 100; i++)
         {
-            var domainEvent = new TestDomainEvent($"Event-{i}");
-            var envelope = await store.AppendAsync(domainEvent);
+            TestDomainEvent domainEvent = new TestDomainEvent($"Event-{i}");
+            EVCR003A envelope = await store.AppendAsync(domainEvent);
             eventIds.Add(envelope.EventId);
         }
 
@@ -89,7 +88,7 @@ public sealed class TSIN004A
     public async Task EVIF001A_GetEventsForAggregate_FiltersCorrectly()
     {
         // Arrange
-        var store = new EVIF001A();
+        EVIF001A store = new EVIF001A();
         
         // Append events for different aggregates
         await store.AppendAsync(new TestDomainEvent("A1"), "aggregate-A", "TestType");
@@ -99,8 +98,8 @@ public sealed class TSIN004A
         await store.AppendAsync(new TestDomainEvent("A3"), "aggregate-A", "TestType");
 
         // Act
-        var aggregateAEvents = await store.GetEventsForAggregateAsync("aggregate-A");
-        var aggregateBEvents = await store.GetEventsForAggregateAsync("aggregate-B");
+        IReadOnlyList<EVCR003A> aggregateAEvents = await store.GetEventsForAggregateAsync("aggregate-A");
+        IReadOnlyList<EVCR003A> aggregateBEvents = await store.GetEventsForAggregateAsync("aggregate-B");
 
         // Assert
         aggregateAEvents.Should().HaveCount(3);
@@ -114,7 +113,7 @@ public sealed class TSIN004A
     public async Task EVIF001A_GetEventsFromSequence_PaginatesCorrectly()
     {
         // Arrange
-        var store = new EVIF001A();
+        EVIF001A store = new EVIF001A();
         
         // Append 20 events
         for (int i = 0; i < 20; i++)
@@ -123,7 +122,7 @@ public sealed class TSIN004A
         }
 
         // Act - Get events starting from sequence 10 with max 5
-        var events = await store.GetEventsFromSequenceAsync(10, maxCount: 5);
+        IReadOnlyList<EVCR003A> events = await store.GetEventsFromSequenceAsync(10, maxCount: 5);
 
         // Assert
         events.Should().HaveCount(5);
@@ -138,10 +137,10 @@ public sealed class TSIN004A
     public async Task EVIF001A_GetCurrentSequenceNumber_ReturnsHighest()
     {
         // Arrange
-        var store = new EVIF001A();
+        EVIF001A store = new EVIF001A();
         
         // Act & Assert - Empty store
-        var initial = await store.GetCurrentSequenceNumberAsync();
+        long initial = await store.GetCurrentSequenceNumberAsync();
         initial.Should().Be(0);
 
         // Add events
@@ -149,7 +148,7 @@ public sealed class TSIN004A
         await store.AppendAsync(new TestDomainEvent("E2"));
         await store.AppendAsync(new TestDomainEvent("E3"));
 
-        var current = await store.GetCurrentSequenceNumberAsync();
+        long current = await store.GetCurrentSequenceNumberAsync();
         current.Should().Be(3);
     }
 
@@ -160,20 +159,20 @@ public sealed class TSIN004A
     public async Task EVIF001A_GetEventsByCorrelationId_ReturnsCorrelated()
     {
         // Arrange
-        var store = new EVIF001A();
+        EVIF001A store = new EVIF001A();
         string correlationId = Guid.NewGuid().ToString();
 
         // Append events with same correlation
-        var event1 = new TestDomainEvent("Correlated-1") { CorrelationId = correlationId };
-        var event2 = new TestDomainEvent("Correlated-2") { CorrelationId = correlationId };
-        var event3 = new TestDomainEvent("Uncorrelated");
+        TestDomainEvent event1 = new TestDomainEvent("Correlated-1") { CorrelationId = correlationId };
+        TestDomainEvent event2 = new TestDomainEvent("Correlated-2") { CorrelationId = correlationId };
+        TestDomainEvent event3 = new TestDomainEvent("Uncorrelated");
 
         await store.AppendAsync(event1);
         await store.AppendAsync(event2);
         await store.AppendAsync(event3);
 
         // Act
-        var correlated = await store.GetEventsByCorrelationIdAsync(correlationId);
+        IReadOnlyList<EVCR003A> correlated = await store.GetEventsByCorrelationIdAsync(correlationId);
 
         // Assert
         correlated.Should().HaveCount(2);
@@ -186,8 +185,8 @@ public sealed class TSIN004A
     public async Task EVIF001A_GetEventsByTimeRange_FiltersCorrectly()
     {
         // Arrange
-        var store = new EVIF001A();
-        var startTime = DateTime.UtcNow;
+        EVIF001A store = new EVIF001A();
+        DateTime startTime = DateTime.UtcNow;
 
         // Append events
         await store.AppendAsync(new TestDomainEvent("E1"));
@@ -196,14 +195,24 @@ public sealed class TSIN004A
         await Task.Delay(10);
         await store.AppendAsync(new TestDomainEvent("E3"));
 
-        var endTime = DateTime.UtcNow;
+        DateTime endTime = DateTime.UtcNow;
 
         // Act
-        var events = await store.GetEventsByTimeRangeAsync(startTime, endTime);
+        IReadOnlyList<EVCR003A> events = await store.GetEventsByTimeRangeAsync(startTime, endTime);
 
         // Assert
         events.Should().HaveCount(3);
-        events.All(e => e.StoredAtUtc >= startTime && e.StoredAtUtc <= endTime).Should().BeTrue();
+        bool inRange = true;
+        for (int i = 0; i < events.Count; i++)
+        {
+            EVCR003A envelope = events[i];
+            if (envelope.StoredAtUtc < startTime || envelope.StoredAtUtc > endTime)
+            {
+                inRange = false;
+                break;
+            }
+        }
+        inRange.Should().BeTrue();
     }
 
     // EVIF002A (Audit Logger) Tests
@@ -215,14 +224,14 @@ public sealed class TSIN004A
     public async Task EVIF002A_LogAsync_StoresEntry()
     {
         // Arrange
-        var logger = new EVIF002A();
-        var entry = CreateTestAuditEntry("Order", "ORD-001", "PlaceOrder", "TestUser");
+        EVIF002A logger = new EVIF002A();
+        AuditEntry entry = CreateTestAuditEntry("Order", "ORD-001", "PlaceOrder", "TestUser");
 
         // Act
         await logger.LogAsync(entry);
 
         // Assert
-        var entries = await logger.GetEntriesForEntityAsync("Order", "ORD-001");
+        IReadOnlyList<AuditEntry> entries = await logger.GetEntriesForEntityAsync("Order", "ORD-001");
         entries.Should().HaveCount(1);
         entries[0].Action.Should().Be("PlaceOrder");
     }
@@ -234,15 +243,15 @@ public sealed class TSIN004A
     public async Task EVIF002A_GetEntriesForEntity_ReturnsCorrectEntries()
     {
         // Arrange
-        var logger = new EVIF002A();
+        EVIF002A logger = new EVIF002A();
 
         await logger.LogAsync(CreateTestAuditEntry("Order", "ORD-001", "Create", "User1"));
         await logger.LogAsync(CreateTestAuditEntry("Order", "ORD-001", "Update", "User1"));
         await logger.LogAsync(CreateTestAuditEntry("Order", "ORD-002", "Create", "User2"));
 
         // Act
-        var order1Entries = await logger.GetEntriesForEntityAsync("Order", "ORD-001");
-        var order2Entries = await logger.GetEntriesForEntityAsync("Order", "ORD-002");
+        IReadOnlyList<AuditEntry> order1Entries = await logger.GetEntriesForEntityAsync("Order", "ORD-001");
+        IReadOnlyList<AuditEntry> order2Entries = await logger.GetEntriesForEntityAsync("Order", "ORD-002");
 
         // Assert
         order1Entries.Should().HaveCount(2);
@@ -256,14 +265,14 @@ public sealed class TSIN004A
     public async Task EVIF002A_GetEntriesByInitiator_FiltersCorrectly()
     {
         // Arrange
-        var logger = new EVIF002A();
+        EVIF002A logger = new EVIF002A();
 
         await logger.LogAsync(CreateTestAuditEntry("Order", "ORD-001", "Create", "Admin"));
         await logger.LogAsync(CreateTestAuditEntry("Order", "ORD-002", "Create", "User"));
         await logger.LogAsync(CreateTestAuditEntry("Order", "ORD-003", "Create", "Admin"));
 
         // Act
-        var adminEntries = await logger.GetEntriesByInitiatorAsync("Admin");
+        IReadOnlyList<AuditEntry> adminEntries = await logger.GetEntriesByInitiatorAsync("Admin");
 
         // Assert
         adminEntries.Should().HaveCount(2);
@@ -276,17 +285,17 @@ public sealed class TSIN004A
     public async Task EVIF002A_GetEntriesByTimeRange_FiltersCorrectly()
     {
         // Arrange
-        var logger = new EVIF002A();
-        var startTime = DateTime.UtcNow;
+        EVIF002A logger = new EVIF002A();
+        DateTime startTime = DateTime.UtcNow;
 
         await logger.LogAsync(CreateTestAuditEntry("Order", "ORD-001", "Create", "User"));
         await Task.Delay(10);
         await logger.LogAsync(CreateTestAuditEntry("Order", "ORD-002", "Create", "User"));
 
-        var endTime = DateTime.UtcNow;
+        DateTime endTime = DateTime.UtcNow;
 
         // Act
-        var entries = await logger.GetEntriesByTimeRangeAsync(startTime, endTime);
+        IReadOnlyList<AuditEntry> entries = await logger.GetEntriesByTimeRangeAsync(startTime, endTime);
 
         // Assert
         entries.Should().HaveCount(2);
@@ -303,8 +312,8 @@ public sealed class TSIN004A
     public async Task EVIF002A_PreservesSeverity(AuditSeverity severity)
     {
         // Arrange
-        var logger = new EVIF002A();
-        var entry = new AuditEntry
+        EVIF002A logger = new EVIF002A();
+        AuditEntry entry = new AuditEntry
         {
             AuditId = Guid.NewGuid(),
             OccurredAtUtc = DateTime.UtcNow,
@@ -319,7 +328,7 @@ public sealed class TSIN004A
 
         // Act
         await logger.LogAsync(entry);
-        var entries = await logger.GetEntriesForEntityAsync("TestEntity", "TEST-001");
+        IReadOnlyList<AuditEntry> entries = await logger.GetEntriesForEntityAsync("TestEntity", "TEST-001");
 
         // Assert
         entries[0].Severity.Should().Be(severity);
@@ -335,8 +344,8 @@ public sealed class TSIN004A
     public async Task EVIF002A_PreservesOutcome(AuditOutcome outcome)
     {
         // Arrange
-        var logger = new EVIF002A();
-        var entry = new AuditEntry
+        EVIF002A logger = new EVIF002A();
+        AuditEntry entry = new AuditEntry
         {
             AuditId = Guid.NewGuid(),
             OccurredAtUtc = DateTime.UtcNow,
@@ -351,7 +360,7 @@ public sealed class TSIN004A
 
         // Act
         await logger.LogAsync(entry);
-        var entries = await logger.GetEntriesForEntityAsync("TestEntity", "TEST-002");
+        IReadOnlyList<AuditEntry> entries = await logger.GetEntriesForEntityAsync("TestEntity", "TEST-002");
 
         // Assert
         entries[0].Outcome.Should().Be(outcome);
@@ -366,13 +375,13 @@ public sealed class TSIN004A
     public void EVCR003A_Create_SerializesEventToJson()
     {
         // Arrange
-        var domainEvent = new TestDomainEvent("TestPayload")
+        TestDomainEvent domainEvent = new TestDomainEvent("TestPayload")
         {
             TestProperty = "PropertyValue"
         };
 
         // Act
-        var envelope = EVCR003A.Create(domainEvent, 1);
+        EVCR003A envelope = EVCR003A.Create(domainEvent, 1);
 
         // Assert
         envelope.EventData.Should().Contain("TestPayload");
@@ -387,10 +396,10 @@ public sealed class TSIN004A
     public void EVCR003A_Create_PreservesEventId()
     {
         // Arrange
-        var domainEvent = new TestDomainEvent("Test");
+        TestDomainEvent domainEvent = new TestDomainEvent("Test");
 
         // Act
-        var envelope = EVCR003A.Create(domainEvent, 1);
+        EVCR003A envelope = EVCR003A.Create(domainEvent, 1);
 
         // Assert
         envelope.EventId.Should().Be(domainEvent.EventId);
@@ -403,10 +412,10 @@ public sealed class TSIN004A
     public void EVCR003A_Create_StoresAggregateInfo()
     {
         // Arrange
-        var domainEvent = new TestDomainEvent("Test");
+        TestDomainEvent domainEvent = new TestDomainEvent("Test");
 
         // Act
-        var envelope = EVCR003A.Create(
+        EVCR003A envelope = EVCR003A.Create(
             domainEvent, 
             sequenceNumber: 42,
             aggregateId: "AGG-001",
@@ -428,13 +437,13 @@ public sealed class TSIN004A
     {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();
-        var domainEvent = new TestDomainEvent("Test")
+        TestDomainEvent domainEvent = new TestDomainEvent("Test")
         {
             CorrelationId = correlationId
         };
 
         // Act
-        var envelope = EVCR003A.Create(domainEvent, 1);
+        EVCR003A envelope = EVCR003A.Create(domainEvent, 1);
 
         // Assert
         envelope.CorrelationId.Should().Be(correlationId);
@@ -449,9 +458,9 @@ public sealed class TSIN004A
     public async Task EVIF001A_ConcurrentAppends_MaintainsSequenceIntegrity()
     {
         // Arrange
-        var store = new EVIF001A();
+        EVIF001A store = new EVIF001A();
         int eventCount = 100;
-        var tasks = new List<Task<EVCR003A>>();
+        List<Task<EVCR003A>> tasks = new List<Task<EVCR003A>>();
 
         // Act - Concurrent appends
         for (int i = 0; i < eventCount; i++)
@@ -459,21 +468,40 @@ public sealed class TSIN004A
             int index = i; // Capture for closure
             tasks.Add(Task.Run(async () =>
             {
-                var domainEvent = new TestDomainEvent($"Event-{index}");
+                TestDomainEvent domainEvent = new TestDomainEvent($"Event-{index}");
                 return await store.AppendAsync(domainEvent);
             }));
         }
 
-        var envelopes = await Task.WhenAll(tasks);
+        EVCR003A[] envelopes = await Task.WhenAll(tasks);
 
         // Assert - All sequence numbers should be unique
-        var sequenceNumbers = envelopes.Select(e => e.SequenceNumber).ToList();
-        sequenceNumbers.Distinct().Count().Should().Be(eventCount,
+        HashSet<long> uniqueSequenceNumbers = new HashSet<long>();
+        long minSequence = long.MaxValue;
+        long maxSequence = long.MinValue;
+
+        for (int i = 0; i < envelopes.Length; i++)
+        {
+            long sequence = envelopes[i].SequenceNumber;
+            uniqueSequenceNumbers.Add(sequence);
+
+            if (sequence < minSequence)
+            {
+                minSequence = sequence;
+            }
+
+            if (sequence > maxSequence)
+            {
+                maxSequence = sequence;
+            }
+        }
+
+        uniqueSequenceNumbers.Count.Should().Be(eventCount,
             "All sequence numbers must be unique even with concurrent appends");
 
         // Assert - Sequence numbers should span 1 to eventCount
-        sequenceNumbers.Min().Should().Be(1);
-        sequenceNumbers.Max().Should().Be(eventCount);
+        minSequence.Should().Be(1);
+        maxSequence.Should().Be(eventCount);
     }
 
     /// <summary>
@@ -483,9 +511,9 @@ public sealed class TSIN004A
     public async Task EVIF002A_ConcurrentLogs_AllEntriesStored()
     {
         // Arrange
-        var logger = new EVIF002A();
+        EVIF002A logger = new EVIF002A();
         int entryCount = 100;
-        var tasks = new List<Task>();
+        List<Task> tasks = new List<Task>();
 
         // Act - Concurrent logs
         for (int i = 0; i < entryCount; i++)
@@ -493,7 +521,7 @@ public sealed class TSIN004A
             int index = i;
             tasks.Add(Task.Run(async () =>
             {
-                var entry = CreateTestAuditEntry("Order", $"ORD-{index:D3}", "Create", "User");
+                AuditEntry entry = CreateTestAuditEntry("Order", $"ORD-{index:D3}", "Create", "User");
                 await logger.LogAsync(entry);
             }));
         }
@@ -501,7 +529,7 @@ public sealed class TSIN004A
         await Task.WhenAll(tasks);
 
         // Assert - All entries should be stored
-        var allEntries = await logger.GetEntriesByInitiatorAsync("User");
+        IReadOnlyList<AuditEntry> allEntries = await logger.GetEntriesByInitiatorAsync("User");
         allEntries.Should().HaveCount(entryCount);
     }
 

@@ -55,15 +55,15 @@ public sealed class DTbr001ATests : IDisposable
     public async Task GetMarketDataSnapshotAsync_WithValidData_ReturnsSnapshot()
     {
         // Arrange
-        var marketDataProvider = new BridgeTestMarketDataProvider();
-        var earningsProvider = new BridgeTestEarningsProvider();
-        var riskFreeRateProvider = new BridgeTestRiskFreeRateProvider();
-        var validators = new DTqc002A[]
+        BridgeTestMarketDataProvider marketDataProvider = new BridgeTestMarketDataProvider();
+        BridgeTestEarningsProvider earningsProvider = new BridgeTestEarningsProvider();
+        BridgeTestRiskFreeRateProvider riskFreeRateProvider = new BridgeTestRiskFreeRateProvider();
+        DTqc002A[] validators = new DTqc002A[]
         {
             new BridgeTestPassingValidator()
         };
 
-        var bridge = new AlarisDataBridge(
+        AlarisDataBridge bridge = new AlarisDataBridge(
             marketDataProvider,
             earningsProvider,
             riskFreeRateProvider,
@@ -71,7 +71,7 @@ public sealed class DTbr001ATests : IDisposable
             _logger);
 
         // Act
-        var snapshot = await bridge.GetMarketDataSnapshotAsync("AAPL");
+        MarketDataSnapshot snapshot = await bridge.GetMarketDataSnapshotAsync("AAPL");
 
         // Assert
         snapshot.Should().NotBeNull();
@@ -86,15 +86,15 @@ public sealed class DTbr001ATests : IDisposable
     public async Task GetMarketDataSnapshotAsync_WithValidationFailure_ThrowsException()
     {
         // Arrange
-        var marketDataProvider = new BridgeTestMarketDataProvider();
-        var earningsProvider = new BridgeTestEarningsProvider();
-        var riskFreeRateProvider = new BridgeTestRiskFreeRateProvider();
-        var validators = new DTqc002A[]
+        BridgeTestMarketDataProvider marketDataProvider = new BridgeTestMarketDataProvider();
+        BridgeTestEarningsProvider earningsProvider = new BridgeTestEarningsProvider();
+        BridgeTestRiskFreeRateProvider riskFreeRateProvider = new BridgeTestRiskFreeRateProvider();
+        DTqc002A[] validators = new DTqc002A[]
         {
             new BridgeTestFailingValidator()
         };
 
-        var bridge = new AlarisDataBridge(
+        AlarisDataBridge bridge = new AlarisDataBridge(
             marketDataProvider,
             earningsProvider,
             riskFreeRateProvider,
@@ -113,12 +113,12 @@ public sealed class DTbr001ATests : IDisposable
     public async Task GetMarketDataSnapshotAsync_AggregatesDataConcurrently()
     {
         // Arrange
-        var marketDataProvider = new BridgeTestMarketDataProviderWithDelay(TimeSpan.FromMilliseconds(50));
-        var earningsProvider = new BridgeTestEarningsProviderWithDelay(TimeSpan.FromMilliseconds(50));
-        var riskFreeRateProvider = new BridgeTestRiskFreeRateProviderWithDelay(TimeSpan.FromMilliseconds(50));
-        var validators = new DTqc002A[] { new BridgeTestPassingValidator() };
+        BridgeTestMarketDataProviderWithDelay marketDataProvider = new BridgeTestMarketDataProviderWithDelay(TimeSpan.FromMilliseconds(50));
+        BridgeTestEarningsProviderWithDelay earningsProvider = new BridgeTestEarningsProviderWithDelay(TimeSpan.FromMilliseconds(50));
+        BridgeTestRiskFreeRateProviderWithDelay riskFreeRateProvider = new BridgeTestRiskFreeRateProviderWithDelay(TimeSpan.FromMilliseconds(50));
+        DTqc002A[] validators = new DTqc002A[] { new BridgeTestPassingValidator() };
 
-        var bridge = new AlarisDataBridge(
+        AlarisDataBridge bridge = new AlarisDataBridge(
             marketDataProvider,
             earningsProvider,
             riskFreeRateProvider,
@@ -126,8 +126,8 @@ public sealed class DTbr001ATests : IDisposable
             _logger);
 
         // Act
-        var sw = System.Diagnostics.Stopwatch.StartNew();
-        var snapshot = await bridge.GetMarketDataSnapshotAsync("AAPL");
+        System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
+        MarketDataSnapshot snapshot = await bridge.GetMarketDataSnapshotAsync("AAPL");
         sw.Stop();
 
         // Assert - Concurrent execution should complete faster than sequential (150ms vs 450ms+)
@@ -139,12 +139,12 @@ public sealed class DTbr001ATests : IDisposable
     public async Task GetMarketDataSnapshotAsync_IncludesEarningsData()
     {
         // Arrange
-        var marketDataProvider = new BridgeTestMarketDataProvider();
-        var earningsProvider = new BridgeTestEarningsProvider();
-        var riskFreeRateProvider = new BridgeTestRiskFreeRateProvider();
-        var validators = new DTqc002A[] { new BridgeTestPassingValidator() };
+        BridgeTestMarketDataProvider marketDataProvider = new BridgeTestMarketDataProvider();
+        BridgeTestEarningsProvider earningsProvider = new BridgeTestEarningsProvider();
+        BridgeTestRiskFreeRateProvider riskFreeRateProvider = new BridgeTestRiskFreeRateProvider();
+        DTqc002A[] validators = new DTqc002A[] { new BridgeTestPassingValidator() };
 
-        var bridge = new AlarisDataBridge(
+        AlarisDataBridge bridge = new AlarisDataBridge(
             marketDataProvider,
             earningsProvider,
             riskFreeRateProvider,
@@ -152,7 +152,7 @@ public sealed class DTbr001ATests : IDisposable
             _logger);
 
         // Act
-        var snapshot = await bridge.GetMarketDataSnapshotAsync("AAPL");
+        MarketDataSnapshot snapshot = await bridge.GetMarketDataSnapshotAsync("AAPL");
 
         // Assert
         snapshot.NextEarnings.Should().NotBeNull();
@@ -164,12 +164,12 @@ public sealed class DTbr001ATests : IDisposable
     public void Constructor_NullMarketDataProvider_ThrowsArgumentNullException()
     {
         // Arrange
-        var earningsProvider = new BridgeTestEarningsProvider();
-        var riskFreeRateProvider = new BridgeTestRiskFreeRateProvider();
-        var validators = new DTqc002A[] { new BridgeTestPassingValidator() };
+        BridgeTestEarningsProvider earningsProvider = new BridgeTestEarningsProvider();
+        BridgeTestRiskFreeRateProvider riskFreeRateProvider = new BridgeTestRiskFreeRateProvider();
+        DTqc002A[] validators = new DTqc002A[] { new BridgeTestPassingValidator() };
 
         // Act & Assert
-        var act = () => new AlarisDataBridge(
+        Func<AlarisDataBridge> act = () => new AlarisDataBridge(
             null!,
             earningsProvider,
             riskFreeRateProvider,
@@ -183,12 +183,12 @@ public sealed class DTbr001ATests : IDisposable
     public void Constructor_NullEarningsProvider_ThrowsArgumentNullException()
     {
         // Arrange
-        var marketDataProvider = new BridgeTestMarketDataProvider();
-        var riskFreeRateProvider = new BridgeTestRiskFreeRateProvider();
-        var validators = new DTqc002A[] { new BridgeTestPassingValidator() };
+        BridgeTestMarketDataProvider marketDataProvider = new BridgeTestMarketDataProvider();
+        BridgeTestRiskFreeRateProvider riskFreeRateProvider = new BridgeTestRiskFreeRateProvider();
+        DTqc002A[] validators = new DTqc002A[] { new BridgeTestPassingValidator() };
 
         // Act & Assert
-        var act = () => new AlarisDataBridge(
+        Func<AlarisDataBridge> act = () => new AlarisDataBridge(
             marketDataProvider,
             null!,
             riskFreeRateProvider,
@@ -202,12 +202,12 @@ public sealed class DTbr001ATests : IDisposable
     public void Constructor_NullRiskFreeRateProvider_ThrowsArgumentNullException()
     {
         // Arrange
-        var marketDataProvider = new BridgeTestMarketDataProvider();
-        var earningsProvider = new BridgeTestEarningsProvider();
-        var validators = new DTqc002A[] { new BridgeTestPassingValidator() };
+        BridgeTestMarketDataProvider marketDataProvider = new BridgeTestMarketDataProvider();
+        BridgeTestEarningsProvider earningsProvider = new BridgeTestEarningsProvider();
+        DTqc002A[] validators = new DTqc002A[] { new BridgeTestPassingValidator() };
 
         // Act & Assert
-        var act = () => new AlarisDataBridge(
+        Func<AlarisDataBridge> act = () => new AlarisDataBridge(
             marketDataProvider,
             earningsProvider,
             null!,
@@ -227,7 +227,7 @@ internal class BridgeTestMarketDataProvider : DTpr003A
 
     public virtual Task<IReadOnlyList<PriceBar>> GetHistoricalBarsAsync(string symbol, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
     {
-        var bars = new List<PriceBar>();
+        List<PriceBar> bars = new List<PriceBar>();
         for (int i = 0; i < 30; i++)
         {
             bars.Add(new PriceBar
@@ -246,7 +246,7 @@ internal class BridgeTestMarketDataProvider : DTpr003A
 
     public virtual Task<OptionChainSnapshot> GetOptionChainAsync(string symbol, DateTime? asOfDate = null, CancellationToken cancellationToken = default)
     {
-        var timestamp = asOfDate ?? DateTime.UtcNow;
+        DateTime timestamp = asOfDate ?? DateTime.UtcNow;
         return Task.FromResult(new OptionChainSnapshot
         {
             Symbol = symbol,
@@ -254,7 +254,7 @@ internal class BridgeTestMarketDataProvider : DTpr003A
             Timestamp = timestamp,
             Contracts = new List<OptionContract>
             {
-                new()
+                new OptionContract
                 {
                     UnderlyingSymbol = symbol,
                     OptionSymbol = $"{symbol}250117C00150000",
@@ -313,9 +313,9 @@ internal class BridgeTestEarningsProvider : DTpr004A
 
     public virtual Task<IReadOnlyList<EarningsEvent>> GetUpcomingEarningsAsync(string symbol, int daysAhead = 90, CancellationToken cancellationToken = default)
     {
-        var earnings = new List<EarningsEvent>
+        List<EarningsEvent> earnings = new List<EarningsEvent>
         {
-            new()
+            new EarningsEvent
             {
                 Symbol = symbol,
                 Date = DateTime.UtcNow.Date.AddDays(30),
@@ -331,9 +331,9 @@ internal class BridgeTestEarningsProvider : DTpr004A
 
     public virtual Task<IReadOnlyList<EarningsEvent>> GetHistoricalEarningsAsync(string symbol, int lookbackDays = 730, CancellationToken cancellationToken = default)
     {
-        var earnings = new List<EarningsEvent>
+        List<EarningsEvent> earnings = new List<EarningsEvent>
         {
-            new()
+            new EarningsEvent
             {
                 Symbol = symbol,
                 Date = DateTime.UtcNow.Date.AddDays(-90),

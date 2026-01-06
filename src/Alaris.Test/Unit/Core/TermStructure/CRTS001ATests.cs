@@ -16,8 +16,8 @@ public class CRTS001ATests
     [Fact]
     public void DiscountFactor_AtZero_ReturnsOne()
     {
-        var referenceDate = new CRTM005A(1, CRTM005AMonth.January, 2024);
-        var curve = new CRTS001AFlatForward(referenceDate, 0.05);
+        CRTM005A referenceDate = new CRTM005A(1, CRTM005AMonth.January, 2024);
+        CRTS001AFlatForward curve = new CRTS001AFlatForward(referenceDate, 0.05);
         
         double df = curve.DiscountFactor(0.0);
         
@@ -27,9 +27,9 @@ public class CRTS001ATests
     [Fact]
     public void DiscountFactor_PositiveRate_LessThanOne()
     {
-        var referenceDate = new CRTM005A(1, CRTM005AMonth.January, 2024);
+        CRTM005A referenceDate = new CRTM005A(1, CRTM005AMonth.January, 2024);
         double rate = 0.05;
-        var curve = new CRTS001AFlatForward(referenceDate, rate);
+        CRTS001AFlatForward curve = new CRTS001AFlatForward(referenceDate, rate);
         
         double df1 = curve.DiscountFactor(1.0);
         double df2 = curve.DiscountFactor(2.0);
@@ -41,10 +41,10 @@ public class CRTS001ATests
     [Fact]
     public void DiscountFactor_MatchesExponentialFormula()
     {
-        var referenceDate = new CRTM005A(1, CRTM005AMonth.January, 2024);
+        CRTM005A referenceDate = new CRTM005A(1, CRTM005AMonth.January, 2024);
         double rate = 0.05;
         double T = 2.0;
-        var curve = new CRTS001AFlatForward(referenceDate, rate);
+        CRTS001AFlatForward curve = new CRTS001AFlatForward(referenceDate, rate);
         
         double df = curve.DiscountFactor(T);
         double expected = System.Math.Exp(-rate * T);
@@ -55,8 +55,8 @@ public class CRTS001ATests
     [Fact]
     public void DiscountFactor_ZeroRate_ReturnsOne()
     {
-        var referenceDate = new CRTM005A(1, CRTM005AMonth.January, 2024);
-        var curve = new CRTS001AFlatForward(referenceDate, 0.0);
+        CRTM005A referenceDate = new CRTM005A(1, CRTM005AMonth.January, 2024);
+        CRTS001AFlatForward curve = new CRTS001AFlatForward(referenceDate, 0.0);
         
         double df = curve.DiscountFactor(5.0);
         
@@ -66,8 +66,8 @@ public class CRTS001ATests
     [Fact]
     public void DiscountFactor_NegativeRate_GreaterThanOne()
     {
-        var referenceDate = new CRTM005A(1, CRTM005AMonth.January, 2024);
-        var curve = new CRTS001AFlatForward(referenceDate, -0.01);
+        CRTM005A referenceDate = new CRTM005A(1, CRTM005AMonth.January, 2024);
+        CRTS001AFlatForward curve = new CRTS001AFlatForward(referenceDate, -0.01);
         
         double df = curve.DiscountFactor(1.0);
         
@@ -81,9 +81,9 @@ public class CRTS001ATests
     [Fact]
     public void ZeroRate_FlatCurve_ReturnsFlatRate()
     {
-        var referenceDate = new CRTM005A(1, CRTM005AMonth.January, 2024);
+        CRTM005A referenceDate = new CRTM005A(1, CRTM005AMonth.January, 2024);
         double rate = 0.05;
-        var curve = new CRTS001AFlatForward(referenceDate, rate);
+        CRTS001AFlatForward curve = new CRTS001AFlatForward(referenceDate, rate);
         
         double zeroRate = curve.ZeroRate(1.0);
         
@@ -93,10 +93,10 @@ public class CRTS001ATests
     [Fact]
     public void ZeroRate_ConsistentWithDiscountFactor()
     {
-        var referenceDate = new CRTM005A(1, CRTM005AMonth.January, 2024);
+        CRTM005A referenceDate = new CRTM005A(1, CRTM005AMonth.January, 2024);
         double rate = 0.05;
         double T = 2.0;
-        var curve = new CRTS001AFlatForward(referenceDate, rate);
+        CRTS001AFlatForward curve = new CRTS001AFlatForward(referenceDate, rate);
         
         double df = curve.DiscountFactor(T);
         double zeroRate = curve.ZeroRate(T);
@@ -112,9 +112,9 @@ public class CRTS001ATests
     [Fact]
     public void ForwardRate_FlatCurve_ReturnsFlatRate()
     {
-        var referenceDate = new CRTM005A(1, CRTM005AMonth.January, 2024);
+        CRTM005A referenceDate = new CRTM005A(1, CRTM005AMonth.January, 2024);
         double rate = 0.05;
-        var curve = new CRTS001AFlatForward(referenceDate, rate);
+        CRTS001AFlatForward curve = new CRTS001AFlatForward(referenceDate, rate);
         
         double fwdRate = curve.ForwardRate(1.0);
         
@@ -124,11 +124,11 @@ public class CRTS001ATests
     [Fact]
     public void ForwardRate_ConsistentWithDiscountFactors()
     {
-        var referenceDate = new CRTM005A(1, CRTM005AMonth.January, 2024);
+        CRTM005A referenceDate = new CRTM005A(1, CRTM005AMonth.January, 2024);
         double rate = 0.05;
         double T1 = 1.0;
         double T2 = 2.0;
-        var curve = new CRTS001AFlatForward(referenceDate, rate);
+        CRTS001AFlatForward curve = new CRTS001AFlatForward(referenceDate, rate);
         
         double df1 = curve.DiscountFactor(T1);
         double df2 = curve.DiscountFactor(T2);
@@ -148,9 +148,9 @@ public class CRTS001ATests
     [Fact]
     public void Rate_Property_ReturnsConstructorValue()
     {
-        var referenceDate = new CRTM005A(1, CRTM005AMonth.January, 2024);
+        CRTM005A referenceDate = new CRTM005A(1, CRTM005AMonth.January, 2024);
         double rate = 0.0375;
-        var curve = new CRTS001AFlatForward(referenceDate, rate);
+        CRTS001AFlatForward curve = new CRTS001AFlatForward(referenceDate, rate);
         
         Assert.Equal(rate, curve.Rate, Tolerance);
     }

@@ -63,8 +63,8 @@ public sealed class TSUN033A : IDisposable
         // ═══════════════════════════════════════════════════════════
         // ARRANGE
         // ═══════════════════════════════════════════════════════════
-        using EVIF001B store = new(_eventsStoragePath);
-        TestEvent testEvent = new() { Message = "Test message" };
+        using EVIF001B store = new EVIF001B(_eventsStoragePath);
+        TestEvent testEvent = new TestEvent { Message = "Test message" };
 
         // ═══════════════════════════════════════════════════════════
         // ACT
@@ -91,7 +91,7 @@ public sealed class TSUN033A : IDisposable
         // ═══════════════════════════════════════════════════════════
         // ARRANGE
         // ═══════════════════════════════════════════════════════════
-        using EVIF001B store = new(_eventsStoragePath);
+        using EVIF001B store = new EVIF001B(_eventsStoragePath);
 
         // ═══════════════════════════════════════════════════════════
         // ACT
@@ -117,7 +117,7 @@ public sealed class TSUN033A : IDisposable
         // ═══════════════════════════════════════════════════════════
         // ARRANGE
         // ═══════════════════════════════════════════════════════════
-        using EVIF001B store = new(_eventsStoragePath);
+        using EVIF001B store = new EVIF001B(_eventsStoragePath);
         await store.AppendAsync(new TestEvent { Message = "A1" }, aggregateId: "agg-a");
         await store.AppendAsync(new TestEvent { Message = "B1" }, aggregateId: "agg-b");
         await store.AppendAsync(new TestEvent { Message = "A2" }, aggregateId: "agg-a");
@@ -143,7 +143,7 @@ public sealed class TSUN033A : IDisposable
         // ═══════════════════════════════════════════════════════════
         // ARRANGE: Append events, then "restart" by creating new instance
         // ═══════════════════════════════════════════════════════════
-        using (EVIF001B store1 = new(_eventsStoragePath))
+        using (EVIF001B store1 = new EVIF001B(_eventsStoragePath))
         {
             await store1.AppendAsync(new TestEvent { Message = "1" });
             await store1.AppendAsync(new TestEvent { Message = "2" });
@@ -153,7 +153,7 @@ public sealed class TSUN033A : IDisposable
         // ═══════════════════════════════════════════════════════════
         // ACT: Create new instance (simulates restart)
         // ═══════════════════════════════════════════════════════════
-        using EVIF001B store2 = new(_eventsStoragePath);
+        using EVIF001B store2 = new EVIF001B(_eventsStoragePath);
         long recoveredSequence = await store2.GetCurrentSequenceNumberAsync();
         EVCR003A nextEvent = await store2.AppendAsync(new TestEvent { Message = "4" });
 
@@ -173,7 +173,7 @@ public sealed class TSUN033A : IDisposable
         // ═══════════════════════════════════════════════════════════
         // ARRANGE
         // ═══════════════════════════════════════════════════════════
-        using EVIF001B store = new(_eventsStoragePath);
+        using EVIF001B store = new EVIF001B(_eventsStoragePath);
         await store.AppendAsync(new TestEvent { Message = "1" });
         await store.AppendAsync(new TestEvent { Message = "2" });
         await store.AppendAsync(new TestEvent { Message = "3" });
@@ -202,7 +202,7 @@ public sealed class TSUN033A : IDisposable
         // ═══════════════════════════════════════════════════════════
         // ARRANGE
         // ═══════════════════════════════════════════════════════════
-        using EVIF002B logger = new(_auditStoragePath);
+        using EVIF002B logger = new EVIF002B(_auditStoragePath);
         AuditEntry entry = CreateAuditEntry("Order", "order-123", "Created", "system");
 
         // ═══════════════════════════════════════════════════════════
@@ -228,7 +228,7 @@ public sealed class TSUN033A : IDisposable
         // ═══════════════════════════════════════════════════════════
         // ARRANGE
         // ═══════════════════════════════════════════════════════════
-        using EVIF002B logger = new(_auditStoragePath);
+        using EVIF002B logger = new EVIF002B(_auditStoragePath);
         await logger.LogAsync(CreateAuditEntry("Order", "1", "Create", "user-a"));
         await logger.LogAsync(CreateAuditEntry("Order", "2", "Create", "user-b"));
         await logger.LogAsync(CreateAuditEntry("Order", "3", "Create", "user-a"));
@@ -254,7 +254,7 @@ public sealed class TSUN033A : IDisposable
         // ═══════════════════════════════════════════════════════════
         // ARRANGE
         // ═══════════════════════════════════════════════════════════
-        using EVIF002B logger = new(_auditStoragePath);
+        using EVIF002B logger = new EVIF002B(_auditStoragePath);
         DateTime now = DateTime.UtcNow;
         
         await logger.LogAsync(CreateAuditEntry("Order", "1", "Create", "system"));
@@ -281,7 +281,7 @@ public sealed class TSUN033A : IDisposable
         // ═══════════════════════════════════════════════════════════
         // ARRANGE
         // ═══════════════════════════════════════════════════════════
-        using EVIF002B logger = new(_auditStoragePath);
+        using EVIF002B logger = new EVIF002B(_auditStoragePath);
 
         // ═══════════════════════════════════════════════════════════
         // ACT & ASSERT

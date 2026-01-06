@@ -24,7 +24,7 @@ public class TSUN051A
     [Fact]
     public void Constructor_SetsInitialState()
     {
-        var fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle);
+        PLWF001A<BacktestState, BacktestEvent> fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle);
         
         Assert.Equal(BacktestState.Idle, fsm.CurrentState);
         Assert.Equal(BacktestState.Idle, fsm.InitialState);
@@ -33,9 +33,9 @@ public class TSUN051A
     [Fact]
     public void AddTransition_ValidTransition_Succeeds()
     {
-        var fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle);
+        PLWF001A<BacktestState, BacktestEvent> fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle);
         
-        var result = fsm.AddTransition(
+        PLWF001A<BacktestState, BacktestEvent> result = fsm.AddTransition(
             BacktestState.Idle,
             BacktestEvent.SelectSession,
             BacktestState.SessionSelected);
@@ -46,11 +46,11 @@ public class TSUN051A
     [Fact]
     public void AddTransition_Duplicate_ThrowsInvalidOperationException()
     {
-        var fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle);
+        PLWF001A<BacktestState, BacktestEvent> fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle);
         
         fsm.AddTransition(BacktestState.Idle, BacktestEvent.SelectSession, BacktestState.SessionSelected);
         
-        var ex = Assert.Throws<InvalidOperationException>(() =>
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() =>
             fsm.AddTransition(BacktestState.Idle, BacktestEvent.SelectSession, BacktestState.DataChecking));
         
         Assert.Contains("duplicate", ex.Message, StringComparison.OrdinalIgnoreCase);
@@ -60,10 +60,10 @@ public class TSUN051A
     [Fact]
     public void Fire_ValidTransition_ChangesState()
     {
-        var fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
+        PLWF001A<BacktestState, BacktestEvent> fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
             .AddTransition(BacktestState.Idle, BacktestEvent.SelectSession, BacktestState.SessionSelected);
         
-        var result = fsm.Fire(BacktestEvent.SelectSession);
+        TransitionResult<BacktestState, BacktestEvent> result = fsm.Fire(BacktestEvent.SelectSession);
         
         Assert.True(result.Succeeded);
         Assert.Equal(BacktestState.SessionSelected, fsm.CurrentState);
@@ -75,10 +75,10 @@ public class TSUN051A
     [Fact]
     public void Fire_InvalidTransition_ReturnsFailure()
     {
-        var fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
+        PLWF001A<BacktestState, BacktestEvent> fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
             .AddTransition(BacktestState.Idle, BacktestEvent.SelectSession, BacktestState.SessionSelected);
         
-        var result = fsm.Fire(BacktestEvent.StartLean); // Not a valid event from Idle
+        TransitionResult<BacktestState, BacktestEvent> result = fsm.Fire(BacktestEvent.StartLean); // Not a valid event from Idle
         
         Assert.False(result.Succeeded);
         Assert.Equal(BacktestState.Idle, fsm.CurrentState); // State unchanged
@@ -92,15 +92,15 @@ public class TSUN051A
     [Fact]
     public void Fire_GuardPasses_TransitionsSuccessfully()
     {
-        var dataReady = true;
-        var fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
+        bool dataReady = true;
+        PLWF001A<BacktestState, BacktestEvent> fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
             .AddTransition(
                 BacktestState.Idle,
                 BacktestEvent.SelectSession,
                 BacktestState.SessionSelected,
                 guard: () => dataReady);
         
-        var result = fsm.Fire(BacktestEvent.SelectSession);
+        TransitionResult<BacktestState, BacktestEvent> result = fsm.Fire(BacktestEvent.SelectSession);
         
         Assert.True(result.Succeeded);
         Assert.Equal(BacktestState.SessionSelected, fsm.CurrentState);
@@ -109,15 +109,15 @@ public class TSUN051A
     [Fact]
     public void Fire_GuardFails_TransitionBlocked()
     {
-        var dataReady = false;
-        var fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
+        bool dataReady = false;
+        PLWF001A<BacktestState, BacktestEvent> fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
             .AddTransition(
                 BacktestState.Idle,
                 BacktestEvent.SelectSession,
                 BacktestState.SessionSelected,
                 guard: () => dataReady);
         
-        var result = fsm.Fire(BacktestEvent.SelectSession);
+        TransitionResult<BacktestState, BacktestEvent> result = fsm.Fire(BacktestEvent.SelectSession);
         
         Assert.False(result.Succeeded);
         Assert.Equal(BacktestState.Idle, fsm.CurrentState); // State unchanged
@@ -127,7 +127,7 @@ public class TSUN051A
     [Fact]
     public void CanFire_GuardFails_ReturnsFalse()
     {
-        var fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
+        PLWF001A<BacktestState, BacktestEvent> fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
             .AddTransition(
                 BacktestState.Idle,
                 BacktestEvent.SelectSession,
@@ -140,7 +140,7 @@ public class TSUN051A
     [Fact]
     public void CanFire_NoGuard_ReturnsTrue()
     {
-        var fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
+        PLWF001A<BacktestState, BacktestEvent> fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
             .AddTransition(BacktestState.Idle, BacktestEvent.SelectSession, BacktestState.SessionSelected);
         
         Assert.True(fsm.CanFire(BacktestEvent.SelectSession));
@@ -153,8 +153,8 @@ public class TSUN051A
     [Fact]
     public void Fire_WithAction_ExecutesAction()
     {
-        var actionExecuted = false;
-        var fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
+        bool actionExecuted = false;
+        PLWF001A<BacktestState, BacktestEvent> fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
             .AddTransition(
                 BacktestState.Idle,
                 BacktestEvent.SelectSession,
@@ -169,14 +169,14 @@ public class TSUN051A
     [Fact]
     public void Fire_ActionThrows_ReturnsFailure()
     {
-        var fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
+        PLWF001A<BacktestState, BacktestEvent> fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
             .AddTransition(
                 BacktestState.Idle,
                 BacktestEvent.SelectSession,
                 BacktestState.SessionSelected,
                 action: () => throw new InvalidOperationException("Test error"));
         
-        var result = fsm.Fire(BacktestEvent.SelectSession);
+        TransitionResult<BacktestState, BacktestEvent> result = fsm.Fire(BacktestEvent.SelectSession);
         
         Assert.False(result.Succeeded);
         Assert.Equal(BacktestState.Idle, fsm.CurrentState); // State unchanged
@@ -191,7 +191,7 @@ public class TSUN051A
     [Fact]
     public void IsTerminal_InTerminalState_ReturnsTrue()
     {
-        var fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Completed)
+        PLWF001A<BacktestState, BacktestEvent> fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Completed)
             .SetTerminal(BacktestState.Completed)
             .SetTerminal(BacktestState.Failed);
         
@@ -201,7 +201,7 @@ public class TSUN051A
     [Fact]
     public void IsTerminal_NotInTerminalState_ReturnsFalse()
     {
-        var fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
+        PLWF001A<BacktestState, BacktestEvent> fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
             .SetTerminal(BacktestState.Completed)
             .SetTerminal(BacktestState.Failed);
         
@@ -215,7 +215,7 @@ public class TSUN051A
     [Fact]
     public void Fire_RecordsHistory()
     {
-        var fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
+        PLWF001A<BacktestState, BacktestEvent> fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
             .AddTransition(BacktestState.Idle, BacktestEvent.SelectSession, BacktestState.SessionSelected)
             .AddTransition(BacktestState.SessionSelected, BacktestEvent.CheckData, BacktestState.DataChecking);
         
@@ -232,7 +232,7 @@ public class TSUN051A
     [Fact]
     public void Fire_FailedTransition_RecordedInHistory()
     {
-        var fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle);
+        PLWF001A<BacktestState, BacktestEvent> fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle);
         
         fsm.Fire(BacktestEvent.StartLean); // Invalid - still records
         
@@ -243,8 +243,8 @@ public class TSUN051A
     [Fact]
     public void OnTransition_EventRaised()
     {
-        var eventFired = false;
-        var fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
+        bool eventFired = false;
+        PLWF001A<BacktestState, BacktestEvent> fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
             .AddTransition(BacktestState.Idle, BacktestEvent.SelectSession, BacktestState.SessionSelected);
         
         fsm.OnTransition += record => eventFired = true;
@@ -257,7 +257,7 @@ public class TSUN051A
     public void History_CircularBuffer_BoundsMemory()
     {
         const int capacity = 5;
-        var fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle, historyCapacity: capacity)
+        PLWF001A<BacktestState, BacktestEvent> fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle, historyCapacity: capacity)
             .AddTransition(BacktestState.Idle, BacktestEvent.SelectSession, BacktestState.SessionSelected)
             .AddTransition(BacktestState.SessionSelected, BacktestEvent.Reset, BacktestState.Idle);
         
@@ -280,7 +280,7 @@ public class TSUN051A
     [Fact]
     public void Fire_FreezesDefinition()
     {
-        var fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
+        PLWF001A<BacktestState, BacktestEvent> fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
             .AddTransition(BacktestState.Idle, BacktestEvent.SelectSession, BacktestState.SessionSelected);
         
         Assert.False(fsm.IsFrozen);
@@ -293,12 +293,12 @@ public class TSUN051A
     [Fact]
     public void AddTransition_AfterFire_ThrowsInvalidOperationException()
     {
-        var fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
+        PLWF001A<BacktestState, BacktestEvent> fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
             .AddTransition(BacktestState.Idle, BacktestEvent.SelectSession, BacktestState.SessionSelected);
         
         fsm.Fire(BacktestEvent.SelectSession);
         
-        var ex = Assert.Throws<InvalidOperationException>(() =>
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() =>
             fsm.AddTransition(BacktestState.SessionSelected, BacktestEvent.CheckData, BacktestState.DataChecking));
         
         Assert.Contains("frozen", ex.Message, StringComparison.OrdinalIgnoreCase);
@@ -307,7 +307,7 @@ public class TSUN051A
     [Fact]
     public void Freeze_ExplicitlyFreezesDefinition()
     {
-        var fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
+        PLWF001A<BacktestState, BacktestEvent> fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
             .AddTransition(BacktestState.Idle, BacktestEvent.SelectSession, BacktestState.SessionSelected)
             .Freeze();
         
@@ -321,8 +321,8 @@ public class TSUN051A
     [Fact]
     public void OnEntry_ExecutesWhenEnteringState()
     {
-        var entryExecuted = false;
-        var fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
+        bool entryExecuted = false;
+        PLWF001A<BacktestState, BacktestEvent> fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
             .AddTransition(BacktestState.Idle, BacktestEvent.SelectSession, BacktestState.SessionSelected)
             .OnEntry(BacktestState.SessionSelected, () => entryExecuted = true);
         
@@ -334,8 +334,8 @@ public class TSUN051A
     [Fact]
     public void OnExit_ExecutesWhenLeavingState()
     {
-        var exitExecuted = false;
-        var fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
+        bool exitExecuted = false;
+        PLWF001A<BacktestState, BacktestEvent> fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
             .AddTransition(BacktestState.Idle, BacktestEvent.SelectSession, BacktestState.SessionSelected)
             .OnExit(BacktestState.Idle, () => exitExecuted = true);
         
@@ -347,8 +347,8 @@ public class TSUN051A
     [Fact]
     public void MooreActions_ExecuteInOrder()
     {
-        var order = new List<string>();
-        var fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
+        List<string> order = new List<string>();
+        PLWF001A<BacktestState, BacktestEvent> fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
             .AddTransition(
                 BacktestState.Idle,
                 BacktestEvent.SelectSession,
@@ -372,9 +372,9 @@ public class TSUN051A
     [Fact]
     public void GetStatistics_ReturnsCorrectCounts()
     {
-        var fsm = PLWF002A.Create();
+        PLWF001A<BacktestState, BacktestEvent> fsm = PLWF002A.Create();
         
-        var stats = fsm.GetStatistics();
+        FsmStatistics stats = fsm.GetStatistics();
         
         Assert.Equal(7, stats.StateCount);  // 7 states used in transitions
         Assert.Equal(12, stats.TransitionCount);  // 12 transitions
@@ -386,11 +386,11 @@ public class TSUN051A
     [Fact]
     public void Validate_DetectsDeadStates()
     {
-        var fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
+        PLWF001A<BacktestState, BacktestEvent> fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
             .AddTransition(BacktestState.Idle, BacktestEvent.SelectSession, BacktestState.SessionSelected);
         // SessionSelected has no outgoing transitions and is not terminal = dead state
         
-        var issues = fsm.Validate();
+        IReadOnlyList<string> issues = fsm.Validate();
         
         Assert.Contains(issues, i => i.Contains("dead state", StringComparison.OrdinalIgnoreCase));
     }
@@ -402,12 +402,16 @@ public class TSUN051A
     [Fact]
     public void GetAvailableEvents_ReturnsValidEvents()
     {
-        var fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
+        PLWF001A<BacktestState, BacktestEvent> fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
             .AddTransition(BacktestState.Idle, BacktestEvent.SelectSession, BacktestState.SessionSelected)
             .AddTransition(BacktestState.Idle, BacktestEvent.CreateSession, BacktestState.SessionSelected)
             .AddTransition(BacktestState.SessionSelected, BacktestEvent.CheckData, BacktestState.DataChecking);
         
-        var available = fsm.GetAvailableEvents().ToList();
+        List<BacktestEvent> available = new List<BacktestEvent>();
+        foreach (BacktestEvent availableEvent in fsm.GetAvailableEvents())
+        {
+            available.Add(availableEvent);
+        }
         
         Assert.Equal(2, available.Count);
         Assert.Contains(BacktestEvent.SelectSession, available);
@@ -417,11 +421,15 @@ public class TSUN051A
     [Fact]
     public void GetPossibleTransitions_ReturnsAllDefinedTransitions()
     {
-        var fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
+        PLWF001A<BacktestState, BacktestEvent> fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
             .AddTransition(BacktestState.Idle, BacktestEvent.SelectSession, BacktestState.SessionSelected)
             .AddTransition(BacktestState.Idle, BacktestEvent.CreateSession, BacktestState.SessionSelected);
         
-        var transitions = fsm.GetPossibleTransitions().ToList();
+        List<(BacktestEvent Event, BacktestState Target)> transitions = new List<(BacktestEvent Event, BacktestState Target)>();
+        foreach ((BacktestEvent Event, BacktestState Target) transition in fsm.GetPossibleTransitions())
+        {
+            transitions.Add(transition);
+        }
         
         Assert.Equal(2, transitions.Count);
     }
@@ -433,7 +441,7 @@ public class TSUN051A
     [Fact]
     public void Reset_ReturnsToInitialState()
     {
-        var fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
+        PLWF001A<BacktestState, BacktestEvent> fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
             .AddTransition(BacktestState.Idle, BacktestEvent.SelectSession, BacktestState.SessionSelected);
         
         fsm.Fire(BacktestEvent.SelectSession);
@@ -447,7 +455,7 @@ public class TSUN051A
     [Fact]
     public void Reset_ClearsHistory()
     {
-        var fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
+        PLWF001A<BacktestState, BacktestEvent> fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle)
             .AddTransition(BacktestState.Idle, BacktestEvent.SelectSession, BacktestState.SessionSelected);
         
         fsm.Fire(BacktestEvent.SelectSession);
@@ -465,9 +473,9 @@ public class TSUN051A
     [Fact]
     public void Validate_NoTransitionsFromInitial_ReportsIssue()
     {
-        var fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle);
+        PLWF001A<BacktestState, BacktestEvent> fsm = new PLWF001A<BacktestState, BacktestEvent>(BacktestState.Idle);
         
-        var issues = fsm.Validate();
+        IReadOnlyList<string> issues = fsm.Validate();
         
         // Empty FSM has no outgoing transitions AND initial is a dead state
         Assert.True(issues.Count >= 1);
@@ -477,9 +485,9 @@ public class TSUN051A
     [Fact]
     public void Validate_ValidFSM_ReturnsEmpty()
     {
-        var fsm = PLWF002A.Create();
+        PLWF001A<BacktestState, BacktestEvent> fsm = PLWF002A.Create();
         
-        var issues = fsm.Validate();
+        IReadOnlyList<string> issues = fsm.Validate();
         
         Assert.Empty(issues);
     }
@@ -491,7 +499,7 @@ public class TSUN051A
     [Fact]
     public void BacktestWorkflow_HappyPath_ReachesCompleted()
     {
-        var fsm = PLWF002A.Create();
+        PLWF001A<BacktestState, BacktestEvent> fsm = PLWF002A.Create();
         
         Assert.Equal(BacktestState.Idle, fsm.CurrentState);
         
@@ -513,7 +521,7 @@ public class TSUN051A
     [Fact]
     public void BacktestWorkflow_DataMissing_BootstrapsAndRetries()
     {
-        var fsm = PLWF002A.Create();
+        PLWF001A<BacktestState, BacktestEvent> fsm = PLWF002A.Create();
         
         fsm.Fire(BacktestEvent.SelectSession);
         fsm.Fire(BacktestEvent.CheckData);
@@ -529,7 +537,7 @@ public class TSUN051A
     [Fact]
     public void BacktestWorkflow_BootstrapFails_ReachesFailed()
     {
-        var fsm = PLWF002A.Create();
+        PLWF001A<BacktestState, BacktestEvent> fsm = PLWF002A.Create();
         
         fsm.Fire(BacktestEvent.SelectSession);
         fsm.Fire(BacktestEvent.CheckData);
@@ -543,7 +551,7 @@ public class TSUN051A
     [Fact]
     public void BacktestWorkflow_Reset_ReturnsToIdle()
     {
-        var fsm = PLWF002A.Create();
+        PLWF001A<BacktestState, BacktestEvent> fsm = PLWF002A.Create();
         
         fsm.Fire(BacktestEvent.SelectSession);
         fsm.Fire(BacktestEvent.CheckData);
@@ -565,7 +573,7 @@ public class TSUN051A
     [Fact]
     public void TradingWorkflow_Connect_Evaluate_Execute()
     {
-        var fsm = PLWF003A.Create();
+        PLWF001A<TradingState, TradingEvent> fsm = PLWF003A.Create();
         
         Assert.Equal(TradingState.Disconnected, fsm.CurrentState);
         
@@ -588,7 +596,7 @@ public class TSUN051A
     [Fact]
     public void TradingWorkflow_NoSignal_ReturnsToReady()
     {
-        var fsm = PLWF003A.Create();
+        PLWF001A<TradingState, TradingEvent> fsm = PLWF003A.Create();
         
         fsm.Fire(TradingEvent.Connect);
         fsm.Fire(TradingEvent.Connected);
@@ -601,7 +609,7 @@ public class TSUN051A
     [Fact]
     public void TradingWorkflow_FatalError_ReachesErrorState()
     {
-        var fsm = PLWF003A.Create();
+        PLWF001A<TradingState, TradingEvent> fsm = PLWF003A.Create();
         
         fsm.Fire(TradingEvent.Connect);
         fsm.Fire(TradingEvent.Connected);

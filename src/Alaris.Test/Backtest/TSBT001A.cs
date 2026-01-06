@@ -14,15 +14,11 @@ namespace Alaris.Test.Backtest;
 /// </summary>
 public sealed class TSBT001A
 {
-    // ═══════════════════════════════════════════════════════════════════════
-    // STDT010A Requirements Model Tests
-    // ═══════════════════════════════════════════════════════════════════════
-    
     [Fact]
     public void STDT010A_EarningsLookaheadEnd_Computes120DaysAfterEndDate()
     {
         // Arrange
-        var req = new STDT010A
+        STDT010A req = new STDT010A
         {
             StartDate = new DateTime(2024, 2, 1),
             EndDate = new DateTime(2026, 1, 1),
@@ -30,7 +26,7 @@ public sealed class TSBT001A
         };
         
         // Act
-        var lookaheadEnd = req.EarningsLookaheadEnd;
+        DateTime lookaheadEnd = req.EarningsLookaheadEnd;
         
         // Assert
         Assert.Equal(new DateTime(2026, 5, 1), lookaheadEnd);
@@ -40,7 +36,7 @@ public sealed class TSBT001A
     public void STDT010A_PriceDataStart_Computes120DaysBeforeStartDate()
     {
         // Arrange
-        var req = new STDT010A
+        STDT010A req = new STDT010A
         {
             StartDate = new DateTime(2024, 2, 1),
             EndDate = new DateTime(2026, 1, 1),
@@ -48,7 +44,7 @@ public sealed class TSBT001A
         };
         
         // Act
-        var priceStart = req.PriceDataStart;
+        DateTime priceStart = req.PriceDataStart;
         
         // Assert
         Assert.Equal(new DateTime(2023, 10, 4), priceStart);
@@ -58,7 +54,7 @@ public sealed class TSBT001A
     public void STDT010A_AllSymbols_IncludesBenchmarkWhenNotPresent()
     {
         // Arrange
-        var req = new STDT010A
+        STDT010A req = new STDT010A
         {
             StartDate = new DateTime(2024, 1, 1),
             EndDate = new DateTime(2024, 12, 31),
@@ -66,7 +62,7 @@ public sealed class TSBT001A
         };
         
         // Act
-        var allSymbols = req.AllSymbols;
+        IReadOnlyList<string> allSymbols = req.AllSymbols;
         
         // Assert
         Assert.Equal(3, allSymbols.Count);
@@ -77,7 +73,7 @@ public sealed class TSBT001A
     public void STDT010A_AllSymbols_DoesNotDuplicateBenchmark()
     {
         // Arrange
-        var req = new STDT010A
+        STDT010A req = new STDT010A
         {
             StartDate = new DateTime(2024, 1, 1),
             EndDate = new DateTime(2024, 12, 31),
@@ -85,7 +81,7 @@ public sealed class TSBT001A
         };
         
         // Act
-        var allSymbols = req.AllSymbols;
+        IReadOnlyList<string> allSymbols = req.AllSymbols;
         
         // Assert
         Assert.Equal(3, allSymbols.Count);
@@ -95,7 +91,7 @@ public sealed class TSBT001A
     public void STDT010A_Validate_ReturnsErrorForInvalidDateRange()
     {
         // Arrange
-        var req = new STDT010A
+        STDT010A req = new STDT010A
         {
             StartDate = new DateTime(2024, 12, 31),
             EndDate = new DateTime(2024, 1, 1), // EndDate before StartDate
@@ -103,7 +99,9 @@ public sealed class TSBT001A
         };
         
         // Act
-        var (isValid, error) = req.Validate();
+        bool isValid;
+        string? error;
+        (isValid, error) = req.Validate();
         
         // Assert
         Assert.False(isValid);
@@ -115,7 +113,7 @@ public sealed class TSBT001A
     public void STDT010A_Validate_ReturnsErrorForEmptySymbols()
     {
         // Arrange
-        var req = new STDT010A
+        STDT010A req = new STDT010A
         {
             StartDate = new DateTime(2024, 1, 1),
             EndDate = new DateTime(2024, 12, 31),
@@ -123,7 +121,9 @@ public sealed class TSBT001A
         };
         
         // Act
-        var (isValid, error) = req.Validate();
+        bool isValid;
+        string? error;
+        (isValid, error) = req.Validate();
         
         // Assert
         Assert.False(isValid);
@@ -135,7 +135,7 @@ public sealed class TSBT001A
     public void STDT010A_Validate_ReturnsErrorForInvalidSignalWindow()
     {
         // Arrange
-        var req = new STDT010A
+        STDT010A req = new STDT010A
         {
             StartDate = new DateTime(2024, 1, 1),
             EndDate = new DateTime(2024, 12, 31),
@@ -145,7 +145,9 @@ public sealed class TSBT001A
         };
         
         // Act
-        var (isValid, error) = req.Validate();
+        bool isValid;
+        string? error;
+        (isValid, error) = req.Validate();
         
         // Assert
         Assert.False(isValid);
@@ -157,7 +159,7 @@ public sealed class TSBT001A
     public void STDT010A_Validate_ReturnsErrorForInsufficientWarmup()
     {
         // Arrange
-        var req = new STDT010A
+        STDT010A req = new STDT010A
         {
             StartDate = new DateTime(2024, 1, 1),
             EndDate = new DateTime(2024, 12, 31),
@@ -166,7 +168,9 @@ public sealed class TSBT001A
         };
         
         // Act
-        var (isValid, error) = req.Validate();
+        bool isValid;
+        string? error;
+        (isValid, error) = req.Validate();
         
         // Assert
         Assert.False(isValid);
@@ -178,7 +182,7 @@ public sealed class TSBT001A
     public void STDT010A_Validate_SucceedsForValidRequirements()
     {
         // Arrange
-        var req = new STDT010A
+        STDT010A req = new STDT010A
         {
             StartDate = new DateTime(2024, 1, 1),
             EndDate = new DateTime(2024, 12, 31),
@@ -186,7 +190,9 @@ public sealed class TSBT001A
         };
         
         // Act
-        var (isValid, error) = req.Validate();
+        bool isValid;
+        string? error;
+        (isValid, error) = req.Validate();
         
         // Assert
         Assert.True(isValid);
@@ -197,16 +203,20 @@ public sealed class TSBT001A
     public void STDT010A_WithOptionsRequiredDates_ReturnsNewInstanceWithDates()
     {
         // Arrange
-        var req = new STDT010A
+        STDT010A req = new STDT010A
         {
             StartDate = new DateTime(2024, 1, 1),
             EndDate = new DateTime(2024, 12, 31),
             Symbols = new[] { "NVDA" }
         };
-        var dates = new List<DateTime> { new(2024, 2, 15), new(2024, 4, 15) };
+        List<DateTime> dates = new List<DateTime>
+        {
+            new DateTime(2024, 2, 15),
+            new DateTime(2024, 4, 15)
+        };
         
         // Act
-        var updated = req.WithOptionsRequiredDates(dates);
+        STDT010A updated = req.WithOptionsRequiredDates(dates);
         
         // Assert
         Assert.Empty(req.OptionsRequiredDates); // Original unchanged
@@ -217,7 +227,7 @@ public sealed class TSBT001A
     public void STDT010A_GetSummary_ReturnsFormattedString()
     {
         // Arrange
-        var req = new STDT010A
+        STDT010A req = new STDT010A
         {
             StartDate = new DateTime(2024, 1, 1),
             EndDate = new DateTime(2024, 12, 31),
@@ -225,30 +235,26 @@ public sealed class TSBT001A
         };
         
         // Act
-        var summary = req.GetSummary();
+        string summary = req.GetSummary();
         
         // Assert
         Assert.Contains("2024-01-01", summary, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("2024-12-31", summary, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("2 symbols", summary, StringComparison.OrdinalIgnoreCase);
     }
-    
-    // ═══════════════════════════════════════════════════════════════════════
-    // DataVerificationReport Tests
-    // ═══════════════════════════════════════════════════════════════════════
-    
+
     [Fact]
     public void DataVerificationReport_GetSummary_ReturnsSuccessWhenComplete()
     {
         // Arrange
-        var report = new DataVerificationReport
+        DataVerificationReport report = new DataVerificationReport
         {
             IsComplete = true,
             BenchmarkAvailable = true
         };
         
         // Act
-        var summary = report.GetSummary();
+        string summary = report.GetSummary();
         
         // Assert
         Assert.Contains("available", summary, StringComparison.OrdinalIgnoreCase);
@@ -258,7 +264,7 @@ public sealed class TSBT001A
     public void DataVerificationReport_GetSummary_ListsMissingData()
     {
         // Arrange
-        var report = new DataVerificationReport
+        DataVerificationReport report = new DataVerificationReport
         {
             IsComplete = false,
             BenchmarkAvailable = false
@@ -267,7 +273,7 @@ public sealed class TSBT001A
         report.MissingMapFiles.Add("AAPL");
         
         // Act
-        var summary = report.GetSummary();
+        string summary = report.GetSummary();
         
         // Assert
         Assert.Contains("NVDA", summary, StringComparison.OrdinalIgnoreCase);

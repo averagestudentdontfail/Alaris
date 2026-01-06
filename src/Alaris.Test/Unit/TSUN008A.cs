@@ -264,7 +264,7 @@ public class STIV004ATests
         int[] dtePoints = { 7, 14, 21, 30, 45, 60 };
 
         // Act
-        var termStructure = STIV004A.ComputeSTTM001A(baseVol, sigmaE, dtePoints);
+        (int DTE, double TheoreticalIV)[] termStructure = STIV004A.ComputeSTTM001A(baseVol, sigmaE, dtePoints);
 
         // Assert - should be inverted (shorter DTE = higher IV)
         termStructure.Should().HaveCount(dtePoints.Length);
@@ -286,10 +286,10 @@ public class STIV004ATests
         int[] dtePoints = { 7, 30, 90, 180, 365 }; // Up to 1 year
 
         // Act
-        var termStructure = STIV004A.ComputeSTTM001A(baseVol, sigmaE, dtePoints);
+        (int DTE, double TheoreticalIV)[] termStructure = STIV004A.ComputeSTTM001A(baseVol, sigmaE, dtePoints);
 
         // Assert - longer maturities should converge toward base volatility
-        var longestMaturity = termStructure[^1];
+        (int DTE, double TheoreticalIV) longestMaturity = termStructure[^1];
         longestMaturity.TheoreticalIV.Should().BeApproximately(baseVol, 0.05,
             "long-dated IV should converge to base volatility");
     }

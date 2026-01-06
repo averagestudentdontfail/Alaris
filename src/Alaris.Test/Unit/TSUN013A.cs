@@ -14,7 +14,7 @@ public sealed class SignalDetectionTests
     public void LikelihoodRatio_HighIVRV_FavorsAlternative()
     {
         // Arrange
-        var detector = new Alaris.Strategy.Detection.STSD001A();
+        Alaris.Strategy.Detection.STSD001A detector = new Alaris.Strategy.Detection.STSD001A();
         double highRatio = 1.50;
 
         // Act
@@ -28,7 +28,7 @@ public sealed class SignalDetectionTests
     public void LikelihoodRatio_LowIVRV_FavorsNull()
     {
         // Arrange
-        var detector = new Alaris.Strategy.Detection.STSD001A();
+        Alaris.Strategy.Detection.STSD001A detector = new Alaris.Strategy.Detection.STSD001A();
         double lowRatio = 1.00;
 
         // Act
@@ -42,7 +42,7 @@ public sealed class SignalDetectionTests
     public void PosteriorProbability_SumsToOne()
     {
         // Arrange
-        var detector = new Alaris.Strategy.Detection.STSD001A();
+        Alaris.Strategy.Detection.STSD001A detector = new Alaris.Strategy.Detection.STSD001A();
 
         // Act
         double posterior = detector.ComputePosteriorProbability(1.25);
@@ -55,11 +55,11 @@ public sealed class SignalDetectionTests
     public void OptimalThreshold_CostRatio2_HigherThanMidpoint()
     {
         // Arrange
-        var detector = new Alaris.Strategy.Detection.STSD001A();
+        Alaris.Strategy.Detection.STSD001A detector = new Alaris.Strategy.Detection.STSD001A();
 
         // Act
         double threshold = detector.ComputeOptimalThreshold(costRatio: 2.0);
-        var @params = detector.GetParameters();
+        Alaris.Strategy.Detection.DistributionParameters @params = detector.GetParameters();
         double midpoint = (@params.Mu0 + @params.Mu1) / 2;
 
         // Assert
@@ -71,7 +71,7 @@ public sealed class SignalDetectionTests
     public void TypeIError_IncreasesWithLowerThreshold()
     {
         // Arrange
-        var detector = new Alaris.Strategy.Detection.STSD001A();
+        Alaris.Strategy.Detection.STSD001A detector = new Alaris.Strategy.Detection.STSD001A();
 
         // Act
         double alphaLow = detector.ComputeTypeIError(1.30);
@@ -91,10 +91,10 @@ public sealed class KalmanVolatilityTests
     public void Update_FirstMeasurement_InitialisesState()
     {
         // Arrange
-        var filter = new Alaris.Strategy.Core.STKF001A();
+        Alaris.Strategy.Core.STKF001A filter = new Alaris.Strategy.Core.STKF001A();
 
         // Act
-        var result = filter.Update(0.25, sampleSize: 30);
+        Alaris.Strategy.Core.KalmanVolatilityEstimate result = filter.Update(0.25, sampleSize: 30);
 
         // Assert
         filter.IsInitialised.Should().BeTrue();
@@ -106,7 +106,7 @@ public sealed class KalmanVolatilityTests
     public void Update_MultipleSteps_ReducesVariance()
     {
         // Arrange
-        var filter = new Alaris.Strategy.Core.STKF001A();
+        Alaris.Strategy.Core.STKF001A filter = new Alaris.Strategy.Core.STKF001A();
         filter.Reset(0.20, 0.05);
 
         double initialVariance = filter.Variance;
@@ -126,7 +126,7 @@ public sealed class KalmanVolatilityTests
     public void SkipMeasurement_IncreasesVariance()
     {
         // Arrange
-        var filter = new Alaris.Strategy.Core.STKF001A();
+        Alaris.Strategy.Core.STKF001A filter = new Alaris.Strategy.Core.STKF001A();
         filter.Reset(0.20, 0.01);
 
         double initialVariance = filter.Variance;
@@ -161,7 +161,7 @@ public sealed class QueueTheoryTests
     public void BlockingProbability_AtCapacity_ReturnsOne()
     {
         // Arrange
-        var queue = new Alaris.Strategy.Risk.STQT001A();
+        Alaris.Strategy.Risk.STQT001A queue = new Alaris.Strategy.Risk.STQT001A();
 
         // Act
         double pk = queue.ComputeBlockingProbability(currentPositions: 10, maxCapacity: 10, utilisation: 0.8);
@@ -185,11 +185,11 @@ public sealed class QueueTheoryTests
     public void SelectForEjection_NewSignalHigherPriority_ReturnsMinIndex()
     {
         // Arrange
-        var positions = new Alaris.Strategy.Risk.PositionPriority[]
+        Alaris.Strategy.Risk.PositionPriority[] positions = new Alaris.Strategy.Risk.PositionPriority[]
         {
-            new("AAPL", 100, 5, 0, 20),
-            new("GOOG", 80, 10, 0, 8),
-            new("MSFT", 150, 7, 0, 21.4),
+            new Alaris.Strategy.Risk.PositionPriority("AAPL", 100, 5, 0, 20),
+            new Alaris.Strategy.Risk.PositionPriority("GOOG", 80, 10, 0, 8),
+            new Alaris.Strategy.Risk.PositionPriority("MSFT", 150, 7, 0, 21.4),
         };
 
         // Act
@@ -208,10 +208,10 @@ public sealed class RuleBasedExitTests
     public void Evaluate_TargetCapture_ExitsImmediately()
     {
         // Arrange
-        var monitor = new Alaris.Strategy.Hedge.STHD007B();
+        Alaris.Strategy.Hedge.STHD007B monitor = new Alaris.Strategy.Hedge.STHD007B();
 
         // Act - captured 100% of expected crush
-        var result = monitor.Evaluate(crushCaptured: 1.0, daysElapsed: 2, daysRemaining: 5);
+        Alaris.Strategy.Hedge.ExitSignal result = monitor.Evaluate(crushCaptured: 1.0, daysElapsed: 2, daysRemaining: 5);
 
         // Assert
         result.Action.Should().Be(Alaris.Strategy.Hedge.ExitAction.Exit);
@@ -222,7 +222,7 @@ public sealed class RuleBasedExitTests
     public void Evaluate_SignificantCaptureButStalled_Exits()
     {
         // Arrange
-        var monitor = new Alaris.Strategy.Hedge.STHD007B();
+        Alaris.Strategy.Hedge.STHD007B monitor = new Alaris.Strategy.Hedge.STHD007B();
 
         // Simulate rate going to zero (stall)
         monitor.Evaluate(0.55, 1, 6);
@@ -230,7 +230,7 @@ public sealed class RuleBasedExitTests
         monitor.Evaluate(0.60, 3, 4);
 
         // Act - 60% captured, rate stalled
-        var result = monitor.Evaluate(crushCaptured: 0.61, daysElapsed: 4, daysRemaining: 3);
+        Alaris.Strategy.Hedge.ExitSignal result = monitor.Evaluate(crushCaptured: 0.61, daysElapsed: 4, daysRemaining: 3);
 
         // Assert
         result.Action.Should().Be(Alaris.Strategy.Hedge.ExitAction.Exit);
@@ -241,7 +241,7 @@ public sealed class RuleBasedExitTests
     public void Evaluate_TracksUpdateCount()
     {
         // Arrange
-        var monitor = new Alaris.Strategy.Hedge.STHD007B();
+        Alaris.Strategy.Hedge.STHD007B monitor = new Alaris.Strategy.Hedge.STHD007B();
 
         // Act - perform multiple evaluations
         monitor.Evaluate(0.10, 1, 10);
@@ -257,10 +257,10 @@ public sealed class RuleBasedExitTests
     public void Evaluate_ApproachingExpiry_TimeDecayExit()
     {
         // Arrange
-        var monitor = new Alaris.Strategy.Hedge.STHD007B();
+        Alaris.Strategy.Hedge.STHD007B monitor = new Alaris.Strategy.Hedge.STHD007B();
 
         // Act - 50% captured, only 1.5 days remaining
-        var result = monitor.Evaluate(crushCaptured: 0.55, daysElapsed: 5, daysRemaining: 1.5);
+        Alaris.Strategy.Hedge.ExitSignal result = monitor.Evaluate(crushCaptured: 0.55, daysElapsed: 5, daysRemaining: 1.5);
 
         // Assert
         result.Action.Should().Be(Alaris.Strategy.Hedge.ExitAction.Exit);
@@ -271,14 +271,14 @@ public sealed class RuleBasedExitTests
     public void Evaluate_GoodProgress_Holds()
     {
         // Arrange
-        var monitor = new Alaris.Strategy.Hedge.STHD007B();
+        Alaris.Strategy.Hedge.STHD007B monitor = new Alaris.Strategy.Hedge.STHD007B();
 
         // Simulate good crush progress
         monitor.Evaluate(0.20, 1, 7);
         monitor.Evaluate(0.35, 2, 6);
 
         // Act - 50% captured, rate declining, plenty of time
-        var result = monitor.Evaluate(crushCaptured: 0.50, daysElapsed: 3, daysRemaining: 5);
+        Alaris.Strategy.Hedge.ExitSignal result = monitor.Evaluate(crushCaptured: 0.50, daysElapsed: 3, daysRemaining: 5);
 
         // Assert
         result.Action.Should().Be(Alaris.Strategy.Hedge.ExitAction.Hold);
@@ -304,7 +304,7 @@ public sealed class RuleBasedExitTests
     public void SmoothedRate_TracksRateChange()
     {
         // Arrange
-        var monitor = new Alaris.Strategy.Hedge.STHD007B();
+        Alaris.Strategy.Hedge.STHD007B monitor = new Alaris.Strategy.Hedge.STHD007B();
 
         // Simulate consistent crush
         monitor.Evaluate(0.20, 1, 7);

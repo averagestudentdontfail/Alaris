@@ -13,7 +13,7 @@ public class VanillaPayoffTests
     [Fact]
     public void CallPayoff_ITM_ReturnsPositive()
     {
-        var payoff = new VanillaPayoff(OptionType.Call, 100.0);
+        VanillaPayoff payoff = new VanillaPayoff(OptionType.Call, 100.0);
         
         double result = payoff.Payoff(110.0);
         
@@ -23,7 +23,7 @@ public class VanillaPayoffTests
     [Fact]
     public void CallPayoff_ATM_ReturnsZero()
     {
-        var payoff = new VanillaPayoff(OptionType.Call, 100.0);
+        VanillaPayoff payoff = new VanillaPayoff(OptionType.Call, 100.0);
         
         double result = payoff.Payoff(100.0);
         
@@ -33,7 +33,7 @@ public class VanillaPayoffTests
     [Fact]
     public void CallPayoff_OTM_ReturnsZero()
     {
-        var payoff = new VanillaPayoff(OptionType.Call, 100.0);
+        VanillaPayoff payoff = new VanillaPayoff(OptionType.Call, 100.0);
         
         double result = payoff.Payoff(90.0);
         
@@ -43,7 +43,7 @@ public class VanillaPayoffTests
     [Fact]
     public void CallPayoff_DeepITM_ReturnsLargeValue()
     {
-        var payoff = new VanillaPayoff(OptionType.Call, 100.0);
+        VanillaPayoff payoff = new VanillaPayoff(OptionType.Call, 100.0);
         
         double result = payoff.Payoff(200.0);
         
@@ -57,7 +57,7 @@ public class VanillaPayoffTests
     [Fact]
     public void PutPayoff_ITM_ReturnsPositive()
     {
-        var payoff = new VanillaPayoff(OptionType.Put, 100.0);
+        VanillaPayoff payoff = new VanillaPayoff(OptionType.Put, 100.0);
         
         double result = payoff.Payoff(90.0);
         
@@ -67,7 +67,7 @@ public class VanillaPayoffTests
     [Fact]
     public void PutPayoff_ATM_ReturnsZero()
     {
-        var payoff = new VanillaPayoff(OptionType.Put, 100.0);
+        VanillaPayoff payoff = new VanillaPayoff(OptionType.Put, 100.0);
         
         double result = payoff.Payoff(100.0);
         
@@ -77,7 +77,7 @@ public class VanillaPayoffTests
     [Fact]
     public void PutPayoff_OTM_ReturnsZero()
     {
-        var payoff = new VanillaPayoff(OptionType.Put, 100.0);
+        VanillaPayoff payoff = new VanillaPayoff(OptionType.Put, 100.0);
         
         double result = payoff.Payoff(110.0);
         
@@ -87,7 +87,7 @@ public class VanillaPayoffTests
     [Fact]
     public void PutPayoff_DeepITM_ReturnsLargeValue()
     {
-        var payoff = new VanillaPayoff(OptionType.Put, 100.0);
+        VanillaPayoff payoff = new VanillaPayoff(OptionType.Put, 100.0);
         
         double result = payoff.Payoff(20.0);
         
@@ -101,7 +101,7 @@ public class VanillaPayoffTests
     [Fact]
     public void Payoff_ZeroSpot_PutReturnsStrike()
     {
-        var payoff = new VanillaPayoff(OptionType.Put, 100.0);
+        VanillaPayoff payoff = new VanillaPayoff(OptionType.Put, 100.0);
         
         double result = payoff.Payoff(0.0);
         
@@ -112,7 +112,7 @@ public class VanillaPayoffTests
     public void Strike_Property_ReturnsCorrectValue()
     {
         double expectedStrike = 123.45;
-        var payoff = new VanillaPayoff(OptionType.Call, expectedStrike);
+        VanillaPayoff payoff = new VanillaPayoff(OptionType.Call, expectedStrike);
         
         Assert.Equal(expectedStrike, payoff.Strike);
     }
@@ -120,8 +120,8 @@ public class VanillaPayoffTests
     [Fact]
     public void Type_Property_ReturnsCorrectValue()
     {
-        var callPayoff = new VanillaPayoff(OptionType.Call, 100.0);
-        var putPayoff = new VanillaPayoff(OptionType.Put, 100.0);
+        VanillaPayoff callPayoff = new VanillaPayoff(OptionType.Call, 100.0);
+        VanillaPayoff putPayoff = new VanillaPayoff(OptionType.Put, 100.0);
         
         Assert.Equal(OptionType.Call, callPayoff.Type);
         Assert.Equal(OptionType.Put, putPayoff.Type);
@@ -130,8 +130,8 @@ public class VanillaPayoffTests
     [Fact]
     public void PayoffSigned_MatchesPayoff()
     {
-        var callPayoff = new VanillaPayoff(OptionType.Call, 100.0);
-        var putPayoff = new VanillaPayoff(OptionType.Put, 100.0);
+        VanillaPayoff callPayoff = new VanillaPayoff(OptionType.Call, 100.0);
+        VanillaPayoff putPayoff = new VanillaPayoff(OptionType.Put, 100.0);
         
         Assert.Equal(callPayoff.Payoff(110.0), callPayoff.PayoffSigned(110.0));
         Assert.Equal(putPayoff.Payoff(90.0), putPayoff.PayoffSigned(90.0));

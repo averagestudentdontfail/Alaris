@@ -35,7 +35,7 @@ public sealed class TSUN027A
 
     private static List<Trade> CreateWinningTradeHistory(int count, double avgWin)
     {
-        var trades = new List<Trade>();
+        List<Trade> trades = new List<Trade>();
         for (int i = 0; i < count; i++)
         {
             trades.Add(new Trade
@@ -52,7 +52,7 @@ public sealed class TSUN027A
 
     private static List<Trade> CreateMixedTradeHistory(int wins, int losses, double avgWin, double avgLoss)
     {
-        var trades = new List<Trade>();
+        List<Trade> trades = new List<Trade>();
 
         for (int i = 0; i < wins; i++)
         {
@@ -230,12 +230,12 @@ public sealed class TSUN027A
     public void CalculateFromHistory_InsufficientHistory_ReturnsMinimumPosition(int tradeCount)
     {
         // Arrange
-        var sizer = new STRK001A();
-        var trades = CreateWinningTradeHistory(tradeCount, 200);
-        var signal = CreateSignal();
+        STRK001A sizer = new STRK001A();
+        List<Trade> trades = CreateWinningTradeHistory(tradeCount, 200);
+        STCR004A signal = CreateSignal();
 
         // Act
-        var position = sizer.CalculateFromHistory(100000, trades, 2.50, signal);
+        STRK002A position = sizer.CalculateFromHistory(100000, trades, 2.50, signal);
 
         // Assert
         position.Contracts.Should().BeGreaterThanOrEqualTo(1);
@@ -250,12 +250,12 @@ public sealed class TSUN027A
     public void CalculateFromHistory_CapsAtMaxAllocation()
     {
         // Arrange - Create highly profitable history that would suggest high Kelly
-        var sizer = new STRK001A();
-        var trades = CreateMixedTradeHistory(wins: 18, losses: 2, avgWin: 500, avgLoss: 100);
-        var signal = CreateSignal();
+        STRK001A sizer = new STRK001A();
+        List<Trade> trades = CreateMixedTradeHistory(wins: 18, losses: 2, avgWin: 500, avgLoss: 100);
+        STCR004A signal = CreateSignal();
 
         // Act
-        var position = sizer.CalculateFromHistory(100000, trades, 2.50, signal);
+        STRK002A position = sizer.CalculateFromHistory(100000, trades, 2.50, signal);
 
         // Assert
         position.AllocationPercent.Should().BeLessThanOrEqualTo(0.06,
@@ -269,12 +269,12 @@ public sealed class TSUN027A
     public void CalculateFromHistory_NeverReturnsNegativeContracts()
     {
         // Arrange - Create losing history
-        var sizer = new STRK001A();
-        var trades = CreateMixedTradeHistory(wins: 2, losses: 18, avgWin: 100, avgLoss: 200);
-        var signal = CreateSignal();
+        STRK001A sizer = new STRK001A();
+        List<Trade> trades = CreateMixedTradeHistory(wins: 2, losses: 18, avgWin: 100, avgLoss: 200);
+        STCR004A signal = CreateSignal();
 
         // Act
-        var position = sizer.CalculateFromHistory(100000, trades, 2.50, signal);
+        STRK002A position = sizer.CalculateFromHistory(100000, trades, 2.50, signal);
 
         // Assert
         position.Contracts.Should().BeGreaterThanOrEqualTo(0);
@@ -287,15 +287,15 @@ public sealed class TSUN027A
     public void CalculateFromHistory_WeakSignal_ReducesAllocation()
     {
         // Arrange
-        var sizer = new STRK001A();
-        var trades = CreateMixedTradeHistory(wins: 14, losses: 6, avgWin: 200, avgLoss: 100);
+        STRK001A sizer = new STRK001A();
+        List<Trade> trades = CreateMixedTradeHistory(wins: 14, losses: 6, avgWin: 200, avgLoss: 100);
 
-        var strongSignal = CreateSignal(STCR004AStrength.Recommended);
-        var weakSignal = CreateSignal(STCR004AStrength.Consider);
+        STCR004A strongSignal = CreateSignal(STCR004AStrength.Recommended);
+        STCR004A weakSignal = CreateSignal(STCR004AStrength.Consider);
 
         // Act
-        var strongPosition = sizer.CalculateFromHistory(100000, trades, 2.50, strongSignal);
-        var weakPosition = sizer.CalculateFromHistory(100000, trades, 2.50, weakSignal);
+        STRK002A strongPosition = sizer.CalculateFromHistory(100000, trades, 2.50, strongSignal);
+        STRK002A weakPosition = sizer.CalculateFromHistory(100000, trades, 2.50, weakSignal);
 
         // Assert
         weakPosition.AllocationPercent.Should().BeLessThanOrEqualTo(strongPosition.AllocationPercent);
@@ -308,12 +308,12 @@ public sealed class TSUN027A
     public void CalculateFromHistory_AvoidSignal_ReturnsZeroAllocation()
     {
         // Arrange
-        var sizer = new STRK001A();
-        var trades = CreateMixedTradeHistory(wins: 14, losses: 6, avgWin: 200, avgLoss: 100);
-        var avoidSignal = CreateSignal(STCR004AStrength.Avoid);
+        STRK001A sizer = new STRK001A();
+        List<Trade> trades = CreateMixedTradeHistory(wins: 14, losses: 6, avgWin: 200, avgLoss: 100);
+        STCR004A avoidSignal = CreateSignal(STCR004AStrength.Avoid);
 
         // Act
-        var position = sizer.CalculateFromHistory(100000, trades, 2.50, avoidSignal);
+        STRK002A position = sizer.CalculateFromHistory(100000, trades, 2.50, avoidSignal);
 
         // Assert
         position.AllocationPercent.Should().Be(0);
@@ -329,9 +329,9 @@ public sealed class TSUN027A
     public void CalculateFromHistory_InvalidPortfolioValue_Throws(double portfolioValue)
     {
         // Arrange
-        var sizer = new STRK001A();
-        var trades = CreateWinningTradeHistory(25, 200);
-        var signal = CreateSignal();
+        STRK001A sizer = new STRK001A();
+        List<Trade> trades = CreateWinningTradeHistory(25, 200);
+        STCR004A signal = CreateSignal();
 
         // Act & Assert
         Action act = () => sizer.CalculateFromHistory(portfolioValue, trades, 2.50, signal);
@@ -347,9 +347,9 @@ public sealed class TSUN027A
     public void CalculateFromHistory_InvalidSpreadCost_Throws(double spreadCost)
     {
         // Arrange
-        var sizer = new STRK001A();
-        var trades = CreateWinningTradeHistory(25, 200);
-        var signal = CreateSignal();
+        STRK001A sizer = new STRK001A();
+        List<Trade> trades = CreateWinningTradeHistory(25, 200);
+        STCR004A signal = CreateSignal();
 
         // Act & Assert
         Action act = () => sizer.CalculateFromHistory(100000, trades, spreadCost, signal);
@@ -365,7 +365,7 @@ public sealed class TSUN027A
     public void STRK002A_Validate_ValidPosition_DoesNotThrow()
     {
         // Arrange
-        var position = new STRK002A
+        STRK002A position = new STRK002A
         {
             Contracts = 5,
             AllocationPercent = 0.05,
@@ -387,7 +387,7 @@ public sealed class TSUN027A
     public void STRK002A_Validate_NegativeContracts_Throws()
     {
         // Arrange
-        var position = new STRK002A { Contracts = -1 };
+        STRK002A position = new STRK002A { Contracts = -1 };
 
         // Act & Assert
         Action act = () => position.Validate();
@@ -402,7 +402,7 @@ public sealed class TSUN027A
     public void STRK002A_Validate_ExceedsMaxAllocation_Throws()
     {
         // Arrange
-        var position = new STRK002A
+        STRK002A position = new STRK002A
         {
             Contracts = 100,
             AllocationPercent = 0.15,  // 15% > 10% default max
@@ -422,7 +422,7 @@ public sealed class TSUN027A
     public void STRK002A_Validate_CustomMaxAllocation_Respected()
     {
         // Arrange
-        var position = new STRK002A
+        STRK002A position = new STRK002A
         {
             Contracts = 20,
             AllocationPercent = 0.15,  // 15%
@@ -441,7 +441,7 @@ public sealed class TSUN027A
     public void STRK002A_Validate_RiskExceedsAllocation_Throws()
     {
         // Arrange
-        var position = new STRK002A
+        STRK002A position = new STRK002A
         {
             Contracts = 5,
             AllocationPercent = 0.05,
@@ -462,7 +462,7 @@ public sealed class TSUN027A
     public void STRK002A_RiskRewardRatio_ComputesCorrectly()
     {
         // Arrange
-        var position = new STRK002A
+        STRK002A position = new STRK002A
         {
             MaxLossPerContract = 200,
             ExpectedProfitPerContract = 400
@@ -479,7 +479,7 @@ public sealed class TSUN027A
     public void STRK002A_RiskRewardRatio_ZeroMaxLoss_ReturnsZero()
     {
         // Arrange
-        var position = new STRK002A
+        STRK002A position = new STRK002A
         {
             MaxLossPerContract = 0,
             ExpectedProfitPerContract = 400
@@ -498,11 +498,11 @@ public sealed class TSUN027A
     public void STMG001A_EvaluateEntry_AboveMinimum_Allows()
     {
         // Arrange
-        var guard = new STMG001A();
+        STMG001A guard = new STMG001A();
         double timeToExpiry = 10.0 / 252;  // 10 trading days (~0.04 years)
 
         // Act
-        var result = guard.EvaluateEntry("TEST", timeToExpiry);
+        MaturityEntryResult result = guard.EvaluateEntry("TEST", timeToExpiry);
 
         // Assert
         result.IsAllowed.Should().BeTrue();
@@ -516,11 +516,11 @@ public sealed class TSUN027A
     public void STMG001A_EvaluateEntry_BelowMinimum_Rejects()
     {
         // Arrange
-        var guard = new STMG001A();
+        STMG001A guard = new STMG001A();
         double timeToExpiry = 3.0 / 252;  // 3 trading days - below default 5 day minimum
 
         // Act
-        var result = guard.EvaluateEntry("TEST", timeToExpiry);
+        MaturityEntryResult result = guard.EvaluateEntry("TEST", timeToExpiry);
 
         // Assert
         result.IsAllowed.Should().BeFalse();
@@ -534,11 +534,11 @@ public sealed class TSUN027A
     public void STMG001A_EvaluateExit_AboveThreshold_NoExit()
     {
         // Arrange
-        var guard = new STMG001A();
+        STMG001A guard = new STMG001A();
         double timeToExpiry = 10.0 / 252;  // Well above threshold
 
         // Act
-        var result = guard.EvaluateExit("TEST", timeToExpiry);
+        MaturityExitResult result = guard.EvaluateExit("TEST", timeToExpiry);
 
         // Assert
         result.RequiresExit.Should().BeFalse();
@@ -552,11 +552,11 @@ public sealed class TSUN027A
     public void STMG001A_EvaluateExit_BelowThreshold_ImmediateExit()
     {
         // Arrange
-        var guard = new STMG001A();
+        STMG001A guard = new STMG001A();
         double timeToExpiry = 1.0 / 252;  // 1 trading day - below default 3 day threshold
 
         // Act
-        var result = guard.EvaluateExit("TEST", timeToExpiry);
+        MaturityExitResult result = guard.EvaluateExit("TEST", timeToExpiry);
 
         // Assert
         result.RequiresExit.Should().BeTrue();
@@ -572,10 +572,10 @@ public sealed class TSUN027A
         // Arrange - Very permissive thresholds
         double minEntry = 3.0 / 252;    // 3 days (minEntry must be > forceExit)
         double forceExit = 1.0 / 252;   // 1 day
-        var guard = new STMG001A(minEntry, forceExit);
+        STMG001A guard = new STMG001A(minEntry, forceExit);
 
         // Act - 4 days should be allowed entry
-        var entryResult = guard.EvaluateEntry("TEST", 4.0 / 252);
+        MaturityEntryResult entryResult = guard.EvaluateEntry("TEST", 4.0 / 252);
 
         // Assert
         entryResult.IsAllowed.Should().BeTrue();
@@ -604,8 +604,8 @@ public sealed class TSUN027A
     public void STMG001A_CalculateTimeToExpiryApproximate_ReturnsReasonableValue()
     {
         // Arrange
-        var expiryDate = DateTime.Today.AddDays(30);  // 30 calendar days
-        var currentDate = DateTime.Today;
+        DateTime expiryDate = DateTime.Today.AddDays(30);  // 30 calendar days
+        DateTime currentDate = DateTime.Today;
 
         // Act
         double tte = STMG001A.CalculateTimeToExpiryApproximate(expiryDate, currentDate);
@@ -623,8 +623,8 @@ public sealed class TSUN027A
     public void STMG001A_CalculateTimeToExpiryApproximate_PastExpiry_ReturnsNonPositive()
     {
         // Arrange
-        var expiryDate = DateTime.Today.AddDays(-5);  // 5 days ago
-        var currentDate = DateTime.Today;
+        DateTime expiryDate = DateTime.Today.AddDays(-5);  // 5 days ago
+        DateTime currentDate = DateTime.Today;
 
         // Act
         double tte = STMG001A.CalculateTimeToExpiryApproximate(expiryDate, currentDate);
@@ -642,7 +642,7 @@ public sealed class TSUN027A
     public void Trade_HoldingPeriod_ComputesCorrectly()
     {
         // Arrange
-        var trade = new Trade
+        Trade trade = new Trade
         {
             EntryDate = new DateTime(2024, 1, 1),
             ExitDate = new DateTime(2024, 1, 11),
@@ -664,7 +664,7 @@ public sealed class TSUN027A
     public void Trade_IsWinner_BasedOnProfitLoss(double pl, bool expectedWinner)
     {
         // Arrange
-        var trade = new Trade { ProfitLoss = pl };
+        Trade trade = new Trade { ProfitLoss = pl };
 
         // Act & Assert
         trade.IsWinner.Should().Be(expectedWinner);

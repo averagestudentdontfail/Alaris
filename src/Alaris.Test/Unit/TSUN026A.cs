@@ -69,7 +69,7 @@ public sealed class TSUN026A
     public void STCS002A_Validate_ValidParameters_DoesNotThrow()
     {
         // Arrange
-        var parameters = CreateValidBuyOrderParams();
+        STCS002A parameters = CreateValidBuyOrderParams();
 
         // Act & Assert
         Action act = () => parameters.Validate();
@@ -86,7 +86,7 @@ public sealed class TSUN026A
     public void STCS002A_Validate_InvalidContracts_Throws(int contracts)
     {
         // Arrange
-        var parameters = CreateValidBuyOrderParams() with { Contracts = contracts };
+        STCS002A parameters = CreateValidBuyOrderParams() with { Contracts = contracts };
 
         // Act & Assert
         Action act = () => parameters.Validate();
@@ -101,7 +101,7 @@ public sealed class TSUN026A
     public void STCS002A_Validate_NegativeMidPrice_Throws()
     {
         // Arrange
-        var parameters = CreateValidBuyOrderParams() with { MidPrice = -0.01 };
+        STCS002A parameters = CreateValidBuyOrderParams() with { MidPrice = -0.01 };
 
         // Act & Assert
         Action act = () => parameters.Validate();
@@ -116,7 +116,7 @@ public sealed class TSUN026A
     public void STCS002A_Validate_AskLessThanBid_Throws()
     {
         // Arrange
-        var parameters = CreateValidBuyOrderParams() with
+        STCS002A parameters = CreateValidBuyOrderParams() with
         {
             BidPrice = 2.60,
             AskPrice = 2.55
@@ -135,7 +135,7 @@ public sealed class TSUN026A
     public void STCS002A_BidAskSpread_EqualsAskMinusBid()
     {
         // Arrange
-        var parameters = CreateValidBuyOrderParams();
+        STCS002A parameters = CreateValidBuyOrderParams();
 
         // Act
         double spread = parameters.BidAskSpread;
@@ -153,7 +153,7 @@ public sealed class TSUN026A
     public void STCS002A_HalfSpread_EqualsSpreadDividedByTwo()
     {
         // Arrange
-        var parameters = CreateValidBuyOrderParams();
+        STCS002A parameters = CreateValidBuyOrderParams();
 
         // Act
         double halfSpread = parameters.HalfSpread;
@@ -173,7 +173,7 @@ public sealed class TSUN026A
     public void STCS005A_DefaultConstructor_UsesStandardFees()
     {
         // Act
-        var model = new STCS005A();
+        STCS005A model = new STCS005A();
 
         // Assert
         model.ModelName.Should().Be("ConstantFeeModel");
@@ -203,8 +203,8 @@ public sealed class TSUN026A
     public void STCS003A_TotalCost_EqualsSumOfComponents()
     {
         // Arrange
-        var model = CreateDefaultCostModel();
-        var parameters = CreateValidBuyOrderParams();
+        STCS005A model = CreateDefaultCostModel();
+        STCS002A parameters = CreateValidBuyOrderParams();
 
         // Act
         STCS003A result = model.ComputeOptionCost(parameters);
@@ -222,8 +222,8 @@ public sealed class TSUN026A
     public void STCS003A_AllComponents_AreNonNegative()
     {
         // Arrange
-        var model = CreateDefaultCostModel();
-        var parameters = CreateValidBuyOrderParams();
+        STCS005A model = CreateDefaultCostModel();
+        STCS002A parameters = CreateValidBuyOrderParams();
 
         // Act
         STCS003A result = model.ComputeOptionCost(parameters);
@@ -246,9 +246,9 @@ public sealed class TSUN026A
     public void STCS003A_Costs_ScaleLinearlyWithContracts(int contracts1, int contracts2)
     {
         // Arrange
-        var model = CreateDefaultCostModel();
-        var params1 = CreateValidBuyOrderParams() with { Contracts = contracts1 };
-        var params2 = CreateValidBuyOrderParams() with { Contracts = contracts2 };
+        STCS005A model = CreateDefaultCostModel();
+        STCS002A params1 = CreateValidBuyOrderParams() with { Contracts = contracts1 };
+        STCS002A params2 = CreateValidBuyOrderParams() with { Contracts = contracts2 };
 
         // Act
         STCS003A result1 = model.ComputeOptionCost(params1);
@@ -266,8 +266,8 @@ public sealed class TSUN026A
     public void STCS003A_BuyOrder_ExecutionPriceIsAsk()
     {
         // Arrange
-        var model = CreateDefaultCostModel();
-        var parameters = CreateValidBuyOrderParams();
+        STCS005A model = CreateDefaultCostModel();
+        STCS002A parameters = CreateValidBuyOrderParams();
 
         // Act
         STCS003A result = model.ComputeOptionCost(parameters);
@@ -283,8 +283,8 @@ public sealed class TSUN026A
     public void STCS003A_SellOrder_ExecutionPriceIsBid()
     {
         // Arrange
-        var model = CreateDefaultCostModel();
-        var parameters = CreateValidSellOrderParams();
+        STCS005A model = CreateDefaultCostModel();
+        STCS002A parameters = CreateValidSellOrderParams();
 
         // Act
         STCS003A result = model.ComputeOptionCost(parameters);
@@ -300,8 +300,8 @@ public sealed class TSUN026A
     public void STCS003A_Slippage_EqualsHalfSpreadTimesContractsTimesMultiplier()
     {
         // Arrange
-        var model = CreateDefaultCostModel();
-        var parameters = CreateValidBuyOrderParams();
+        STCS005A model = CreateDefaultCostModel();
+        STCS002A parameters = CreateValidBuyOrderParams();
 
         // Act
         STCS003A result = model.ComputeOptionCost(parameters);
@@ -320,8 +320,8 @@ public sealed class TSUN026A
     public void STCS003A_CostPerContract_EqualsTotalDividedByContracts()
     {
         // Arrange
-        var model = CreateDefaultCostModel();
-        var parameters = CreateValidBuyOrderParams();
+        STCS005A model = CreateDefaultCostModel();
+        STCS002A parameters = CreateValidBuyOrderParams();
 
         // Act
         STCS003A result = model.ComputeOptionCost(parameters);
@@ -341,9 +341,9 @@ public sealed class TSUN026A
     public void STCS004A_TotalExecutionCost_IsSumOfLegs()
     {
         // Arrange
-        var model = CreateDefaultCostModel();
-        var frontParams = CreateValidSellOrderParams();
-        var backParams = CreateValidBuyOrderParams();
+        STCS005A model = CreateDefaultCostModel();
+        STCS002A frontParams = CreateValidSellOrderParams();
+        STCS002A backParams = CreateValidBuyOrderParams();
 
         // Act
         STCS004A result = model.ComputeSpreadCost(frontParams, backParams);
@@ -360,9 +360,9 @@ public sealed class TSUN026A
     public void STCS004A_TotalSlippage_IsSumOfLegSlippages()
     {
         // Arrange
-        var model = CreateDefaultCostModel();
-        var frontParams = CreateValidSellOrderParams();
-        var backParams = CreateValidBuyOrderParams();
+        STCS005A model = CreateDefaultCostModel();
+        STCS002A frontParams = CreateValidSellOrderParams();
+        STCS002A backParams = CreateValidBuyOrderParams();
 
         // Act
         STCS004A result = model.ComputeSpreadCost(frontParams, backParams);
@@ -379,9 +379,9 @@ public sealed class TSUN026A
     public void STCS004A_TheoreticalDebit_EqualsBackMidMinusFrontMid()
     {
         // Arrange
-        var model = CreateDefaultCostModel();
-        var frontParams = CreateValidSellOrderParams();  // Mid = 1.20
-        var backParams = CreateValidBuyOrderParams();    // Mid = 2.50
+        STCS005A model = CreateDefaultCostModel();
+        STCS002A frontParams = CreateValidSellOrderParams();  // Mid = 1.20
+        STCS002A backParams = CreateValidBuyOrderParams();    // Mid = 2.50
 
         // Act
         STCS004A result = model.ComputeSpreadCost(frontParams, backParams);
@@ -398,9 +398,9 @@ public sealed class TSUN026A
     public void STCS004A_ExecutionDebit_EqualsBackAskMinusFrontBid()
     {
         // Arrange
-        var model = CreateDefaultCostModel();
-        var frontParams = CreateValidSellOrderParams();  // Bid = 1.15
-        var backParams = CreateValidBuyOrderParams();    // Ask = 2.55
+        STCS005A model = CreateDefaultCostModel();
+        STCS002A frontParams = CreateValidSellOrderParams();  // Bid = 1.15
+        STCS002A backParams = CreateValidBuyOrderParams();    // Ask = 2.55
 
         // Act
         STCS004A result = model.ComputeSpreadCost(frontParams, backParams);
@@ -417,9 +417,9 @@ public sealed class TSUN026A
     public void STCS004A_ExecutionDebit_GreaterOrEqualToTheoreticalDebit()
     {
         // Arrange
-        var model = CreateDefaultCostModel();
-        var frontParams = CreateValidSellOrderParams();
-        var backParams = CreateValidBuyOrderParams();
+        STCS005A model = CreateDefaultCostModel();
+        STCS002A frontParams = CreateValidSellOrderParams();
+        STCS002A backParams = CreateValidBuyOrderParams();
 
         // Act
         STCS004A result = model.ComputeSpreadCost(frontParams, backParams);
@@ -435,9 +435,9 @@ public sealed class TSUN026A
     public void STCS004A_TotalCapitalRequired_IncludesDebitAndFees()
     {
         // Arrange
-        var model = CreateDefaultCostModel();
-        var frontParams = CreateValidSellOrderParams();
-        var backParams = CreateValidBuyOrderParams();
+        STCS005A model = CreateDefaultCostModel();
+        STCS002A frontParams = CreateValidSellOrderParams();
+        STCS002A backParams = CreateValidBuyOrderParams();
 
         // Act
         STCS004A result = model.ComputeSpreadCost(frontParams, backParams);
@@ -457,8 +457,8 @@ public sealed class TSUN026A
     public void STCS003A_ZeroSpread_ProducesZeroSlippage()
     {
         // Arrange
-        var model = CreateDefaultCostModel();
-        var parameters = CreateValidBuyOrderParams() with
+        STCS005A model = CreateDefaultCostModel();
+        STCS002A parameters = CreateValidBuyOrderParams() with
         {
             BidPrice = 2.50,
             AskPrice = 2.50,
@@ -479,11 +479,11 @@ public sealed class TSUN026A
     public void STCS003A_SingleContract_ComputesCorrectly()
     {
         // Arrange
-        var model = new STCS005A(
+        STCS005A model = new STCS005A(
             feePerContract: 0.65,
             exchangeFeePerContract: 0.30,
             regulatoryFeePerContract: 0.02);
-        var parameters = CreateValidBuyOrderParams() with { Contracts = 1 };
+        STCS002A parameters = CreateValidBuyOrderParams() with { Contracts = 1 };
 
         // Act
         STCS003A result = model.ComputeOptionCost(parameters);
@@ -502,11 +502,11 @@ public sealed class TSUN026A
     public void STCS003A_ZeroCostModel_OnlyHasSlippage()
     {
         // Arrange
-        var model = new STCS005A(
+        STCS005A model = new STCS005A(
             feePerContract: 0.0,
             exchangeFeePerContract: 0.0,
             regulatoryFeePerContract: 0.0);
-        var parameters = CreateValidBuyOrderParams();
+        STCS002A parameters = CreateValidBuyOrderParams();
 
         // Act
         STCS003A result = model.ComputeOptionCost(parameters);
@@ -540,7 +540,7 @@ public sealed class TSUN026A
     public void STCS005A_ComputeOptionCost_NullParams_Throws()
     {
         // Arrange
-        var model = CreateDefaultCostModel();
+        STCS005A model = CreateDefaultCostModel();
 
         // Act & Assert
         Action act = () => model.ComputeOptionCost(null!);
@@ -554,8 +554,8 @@ public sealed class TSUN026A
     public void STCS005A_ComputeSpreadCost_NullParams_Throws()
     {
         // Arrange
-        var model = CreateDefaultCostModel();
-        var validParams = CreateValidBuyOrderParams();
+        STCS005A model = CreateDefaultCostModel();
+        STCS002A validParams = CreateValidBuyOrderParams();
 
         // Act & Assert
         Action act1 = () => model.ComputeSpreadCost(null!, validParams);
@@ -574,9 +574,9 @@ public sealed class TSUN026A
     public void STCS004A_TypicalCalendarSpread_RealisticCosts()
     {
         // Arrange - Typical AAPL options around $2-3 premium
-        var model = CreateDefaultCostModel();
+        STCS005A model = CreateDefaultCostModel();
 
-        var frontParams = new STCS002A
+        STCS002A frontParams = new STCS002A
         {
             Contracts = 10,
             MidPrice = 2.10,
@@ -588,7 +588,7 @@ public sealed class TSUN026A
             ContractMultiplier = 100.0
         };
 
-        var backParams = new STCS002A
+        STCS002A backParams = new STCS002A
         {
             Contracts = 10,
             MidPrice = 3.50,
@@ -619,16 +619,16 @@ public sealed class TSUN026A
     public void STCS003A_WideSpread_HigherSlippagePercent()
     {
         // Arrange
-        var model = CreateDefaultCostModel();
+        STCS005A model = CreateDefaultCostModel();
 
-        var narrowSpread = CreateValidBuyOrderParams() with
+        STCS002A narrowSpread = CreateValidBuyOrderParams() with
         {
             BidPrice = 2.48,
             AskPrice = 2.52,
             MidPrice = 2.50
         };
 
-        var wideSpread = CreateValidBuyOrderParams() with
+        STCS002A wideSpread = CreateValidBuyOrderParams() with
         {
             BidPrice = 2.30,
             AskPrice = 2.70,
@@ -636,8 +636,8 @@ public sealed class TSUN026A
         };
 
         // Act
-        var narrowResult = model.ComputeOptionCost(narrowSpread);
-        var wideResult = model.ComputeOptionCost(wideSpread);
+        STCS003A narrowResult = model.ComputeOptionCost(narrowSpread);
+        STCS003A wideResult = model.ComputeOptionCost(wideSpread);
 
         // Assert
         wideResult.Slippage.Should().BeGreaterThan(narrowResult.Slippage);

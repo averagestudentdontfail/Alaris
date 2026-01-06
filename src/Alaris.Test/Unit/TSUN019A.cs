@@ -57,10 +57,10 @@ public sealed class STUN001ATests : IDisposable
     public void Constructor_WithValidParameters_CreatesInstance()
     {
         // Arrange
-        var earningsProvider = new UniverseTestEarningsProvider();
+        UniverseTestEarningsProvider earningsProvider = new UniverseTestEarningsProvider();
 
         // Act
-        var universe = new STUN001A(
+        STUN001A universe = new STUN001A(
             earningsProvider,
             daysBeforeEarningsMin: 5,
             daysBeforeEarningsMax: 7,
@@ -78,7 +78,7 @@ public sealed class STUN001ATests : IDisposable
     public void Constructor_WithNullEarningsProvider_ThrowsArgumentNullException()
     {
         // Act & Assert
-        var act = () => new STUN001A(
+        Func<STUN001A> act = () => new STUN001A(
             earningsProvider: null!,
             logger: _logger);
 
@@ -90,10 +90,10 @@ public sealed class STUN001ATests : IDisposable
     public void Constructor_WithDefaultParameters_UsesAtilganDefaults()
     {
         // Arrange - Atilgan (2014) paper parameters
-        var earningsProvider = new UniverseTestEarningsProvider();
+        UniverseTestEarningsProvider earningsProvider = new UniverseTestEarningsProvider();
 
         // Act - should not throw with defaults
-        var universe = new STUN001A(earningsProvider, logger: _logger);
+        STUN001A universe = new STUN001A(earningsProvider, logger: _logger);
 
         // Assert
         universe.Should().NotBeNull();
@@ -103,10 +103,10 @@ public sealed class STUN001ATests : IDisposable
     public void Constructor_WithCustomParameters_AcceptsAllValues()
     {
         // Arrange
-        var earningsProvider = new UniverseTestEarningsProvider();
+        UniverseTestEarningsProvider earningsProvider = new UniverseTestEarningsProvider();
 
         // Act
-        var universe = new STUN001A(
+        STUN001A universe = new STUN001A(
             earningsProvider,
             daysBeforeEarningsMin: 3,
             daysBeforeEarningsMax: 10,
@@ -124,10 +124,10 @@ public sealed class STUN001ATests : IDisposable
     public async Task EarningsProvider_GetSymbolsWithEarnings_ReturnsExpectedSymbols()
     {
         // Arrange
-        var earningsProvider = new UniverseTestEarningsProvider();
+        UniverseTestEarningsProvider earningsProvider = new UniverseTestEarningsProvider();
 
         // Act
-        var symbols = await earningsProvider.GetSymbolsWithEarningsAsync(
+        IReadOnlyList<string> symbols = await earningsProvider.GetSymbolsWithEarningsAsync(
             DateTime.Today,
             DateTime.Today.AddDays(14));
 
@@ -142,10 +142,10 @@ public sealed class STUN001ATests : IDisposable
     public async Task EarningsProvider_GetUpcomingEarnings_ReturnsEarningsWithinWindow()
     {
         // Arrange
-        var earningsProvider = new UniverseTestEarningsProvider();
+        UniverseTestEarningsProvider earningsProvider = new UniverseTestEarningsProvider();
 
         // Act
-        var earnings = await earningsProvider.GetUpcomingEarningsAsync("AAPL", daysAhead: 30);
+        IReadOnlyList<EarningsEvent> earnings = await earningsProvider.GetUpcomingEarningsAsync("AAPL", daysAhead: 30);
 
         // Assert
         earnings.Should().NotBeEmpty();
@@ -158,10 +158,10 @@ public sealed class STUN001ATests : IDisposable
     public async Task EarningsProvider_GetHistoricalEarnings_ReturnsHistoricalData()
     {
         // Arrange
-        var earningsProvider = new UniverseTestEarningsProvider();
+        UniverseTestEarningsProvider earningsProvider = new UniverseTestEarningsProvider();
 
         // Act
-        var earnings = await earningsProvider.GetHistoricalEarningsAsync("AAPL", lookbackDays: 365);
+        IReadOnlyList<EarningsEvent> earnings = await earningsProvider.GetHistoricalEarningsAsync("AAPL", lookbackDays: 365);
 
         // Assert
         earnings.Should().NotBeEmpty();
@@ -219,10 +219,9 @@ internal class UniverseTestEarningsProvider : DTpr004A
 
     public Task<IReadOnlyList<EarningsEvent>> GetUpcomingEarningsAsync(string symbol, int daysAhead = 90, CancellationToken cancellationToken = default)
     {
-        var earnings = new List<EarningsEvent>
+        List<EarningsEvent> earnings = new List<EarningsEvent>
         {
-            new()
-            {
+            new EarningsEvent {
                 Symbol = symbol,
                 Date = DateTime.UtcNow.Date.AddDays(7), // 7 days ahead - within 5-7 day Atilgan window
                 FiscalQuarter = "Q1",
@@ -237,10 +236,9 @@ internal class UniverseTestEarningsProvider : DTpr004A
 
     public Task<IReadOnlyList<EarningsEvent>> GetHistoricalEarningsAsync(string symbol, int lookbackDays = 730, CancellationToken cancellationToken = default)
     {
-        var earnings = new List<EarningsEvent>
+        List<EarningsEvent> earnings = new List<EarningsEvent>
         {
-            new()
-            {
+            new EarningsEvent {
                 Symbol = symbol,
                 Date = DateTime.UtcNow.Date.AddDays(-90),
                 FiscalQuarter = "Q4",

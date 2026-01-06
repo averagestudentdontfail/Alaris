@@ -9,7 +9,6 @@
 
 using System;
 using System.Collections.Concurrent;
-using System.Linq;
 using System.Threading.Tasks;
 using FluentAssertions;
 using Xunit;
@@ -156,21 +155,36 @@ public class CREN004AExtendedTests
     public async Task Concurrency_ParallelPricing_AllComplete()
     {
         const int parallelTasks = 100;
-        var results = new ConcurrentBag<double>();
-        var random = new Random(42);
+        ConcurrentBag<double> results = new ConcurrentBag<double>();
+        List<Task> tasks = new List<Task>(parallelTasks);
 
-        var tasks = Enumerable.Range(0, parallelTasks).Select(_ => Task.Run(() =>
+        for (int i = 0; i < parallelTasks; i++)
         {
-            var engine = new CREN003A(); // Each task creates own instance
-            double spot = 80 + random.NextDouble() * 40;
-            double price = engine.Price(spot, 100, 1.0, 0.05, 0.02, 0.20, OptionType.Put);
-            results.Add(price);
-        }));
+            int seed = 42 + i;
+            tasks.Add(Task.Run(() =>
+            {
+                CREN003A engine = new CREN003A(); // Each task creates own instance
+                Random localRandom = new Random(seed);
+                double spot = 80 + (localRandom.NextDouble() * 40);
+                double price = engine.Price(spot, 100, 1.0, 0.05, 0.02, 0.20, OptionType.Put);
+                results.Add(price);
+            }));
+        }
 
         await Task.WhenAll(tasks);
 
         results.Count.Should().Be(parallelTasks, "all parallel tasks should complete");
-        results.All(p => double.IsFinite(p) && p > 0).Should().BeTrue("all prices should be valid");
+        bool allValid = true;
+        foreach (double price in results)
+        {
+            if (!double.IsFinite(price) || price <= 0)
+            {
+                allValid = false;
+                break;
+            }
+        }
+
+        allValid.Should().BeTrue("all prices should be valid");
 
         _output.WriteLine($"Completed {parallelTasks} parallel pricing tasks");
     }
@@ -179,22 +193,44 @@ public class CREN004AExtendedTests
     public async Task Concurrency_SharedEngine_ThreadSafe()
     {
         const int parallelTasks = 50;
-        var engine = new CREN003A(); // Shared instance
-        var results = new ConcurrentBag<double>();
+        CREN003A engine = new CREN003A(); // Shared instance
+        ConcurrentBag<double> results = new ConcurrentBag<double>();
+        List<Task> tasks = new List<Task>(parallelTasks);
 
-        var tasks = Enumerable.Range(0, parallelTasks).Select(i => Task.Run(() =>
+        for (int i = 0; i < parallelTasks; i++)
         {
-            // All use same parameters - should get identical results
-            double price = engine.Price(100, 100, 1.0, 0.05, 0.02, 0.20, OptionType.Put);
-            results.Add(price);
-        }));
+            tasks.Add(Task.Run(() =>
+            {
+                // All use same parameters - should get identical results
+                double price = engine.Price(100, 100, 1.0, 0.05, 0.02, 0.20, OptionType.Put);
+                results.Add(price);
+            }));
+        }
 
         await Task.WhenAll(tasks);
 
         // All results should be identical (deterministic)
-        double firstResult = results.First();
-        results.All(p => System.Math.Abs(p - firstResult) < 1e-10).Should().BeTrue(
-            "shared engine should produce identical results across threads");
+        double firstResult = 0.0;
+        bool hasFirst = false;
+        bool allSame = true;
+
+        foreach (double price in results)
+        {
+            if (!hasFirst)
+            {
+                firstResult = price;
+                hasFirst = true;
+                continue;
+            }
+
+            if (System.Math.Abs(price - firstResult) >= 1e-10)
+            {
+                allSame = false;
+                break;
+            }
+        }
+
+        allSame.Should().BeTrue("shared engine should produce identical results across threads");
 
         _output.WriteLine($"All {parallelTasks} parallel calls returned {firstResult:F6}");
     }
@@ -254,7 +290,7 @@ public class CREN004AExtendedTests
     public void NumericalStability_RepeatedCalculations_NoDrift()
     {
         const int iterations = 100;
-        var prices = new double[iterations];
+        double[] prices = new double[iterations];
 
         for (int i = 0; i < iterations; i++)
         {
@@ -262,7 +298,15 @@ public class CREN004AExtendedTests
         }
 
         double first = prices[0];
-        double maxDrift = prices.Max(p => System.Math.Abs(p - first));
+        double maxDrift = 0.0;
+        for (int i = 0; i < prices.Length; i++)
+        {
+            double drift = System.Math.Abs(prices[i] - first);
+            if (drift > maxDrift)
+            {
+                maxDrift = drift;
+            }
+        }
 
         _output.WriteLine($"Base price: {first:F8}, Max drift: {maxDrift:E2}");
 

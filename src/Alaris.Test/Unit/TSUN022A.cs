@@ -14,7 +14,7 @@ namespace Alaris.Test.Unit;
 /// </remarks>
 public sealed class TSUN022A
 {
-    private readonly STCL001A _calendar = new();
+    private readonly STCL001A _calendar = new STCL001A();
 
     /// <summary>
     /// Verifies weekends are not business days.

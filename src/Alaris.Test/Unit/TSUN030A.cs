@@ -26,7 +26,7 @@ public sealed class TSUN030A
     public void PriceBarData_RoundTrip_PreservesAllFields()
     {
         // Arrange
-        var original = new PriceBarData
+        PriceBarData original = new PriceBarData
         {
             TimestampEpochMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             OpenMantissa = PLSR001A.ToMantissa(150.25m),
@@ -35,11 +35,11 @@ public sealed class TSUN030A
             CloseMantissa = PLSR001A.ToMantissa(154.75m),
             Volume = 1_500_000
         };
-        var buffer = new byte[256];
+        byte[] buffer = new byte[256];
 
         // Act
         int bytesWritten = PLSR001A.EncodePriceBar(in original, buffer);
-        var decoded = PLSR001A.DecodePriceBar(buffer.AsSpan(0, bytesWritten));
+        PriceBarData decoded = PLSR001A.DecodePriceBar(buffer.AsSpan(0, bytesWritten));
 
         // Assert
         decoded.TimestampEpochMs.Should().Be(original.TimestampEpochMs);
@@ -54,7 +54,7 @@ public sealed class TSUN030A
     public void OptionContractData_RoundTrip_PreservesAllFields()
     {
         // Arrange
-        var original = new OptionContractData
+        OptionContractData original = new OptionContractData
         {
             StrikeMantissa = PLSR001A.ToMantissa(150.00m),
             ExpirationDays = (int)(new DateTime(2025, 3, 21) - DateTime.UnixEpoch).TotalDays,
@@ -71,11 +71,11 @@ public sealed class TSUN030A
             Volume = 250,
             Symbol = "AAPL"
         };
-        var buffer = new byte[256];
+        byte[] buffer = new byte[256];
 
         // Act
         int bytesWritten = PLSR001A.EncodeOptionContract(in original, buffer);
-        var decoded = PLSR001A.DecodeOptionContract(buffer.AsSpan(0, bytesWritten));
+        OptionContractData decoded = PLSR001A.DecodeOptionContract(buffer.AsSpan(0, bytesWritten));
 
         // Assert
         decoded.StrikeMantissa.Should().Be(original.StrikeMantissa);
@@ -107,7 +107,7 @@ public sealed class TSUN030A
     public void PriceBar_RoundTrip_PreservesAllFields()
     {
         // Arrange
-        var original = new PriceBar
+        PriceBar original = new PriceBar
         {
             Symbol = "NVDA",
             Timestamp = new DateTime(2024, 12, 20, 16, 0, 0, DateTimeKind.Utc),
@@ -117,11 +117,11 @@ public sealed class TSUN030A
             Close = 532.75m,
             Volume = 45_000_000
         };
-        var buffer = new byte[256];
+        byte[] buffer = new byte[256];
 
         // Act
         int bytesWritten = DTsr001A.EncodePriceBar(original, buffer);
-        var decoded = DTsr001A.DecodePriceBar(buffer.AsSpan(0, bytesWritten), "NVDA");
+        PriceBar decoded = DTsr001A.DecodePriceBar(buffer.AsSpan(0, bytesWritten), "NVDA");
 
         // Assert
         decoded.Symbol.Should().Be(original.Symbol);
@@ -137,7 +137,7 @@ public sealed class TSUN030A
     public void OptionContract_RoundTrip_PreservesAllFields()
     {
         // Arrange
-        var original = new OptionContract
+        OptionContract original = new OptionContract
         {
             UnderlyingSymbol = "AAPL",
             OptionSymbol = "AAPL250321C00150000",
@@ -156,11 +156,11 @@ public sealed class TSUN030A
             Volume = 250,
             Timestamp = DateTime.UtcNow
         };
-        var buffer = new byte[512];
+        byte[] buffer = new byte[512];
 
         // Act
         int bytesWritten = DTsr001A.EncodeOptionContract(original, buffer);
-        var decoded = DTsr001A.DecodeOptionContract(buffer.AsSpan(0, bytesWritten));
+        OptionContract decoded = DTsr001A.DecodeOptionContract(buffer.AsSpan(0, bytesWritten));
 
         // Assert
         decoded.UnderlyingSymbol.Should().Be(original.UnderlyingSymbol);
@@ -178,7 +178,7 @@ public sealed class TSUN030A
     public void OptionContract_WithNullGreeks_PreservesNulls()
     {
         // Arrange
-        var original = new OptionContract
+        OptionContract original = new OptionContract
         {
             UnderlyingSymbol = "MSFT",
             OptionSymbol = "MSFT250321P00400000",
@@ -197,11 +197,11 @@ public sealed class TSUN030A
             Volume = 50,
             Timestamp = DateTime.UtcNow
         };
-        var buffer = new byte[512];
+        byte[] buffer = new byte[512];
 
         // Act
         int bytesWritten = DTsr001A.EncodeOptionContract(original, buffer);
-        var decoded = DTsr001A.DecodeOptionContract(buffer.AsSpan(0, bytesWritten));
+        OptionContract decoded = DTsr001A.DecodeOptionContract(buffer.AsSpan(0, bytesWritten));
 
         // Assert
         decoded.Last.Should().BeNull();
@@ -213,10 +213,9 @@ public sealed class TSUN030A
     public void OptionChainSnapshot_RoundTrip_PreservesAllContracts()
     {
         // Arrange
-        var contracts = new List<OptionContract>
+        List<OptionContract> contracts = new List<OptionContract>
         {
-            new()
-            {
+            new OptionContract {
                 UnderlyingSymbol = "SPY",
                 OptionSymbol = "SPY250321C00500000",
                 Strike = 500m,
@@ -228,8 +227,7 @@ public sealed class TSUN030A
                 Volume = 100,
                 Timestamp = DateTime.UtcNow
             },
-            new()
-            {
+            new OptionContract {
                 UnderlyingSymbol = "SPY",
                 OptionSymbol = "SPY250321P00500000",
                 Strike = 500m,
@@ -243,7 +241,7 @@ public sealed class TSUN030A
             }
         };
 
-        var original = new OptionChainSnapshot
+        OptionChainSnapshot original = new OptionChainSnapshot
         {
             Symbol = "SPY",
             Timestamp = DateTime.UtcNow,
@@ -251,11 +249,11 @@ public sealed class TSUN030A
             Contracts = contracts
         };
 
-        using var buffer = PLBF001A.RentBuffer(PLBF001A.LargeBufferSize);
+        using PooledBuffer buffer = PLBF001A.RentBuffer(PLBF001A.LargeBufferSize);
 
         // Act
         int bytesWritten = DTsr001A.EncodeOptionChainSnapshot(original, buffer.Span);
-        var decoded = DTsr001A.DecodeOptionChainSnapshot(buffer.Array.AsSpan(0, bytesWritten));
+        OptionChainSnapshot decoded = DTsr001A.DecodeOptionChainSnapshot(buffer.Array.AsSpan(0, bytesWritten));
 
         // Assert
         decoded.Symbol.Should().Be(original.Symbol);
@@ -272,7 +270,7 @@ public sealed class TSUN030A
     public void EventEnvelope_RoundTrip_PreservesAllFields()
     {
         // Arrange
-        var original = new EVCR003A
+        EVCR003A original = new EVCR003A
         {
             EventId = Guid.NewGuid(),
             SequenceNumber = 12345,
@@ -284,11 +282,11 @@ public sealed class TSUN030A
             CausationId = null,
             InitiatedBy = "system"
         };
-        var buffer = new byte[1024];
+        byte[] buffer = new byte[1024];
 
         // Act
         int bytesWritten = EVsr001A.EncodeEventEnvelope(original, buffer);
-        var decoded = EVsr001A.DecodeEventEnvelope(buffer.AsSpan(0, bytesWritten));
+        EVCR003A decoded = EVsr001A.DecodeEventEnvelope(buffer.AsSpan(0, bytesWritten));
 
         // Assert
         decoded.EventId.Should().Be(original.EventId);
@@ -305,7 +303,7 @@ public sealed class TSUN030A
     public void GetEncodedSize_ReturnsCorrectSize()
     {
         // Arrange
-        var envelope = new EVCR003A
+        EVCR003A envelope = new EVCR003A
         {
             EventId = Guid.NewGuid(),
             SequenceNumber = 1,
@@ -317,7 +315,7 @@ public sealed class TSUN030A
 
         // Act
         int estimatedSize = EVsr001A.GetEncodedSize(envelope);
-        var buffer = new byte[estimatedSize + 100];
+        byte[] buffer = new byte[estimatedSize + 100];
         int actualSize = EVsr001A.EncodeEventEnvelope(envelope, buffer);
 
         // Assert - estimated should be >= actual
@@ -330,7 +328,7 @@ public sealed class TSUN030A
     public void SessionMetadata_RoundTrip_PreservesAllFields()
     {
         // Arrange
-        var original = new APmd001A
+        APmd001A original = new APmd001A
         {
             SessionId = "BT001A-20240101-20241231",
             StartDate = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
@@ -341,11 +339,11 @@ public sealed class TSUN030A
             SessionPath = "/home/user/sessions/BT001A",
             Symbols = new List<string> { "AAPL", "MSFT", "NVDA", "GOOGL" }
         };
-        var buffer = new byte[1024];
+        byte[] buffer = new byte[1024];
 
         // Act
         int bytesWritten = APsr001A.EncodeSessionMetadata(original, buffer);
-        var decoded = APsr001A.DecodeSessionMetadata(buffer.AsSpan(0, bytesWritten));
+        APmd001A decoded = APsr001A.DecodeSessionMetadata(buffer.AsSpan(0, bytesWritten));
 
         // Assert
         decoded.SessionId.Should().Be(original.SessionId);
@@ -360,7 +358,7 @@ public sealed class TSUN030A
     public void GetEncodedSize_ForSession_ReturnsCorrectSize()
     {
         // Arrange
-        var session = new APmd001A
+        APmd001A session = new APmd001A
         {
             SessionId = "BT001A",
             StartDate = DateTime.UtcNow,
@@ -374,7 +372,7 @@ public sealed class TSUN030A
 
         // Act
         int estimatedSize = APsr001A.GetEncodedSize(session);
-        var buffer = new byte[estimatedSize + 100];
+        byte[] buffer = new byte[estimatedSize + 100];
         int actualSize = APsr001A.EncodeSessionMetadata(session, buffer);
 
         // Assert
@@ -387,7 +385,7 @@ public sealed class TSUN030A
     public void RentBuffer_ReturnsBufferOfAtLeastRequestedSize()
     {
         // Act
-        using var buffer = PLBF001A.RentBuffer(1024);
+        using PooledBuffer buffer = PLBF001A.RentBuffer(1024);
 
         // Assert
         buffer.Length.Should().BeGreaterOrEqualTo(1024);
@@ -399,7 +397,7 @@ public sealed class TSUN030A
     public void RentLargeBuffer_ReturnsLargeBuffer()
     {
         // Act
-        using var buffer = PLBF001A.RentLargeBuffer();
+        using PooledBuffer buffer = PLBF001A.RentLargeBuffer();
 
         // Assert
         buffer.Length.Should().Be(PLBF001A.LargeBufferSize);

@@ -7,7 +7,6 @@
 
 using System;
 using System.Diagnostics;
-using System.Linq;
 using Xunit;
 using Xunit.Abstractions;
 using Alaris.Core.Options;
@@ -35,8 +34,6 @@ public class TSBM003A
         _fdEngine = new CREN002A();
     }
 
-    // ========== Single Option Timing ==========
-
     [Fact]
     public void SingleOption_SpeedComparison()
     {
@@ -52,7 +49,7 @@ public class TSBM003A
         }
 
         // Spectral Fast timing
-        var swFast = Stopwatch.StartNew();
+        Stopwatch swFast = Stopwatch.StartNew();
         for (int i = 0; i < testIterations; i++)
         {
             _ = _spectralFast.Price(100, 100, 1.0, 0.05, 0.02, 0.20, OptionType.Put);
@@ -61,7 +58,7 @@ public class TSBM003A
         double fastAvgUs = swFast.Elapsed.TotalMicroseconds / testIterations;
 
         // Spectral Accurate timing
-        var swAccurate = Stopwatch.StartNew();
+        Stopwatch swAccurate = Stopwatch.StartNew();
         for (int i = 0; i < testIterations; i++)
         {
             _ = _spectralAccurate.Price(100, 100, 1.0, 0.05, 0.02, 0.20, OptionType.Put);
@@ -70,7 +67,7 @@ public class TSBM003A
         double accurateAvgUs = swAccurate.Elapsed.TotalMicroseconds / testIterations;
 
         // FD timing
-        var swFD = Stopwatch.StartNew();
+        Stopwatch swFD = Stopwatch.StartNew();
         for (int i = 0; i < testIterations; i++)
         {
             _ = _fdEngine.Price(100, 100, 1.0, 0.05, 0.02, 0.20, OptionType.Put);
@@ -88,40 +85,44 @@ public class TSBM003A
         Assert.True(accurateAvgUs < 10000, $"Spectral should be < 10ms, got {accurateAvgUs}µs");
     }
 
-    // ========== Portfolio Throughput ==========
-
     [Fact]
     public void Portfolio_ThroughputComparison()
     {
         const int portfolioSize = 500;
-        var random = new Random(42);
+        Random random = new Random(42);
 
         // Generate portfolio
-        var options = Enumerable.Range(0, portfolioSize).Select(_ => (
-            Spot: 100.0,
-            Strike: 80.0 + (random.NextDouble() * 40.0),
-            Tau: 0.1 + (random.NextDouble() * 2.0),
-            R: 0.01 + (random.NextDouble() * 0.08),
-            Q: random.NextDouble() * 0.05,
-            Sigma: 0.10 + (random.NextDouble() * 0.40)
-        )).ToArray();
+        (double Spot, double Strike, double Tau, double R, double Q, double Sigma)[] options =
+            new (double Spot, double Strike, double Tau, double R, double Q, double Sigma)[portfolioSize];
+        for (int i = 0; i < portfolioSize; i++)
+        {
+            options[i] = (
+                Spot: 100.0,
+                Strike: 80.0 + (random.NextDouble() * 40.0),
+                Tau: 0.1 + (random.NextDouble() * 2.0),
+                R: 0.01 + (random.NextDouble() * 0.08),
+                Q: random.NextDouble() * 0.05,
+                Sigma: 0.10 + (random.NextDouble() * 0.40));
+        }
 
         // Warm up
         _ = _spectralAccurate.Price(100, 100, 1.0, 0.05, 0.02, 0.20, OptionType.Put);
         _ = _fdEngine.Price(100, 100, 1.0, 0.05, 0.02, 0.20, OptionType.Put);
 
         // Spectral
-        var swSpectral = Stopwatch.StartNew();
-        foreach (var opt in options)
+        Stopwatch swSpectral = Stopwatch.StartNew();
+        for (int i = 0; i < options.Length; i++)
         {
+            (double Spot, double Strike, double Tau, double R, double Q, double Sigma) opt = options[i];
             _ = _spectralAccurate.Price(opt.Spot, opt.Strike, opt.Tau, opt.R, opt.Q, opt.Sigma, OptionType.Put);
         }
         swSpectral.Stop();
 
         // FD
-        var swFD = Stopwatch.StartNew();
-        foreach (var opt in options)
+        Stopwatch swFD = Stopwatch.StartNew();
+        for (int i = 0; i < options.Length; i++)
         {
+            (double Spot, double Strike, double Tau, double R, double Q, double Sigma) opt = options[i];
             _ = _fdEngine.Price(opt.Spot, opt.Strike, opt.Tau, opt.R, opt.Q, opt.Sigma, OptionType.Put);
         }
         swFD.Stop();
@@ -138,8 +139,6 @@ public class TSBM003A
         Assert.True(spectralThroughput > 50, $"Should process > 50 options/sec, got {spectralThroughput:F0}");
     }
 
-    // ========== Accuracy vs Speed Tradeoff ==========
-
     [Fact]
     public void AccuracySpeedTradeoff_SchemeComparison()
     {
@@ -147,7 +146,7 @@ public class TSBM003A
         double reference = _spectralHighPrecision.Price(100, 100, 1.0, 0.05, 0.02, 0.20, OptionType.Put);
 
         // Measure each scheme
-        var schemes = new (string Name, CREN004A Engine)[]
+        (string Name, CREN004A Engine)[] schemes = new (string Name, CREN004A Engine)[]
         {
             ("Fast", _spectralFast),
             ("Accurate", _spectralAccurate),
@@ -158,12 +157,15 @@ public class TSBM003A
         _output.WriteLine($"Reference (HighPrecision): {reference:F8}");
         _output.WriteLine("");
 
-        foreach (var (name, engine) in schemes)
+        for (int i = 0; i < schemes.Length; i++)
         {
+            (string Name, CREN004A Engine) scheme = schemes[i];
+            string name = scheme.Name;
+            CREN004A engine = scheme.Engine;
             const int iterations = 50;
 
             // Time it
-            var sw = Stopwatch.StartNew();
+            Stopwatch sw = Stopwatch.StartNew();
             double price = 0;
             for (int i = 0; i < iterations; i++)
             {
@@ -178,8 +180,6 @@ public class TSBM003A
         }
     }
 
-    // ========== Greeks Timing ==========
-
     [Fact]
     public void Greeks_TimingComparison()
     {
@@ -190,7 +190,7 @@ public class TSBM003A
         _ = _fdEngine.Delta(100, 100, 1.0, 0.05, 0.02, 0.20, OptionType.Put);
 
         // Spectral Greeks (computed via central differencing, so 2-3x price time)
-        var swSpectral = Stopwatch.StartNew();
+        Stopwatch swSpectral = Stopwatch.StartNew();
         for (int i = 0; i < iterations; i++)
         {
             _ = _spectralAccurate.Delta(100, 100, 1.0, 0.05, 0.02, 0.20, OptionType.Put);
@@ -200,7 +200,7 @@ public class TSBM003A
         swSpectral.Stop();
 
         // FD Greeks
-        var swFD = Stopwatch.StartNew();
+        Stopwatch swFD = Stopwatch.StartNew();
         for (int i = 0; i < iterations; i++)
         {
             _ = _fdEngine.Delta(100, 100, 1.0, 0.05, 0.02, 0.20, OptionType.Put);
@@ -214,8 +214,6 @@ public class TSBM003A
         _output.WriteLine($"FD:       {swFD.ElapsedMilliseconds}ms for {iterations} iterations");
     }
 
-    // ========== Different Maturities ==========
-
     [Theory]
     [InlineData(0.1)]   // 1 month
     [InlineData(0.25)]  // 3 months
@@ -226,14 +224,14 @@ public class TSBM003A
     {
         const int iterations = 20;
 
-        var swSpectral = Stopwatch.StartNew();
+        Stopwatch swSpectral = Stopwatch.StartNew();
         for (int i = 0; i < iterations; i++)
         {
             _ = _spectralAccurate.Price(100, 100, tau, 0.05, 0.02, 0.20, OptionType.Put);
         }
         swSpectral.Stop();
 
-        var swFD = Stopwatch.StartNew();
+        Stopwatch swFD = Stopwatch.StartNew();
         for (int i = 0; i < iterations; i++)
         {
             _ = _fdEngine.Price(100, 100, tau, 0.05, 0.02, 0.20, OptionType.Put);
@@ -246,8 +244,6 @@ public class TSBM003A
         _output.WriteLine($"τ={tau:F2}: Spectral={spectralUs:F0}µs, FD={fdUs:F0}µs");
     }
 
-    // ========== Regime Coverage ==========
-
     [Theory]
     [InlineData(0.05, 0.02, false, "Standard Put")]
     [InlineData(0.05, 0.02, true, "Standard Call")]
@@ -255,7 +251,7 @@ public class TSBM003A
     [InlineData(-0.02, -0.01, false, "Double Boundary")]
     public void RegimeCoverage_BothEnginesWork(double r, double q, bool isCall, string regime)
     {
-        var optionType = isCall ? OptionType.Call : OptionType.Put;
+        OptionType optionType = isCall ? OptionType.Call : OptionType.Put;
 
         double spectralPrice = _spectralAccurate.Price(100, 100, 1.0, r, q, 0.20, optionType);
         double fdPrice = _fdEngine.Price(100, 100, 1.0, r, q, 0.20, optionType);

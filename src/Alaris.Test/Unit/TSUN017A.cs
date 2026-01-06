@@ -19,7 +19,7 @@ public sealed class Phase2MediumPriorityTests
     public void STDD001A_FindExDatesInWindow_ReturnsMatchingDates()
     {
         // Arrange
-        STDD001A detector = new();
+        STDD001A detector = new STDD001A();
         List<STDD002A> schedule = new List<STDD002A>
         {
             new STDD002A { ExDate = new DateTime(2024, 1, 15), Amount = 1.50 },
@@ -42,7 +42,7 @@ public sealed class Phase2MediumPriorityTests
     public void STDD001A_CalculateEarlyExerciseRisk_HighDividend_ReturnsHighRisk()
     {
         // Arrange: Large dividend relative to strike×(1-e^(-rτ))
-        STDD001A detector = new();
+        STDD001A detector = new STDD001A();
 
         // Act: $5 dividend on $100 strike with 5% rate, 1 week to expiry
         double risk = detector.CalculateEarlyExerciseRisk(
@@ -59,7 +59,7 @@ public sealed class Phase2MediumPriorityTests
     public void STDD001A_CalculateEarlyExerciseRisk_NoDividend_ReturnsZero()
     {
         // Arrange
-        STDD001A detector = new();
+        STDD001A detector = new STDD001A();
 
         // Act
         double risk = detector.CalculateEarlyExerciseRisk(
@@ -96,7 +96,7 @@ public sealed class Phase2MediumPriorityTests
     public void STHD009A_Evaluate_HighPinRisk_RecommendsAction()
     {
         // Arrange
-        STHD009A monitor = new();
+        STHD009A monitor = new STHD009A();
 
         // Act: ATM with 1 DTE - high pin risk zone
         STHD010A result = monitor.Evaluate(
@@ -112,7 +112,7 @@ public sealed class Phase2MediumPriorityTests
     public void STHD009A_Evaluate_FarFromExpiry_ReturnsLowRisk()
     {
         // Arrange
-        STHD009A monitor = new();
+        STHD009A monitor = new STHD009A();
 
         // Act: ATM but 10 DTE
         STHD010A result = monitor.Evaluate(
@@ -129,7 +129,7 @@ public sealed class Phase2MediumPriorityTests
     public void STCR005A_CalculateFreshness_JustGenerated_ReturnsOne()
     {
         // Arrange
-        STCR005A monitor = new();
+        STCR005A monitor = new STCR005A();
         DateTime now = DateTime.UtcNow;
 
         // Act
@@ -143,7 +143,7 @@ public sealed class Phase2MediumPriorityTests
     public void STCR005A_CalculateFreshness_AtHalfLife_ReturnsHalf()
     {
         // Arrange: 60-minute half-life
-        STCR005A monitor = new(halfLifeMinutes: 60.0);
+        STCR005A monitor = new STCR005A(halfLifeMinutes: 60.0);
         DateTime signalTime = DateTime.UtcNow.AddMinutes(-60);
 
         // Act
@@ -157,7 +157,7 @@ public sealed class Phase2MediumPriorityTests
     public void STCR005A_RequiresRevalidation_StaleSignal_ReturnsTrue()
     {
         // Arrange
-        STCR005A monitor = new(halfLifeMinutes: 60.0);
+        STCR005A monitor = new STCR005A(halfLifeMinutes: 60.0);
         DateTime staleSignal = DateTime.UtcNow.AddMinutes(-120); // 2 hours old
 
         // Act

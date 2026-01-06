@@ -97,11 +97,11 @@ public class STIV005ATests
     {
         // Arrange
         string symbol = "TEST";
-        var prices = CreateSamplePriceData();
-        var earningsDates = CreateSampleEarningsDates();
+        List<PriceBar> prices = CreateSamplePriceData();
+        List<DateTime> earningsDates = CreateSampleEarningsDates();
 
         // Act
-        var result = _calibrator.Calibrate(symbol, prices, earningsDates);
+        EarningsJumpCalibration result = _calibrator.Calibrate(symbol, prices, earningsDates);
 
         // Assert
         result.Should().NotBeNull();
@@ -116,11 +116,11 @@ public class STIV005ATests
     {
         // Arrange
         string symbol = "TEST";
-        var prices = CreateSamplePriceData();
-        var earningsDates = new List<DateTime> { DateTime.Today.AddDays(-90) }; // Only 1 earnings
+        List<PriceBar> prices = CreateSamplePriceData();
+        List<DateTime> earningsDates = new List<DateTime> { DateTime.Today.AddDays(-90) }; // Only 1 earnings
 
         // Act
-        var result = _calibrator.Calibrate(symbol, prices, earningsDates);
+        EarningsJumpCalibration result = _calibrator.Calibrate(symbol, prices, earningsDates);
 
         // Assert
         result.Should().NotBeNull();
@@ -132,8 +132,8 @@ public class STIV005ATests
     public void Calibrate_ThrowsOnNullSymbol()
     {
         // Arrange
-        var prices = CreateSamplePriceData();
-        var earningsDates = CreateSampleEarningsDates();
+        List<PriceBar> prices = CreateSamplePriceData();
+        List<DateTime> earningsDates = CreateSampleEarningsDates();
 
         // Act & Assert
         Action act = () => _calibrator.Calibrate(null!, prices, earningsDates);
@@ -144,7 +144,7 @@ public class STIV005ATests
     public void Calibrate_ThrowsOnNullPrices()
     {
         // Arrange
-        var earningsDates = CreateSampleEarningsDates();
+        List<DateTime> earningsDates = CreateSampleEarningsDates();
 
         // Act & Assert
         Action act = () => _calibrator.Calibrate("TEST", null!, earningsDates);
@@ -274,14 +274,14 @@ public class STIV005ATests
 
     private static List<PriceBar> CreateSamplePriceData()
     {
-        var prices = new List<PriceBar>();
-        var baseDate = DateTime.Today.AddDays(-400);
+        List<PriceBar> prices = new List<PriceBar>();
+        DateTime baseDate = DateTime.Today.AddDays(-400);
         double basePrice = 100.0;
 
         for (int i = 0; i < 400; i++)
         {
             // Skip weekends
-            var date = baseDate.AddDays(i);
+            DateTime date = baseDate.AddDays(i);
             if (date.DayOfWeek == DayOfWeek.Saturday || date.DayOfWeek == DayOfWeek.Sunday)
             {
                 continue;
@@ -309,13 +309,13 @@ public class STIV005ATests
 
     private static List<DateTime> CreateSampleEarningsDates()
     {
-        var dates = new List<DateTime>();
-        var baseDate = DateTime.Today;
+        List<DateTime> dates = new List<DateTime>();
+        DateTime baseDate = DateTime.Today;
 
         // Create quarterly earnings dates going back 3 years
         for (int q = 1; q <= 12; q++)
         {
-            var earningsDate = baseDate.AddDays(-90 * q);
+            DateTime earningsDate = baseDate.AddDays(-90 * q);
             // Ensure not weekend
             if (earningsDate.DayOfWeek == DayOfWeek.Saturday)
             {

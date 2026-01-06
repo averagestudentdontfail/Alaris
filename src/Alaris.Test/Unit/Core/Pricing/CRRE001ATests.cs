@@ -22,7 +22,7 @@ public class CRRE001ATests
     public void Classify_PositiveRates_ReturnsStandard(double r, double q, bool isCall)
     {
         // Act
-        var regime = CRRE001A.Classify(r, q, isCall);
+        RateRegime regime = CRRE001A.Classify(r, q, isCall);
 
         // Assert
         Assert.Equal(RateRegime.Standard, regime);
@@ -36,7 +36,7 @@ public class CRRE001ATests
         // Arrange: Cases where r < q < 0 (put) OR call with negative r but no double boundary condition
         
         // Act
-        var regime = CRRE001A.Classify(r, q, isCall);
+        RateRegime regime = CRRE001A.Classify(r, q, isCall);
 
         // Assert
         Assert.Equal(RateRegime.Standard, regime);
@@ -57,7 +57,7 @@ public class CRRE001ATests
         Assert.True(q < r, "q should be less than r");
 
         // Act
-        var regime = CRRE001A.Classify(r, q, isCall);
+        RateRegime regime = CRRE001A.Classify(r, q, isCall);
 
         // Assert
         Assert.Equal(RateRegime.DoubleBoundary, regime);
@@ -74,7 +74,7 @@ public class CRRE001ATests
         Assert.True(r < q, "r should be less than q");
 
         // Act
-        var regime = CRRE001A.Classify(r, q, isCall);
+        RateRegime regime = CRRE001A.Classify(r, q, isCall);
 
         // Assert
         Assert.Equal(RateRegime.DoubleBoundary, regime);

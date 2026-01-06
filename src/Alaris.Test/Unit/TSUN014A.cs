@@ -30,7 +30,7 @@ public sealed class STHD007ATests
         int daysToExpiry = 10;             // Still 10 days to go
 
         // Act
-        var result = _exitMonitor.Evaluate(
+        STHD008A result = _exitMonitor.Evaluate(
             symbol, currentIV, entryIV, expectedPostEarningsIV, expectedCrush, daysToExpiry);
 
         // Assert: Should trigger exit (current IV < 70% of expected post-earnings)
@@ -51,7 +51,7 @@ public sealed class STHD007ATests
         int daysToExpiry = 8;              // Still 8 days remaining
 
         // Act
-        var result = _exitMonitor.Evaluate(
+        STHD008A result = _exitMonitor.Evaluate(
             symbol, currentIV, entryIV, expectedPostEarningsIV, expectedCrush, daysToExpiry);
 
         // Assert: Actual crush = 0.13, ratio = 0.87 > 0.80 threshold
@@ -71,7 +71,7 @@ public sealed class STHD007ATests
         int daysToExpiry = 10;
 
         // Act
-        var result = _exitMonitor.Evaluate(
+        STHD008A result = _exitMonitor.Evaluate(
             symbol, currentIV, entryIV, expectedPostEarningsIV, expectedCrush, daysToExpiry);
 
         // Assert: Actual crush = 0.05, ratio = 0.33 < 0.80 threshold
@@ -92,7 +92,7 @@ public sealed class STHD007ATests
         int daysToExpiry = 2;              // Only 2 days left
 
         // Act
-        var result = _exitMonitor.Evaluate(
+        STHD008A result = _exitMonitor.Evaluate(
             symbol, currentIV, entryIV, expectedPostEarningsIV, expectedCrush, daysToExpiry);
 
         // Assert: Should exit due to approaching expiry
@@ -112,7 +112,7 @@ public sealed class STHD007ATests
         int daysToExpiry = 5;
 
         // Act
-        var result = _exitMonitor.Evaluate(
+        STHD008A result = _exitMonitor.Evaluate(
             symbol, currentIV, entryIV, expectedPostEarningsIV, expectedCrush, daysToExpiry);
 
         // Assert: CapturedProfitPercent should be ~76% (80% × 0.95 concavity factor)
@@ -127,7 +127,7 @@ public sealed class STHD007ATests
     public void Evaluate_WithInvalidSymbol_ThrowsArgumentException(string? symbol)
     {
         // Act & Assert
-        var act = () => _exitMonitor.Evaluate(
+        Func<STHD008A> act = () => _exitMonitor.Evaluate(
             symbol!, 0.30, 0.45, 0.30, 0.15, 10);
         act.Should().Throw<ArgumentException>();
     }
@@ -141,7 +141,7 @@ public sealed class STHD007ATests
         double currentIV, double entryIV)
     {
         // Act & Assert
-        var act = () => _exitMonitor.Evaluate(
+        Func<STHD008A> act = () => _exitMonitor.Evaluate(
             "TEST", currentIV, entryIV, 0.30, 0.15, 10);
         act.Should().Throw<ArgumentOutOfRangeException>();
     }
@@ -150,7 +150,7 @@ public sealed class STHD007ATests
     public void Evaluate_ResultSummary_IsHumanReadable()
     {
         // Arrange
-        var result = _exitMonitor.Evaluate(
+        STHD008A result = _exitMonitor.Evaluate(
             "AAPL", 0.35, 0.45, 0.30, 0.15, 10);
 
         // Act
@@ -165,7 +165,7 @@ public sealed class STHD007ATests
     public void Evaluate_WithZeroExpectedCrush_HandlesGracefully()
     {
         // Arrange: Edge case where no crush expected
-        var result = _exitMonitor.Evaluate(
+        STHD008A result = _exitMonitor.Evaluate(
             "TEST", 0.30, 0.30, 0.30, 0.0, 10);
 
         // Assert: CrushRatio should be 0 (not NaN or Infinity)

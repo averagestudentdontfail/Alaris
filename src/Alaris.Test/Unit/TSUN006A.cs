@@ -64,10 +64,10 @@ public sealed class DTqc001ATests : IDisposable
     public void Validate_ValidSnapshot_ShouldPass()
     {
         // Arrange
-        var snapshot = CreateValidSnapshot();
+        MarketDataSnapshot snapshot = CreateValidSnapshot();
 
         // Act
-        var result = _validator.Validate(snapshot);
+        DataQualityResult result = _validator.Validate(snapshot);
 
         // Assert
         result.Status.Should().Be(ValidationStatus.Passed);
@@ -78,14 +78,14 @@ public sealed class DTqc001ATests : IDisposable
     {
         // Arrange - 20% change from previous close of 100
         // Use OTM call (strike 150) to avoid triggering ask-below-intrinsic check
-        var snapshot = CreateValidSnapshot(
+        MarketDataSnapshot snapshot = CreateValidSnapshot(
             spotPrice: 120m,
             optionStrike: 150m,  // OTM strike
             optionBid: 1.00m,
             optionAsk: 1.20m);
 
         // Act
-        var result = _validator.Validate(snapshot);
+        DataQualityResult result = _validator.Validate(snapshot);
 
         // Assert
         result.Status.Should().Be(ValidationStatus.PassedWithWarnings);
@@ -96,10 +96,10 @@ public sealed class DTqc001ATests : IDisposable
     public void Validate_ZeroBid_ShouldFail()
     {
         // Arrange
-        var snapshot = CreateValidSnapshot(optionBid: 0m);
+        MarketDataSnapshot snapshot = CreateValidSnapshot(optionBid: 0m);
 
         // Act
-        var result = _validator.Validate(snapshot);
+        DataQualityResult result = _validator.Validate(snapshot);
 
         // Assert
         result.Status.Should().Be(ValidationStatus.Failed);
@@ -110,10 +110,10 @@ public sealed class DTqc001ATests : IDisposable
     public void Validate_BidGreaterThanAsk_ShouldFail()
     {
         // Arrange
-        var snapshot = CreateValidSnapshot(optionBid: 5.00m, optionAsk: 4.00m);
+        MarketDataSnapshot snapshot = CreateValidSnapshot(optionBid: 5.00m, optionAsk: 4.00m);
 
         // Act
-        var result = _validator.Validate(snapshot);
+        DataQualityResult result = _validator.Validate(snapshot);
 
         // Assert
         result.Status.Should().Be(ValidationStatus.Failed);
@@ -124,10 +124,10 @@ public sealed class DTqc001ATests : IDisposable
     public void Validate_StaleData_ShouldFail()
     {
         // Arrange - 2 hours old data
-        var snapshot = CreateValidSnapshot(timestamp: DateTime.UtcNow.AddHours(-2));
+        MarketDataSnapshot snapshot = CreateValidSnapshot(timestamp: DateTime.UtcNow.AddHours(-2));
 
         // Act
-        var result = _validator.Validate(snapshot);
+        DataQualityResult result = _validator.Validate(snapshot);
 
         // Assert
         result.Status.Should().Be(ValidationStatus.Failed);
@@ -138,14 +138,14 @@ public sealed class DTqc001ATests : IDisposable
     public void Validate_AskBelowIntrinsic_ShouldFail()
     {
         // Arrange - Call with strike 100, spot 110, intrinsic = 10, ask = 5 (below intrinsic)
-        var snapshot = CreateValidSnapshot(
+        MarketDataSnapshot snapshot = CreateValidSnapshot(
             spotPrice: 110m,
             optionStrike: 100m,
             optionRight: OptionRight.Call,
             optionAsk: 5m);
 
         // Act
-        var result = _validator.Validate(snapshot);
+        DataQualityResult result = _validator.Validate(snapshot);
 
         // Assert
         result.Status.Should().Be(ValidationStatus.Failed);
@@ -170,7 +170,7 @@ public sealed class DTqc001ATests : IDisposable
             AverageVolume30Day = 5_000_000m,
             HistoricalBars = new List<PriceBar>
             {
-                new() { Symbol = "AAPL", Timestamp = DateTime.UtcNow.AddDays(-1), Open = 99, High = 101, Low = 98, Close = 100, Volume = 1000000 }
+                new PriceBar { Symbol = "AAPL", Timestamp = DateTime.UtcNow.AddDays(-1), Open = 99, High = 101, Low = 98, Close = 100, Volume = 1000000 }
             },
             OptionChain = new OptionChainSnapshot
             {
@@ -179,7 +179,7 @@ public sealed class DTqc001ATests : IDisposable
                 Timestamp = timestamp ?? DateTime.UtcNow,
                 Contracts = new List<OptionContract>
                 {
-                    new()
+                    new OptionContract
                     {
                         UnderlyingSymbol = "AAPL",
                         OptionSymbol = "AAPL250117C00100000",
@@ -249,10 +249,10 @@ public sealed class DTqc002AValidatorTests : IDisposable
     public void Validate_ValidSnapshot_ShouldPass()
     {
         // Arrange
-        var snapshot = CreateSnapshotWithPutCallParity();
+        MarketDataSnapshot snapshot = CreateSnapshotWithPutCallParity();
 
         // Act
-        var result = _validator.Validate(snapshot);
+        DataQualityResult result = _validator.Validate(snapshot);
 
         // Assert
         result.Status.Should().BeOneOf(ValidationStatus.Passed, ValidationStatus.PassedWithWarnings);
@@ -262,12 +262,12 @@ public sealed class DTqc002AValidatorTests : IDisposable
     public void Validate_PutCallParityViolation_ShouldWarn()
     {
         // Arrange - Violate parity: Call much higher relative to put
-        var snapshot = CreateSnapshotWithPutCallParity(
+        MarketDataSnapshot snapshot = CreateSnapshotWithPutCallParity(
             callBid: 10m, callAsk: 11m,
             putBid: 0.5m, putAsk: 0.6m);
 
         // Act
-        var result = _validator.Validate(snapshot);
+        DataQualityResult result = _validator.Validate(snapshot);
 
         // Assert
         result.Status.Should().Be(ValidationStatus.PassedWithWarnings);
@@ -278,7 +278,7 @@ public sealed class DTqc002AValidatorTests : IDisposable
         decimal callBid = 5.00m, decimal callAsk = 5.20m,
         decimal putBid = 4.80m, decimal putAsk = 5.00m)
     {
-        var expiration = DateTime.UtcNow.AddDays(30);
+        DateTime expiration = DateTime.UtcNow.AddDays(30);
         return new MarketDataSnapshot
         {
             Symbol = "AAPL",
@@ -295,7 +295,7 @@ public sealed class DTqc002AValidatorTests : IDisposable
                 Timestamp = DateTime.UtcNow,
                 Contracts = new List<OptionContract>
                 {
-                    new()
+                    new OptionContract
                     {
                         UnderlyingSymbol = "AAPL",
                         OptionSymbol = "AAPL250117C00100000",
@@ -307,7 +307,7 @@ public sealed class DTqc002AValidatorTests : IDisposable
                         ImpliedVolatility = 0.25m,
                         Timestamp = DateTime.UtcNow
                     },
-                    new()
+                    new OptionContract
                     {
                         UnderlyingSymbol = "AAPL",
                         OptionSymbol = "AAPL250117P00100000",
@@ -375,10 +375,10 @@ public sealed class DTqc003ATests : IDisposable
     public void Validate_ValidLiquidOption_ShouldPass()
     {
         // Arrange
-        var snapshot = CreateLiquidSnapshot();
+        MarketDataSnapshot snapshot = CreateLiquidSnapshot();
 
         // Act
-        var result = _validator.Validate(snapshot);
+        DataQualityResult result = _validator.Validate(snapshot);
 
         // Assert
         result.Status.Should().Be(ValidationStatus.Passed);
@@ -388,10 +388,10 @@ public sealed class DTqc003ATests : IDisposable
     public void Validate_ZeroAverageVolume_ShouldFail()
     {
         // Arrange
-        var snapshot = CreateLiquidSnapshot(averageVolume: 0m);
+        MarketDataSnapshot snapshot = CreateLiquidSnapshot(averageVolume: 0m);
 
         // Act
-        var result = _validator.Validate(snapshot);
+        DataQualityResult result = _validator.Validate(snapshot);
 
         // Assert
         result.Status.Should().Be(ValidationStatus.Failed);
@@ -402,10 +402,10 @@ public sealed class DTqc003ATests : IDisposable
     public void Validate_LiquidOptionWithNoVolume_ShouldWarn()
     {
         // Arrange - Liquid (high OI) but no volume
-        var snapshot = CreateLiquidSnapshot(optionOpenInterest: 500, optionVolume: 0);
+        MarketDataSnapshot snapshot = CreateLiquidSnapshot(optionOpenInterest: 500, optionVolume: 0);
 
         // Act
-        var result = _validator.Validate(snapshot);
+        DataQualityResult result = _validator.Validate(snapshot);
 
         // Assert
         result.Status.Should().Be(ValidationStatus.PassedWithWarnings);
@@ -416,10 +416,10 @@ public sealed class DTqc003ATests : IDisposable
     public void Validate_HighVolumeToOiRatio_ShouldWarn()
     {
         // Arrange - Volume 5x OI
-        var snapshot = CreateLiquidSnapshot(optionOpenInterest: 100, optionVolume: 500);
+        MarketDataSnapshot snapshot = CreateLiquidSnapshot(optionOpenInterest: 100, optionVolume: 500);
 
         // Act
-        var result = _validator.Validate(snapshot);
+        DataQualityResult result = _validator.Validate(snapshot);
 
         // Assert
         result.Status.Should().Be(ValidationStatus.PassedWithWarnings);
@@ -430,12 +430,12 @@ public sealed class DTqc003ATests : IDisposable
     public void Validate_VolumeSpike_ShouldWarn()
     {
         // Arrange - 15x average volume
-        var snapshot = CreateLiquidSnapshot(
+        MarketDataSnapshot snapshot = CreateLiquidSnapshot(
             averageVolume: 1_000_000m,
             underlyingVolume: 15_000_000);
 
         // Act
-        var result = _validator.Validate(snapshot);
+        DataQualityResult result = _validator.Validate(snapshot);
 
         // Assert
         result.Status.Should().Be(ValidationStatus.PassedWithWarnings);
@@ -458,7 +458,7 @@ public sealed class DTqc003ATests : IDisposable
             AverageVolume30Day = averageVolume,
             HistoricalBars = new List<PriceBar>
             {
-                new() { Symbol = "AAPL", Timestamp = DateTime.UtcNow.AddDays(-1), Open = 99, High = 101, Low = 98, Close = 100, Volume = underlyingVolume }
+                new PriceBar { Symbol = "AAPL", Timestamp = DateTime.UtcNow.AddDays(-1), Open = 99, High = 101, Low = 98, Close = 100, Volume = underlyingVolume }
             },
             OptionChain = new OptionChainSnapshot
             {
@@ -467,7 +467,7 @@ public sealed class DTqc003ATests : IDisposable
                 Timestamp = DateTime.UtcNow,
                 Contracts = new List<OptionContract>
                 {
-                    new()
+                    new OptionContract
                     {
                         UnderlyingSymbol = "AAPL",
                         OptionSymbol = "AAPL250117C00100000",
@@ -538,10 +538,10 @@ public sealed class DTqc004ATests : IDisposable
     public void Validate_NoUpcomingEarnings_ShouldPass()
     {
         // Arrange
-        var snapshot = CreateSnapshotWithoutEarnings();
+        MarketDataSnapshot snapshot = CreateSnapshotWithoutEarnings();
 
         // Act
-        var result = _validator.Validate(snapshot);
+        DataQualityResult result = _validator.Validate(snapshot);
 
         // Assert
         result.Status.Should().Be(ValidationStatus.Passed);
@@ -552,10 +552,10 @@ public sealed class DTqc004ATests : IDisposable
     public void Validate_ValidEarningsDate_ShouldPass()
     {
         // Arrange
-        var snapshot = CreateSnapshotWithEarnings(daysAhead: 30);
+        MarketDataSnapshot snapshot = CreateSnapshotWithEarnings(daysAhead: 30);
 
         // Act
-        var result = _validator.Validate(snapshot);
+        DataQualityResult result = _validator.Validate(snapshot);
 
         // Assert
         result.Status.Should().BeOneOf(ValidationStatus.Passed, ValidationStatus.PassedWithWarnings);
@@ -565,10 +565,10 @@ public sealed class DTqc004ATests : IDisposable
     public void Validate_EarningsDateInPast_ShouldFail()
     {
         // Arrange
-        var snapshot = CreateSnapshotWithEarnings(daysAhead: -5);
+        MarketDataSnapshot snapshot = CreateSnapshotWithEarnings(daysAhead: -5);
 
         // Act
-        var result = _validator.Validate(snapshot);
+        DataQualityResult result = _validator.Validate(snapshot);
 
         // Assert
         result.Status.Should().Be(ValidationStatus.Failed);
@@ -579,10 +579,10 @@ public sealed class DTqc004ATests : IDisposable
     public void Validate_EarningsMoreThan90DaysAhead_ShouldWarn()
     {
         // Arrange
-        var snapshot = CreateSnapshotWithEarnings(daysAhead: 120);
+        MarketDataSnapshot snapshot = CreateSnapshotWithEarnings(daysAhead: 120);
 
         // Act
-        var result = _validator.Validate(snapshot);
+        DataQualityResult result = _validator.Validate(snapshot);
 
         // Assert
         result.Status.Should().Be(ValidationStatus.PassedWithWarnings);
@@ -593,10 +593,10 @@ public sealed class DTqc004ATests : IDisposable
     public void Validate_StaleEarningsData_ShouldWarn()
     {
         // Arrange - 10 days old earnings data
-        var snapshot = CreateSnapshotWithEarnings(daysAhead: 30, fetchedDaysAgo: 10);
+        MarketDataSnapshot snapshot = CreateSnapshotWithEarnings(daysAhead: 30, fetchedDaysAgo: 10);
 
         // Act
-        var result = _validator.Validate(snapshot);
+        DataQualityResult result = _validator.Validate(snapshot);
 
         // Assert
         result.Status.Should().Be(ValidationStatus.PassedWithWarnings);
@@ -656,7 +656,7 @@ public sealed class DTqc004ATests : IDisposable
             },
             HistoricalEarnings = new List<EarningsEvent>
             {
-                new()
+                new EarningsEvent
                 {
                     Symbol = "AAPL",
                     Date = DateTime.UtcNow.Date.AddDays(-90),

@@ -38,7 +38,7 @@ public sealed class STBR001ATests : IDisposable
     public void DetermineRegime_ReturnsCorrectRegime(double rate, double dividend, bool isCall, PricingRegime expected)
     {
         // Act
-        var regime = STBR001A.DetermineRegime(rate, dividend, isCall);
+        PricingRegime regime = STBR001A.DetermineRegime(rate, dividend, isCall);
 
         // Assert
         regime.Should().Be(expected);
@@ -48,12 +48,12 @@ public sealed class STBR001ATests : IDisposable
     public void DetermineRegime_PositiveRates_Standard()
     {
         // Arrange
-        var r = 0.05;
-        var q = 0.02;
-        var isCall = false; // Put option
+        double r = 0.05;
+        double q = 0.02;
+        bool isCall = false; // Put option
 
         // Act
-        var regime = STBR001A.DetermineRegime(r, q, isCall);
+        PricingRegime regime = STBR001A.DetermineRegime(r, q, isCall);
 
         // Assert
         regime.Should().Be(PricingRegime.PositiveRates);
@@ -63,12 +63,12 @@ public sealed class STBR001ATests : IDisposable
     public void DetermineRegime_NegativeRatesDoubleBoundary()
     {
         // Arrange: Healy (2021) parameters (put option)
-        var r = -0.005;
-        var q = -0.010;
-        var isCall = false; // Put option
+        double r = -0.005;
+        double q = -0.010;
+        bool isCall = false; // Put option
 
         // Act
-        var regime = STBR001A.DetermineRegime(r, q, isCall);
+        PricingRegime regime = STBR001A.DetermineRegime(r, q, isCall);
 
         // Assert
         regime.Should().Be(PricingRegime.DoubleBoundary);
@@ -80,10 +80,10 @@ public sealed class STBR001ATests : IDisposable
     public async Task PriceOption_PositiveRates_CallOption()
     {
         // Arrange
-        var parameters = CreateStandardCallParameters();
+        STDT003A parameters = CreateStandardCallParameters();
 
         // Act
-        var result = await _engine.PriceOption(parameters);
+        OptionPricing result = await _engine.PriceOption(parameters);
 
         // Assert
         result.Should().NotBeNull();
@@ -99,10 +99,10 @@ public sealed class STBR001ATests : IDisposable
     public async Task PriceOption_PositiveRates_PutOption()
     {
         // Arrange
-        var parameters = CreateStandardPutParameters();
+        STDT003A parameters = CreateStandardPutParameters();
 
         // Act
-        var result = await _engine.PriceOption(parameters);
+        OptionPricing result = await _engine.PriceOption(parameters);
 
         // Assert
         result.Should().NotBeNull();
@@ -117,11 +117,11 @@ public sealed class STBR001ATests : IDisposable
     public async Task PriceOption_PositiveRates_ATM_HasHighestGamma()
     {
         // Arrange
-        var parameters = CreateStandardCallParameters();
+        STDT003A parameters = CreateStandardCallParameters();
         parameters.Strike = parameters.UnderlyingPrice; // ATM
 
         // Act
-        var result = await _engine.PriceOption(parameters);
+        OptionPricing result = await _engine.PriceOption(parameters);
 
         // Assert
         result.Gamma.Should().BeGreaterThan(0.01); // ATM options have highest gamma
@@ -133,10 +133,10 @@ public sealed class STBR001ATests : IDisposable
     public async Task PriceOption_NegativeRates_DoubleBoundary_Put()
     {
         // Arrange: Healy (2021) benchmark parameters
-        var parameters = CreateHealyPutParameters();
+        STDT003A parameters = CreateHealyPutParameters();
 
         // Act
-        var result = await _engine.PriceOption(parameters);
+        OptionPricing result = await _engine.PriceOption(parameters);
 
         // Assert
         result.Should().NotBeNull();
@@ -150,10 +150,10 @@ public sealed class STBR001ATests : IDisposable
     public async Task PriceOption_NegativeRates_DoubleBoundary_Call()
     {
         // Arrange: Negative rates with double boundary
-        var parameters = CreateHealyCallParameters();
+        STDT003A parameters = CreateHealyCallParameters();
 
         // Act
-        var result = await _engine.PriceOption(parameters);
+        OptionPricing result = await _engine.PriceOption(parameters);
 
         // Assert
         result.Should().NotBeNull();
@@ -165,19 +165,19 @@ public sealed class STBR001ATests : IDisposable
     public async Task PriceOption_NegativeRates_ConsistentAcrossRegimes()
     {
         // Arrange: Test at rate boundary (r = 0)
-        var paramsAtBoundary = CreateStandardCallParameters();
+        STDT003A paramsAtBoundary = CreateStandardCallParameters();
         paramsAtBoundary.RiskFreeRate = 0.0001; // Slightly positive
 
-        var paramsSlightlyNegative = CreateStandardCallParameters();
+        STDT003A paramsSlightlyNegative = CreateStandardCallParameters();
         paramsSlightlyNegative.RiskFreeRate = -0.0001;
         paramsSlightlyNegative.DividendYield = 0.02; // q > r, so single boundary
 
         // Act
-        var resultPositive = await _engine.PriceOption(paramsAtBoundary);
-        var resultNegative = await _engine.PriceOption(paramsSlightlyNegative);
+        OptionPricing resultPositive = await _engine.PriceOption(paramsAtBoundary);
+        OptionPricing resultNegative = await _engine.PriceOption(paramsSlightlyNegative);
 
         // Assert: Prices should be very close at regime boundary
-        var priceDifference = System.Math.Abs(resultPositive.Price - resultNegative.Price);
+        double priceDifference = System.Math.Abs(resultPositive.Price - resultNegative.Price);
         priceDifference.Should().BeLessThan(0.5); // Within $0.50
     }
 
@@ -187,10 +187,10 @@ public sealed class STBR001ATests : IDisposable
     public async Task PriceSTPR001A_PositiveRates_ValidSpread()
     {
         // Arrange
-        var parameters = CreateSTPR001AParameters();
+        STPR001AParameters parameters = CreateSTPR001AParameters();
 
         // Act
-        var result = await _engine.PriceSTPR001A(parameters);
+        STPR001APricing result = await _engine.PriceSTPR001A(parameters);
 
         // Assert
         result.Should().NotBeNull();
@@ -205,10 +205,10 @@ public sealed class STBR001ATests : IDisposable
     public async Task PriceSTPR001A_PositiveRates_CorrectGreeks()
     {
         // Arrange
-        var parameters = CreateSTPR001AParameters();
+        STPR001AParameters parameters = CreateSTPR001AParameters();
 
         // Act
-        var result = await _engine.PriceSTPR001A(parameters);
+        STPR001APricing result = await _engine.PriceSTPR001A(parameters);
 
         // Assert
         result.SpreadDelta.Should().BeInRange(-0.2, 0.2); // Near-neutral delta
@@ -221,12 +221,12 @@ public sealed class STBR001ATests : IDisposable
     public async Task PriceSTPR001A_NegativeRates_ValidSpread()
     {
         // Arrange
-        var parameters = CreateSTPR001AParameters();
+        STPR001AParameters parameters = CreateSTPR001AParameters();
         parameters.RiskFreeRate = -0.005;
         parameters.DividendYield = -0.010; // Double boundary regime
 
         // Act
-        var result = await _engine.PriceSTPR001A(parameters);
+        STPR001APricing result = await _engine.PriceSTPR001A(parameters);
 
         // Assert
         result.Should().NotBeNull();
@@ -239,10 +239,10 @@ public sealed class STBR001ATests : IDisposable
     public async Task PriceSTPR001A_Validation_Works()
     {
         // Arrange
-        var parameters = CreateSTPR001AParameters();
+        STPR001AParameters parameters = CreateSTPR001AParameters();
 
         // Act
-        var result = await _engine.PriceSTPR001A(parameters);
+        STPR001APricing result = await _engine.PriceSTPR001A(parameters);
 
         // Assert: Should not throw when validating
         result.Invoking(r => r.Validate()).Should().NotThrow();
@@ -254,19 +254,19 @@ public sealed class STBR001ATests : IDisposable
     public async Task CalculateImpliedVolatility_ConvergesCorrectly()
     {
         // Arrange
-        var parameters = CreateStandardCallParameters();
-        var targetIV = 0.25;
+        STDT003A parameters = CreateStandardCallParameters();
+        double targetIV = 0.25;
         parameters.ImpliedVolatility = targetIV;
 
         // Price the option to get target price
-        var pricing = await _engine.PriceOption(parameters);
-        var targetPrice = pricing.Price;
+        OptionPricing pricing = await _engine.PriceOption(parameters);
+        double targetPrice = pricing.Price;
 
         // Remove IV from parameters
         parameters.ImpliedVolatility = 0.0;
 
         // Act
-        var calculatedIV = await _engine.CalculateImpliedVolatility(targetPrice, parameters);
+        double calculatedIV = await _engine.CalculateImpliedVolatility(targetPrice, parameters);
 
         // Assert
         calculatedIV.Should().BeApproximately(targetIV, 0.01); // Within 1% vol
@@ -276,8 +276,8 @@ public sealed class STBR001ATests : IDisposable
     public async Task CalculateImpliedVolatility_InvalidPrice_Throws()
     {
         // Arrange
-        var parameters = CreateStandardCallParameters();
-        var invalidPrice = -1.0;
+        STDT003A parameters = CreateStandardCallParameters();
+        double invalidPrice = -1.0;
 
         // Act & Assert
         await _engine.Invoking(e => e.CalculateImpliedVolatility(invalidPrice, parameters))
@@ -288,8 +288,8 @@ public sealed class STBR001ATests : IDisposable
     public async Task CalculateImpliedVolatility_ZeroPrice_Throws()
     {
         // Arrange
-        var parameters = CreateStandardCallParameters();
-        var zeroPrice = 0.0;
+        STDT003A parameters = CreateStandardCallParameters();
+        double zeroPrice = 0.0;
 
         // Act & Assert
         await _engine.Invoking(e => e.CalculateImpliedVolatility(zeroPrice, parameters))
@@ -310,7 +310,7 @@ public sealed class STBR001ATests : IDisposable
     public async Task PriceOption_InvalidParameters_Throws()
     {
         // Arrange
-        var parameters = CreateStandardCallParameters();
+        STDT003A parameters = CreateStandardCallParameters();
         parameters.UnderlyingPrice = -100; // Invalid
 
         // Act & Assert
@@ -330,7 +330,7 @@ public sealed class STBR001ATests : IDisposable
     public async Task PriceSTPR001A_FrontAfterBack_Throws()
     {
         // Arrange
-        var parameters = CreateSTPR001AParameters();
+        STPR001AParameters parameters = CreateSTPR001AParameters();
         // Swap expiries (invalid)
         (parameters.FrontExpiry, parameters.BackExpiry) = (parameters.BackExpiry, parameters.FrontExpiry);
 

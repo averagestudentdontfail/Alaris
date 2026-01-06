@@ -45,7 +45,7 @@ public sealed class STRK003ATests
         double arrivalRate, double holdingPeriod)
     {
         // Act & Assert
-        var act = () => _reserveManager.CalculateExpectedConcurrent(arrivalRate, holdingPeriod);
+        Func<double> act = () => _reserveManager.CalculateExpectedConcurrent(arrivalRate, holdingPeriod);
         act.Should().Throw<ArgumentOutOfRangeException>();
     }
 
@@ -53,7 +53,7 @@ public sealed class STRK003ATests
     public void CalculateExpectedConcurrentFromHistory_WithValidTrades_ReturnsExpectedValue()
     {
         // Arrange: 50 trades over ~125 days with avg holding of 5 days
-        var trades = GenerateHistoricalTrades(50, 5);
+        List<Trade> trades = GenerateHistoricalTrades(50, 5);
 
         // Act
         double expected = _reserveManager.CalculateExpectedConcurrentFromHistory(trades);
@@ -66,10 +66,10 @@ public sealed class STRK003ATests
     public void CalculateExpectedConcurrentFromHistory_WithInsufficientTrades_ThrowsArgumentException()
     {
         // Arrange: Only 5 trades (< 10 minimum)
-        var trades = GenerateHistoricalTrades(5, 5);
+        List<Trade> trades = GenerateHistoricalTrades(5, 5);
 
         // Act & Assert
-        var act = () => _reserveManager.CalculateExpectedConcurrentFromHistory(trades);
+        Func<double> act = () => _reserveManager.CalculateExpectedConcurrentFromHistory(trades);
         act.Should().Throw<ArgumentException>()
             .WithMessage("*at least 10 trades*");
     }
@@ -78,11 +78,11 @@ public sealed class STRK003ATests
     public void CalculateWithReserve_WhenUtilisationHigh_RejectsConsiderSignals()
     {
         // Arrange
-        var trades = GenerateHistoricalTrades(30, 5);
-        var signal = CreateSignal("AAPL", STCR004AStrength.Consider);
+        List<Trade> trades = GenerateHistoricalTrades(30, 5);
+        STCR004A signal = CreateSignal("AAPL", STCR004AStrength.Consider);
 
         // Act: 8 open positions with expected 8 = 100% utilisation
-        var position = _reserveManager.CalculateWithReserve(
+        STRK002A position = _reserveManager.CalculateWithReserve(
             portfolioValue: 100000,
             historicalTrades: trades,
             spreadCost: 2.0,
@@ -100,11 +100,11 @@ public sealed class STRK003ATests
     public void CalculateWithReserve_WhenUtilisationLow_AcceptsConsiderSignals()
     {
         // Arrange
-        var trades = GenerateHistoricalTrades(30, 5);
-        var signal = CreateSignal("AAPL", STCR004AStrength.Consider);
+        List<Trade> trades = GenerateHistoricalTrades(30, 5);
+        STCR004A signal = CreateSignal("AAPL", STCR004AStrength.Consider);
 
         // Act: 2 open positions with expected 10 = 20% utilisation
-        var position = _reserveManager.CalculateWithReserve(
+        STRK002A position = _reserveManager.CalculateWithReserve(
             portfolioValue: 100000,
             historicalTrades: trades,
             spreadCost: 2.0,
@@ -122,11 +122,11 @@ public sealed class STRK003ATests
     public void CalculateWithReserve_AppliesReserveBufferToAllocation()
     {
         // Arrange
-        var trades = GenerateHistoricalTrades(30, 5);
-        var signal = CreateSignal("AAPL", STCR004AStrength.Recommended);
+        List<Trade> trades = GenerateHistoricalTrades(30, 5);
+        STCR004A signal = CreateSignal("AAPL", STCR004AStrength.Recommended);
 
         // Act: Calculate with different buffer values
-        var position1 = _reserveManager.CalculateWithReserve(
+        STRK002A position1 = _reserveManager.CalculateWithReserve(
             portfolioValue: 100000,
             historicalTrades: trades,
             spreadCost: 2.0,
@@ -136,7 +136,7 @@ public sealed class STRK003ATests
             reserveBuffer: 1.0  // No buffer
         );
 
-        var position2 = _reserveManager.CalculateWithReserve(
+        STRK002A position2 = _reserveManager.CalculateWithReserve(
             portfolioValue: 100000,
             historicalTrades: trades,
             spreadCost: 2.0,
@@ -156,11 +156,11 @@ public sealed class STRK003ATests
     public void CalculateWithReserve_WithInvalidPortfolio_ThrowsArgumentOutOfRangeException(double portfolio)
     {
         // Arrange
-        var trades = GenerateHistoricalTrades(30, 5);
-        var signal = CreateSignal("AAPL", STCR004AStrength.Recommended);
+        List<Trade> trades = GenerateHistoricalTrades(30, 5);
+        STCR004A signal = CreateSignal("AAPL", STCR004AStrength.Recommended);
 
         // Act & Assert
-        var act = () => _reserveManager.CalculateWithReserve(
+        Func<STRK002A> act = () => _reserveManager.CalculateWithReserve(
             portfolioValue: portfolio,
             historicalTrades: trades,
             spreadCost: 2.0,
@@ -174,13 +174,13 @@ public sealed class STRK003ATests
 
     private static List<Trade> GenerateHistoricalTrades(int count, int avgHoldingDays)
     {
-        var trades = new List<Trade>();
-        var baseDate = DateTime.Today.AddDays(-count * 2.5); // Space out entries
+        List<Trade> trades = new List<Trade>();
+        DateTime baseDate = DateTime.Today.AddDays(-count * 2.5); // Space out entries
 
         for (int i = 0; i < count; i++)
         {
-            var entryDate = baseDate.AddDays(i * 2.5);
-            var holdingPeriod = avgHoldingDays + (i % 3 - 1); // Vary ±1 day
+            DateTime entryDate = baseDate.AddDays(i * 2.5);
+            int holdingPeriod = avgHoldingDays + (i % 3 - 1); // Vary ±1 day
 
             trades.Add(new Trade
             {

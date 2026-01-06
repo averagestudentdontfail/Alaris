@@ -13,8 +13,8 @@ public class CRTM007ATests
     [Fact]
     public void Actual365Fixed_OneYear_ReturnsOne()
     {
-        var start = new CRTM005A(1, CRTM005AMonth.January, 2024);
-        var end = new CRTM005A(1, CRTM005AMonth.January, 2025);
+        CRTM005A start = new CRTM005A(1, CRTM005AMonth.January, 2024);
+        CRTM005A end = new CRTM005A(1, CRTM005AMonth.January, 2025);
         
         double yearFraction = DayCounters.Actual365Fixed.YearFraction(start, end);
         
@@ -25,8 +25,8 @@ public class CRTM007ATests
     [Fact]
     public void Actual365Fixed_HalfYear_ReturnsHalf()
     {
-        var start = new CRTM005A(1, CRTM005AMonth.January, 2025);
-        var end = new CRTM005A(2, CRTM005AMonth.July, 2025);
+        CRTM005A start = new CRTM005A(1, CRTM005AMonth.January, 2025);
+        CRTM005A end = new CRTM005A(2, CRTM005AMonth.July, 2025);
         
         double yearFraction = DayCounters.Actual365Fixed.YearFraction(start, end);
         
@@ -37,7 +37,7 @@ public class CRTM007ATests
     [Fact]
     public void Actual365Fixed_SameDate_ReturnsZero()
     {
-        var date = new CRTM005A(15, CRTM005AMonth.June, 2024);
+        CRTM005A date = new CRTM005A(15, CRTM005AMonth.June, 2024);
         
         double yearFraction = DayCounters.Actual365Fixed.YearFraction(date, date);
         
@@ -47,8 +47,8 @@ public class CRTM007ATests
     [Fact]
     public void Actual365Fixed_DayCount_ReturnsActualDays()
     {
-        var start = new CRTM005A(1, CRTM005AMonth.January, 2024);
-        var end = new CRTM005A(1, CRTM005AMonth.February, 2024);
+        CRTM005A start = new CRTM005A(1, CRTM005AMonth.January, 2024);
+        CRTM005A end = new CRTM005A(1, CRTM005AMonth.February, 2024);
         
         int days = DayCounters.Actual365Fixed.DayCount(start, end);
         
@@ -62,8 +62,8 @@ public class CRTM007ATests
     [Fact]
     public void Actual360_OneYear_ReturnsMoreThanOne()
     {
-        var start = new CRTM005A(1, CRTM005AMonth.January, 2025);
-        var end = new CRTM005A(1, CRTM005AMonth.January, 2026);
+        CRTM005A start = new CRTM005A(1, CRTM005AMonth.January, 2025);
+        CRTM005A end = new CRTM005A(1, CRTM005AMonth.January, 2026);
         
         double yearFraction = DayCounters.Actual360.YearFraction(start, end);
         
@@ -74,8 +74,8 @@ public class CRTM007ATests
     [Fact]
     public void Actual360_30Days_ReturnsCorrect()
     {
-        var start = new CRTM005A(1, CRTM005AMonth.June, 2024);
-        var end = new CRTM005A(1, CRTM005AMonth.July, 2024);
+        CRTM005A start = new CRTM005A(1, CRTM005AMonth.June, 2024);
+        CRTM005A end = new CRTM005A(1, CRTM005AMonth.July, 2024);
         
         double yearFraction = DayCounters.Actual360.YearFraction(start, end);
         
@@ -90,8 +90,8 @@ public class CRTM007ATests
     [Fact]
     public void Thirty360_OneMonth_ReturnsThirtyDays()
     {
-        var start = new CRTM005A(15, CRTM005AMonth.June, 2024);
-        var end = new CRTM005A(15, CRTM005AMonth.July, 2024);
+        CRTM005A start = new CRTM005A(15, CRTM005AMonth.June, 2024);
+        CRTM005A end = new CRTM005A(15, CRTM005AMonth.July, 2024);
         
         double yearFraction = DayCounters.Thirty360.YearFraction(start, end);
         
@@ -102,8 +102,8 @@ public class CRTM007ATests
     [Fact]
     public void Thirty360_OneYear_ReturnsOne()
     {
-        var start = new CRTM005A(1, CRTM005AMonth.January, 2024);
-        var end = new CRTM005A(1, CRTM005AMonth.January, 2025);
+        CRTM005A start = new CRTM005A(1, CRTM005AMonth.January, 2024);
+        CRTM005A end = new CRTM005A(1, CRTM005AMonth.January, 2025);
         
         double yearFraction = DayCounters.Thirty360.YearFraction(start, end);
         
@@ -115,8 +115,8 @@ public class CRTM007ATests
     public void Thirty360_Feb28ToMar1_HandlesCorrectly()
     {
         // Test the 30/360 adjustment at end of February (non-leap)
-        var start = new CRTM005A(28, CRTM005AMonth.February, 2025);
-        var end = new CRTM005A(1, CRTM005AMonth.March, 2025);
+        CRTM005A start = new CRTM005A(28, CRTM005AMonth.February, 2025);
+        CRTM005A end = new CRTM005A(1, CRTM005AMonth.March, 2025);
         
         int days = DayCounters.Thirty360.DayCount(start, end);
         

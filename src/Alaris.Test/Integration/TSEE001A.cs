@@ -185,7 +185,7 @@ public sealed class TSEE001A
         // ═══════════════════════════════════════════════════════════
         // ARRANGE: Signal with some missing data fields
         // ═══════════════════════════════════════════════════════════
-        STCR004A incompleteSignal = new()
+        STCR004A incompleteSignal = new STCR004A()
         {
             Symbol = "TEST",
             ImpliedVolatility30 = 0.30,
@@ -221,19 +221,33 @@ public sealed class TSEE001A
         // ARRANGE: Multiple symbols
         // ═══════════════════════════════════════════════════════════
         string[] symbols = ["AAPL", "MSFT", "GOOGL", "AMZN", "META"];
-        List<STCR004A> signals = symbols.Select(s => CreateTestSignal(
-            symbol: s,
-            impliedVol30: 0.30 + Random.Shared.NextDouble() * 0.10,
-            realizedVol30: 0.20 + Random.Shared.NextDouble() * 0.05,
-            termSlope: 0.01 + Random.Shared.NextDouble() * 0.02
-        )).ToList();
+        List<STCR004A> signals = new List<STCR004A>(symbols.Length);
+        for (int i = 0; i < symbols.Length; i++)
+        {
+            string symbol = symbols[i];
+            double impliedVol30 = 0.30 + (Random.Shared.NextDouble() * 0.10);
+            double realizedVol30 = 0.20 + (Random.Shared.NextDouble() * 0.05);
+            double termSlope = 0.01 + (Random.Shared.NextDouble() * 0.02);
+
+            signals.Add(CreateTestSignal(
+                symbol: symbol,
+                impliedVol30: impliedVol30,
+                realizedVol30: realizedVol30,
+                termSlope: termSlope));
+        }
 
         // ═══════════════════════════════════════════════════════════
         // ACT: Filter to valid signals
         // ═══════════════════════════════════════════════════════════
-        List<STCR004A> validSignals = signals
-            .Where(s => s.IVRVRatio >= 1.25)
-            .ToList();
+        List<STCR004A> validSignals = new List<STCR004A>();
+        for (int i = 0; i < signals.Count; i++)
+        {
+            STCR004A signal = signals[i];
+            if (signal.IVRVRatio >= 1.25)
+            {
+                validSignals.Add(signal);
+            }
+        }
 
         // ═══════════════════════════════════════════════════════════
         // ASSERT: Batch processing works
