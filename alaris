@@ -49,9 +49,21 @@ check_prerequisites() {
 ensure_built() {
     local dll_path="${PROJECT_PATH}/bin/${BUILD_CONFIG}/net10.0/Alaris.Host.dll"
     local csproj_path="${PROJECT_PATH}/Alaris.Host.csproj"
+    local build_needed=0
     
-    # Check if rebuild needed
     if [[ ! -f "$dll_path" ]] || [[ "$csproj_path" -nt "$dll_path" ]]; then
+        build_needed=1
+    fi
+
+    if [[ $build_needed -eq 0 ]]; then
+        if find "$PROJECT_PATH" -type f \
+            \( -name "*.cs" -o -name "*.csproj" -o -name "*.resx" \) \
+            -newer "$dll_path" -print -quit | grep -q .; then
+            build_needed=1
+        fi
+    fi
+
+    if [[ $build_needed -eq 1 ]]; then
         print_color "$YELLOW" "Building Alaris.Host..."
         if dotnet build "$PROJECT_PATH" --configuration "$BUILD_CONFIG" --verbosity quiet; then
             print_color "$GREEN" "Build successful."
