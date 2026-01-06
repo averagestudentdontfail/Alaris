@@ -957,6 +957,9 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
     {
         string[] paths = new[] 
         { 
+            "lib/Alaris.Lean/Launcher/QuantConnect.Lean.Launcher.csproj",
+            "../lib/Alaris.Lean/Launcher/QuantConnect.Lean.Launcher.csproj",
+            "../../lib/Alaris.Lean/Launcher/QuantConnect.Lean.Launcher.csproj",
             "Alaris.Lean/Launcher/QuantConnect.Lean.Launcher.csproj",
             "../Alaris.Lean/Launcher/QuantConnect.Lean.Launcher.csproj",
             "../../Alaris.Lean/Launcher/QuantConnect.Lean.Launcher.csproj"

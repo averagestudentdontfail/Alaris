@@ -370,6 +370,9 @@ public sealed class APcm003A : Command<DataSettings>
     {
         string[] paths = new[]
         {
+            "lib/Alaris.Lean/Data",
+            "../lib/Alaris.Lean/Data",
+            "../../lib/Alaris.Lean/Data",
             "Alaris.Lean/Data",
             "../Alaris.Lean/Data",
             "../../Alaris.Lean/Data"
@@ -395,8 +398,16 @@ public sealed class APcm003A : Command<DataSettings>
         }
 
         // Create default data path
-        string defaultPath = "Alaris.Lean/Data";
-        string[] paths = new[] { defaultPath, "../Alaris.Lean/Data", "../../Alaris.Lean/Data" };
+        string defaultPath = "lib/Alaris.Lean/Data";
+        string[] paths = new[] 
+        { 
+            defaultPath, 
+            "../lib/Alaris.Lean/Data", 
+            "../../lib/Alaris.Lean/Data",
+            "Alaris.Lean/Data",
+            "../Alaris.Lean/Data", 
+            "../../Alaris.Lean/Data"
+        };
 
         foreach (string path in paths)
         {

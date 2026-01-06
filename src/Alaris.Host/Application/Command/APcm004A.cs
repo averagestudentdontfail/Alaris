@@ -395,7 +395,15 @@ public sealed class APcm004A : Command<UniverseSettings>
 
     private static string? FindDataPath()
     {
-        string[] paths = new[] { "Alaris.Lean/Data", "../Alaris.Lean/Data", "../../Alaris.Lean/Data" };
+        string[] paths = new[] 
+        { 
+            "lib/Alaris.Lean/Data", 
+            "../lib/Alaris.Lean/Data", 
+            "../../lib/Alaris.Lean/Data",
+            "Alaris.Lean/Data", 
+            "../Alaris.Lean/Data", 
+            "../../Alaris.Lean/Data" 
+        };
         foreach (string path in paths)
         {
             if (System.IO.Directory.Exists(path))
@@ -414,7 +422,15 @@ public sealed class APcm004A : Command<UniverseSettings>
             return existing;
         }
 
-        string[] paths = new[] { "Alaris.Lean/Data", "../Alaris.Lean/Data", "../../Alaris.Lean/Data" };
+        string[] paths = new[] 
+        { 
+            "lib/Alaris.Lean/Data", 
+            "../lib/Alaris.Lean/Data", 
+            "../../lib/Alaris.Lean/Data",
+            "Alaris.Lean/Data", 
+            "../Alaris.Lean/Data", 
+            "../../Alaris.Lean/Data" 
+        };
         foreach (string path in paths)
         {
             string? parentDir = System.IO.Path.GetDirectoryName(path);
@@ -424,7 +440,7 @@ public sealed class APcm004A : Command<UniverseSettings>
                 return System.IO.Path.GetFullPath(path);
             }
         }
-        return System.IO.Path.GetFullPath("Alaris.Lean/Data");
+        return System.IO.Path.GetFullPath("lib/Alaris.Lean/Data");
     }
 
     private static string? GetPolygonApiKey()

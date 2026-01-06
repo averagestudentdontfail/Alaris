@@ -193,6 +193,9 @@ public sealed class APcm001A : Command<RunSettings>
     {
         string[] paths = new[]
         {
+            "lib/Alaris.Lean/Launcher/QuantConnect.Lean.Launcher.csproj",
+            "../lib/Alaris.Lean/Launcher/QuantConnect.Lean.Launcher.csproj",
+            "../../lib/Alaris.Lean/Launcher/QuantConnect.Lean.Launcher.csproj",
             "Alaris.Lean/Launcher/QuantConnect.Lean.Launcher.csproj",
             "../Alaris.Lean/Launcher/QuantConnect.Lean.Launcher.csproj",
             "../../Alaris.Lean/Launcher/QuantConnect.Lean.Launcher.csproj"

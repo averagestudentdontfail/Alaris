@@ -33,10 +33,63 @@ public sealed class PolygonOptions
     public int TimeoutSeconds { get; init; } = 30;
 
     /// <summary>
-    /// Maximum concurrent requests (default: 5 for free tier, higher for paid).
+    /// Maximum concurrent requests (default: 25, tune to your plan).
     /// </summary>
     [Range(1, 100)]
-    public int MaxConcurrentRequests { get; init; } = 5;
+    public int MaxConcurrentRequests { get; init; } = 25;
+
+    /// <summary>
+    /// Target request rate per second for Polygon API calls.
+    /// </summary>
+    [Range(1, 500)]
+    public int RequestsPerSecond { get; init; } = 100;
+
+    /// <summary>
+    /// Maximum number of option contracts to fetch per chain.
+    /// </summary>
+    [Range(1, 500)]
+    public int OptionsContractLimit { get; init; } = 20;
+
+    /// <summary>
+    /// Number of near-ATM contracts to fetch per expiry per right (call/put).
+    /// </summary>
+    [Range(1, 50)]
+    public int OptionsContractsPerExpiryRight { get; init; } = 2;
+
+    /// <summary>
+    /// Maximum number of expirations to consider when sampling a chain.
+    /// </summary>
+    [Range(1, 24)]
+    public int OptionsMaxExpirations { get; init; } = 3;
+
+    /// <summary>
+    /// Maximum number of option chains to fetch in parallel.
+    /// </summary>
+    [Range(1, 50)]
+    public int OptionsChainParallelism { get; init; } = 4;
+
+    /// <summary>
+    /// Delay in milliseconds between option chain requests.
+    /// </summary>
+    [Range(0, 10000)]
+    public int OptionsChainDelayMs { get; init; } = 0;
+
+    /// <summary>
+    /// Minimum spacing in days between option chain snapshots during bootstrap.
+    /// </summary>
+    [Range(1, 30)]
+    public int OptionsBootstrapStrideDays { get; init; } = 1;
+
+    /// <summary>
+    /// Cache window (days) for reusing option reference contract lists.
+    /// </summary>
+    [Range(0, 90)]
+    public int OptionsContractListCacheDays { get; init; } = 7;
+
+    /// <summary>
+    /// Right filter for option contracts: "both", "call", or "put".
+    /// </summary>
+    public string OptionsRightFilter { get; init; } = "both";
 }
 
 /// <summary>

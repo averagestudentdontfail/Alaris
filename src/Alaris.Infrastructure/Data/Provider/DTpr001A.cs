@@ -3,6 +3,8 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -37,6 +39,26 @@ public sealed class PolygonApiClient : DTpr003A
     private readonly IPolygonApi _api;
     private readonly ILogger<PolygonApiClient> _logger;
     private readonly string _apiKey;
+    private readonly int _maxConcurrentRequests;
+    private readonly int _requestsPerSecond;
+    private readonly int _optionsContractLimit;
+    private readonly int _optionsContractsPerExpiryRight;
+    private readonly int _optionsMaxExpirations;
+    private readonly int _optionsChainParallelism;
+    private readonly int _optionsChainDelayMs;
+    private readonly int _optionsBootstrapStrideDays;
+    private readonly int _optionsContractListCacheDays;
+    private readonly OptionsRightFilter _optionsRightFilter;
+    private readonly SemaphoreSlim _rateLimiter;
+    private readonly CancellationTokenSource _rateLimitCts = new();
+    private readonly ConcurrentDictionary<string, ContractCacheEntry> _contractCache =
+        new ConcurrentDictionary<string, ContractCacheEntry>(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> _contractCacheLocks =
+        new ConcurrentDictionary<string, SemaphoreSlim>(StringComparer.OrdinalIgnoreCase);
+
+    public int OptionsChainParallelism => _optionsChainParallelism;
+    public int OptionsChainDelayMs => _optionsChainDelayMs;
+    public int OptionsBootstrapStrideDays => _optionsBootstrapStrideDays;
 
     public PolygonApiClient(
         IPolygonApi api,
@@ -51,6 +73,20 @@ public sealed class PolygonApiClient : DTpr003A
             
         string maskedKey = _apiKey.Length > 4 ? _apiKey[..4] + new string('*', _apiKey.Length - 4) : "INVALID";
         _logger.LogInformation("Polygon Provider initialized with Key: {MaskedKey}", maskedKey);
+
+        _maxConcurrentRequests = Math.Max(1, configuration.GetValue("Polygon:MaxConcurrentRequests", 25));
+        _requestsPerSecond = Math.Max(1, configuration.GetValue("Polygon:RequestsPerSecond", 100));
+        _optionsContractLimit = Math.Max(1, configuration.GetValue("Polygon:OptionsContractLimit", 20));
+        _optionsContractsPerExpiryRight = Math.Max(1, configuration.GetValue("Polygon:OptionsContractsPerExpiryRight", 2));
+        _optionsMaxExpirations = Math.Max(1, configuration.GetValue("Polygon:OptionsMaxExpirations", 3));
+        _optionsChainParallelism = Math.Max(1, configuration.GetValue("Polygon:OptionsChainParallelism", 4));
+        _optionsChainDelayMs = Math.Max(0, configuration.GetValue("Polygon:OptionsChainDelayMs", 0));
+        _optionsBootstrapStrideDays = Math.Max(1, configuration.GetValue("Polygon:OptionsBootstrapStrideDays", 1));
+        _optionsContractListCacheDays = Math.Max(0, configuration.GetValue("Polygon:OptionsContractListCacheDays", 7));
+        _optionsRightFilter = ParseOptionsRightFilter(configuration.GetValue("Polygon:OptionsRightFilter", "both"));
+
+        _rateLimiter = new SemaphoreSlim(_requestsPerSecond, _requestsPerSecond);
+        _ = Task.Run(async () => await RunRateLimitRefillAsync());
     }
 
     /// <inheritdoc/>
@@ -79,6 +115,7 @@ public sealed class PolygonApiClient : DTpr003A
 
         try
         {
+            await WaitForRateLimitAsync(cancellationToken);
             PolygonAggregatesResponse response = await _api.GetDailyBarsAsync(
                 symbol,
                 startDate.ToString("yyyy-MM-dd"),
@@ -135,9 +172,21 @@ public sealed class PolygonApiClient : DTpr003A
     /// This method calculates IV from historical option prices using Black-Scholes,
     /// which is the industry-standard approach for backtesting.
     /// </summary>
+    public Task<OptionChainSnapshot> GetHistoricalOptionChainAsync(
+        string symbol,
+        DateTime asOfDate,
+        CancellationToken cancellationToken = default)
+    {
+        return GetHistoricalOptionChainAsync(symbol, asOfDate, null, cancellationToken);
+    }
+
+    /// <summary>
+    /// Gets historical option chain for backtesting with optional spot price override.
+    /// </summary>
     public async Task<OptionChainSnapshot> GetHistoricalOptionChainAsync(
         string symbol,
         DateTime asOfDate,
+        decimal? spotPriceOverride,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(symbol))
@@ -156,17 +205,20 @@ public sealed class PolygonApiClient : DTpr003A
         _logger.LogInformation("Fetching historical option chain for {Symbol} as of {Date:yyyy-MM-dd}", symbol, effectiveDate);
 
         // 1. Get historical spot price
-        decimal spotPrice = 0m;
-        try
+        decimal spotPrice = spotPriceOverride.GetValueOrDefault();
+        if (spotPrice <= 0m)
         {
-            DateTime spotStart = effectiveDate.AddDays(-5);
-            if (spotStart < twoYearsAgo) spotStart = twoYearsAgo;
-            IReadOnlyList<PriceBar> bars = await GetHistoricalBarsAsync(symbol, spotStart, effectiveDate, cancellationToken);
-            spotPrice = bars.Count > 0 ? bars[bars.Count - 1].Close : 0m;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to get historical spot price for {Symbol}", symbol);
+            try
+            {
+                DateTime spotStart = effectiveDate.AddDays(-5);
+                if (spotStart < twoYearsAgo) spotStart = twoYearsAgo;
+                IReadOnlyList<PriceBar> bars = await GetHistoricalBarsAsync(symbol, spotStart, effectiveDate, cancellationToken);
+                spotPrice = bars.Count > 0 ? bars[bars.Count - 1].Close : 0m;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to get historical spot price for {Symbol}", symbol);
+            }
         }
 
         if (spotPrice == 0)
@@ -184,37 +236,39 @@ public sealed class PolygonApiClient : DTpr003A
         
         try
         {
-            PolygonOptionsContractsResponse refResponse = await _api.GetOptionsContractsAsync(
-                underlyingTicker: symbol,
-                asOfDate: dateStr,
-                expirationMin: expirationMin,
-                expirationMax: expirationMax,
-                limit: 250,
-                apiKey: _apiKey,
+            PolygonOptionContract[] refContracts = await GetReferenceContractsAsync(
+                symbol,
+                effectiveDate,
+                expirationMin,
+                expirationMax,
                 cancellationToken);
-            
-            if (refResponse?.Results == null || refResponse.Results.Length == 0)
+            if (refContracts.Length == 0)
             {
                 _logger.LogWarning("No reference options found for {Symbol} as of {Date}", symbol, dateStr);
                 return new OptionChainSnapshot { Symbol = symbol, SpotPrice = spotPrice, Timestamp = effectiveDate, Contracts = new List<OptionContract>() };
             }
             
-            _logger.LogInformation("Found {Count} reference contracts for {Symbol}, fetching daily bars (max 50)...", refResponse.Results.Length, symbol);
+            IReadOnlyList<PolygonOptionContract> contractsToFetch = SelectContractsForSnapshot(refContracts, spotPrice, effectiveDate);
+            if (contractsToFetch.Count == 0)
+            {
+                _logger.LogWarning("No eligible options found for {Symbol} as of {Date}", symbol, dateStr);
+                return new OptionChainSnapshot { Symbol = symbol, SpotPrice = spotPrice, Timestamp = effectiveDate, Contracts = new List<OptionContract>() };
+            }
+
+            _logger.LogInformation(
+                "Found {Count} reference contracts for {Symbol}, fetching daily bars for {Selected}...",
+                refContracts.Length,
+                symbol,
+                contractsToFetch.Count);
 
             // 3. Fetch daily bars for each contract - WITH PARALLELISM and LIMITS
-            int contractLimit = refResponse.Results.Length < 50 ? refResponse.Results.Length : 50;
-            PolygonOptionContract[] contractsToFetch = new PolygonOptionContract[contractLimit];
-            for (int i = 0; i < contractLimit; i++)
-            {
-                contractsToFetch[i] = refResponse.Results[i];
-            }
             ConcurrentBag<OptionContract> contracts = new ConcurrentBag<OptionContract>();
-            bool subscriptionLimitHit = false;
+            volatile bool subscriptionLimitHit = false;
             
             // Use semaphore to limit concurrent requests (Polygon rate limits apply)
-            using SemaphoreSlim semaphore = new(5);
-            List<Task> tasks = new List<Task>(contractsToFetch.Length);
-            for (int i = 0; i < contractsToFetch.Length; i++)
+            using SemaphoreSlim semaphore = new(_maxConcurrentRequests);
+            List<Task> tasks = new List<Task>(contractsToFetch.Count);
+            for (int i = 0; i < contractsToFetch.Count; i++)
             {
                 PolygonOptionContract refContract = contractsToFetch[i];
                 tasks.Add(FetchContractAsync(refContract));
@@ -232,6 +286,7 @@ public sealed class PolygonApiClient : DTpr003A
                 await semaphore.WaitAsync(cancellationToken);
                 try
                 {
+                    await WaitForRateLimitAsync(cancellationToken);
                     PolygonAggregatesResponse aggResponse = await _api.GetTickerAggregatesAsync(
                         refContract.Ticker,
                         dateStr,
@@ -323,6 +378,7 @@ public sealed class PolygonApiClient : DTpr003A
 
         try
         {
+            await WaitForRateLimitAsync(cancellationToken);
             PolygonAggregatesResponse response = await _api.GetPreviousDayAsync(
                 symbol,
                 adjusted: true,
@@ -377,6 +433,328 @@ public sealed class PolygonApiClient : DTpr003A
         return list;
     }
 
+    private IReadOnlyList<PolygonOptionContract> SelectContractsForSnapshot(
+        IReadOnlyList<PolygonOptionContract> contracts,
+        decimal spotPrice,
+        DateTime effectiveDate)
+    {
+        if (contracts.Count == 0)
+        {
+            return Array.Empty<PolygonOptionContract>();
+        }
+
+        int limit = Math.Min(_optionsContractLimit, contracts.Count);
+        if (spotPrice <= 0m || _optionsContractsPerExpiryRight <= 0 || _optionsMaxExpirations <= 0)
+        {
+            return contracts.Take(limit).ToList();
+        }
+
+        List<(PolygonOptionContract Contract, DateTime Expiration, string? Type)> parsed =
+            new List<(PolygonOptionContract, DateTime, string?)>(contracts.Count);
+
+        for (int i = 0; i < contracts.Count; i++)
+        {
+            PolygonOptionContract contract = contracts[i];
+            if (!TryParseExpiration(contract, out DateTime expiration))
+            {
+                continue;
+            }
+
+            if (expiration.Date < effectiveDate.Date)
+            {
+                continue;
+            }
+
+            string? type = NormalizeContractType(contract);
+            if (!IsRightAllowed(type, contract))
+            {
+                continue;
+            }
+
+            parsed.Add((contract, expiration.Date, type));
+        }
+
+        if (parsed.Count == 0)
+        {
+            return contracts.Take(limit).ToList();
+        }
+
+        List<PolygonOptionContract> selected = new List<PolygonOptionContract>(limit);
+        HashSet<string> seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        int expirationsAdded = 0;
+        foreach (IGrouping<DateTime, (PolygonOptionContract Contract, DateTime Expiration, string? Type)> expiryGroup in parsed
+            .GroupBy(p => p.Expiration)
+            .OrderBy(g => g.Key))
+        {
+            if (expirationsAdded >= _optionsMaxExpirations || selected.Count >= limit)
+            {
+                break;
+            }
+
+            foreach (string right in GetRightOrder())
+            {
+                foreach ((PolygonOptionContract Contract, DateTime Expiration, string? Type) candidate in expiryGroup
+                    .Where(p => string.Equals(p.Type, right, StringComparison.OrdinalIgnoreCase))
+                    .OrderBy(p => Math.Abs(p.Contract.StrikePrice - spotPrice))
+                    .Take(_optionsContractsPerExpiryRight))
+                {
+                    if (selected.Count >= limit)
+                    {
+                        break;
+                    }
+
+                    if (seen.Add(candidate.Contract.Ticker))
+                    {
+                        selected.Add(candidate.Contract);
+                    }
+                }
+            }
+
+            expirationsAdded++;
+        }
+
+        if (selected.Count < limit)
+        {
+            foreach ((PolygonOptionContract Contract, DateTime Expiration, string? Type) candidate in parsed
+                .OrderBy(p => Math.Abs(p.Contract.StrikePrice - spotPrice)))
+            {
+                if (selected.Count >= limit)
+                {
+                    break;
+                }
+
+                if (seen.Add(candidate.Contract.Ticker))
+                {
+                    selected.Add(candidate.Contract);
+                }
+            }
+        }
+
+        return selected.Count > 0 ? selected : contracts.Take(limit).ToList();
+    }
+
+    private static bool TryParseExpiration(PolygonOptionContract contract, out DateTime expiration)
+    {
+        if (!string.IsNullOrWhiteSpace(contract.ExpirationDate) &&
+            DateTime.TryParseExact(
+                contract.ExpirationDate,
+                "yyyy-MM-dd",
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out expiration))
+        {
+            return true;
+        }
+
+        try
+        {
+            (_, _, expiration, _) = ParseOptionTicker(contract.Ticker);
+            return true;
+        }
+        catch (FormatException)
+        {
+            expiration = default;
+            return false;
+        }
+    }
+
+    private async Task<PolygonOptionContract[]> GetReferenceContractsAsync(
+        string symbol,
+        DateTime asOfDate,
+        string expirationMin,
+        string expirationMax,
+        CancellationToken cancellationToken)
+    {
+        if (_optionsContractListCacheDays > 0 &&
+            TryGetCachedContracts(symbol, asOfDate, out PolygonOptionContract[] cached))
+        {
+            return cached;
+        }
+
+        SemaphoreSlim cacheLock = _contractCacheLocks.GetOrAdd(symbol, _ => new SemaphoreSlim(1, 1));
+        await cacheLock.WaitAsync(cancellationToken);
+        try
+        {
+            if (_optionsContractListCacheDays > 0 &&
+                TryGetCachedContracts(symbol, asOfDate, out cached))
+            {
+                return cached;
+            }
+
+            await WaitForRateLimitAsync(cancellationToken);
+            PolygonOptionsContractsResponse refResponse = await _api.GetOptionsContractsAsync(
+                underlyingTicker: symbol,
+                asOfDate: asOfDate.ToString("yyyy-MM-dd"),
+                expirationMin: expirationMin,
+                expirationMax: expirationMax,
+                limit: 250,
+                apiKey: _apiKey,
+                cancellationToken);
+
+            PolygonOptionContract[] results = refResponse?.Results ?? Array.Empty<PolygonOptionContract>();
+            if (_optionsContractListCacheDays > 0 && results.Length > 0)
+            {
+                _contractCache[symbol] = new ContractCacheEntry
+                {
+                    AsOfDate = asOfDate.Date,
+                    Contracts = results
+                };
+            }
+
+            return results;
+        }
+        finally
+        {
+            cacheLock.Release();
+        }
+    }
+
+    private bool TryGetCachedContracts(string symbol, DateTime asOfDate, out PolygonOptionContract[] contracts)
+    {
+        contracts = Array.Empty<PolygonOptionContract>();
+        if (_optionsContractListCacheDays <= 0)
+        {
+            return false;
+        }
+
+        if (_contractCache.TryGetValue(symbol, out ContractCacheEntry entry))
+        {
+            if (entry.AsOfDate <= asOfDate.Date &&
+                (asOfDate.Date - entry.AsOfDate).TotalDays <= _optionsContractListCacheDays)
+            {
+                contracts = entry.Contracts;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private string? NormalizeContractType(PolygonOptionContract contract)
+    {
+        string? type = contract.ContractType;
+        if (!string.IsNullOrWhiteSpace(type))
+        {
+            string normalized = type.ToLowerInvariant();
+            if (normalized == "c")
+            {
+                return "call";
+            }
+            if (normalized == "p")
+            {
+                return "put";
+            }
+            return normalized;
+        }
+
+        if (TryGetContractTypeFromTicker(contract.Ticker, out string? parsed))
+        {
+            return parsed;
+        }
+
+        return null;
+    }
+
+    private bool IsRightAllowed(string? contractType, PolygonOptionContract contract)
+    {
+        if (_optionsRightFilter == OptionsRightFilter.Both)
+        {
+            return true;
+        }
+
+        string? type = contractType;
+        if (string.IsNullOrWhiteSpace(type) && TryGetContractTypeFromTicker(contract.Ticker, out string? parsed))
+        {
+            type = parsed;
+        }
+
+        if (string.IsNullOrWhiteSpace(type))
+        {
+            return false;
+        }
+
+        return _optionsRightFilter == OptionsRightFilter.Call
+            ? string.Equals(type, "call", StringComparison.OrdinalIgnoreCase)
+            : string.Equals(type, "put", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool TryGetContractTypeFromTicker(string ticker, out string? type)
+    {
+        try
+        {
+            (_, _, _, OptionRight right) = ParseOptionTicker(ticker);
+            type = right == OptionRight.Call ? "call" : "put";
+            return true;
+        }
+        catch (FormatException)
+        {
+            type = null;
+            return false;
+        }
+    }
+
+    private string[] GetRightOrder()
+    {
+        return _optionsRightFilter switch
+        {
+            OptionsRightFilter.Call => new[] { "call" },
+            OptionsRightFilter.Put => new[] { "put" },
+            _ => new[] { "call", "put" }
+        };
+    }
+
+    private static OptionsRightFilter ParseOptionsRightFilter(string? value)
+    {
+        if (string.Equals(value, "call", StringComparison.OrdinalIgnoreCase))
+        {
+            return OptionsRightFilter.Call;
+        }
+        if (string.Equals(value, "put", StringComparison.OrdinalIgnoreCase))
+        {
+            return OptionsRightFilter.Put;
+        }
+        return OptionsRightFilter.Both;
+    }
+
+    private async Task RunRateLimitRefillAsync()
+    {
+        using PeriodicTimer timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(_rateLimitCts.Token))
+            {
+                int toRelease = _requestsPerSecond - _rateLimiter.CurrentCount;
+                if (toRelease > 0)
+                {
+                    _rateLimiter.Release(toRelease);
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Shutting down.
+        }
+    }
+
+    private ValueTask WaitForRateLimitAsync(CancellationToken cancellationToken)
+    {
+        return new ValueTask(_rateLimiter.WaitAsync(cancellationToken));
+    }
+
+
+    private enum OptionsRightFilter
+    {
+        Both,
+        Call,
+        Put
+    }
+
+    private sealed class ContractCacheEntry
+    {
+        public required DateTime AsOfDate { get; init; }
+        public required PolygonOptionContract[] Contracts { get; init; }
+    }
 
 
     #region Option Ticker Parsing

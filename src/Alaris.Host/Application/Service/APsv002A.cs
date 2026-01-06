@@ -339,7 +339,7 @@ public sealed class APsv002A : IDisposable
     /// <summary>
     /// Bootstrap options data for specific dates (typically around earnings events).
     /// Downloads historical option chain with IV calculated from market prices via Black-Scholes.
-    /// Rate-limited to 5 concurrent requests per symbol to respect API limits.
+    /// Concurrency and throttling are controlled by Polygon client settings.
     /// </summary>
     /// <param name="symbols">Symbols to download options for.</param>
     /// <param name="dates">Dates to download options for (evaluation dates around earnings).</param>
@@ -371,8 +371,24 @@ public sealed class APsv002A : IDisposable
             return 0;
         }
 
+        int strideDays = Math.Max(1, _polygonClient.OptionsBootstrapStrideDays);
+        if (strideDays > 1)
+        {
+            int before = dateList.Count;
+            dateList = ApplyDateStride(dateList, strideDays);
+            _logger?.LogInformation("Applied options bootstrap stride: {Stride} days ({Before} → {After} dates)", 
+                strideDays, before, dateList.Count);
+        }
+
         string optionsPath = Path.Combine(sessionDataPath, "options");
         Directory.CreateDirectory(optionsPath);
+
+        Dictionary<string, IReadOnlyDictionary<int, decimal>> spotCache =
+            new Dictionary<string, IReadOnlyDictionary<int, decimal>>(StringComparer.OrdinalIgnoreCase);
+        foreach (string symbol in symbolList)
+        {
+            spotCache[symbol] = LoadDailyCloseCache(sessionDataPath, symbol);
+        }
 
         int totalDownloaded = 0;
         int totalSkipped = 0;
@@ -395,66 +411,101 @@ public sealed class APsv002A : IDisposable
             .StartAsync(async ctx =>
             {
                 ProgressTask task = ctx.AddTask("Downloading Options Data", maxValue: symbolList.Count * dateList.Count);
+                int maxParallel = Math.Max(1, _polygonClient.OptionsChainParallelism);
+                int delayMs = _polygonClient.OptionsChainDelayMs;
+                object progressLock = new object();
 
+                List<(string Symbol, DateTime Date)> workItems =
+                    new List<(string Symbol, DateTime Date)>(symbolList.Count * dateList.Count);
                 foreach (string symbol in symbolList)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-
                     foreach (DateTime date in dateList)
                     {
-                        cancellationToken.ThrowIfCancellationRequested();
+                        workItems.Add((symbol, date));
+                    }
+                }
 
-                        string symbolLower = symbol.ToLowerInvariant();
-                        string dateSuffix = date.ToString("yyyyMMdd");
-                        string cachePath = Path.Combine(optionsPath, $"{symbolLower}_{dateSuffix}.json");
+                ParallelOptions options = new ParallelOptions
+                {
+                    MaxDegreeOfParallelism = maxParallel,
+                    CancellationToken = cancellationToken
+                };
 
+                await Parallel.ForEachAsync(workItems, options, async (item, ct) =>
+                {
+                    string symbol = item.Symbol;
+                    DateTime date = item.Date;
+                    string symbolLower = symbol.ToLowerInvariant();
+                    string dateSuffix = date.ToString("yyyyMMdd");
+                    string cachePath = Path.Combine(optionsPath, $"{symbolLower}_{dateSuffix}.json");
+                    int dateKey = (date.Year * 10000) + (date.Month * 100) + date.Day;
+
+                    try
+                    {
                         // Skip if already cached
                         if (File.Exists(cachePath))
                         {
-                            totalSkipped++;
-                            task.Increment(1);
-                            continue;
+                            Interlocked.Increment(ref totalSkipped);
+                            return;
                         }
 
                         // Skip dates outside Polygon's 2-year limit
                         if (date < optionsMinDate)
                         {
                             _logger?.LogDebug("Skipping {Symbol} @ {Date}: outside 2-year limit", symbol, date);
-                            task.Increment(1);
-                            continue;
+                            return;
                         }
 
-                        try
+                        lock (progressLock)
                         {
                             task.Description = $"Options: {symbol} @ {date:yyyy-MM-dd}";
-
-                            OptionChainSnapshot optionChain = await _polygonClient.GetHistoricalOptionChainAsync(symbol, date, cancellationToken);
-                            
-                            if (optionChain.Contracts.Count > 0)
-                            {
-                                string json = JsonSerializer.Serialize(optionChain, JsonOptions);
-                                await File.WriteAllTextAsync(cachePath, json, cancellationToken);
-                                totalDownloaded++;
-                                _logger?.LogDebug("Cached {Count} options for {Symbol} @ {Date}", 
-                                    optionChain.Contracts.Count, symbol, date);
-                            }
-                            else
-                            {
-                                _logger?.LogDebug("No options found for {Symbol} @ {Date}", symbol, date);
-                            }
                         }
-                        catch (Exception ex)
+
+                        decimal? spotOverride = null;
+                        if (spotCache.TryGetValue(symbol, out IReadOnlyDictionary<int, decimal>? spotByDate) &&
+                            spotByDate.TryGetValue(dateKey, out decimal cachedSpot) &&
+                            cachedSpot > 0m)
                         {
-                            totalFailed++;
-                            _logger?.LogWarning(ex, "Failed to download options for {Symbol} @ {Date}", symbol, date);
+                            spotOverride = cachedSpot;
                         }
 
-                        task.Increment(1);
+                        OptionChainSnapshot optionChain = await _polygonClient.GetHistoricalOptionChainAsync(
+                            symbol,
+                            date,
+                            spotOverride,
+                            ct);
 
-                        // Rate limit: small delay between requests
-                        await Task.Delay(100, cancellationToken);
+                        if (optionChain.Contracts.Count > 0)
+                        {
+                            string json = JsonSerializer.Serialize(optionChain, JsonOptions);
+                            await File.WriteAllTextAsync(cachePath, json, ct);
+                            Interlocked.Increment(ref totalDownloaded);
+                            _logger?.LogDebug("Cached {Count} options for {Symbol} @ {Date}",
+                                optionChain.Contracts.Count, symbol, date);
+                        }
+                        else
+                        {
+                            _logger?.LogDebug("No options found for {Symbol} @ {Date}", symbol, date);
+                        }
                     }
-                }
+                    catch (Exception ex)
+                    {
+                        Interlocked.Increment(ref totalFailed);
+                        _logger?.LogWarning(ex, "Failed to download options for {Symbol} @ {Date}", symbol, date);
+                    }
+                    finally
+                    {
+                        lock (progressLock)
+                        {
+                            task.Increment(1);
+                        }
+
+                        if (delayMs > 0)
+                        {
+                            await Task.Delay(delayMs, ct);
+                        }
+                    }
+                });
             });
 
         _logger?.LogInformation(
@@ -777,6 +828,90 @@ public sealed class APsv002A : IDisposable
         public DateTime Date { get; init; }
     }
 
+    private static List<DateTime> ApplyDateStride(IReadOnlyList<DateTime> dates, int strideDays)
+    {
+        if (dates.Count == 0 || strideDays <= 1)
+        {
+            return dates is List<DateTime> list ? list : new List<DateTime>(dates);
+        }
+
+        List<DateTime> filtered = new List<DateTime>();
+        DateTime? lastIncluded = null;
+        for (int i = 0; i < dates.Count; i++)
+        {
+            DateTime date = dates[i];
+            if (lastIncluded == null || (date - lastIncluded.Value).TotalDays >= strideDays)
+            {
+                filtered.Add(date);
+                lastIncluded = date;
+            }
+        }
+
+        return filtered;
+    }
+
+    private static IReadOnlyDictionary<int, decimal> LoadDailyCloseCache(string sessionDataPath, string symbol)
+    {
+        string symbolLower = symbol.ToLowerInvariant();
+        string zipPath = Path.Combine(sessionDataPath, "equity", "usa", "daily", $"{symbolLower}.zip");
+        if (!File.Exists(zipPath))
+        {
+            return new Dictionary<int, decimal>();
+        }
+
+        Dictionary<int, decimal> closes = new Dictionary<int, decimal>();
+        try
+        {
+            using FileStream stream = File.OpenRead(zipPath);
+            using ZipArchive archive = new ZipArchive(stream, ZipArchiveMode.Read, leaveOpen: false);
+            ZipArchiveEntry? entry = archive.GetEntry($"{symbolLower}.csv");
+            if (entry == null)
+            {
+                return closes;
+            }
+
+            using StreamReader reader = new StreamReader(entry.Open());
+            string? line;
+            while ((line = reader.ReadLine()) != null)
+            {
+                if (string.IsNullOrWhiteSpace(line))
+                {
+                    continue;
+                }
+
+                string[] parts = line.Split(',');
+                if (parts.Length < 5)
+                {
+                    continue;
+                }
+
+                string datePart = parts[0];
+                if (datePart.Length < 8)
+                {
+                    continue;
+                }
+
+                if (!int.TryParse(datePart.Substring(0, 8), NumberStyles.Integer, CultureInfo.InvariantCulture, out int dateKey))
+                {
+                    continue;
+                }
+
+                if (!long.TryParse(parts[4], NumberStyles.Integer, CultureInfo.InvariantCulture, out long closeScaled))
+                {
+                    continue;
+                }
+
+                closes[dateKey] = closeScaled / 10000m;
+            }
+        }
+        catch
+        {
+            return closes;
+        }
+
+        return closes;
+    }
+
     public void Dispose()
     {
         // NasdaqEarningsProvider does not require explicit disposal
@@ -877,6 +1012,9 @@ public sealed class APsv002A : IDisposable
         // Try common locations
         string[] candidates = new[]
         {
+            "lib/Alaris.Lean/Data",
+            "../lib/Alaris.Lean/Data",
+            "../../lib/Alaris.Lean/Data",
             "Alaris.Lean/Data",
             "../Alaris.Lean/Data",
             "../../Alaris.Lean/Data"

@@ -451,6 +451,9 @@ public sealed class STLN001A : QCAlgorithm
 
         var candidates = new[]
         {
+            "lib/Alaris.Lean/Data",
+            "../lib/Alaris.Lean/Data",
+            "../../lib/Alaris.Lean/Data",
             "Alaris.Lean/Data",
             "../Alaris.Lean/Data",
             "../../Alaris.Lean/Data",
@@ -466,7 +469,7 @@ public sealed class STLN001A : QCAlgorithm
         }
         
         // Default fallback
-        return System.IO.Path.GetFullPath("Alaris.Lean/Data");
+        return System.IO.Path.GetFullPath("lib/Alaris.Lean/Data");
     }
 
     /// <summary>
