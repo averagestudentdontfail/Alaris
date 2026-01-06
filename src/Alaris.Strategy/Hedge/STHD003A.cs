@@ -138,7 +138,7 @@ public sealed class STHD003A
             moneynessDeviation,
             daysToEarnings);
 
-        var result = new STHD004A
+        STHD004A result = new STHD004A
         {
             Symbol = symbol,
             CurrentDelta = spreadDelta,

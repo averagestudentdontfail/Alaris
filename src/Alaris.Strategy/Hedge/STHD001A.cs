@@ -174,7 +174,7 @@ public sealed class STHD001A
         // Evaluate against threshold
         bool passesFilter = correlation < _maxAcceptableCorrelation;
 
-        var result = new STHD002A
+        STHD002A result = new STHD002A
         {
             Symbol = symbol,
             Correlation = correlation,

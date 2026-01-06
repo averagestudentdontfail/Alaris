@@ -99,7 +99,7 @@ public sealed class STHD005A
         ArgumentNullException.ThrowIfNull(backIVHistory);
         ArgumentNullException.ThrowIfNull(spreadGreeks);
 
-        var checks = new List<ValidationCheck>();
+        List<ValidationCheck> checks = new List<ValidationCheck>();
 
         try
         {
@@ -152,8 +152,19 @@ public sealed class STHD005A
             });
 
             // Determine overall result
-            int passedCount = checks.Count(c => c.Passed);
-            bool overallPass = checks.All(c => c.Passed);
+            int passedCount = 0;
+            bool overallPass = true;
+            for (int i = 0; i < checks.Count; i++)
+            {
+                if (checks[i].Passed)
+                {
+                    passedCount++;
+                }
+                else
+                {
+                    overallPass = false;
+                }
+            }
 
             // Determine recommended contracts (may be adjusted by liquidity)
             int recommendedContracts = liquidityResult.RecommendedContracts;
@@ -161,7 +172,7 @@ public sealed class STHD005A
             // Compute adjusted debit
             double adjustedDebit = costResult.SpreadCost.ExecutionDebit;
 
-            var result = new STHD006A
+            STHD006A result = new STHD006A
             {
                 BaseSignal = signal,
                 Checks = checks,

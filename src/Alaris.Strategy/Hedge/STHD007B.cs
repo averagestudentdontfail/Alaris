@@ -315,7 +315,7 @@ public readonly record struct ExitParameters(
     /// <summary>
     /// Default parameters based on calendar spread dynamics.
     /// </summary>
-    public static ExitParameters Default => new(
+    public static ExitParameters Default => new ExitParameters(
         TargetCrushRatio: 1.0,           // Exit when 100% of expected crush captured
         StallCrushThreshold: 0.6,        // Consider stall after 60% captured
         StallRateThreshold: 0.02,        // Rate under 2%/day = stalled
@@ -331,7 +331,7 @@ public readonly record struct ExitParameters(
     /// <summary>
     /// Conservative parameters (longer holds, higher thresholds).
     /// </summary>
-    public static ExitParameters Conservative => new(
+    public static ExitParameters Conservative => new ExitParameters(
         TargetCrushRatio: 1.3,
         StallCrushThreshold: 0.7,
         StallRateThreshold: 0.01,
@@ -347,7 +347,7 @@ public readonly record struct ExitParameters(
     /// <summary>
     /// Aggressive parameters (faster exits, lower thresholds).
     /// </summary>
-    public static ExitParameters Aggressive => new(
+    public static ExitParameters Aggressive => new ExitParameters(
         TargetCrushRatio: 0.8,
         StallCrushThreshold: 0.5,
         StallRateThreshold: 0.03,

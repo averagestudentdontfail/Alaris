@@ -90,10 +90,27 @@ public sealed class STRK001A
         try
         {
             // Calculate win rate
-            List<Trade> winningTrades = historicalTrades.Where(t => t.ProfitLoss > 0).ToList();
-            List<Trade> losingTrades = historicalTrades.Where(t => t.ProfitLoss <= 0).ToList();
+            int winCount = 0;
+            int lossCount = 0;
+            double winSum = 0.0;
+            double lossSum = 0.0;
 
-            double winRate = (double)winningTrades.Count / historicalTrades.Count;
+            for (int i = 0; i < historicalTrades.Count; i++)
+            {
+                Trade trade = historicalTrades[i];
+                if (trade.ProfitLoss > 0)
+                {
+                    winCount++;
+                    winSum += trade.ProfitLoss;
+                }
+                else
+                {
+                    lossCount++;
+                    lossSum += trade.ProfitLoss;
+                }
+            }
+
+            double winRate = (double)winCount / historicalTrades.Count;
             double lossRate = 1 - winRate;
 
             if (winRate <= 0 || winRate >= 1)
@@ -103,8 +120,10 @@ public sealed class STRK001A
             }
 
             // Calculate average win and loss amounts
-            double avgWin = (winningTrades.Count > 0) ? winningTrades.Average(t => t.ProfitLoss) : 0;
-            double avgLoss = (losingTrades.Count > 0) ? Math.Abs(losingTrades.Average(t => t.ProfitLoss)) : (spreadCost * ContractMultiplier);
+            double avgWin = winCount > 0 ? winSum / winCount : 0;
+            double avgLoss = lossCount > 0
+                ? Math.Abs(lossSum / lossCount)
+                : (spreadCost * ContractMultiplier);
 
             if (avgWin <= 0 || avgLoss <= 0)
             {

@@ -113,7 +113,11 @@ public sealed class STRK004A
         List<QueueEntry> queue = BuildPriorityQueue(openPositions, candidate, candidatePriority, basePosition.AllocationPercent);
 
         // Step 4: Calculate current total allocation
-        double currentAllocation = openPositions.Sum(p => p.AllocationPercent);
+        double currentAllocation = 0.0;
+        for (int i = 0; i < openPositions.Count; i++)
+        {
+            currentAllocation += openPositions[i].AllocationPercent;
+        }
 
         SafeLog(() => LogQueueState(_logger!, openPositions.Count, currentAllocation, null));
 
@@ -175,7 +179,16 @@ public sealed class STRK004A
         // Apply variance penalty if historical data available
         if (historicalTrades.Count >= 20)
         {
-            double winRate = historicalTrades.Count(t => t.ProfitLoss > 0) / (double)historicalTrades.Count;
+            int winCount = 0;
+            for (int i = 0; i < historicalTrades.Count; i++)
+            {
+                if (historicalTrades[i].ProfitLoss > 0)
+                {
+                    winCount++;
+                }
+            }
+
+            double winRate = (double)winCount / historicalTrades.Count;
             double variancePenalty = CalculateVariancePenalty(winRate);
             priority *= variancePenalty;
         }
@@ -274,7 +287,7 @@ public sealed class STRK004A
                 "Insufficient remaining capacity after higher-priority positions");
         }
 
-        var sizing = new STRK002A
+        STRK002A sizing = new STRK002A
         {
             Contracts = contracts,
             AllocationPercent = adjustedAllocation,
@@ -354,7 +367,7 @@ public sealed class STRK004A
         double dollarAllocation = portfolioValue * adjustedAllocation;
         int contracts = (int)Math.Floor(dollarAllocation / (spreadCost * 100.0));
 
-        var sizing = new STRK002A
+        STRK002A sizing = new STRK002A
         {
             Contracts = contracts,
             AllocationPercent = adjustedAllocation,
@@ -400,9 +413,8 @@ public sealed class STRK004A
         List<RebalanceRecommendation> recommendations = new List<RebalanceRecommendation>();
 
         // Sort positions by priority
-        List<OpenPosition> sortedPositions = openPositions
-            .OrderByDescending(p => p.Priority)
-            .ToList();
+        List<OpenPosition> sortedPositions = new List<OpenPosition>(openPositions);
+        sortedPositions.Sort((left, right) => right.Priority.CompareTo(left.Priority));
 
         double cumulativeAllocation = 0;
         double targetAllocation = MaxTotalAllocation;
@@ -520,12 +532,15 @@ public sealed record QueueAllocationResult
     public required string Rationale { get; init; }
 
     /// <summary>Creates a rejection result.</summary>
-    public static QueueAllocationResult Reject(string symbol, string reason) => new()
+    public static QueueAllocationResult Reject(string symbol, string reason)
     {
-        Symbol = symbol,
-        Decision = AllocationDecision.Reject,
-        Rationale = reason
-    };
+        return new QueueAllocationResult
+        {
+            Symbol = symbol,
+            Decision = AllocationDecision.Reject,
+            Rationale = reason
+        };
+    }
 }
 
 /// <summary>

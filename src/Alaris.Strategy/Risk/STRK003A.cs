@@ -105,14 +105,32 @@ public sealed class STRK003A
                 nameof(historicalTrades));
         }
 
-        // Calculate arrival rate (trades per day)
-        DateTime earliest = historicalTrades.Min(t => t.EntryDate);
-        DateTime latest = historicalTrades.Max(t => t.EntryDate);
+        // Calculate arrival rate (trades per day) and average holding period
+        DateTime earliest = historicalTrades[0].EntryDate;
+        DateTime latest = earliest;
+        double holdingTotal = 0.0;
+
+        for (int i = 0; i < historicalTrades.Count; i++)
+        {
+            Trade trade = historicalTrades[i];
+            DateTime entryDate = trade.EntryDate;
+
+            if (entryDate < earliest)
+            {
+                earliest = entryDate;
+            }
+
+            if (entryDate > latest)
+            {
+                latest = entryDate;
+            }
+
+            holdingTotal += trade.HoldingPeriod;
+        }
+
         int tradingDays = Math.Max(1, (int)(latest - earliest).TotalDays);
         double arrivalRate = (double)historicalTrades.Count / tradingDays;
-
-        // Calculate average holding period
-        double avgHoldingPeriod = historicalTrades.Average(t => t.HoldingPeriod);
+        double avgHoldingPeriod = holdingTotal / historicalTrades.Count;
 
         return CalculateExpectedConcurrent(arrivalRate, avgHoldingPeriod);
     }

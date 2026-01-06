@@ -111,8 +111,21 @@ public sealed class STSD001A
     {
         ArgumentNullException.ThrowIfNull(outcomes);
 
-        var profitable = outcomes.Where(o => o.IsProfitable).Select(o => o.IVRVRatio).ToList();
-        var unprofitable = outcomes.Where(o => !o.IsProfitable).Select(o => o.IVRVRatio).ToList();
+        List<double> profitable = new List<double>();
+        List<double> unprofitable = new List<double>();
+
+        for (int i = 0; i < outcomes.Count; i++)
+        {
+            TradeOutcome outcome = outcomes[i];
+            if (outcome.IsProfitable)
+            {
+                profitable.Add(outcome.IVRVRatio);
+            }
+            else
+            {
+                unprofitable.Add(outcome.IVRVRatio);
+            }
+        }
 
         if (profitable.Count < 10 || unprofitable.Count < 10)
         {
@@ -123,10 +136,10 @@ public sealed class STSD001A
 
         // Compute distribution parameters
         const double MinSigma = 1e-6;
-        _mu0 = unprofitable.Average();
+        _mu0 = ComputeMean(unprofitable);
         _sigma0 = Math.Max(MinSigma, ComputeStandardDeviation(unprofitable, _mu0));
 
-        _mu1 = profitable.Average();
+        _mu1 = ComputeMean(profitable);
         _sigma1 = Math.Max(MinSigma, ComputeStandardDeviation(profitable, _mu1));
 
         // Compute prior probabilities
@@ -315,8 +328,25 @@ public sealed class STSD001A
 
     private static double ComputeStandardDeviation(List<double> values, double mean)
     {
-        double sumSq = values.Sum(v => (v - mean) * (v - mean));
+        double sumSq = 0.0;
+        for (int i = 0; i < values.Count; i++)
+        {
+            double diff = values[i] - mean;
+            sumSq += diff * diff;
+        }
+
         return Math.Sqrt(sumSq / (values.Count - 1));
+    }
+
+    private static double ComputeMean(List<double> values)
+    {
+        double sum = 0.0;
+        for (int i = 0; i < values.Count; i++)
+        {
+            sum += values[i];
+        }
+
+        return sum / values.Count;
     }
 
     private static double LogNormalPdf(double x, double mu, double sigma)

@@ -266,9 +266,20 @@ public sealed class STQT001A
     /// <returns>Signals ordered by virtual finish time.</returns>
     public IEnumerable<SignalQueueEntry> RankByWFQ(IEnumerable<SignalQueueEntry> signals)
     {
-        return signals
-            .Select(s => s with { VirtualFinishTime = ComputeVirtualFinishTime(s.Strength, s.CapitalRequired) })
-            .OrderBy(s => s.VirtualFinishTime);
+        ArgumentNullException.ThrowIfNull(signals);
+
+        List<SignalQueueEntry> ranked = new List<SignalQueueEntry>();
+        foreach (SignalQueueEntry signal in signals)
+        {
+            SignalQueueEntry entry = signal with
+            {
+                VirtualFinishTime = ComputeVirtualFinishTime(signal.Strength, signal.CapitalRequired)
+            };
+            ranked.Add(entry);
+        }
+
+        ranked.Sort((left, right) => left.VirtualFinishTime.CompareTo(right.VirtualFinishTime));
+        return ranked;
     }
 
     /// <summary>
@@ -296,8 +307,21 @@ public sealed class STQT001A
             return;
         }
 
-        double mean = holdingTimes.Average();
-        double variance = holdingTimes.Select(t => (t - mean) * (t - mean)).Average();
+        double sum = 0.0;
+        for (int i = 0; i < holdingTimes.Count; i++)
+        {
+            sum += holdingTimes[i];
+        }
+
+        double mean = sum / holdingTimes.Count;
+        double varianceSum = 0.0;
+        for (int i = 0; i < holdingTimes.Count; i++)
+        {
+            double diff = holdingTimes[i] - mean;
+            varianceSum += diff * diff;
+        }
+
+        double variance = varianceSum / holdingTimes.Count;
         double stdDev = Math.Sqrt(variance);
 
         double observedRate = 1.0 / mean;
@@ -370,7 +394,7 @@ public readonly record struct QueueParameters(
     double DefaultHoldingCost)
 {
     /// <summary>Default parameters.</summary>
-    public static QueueParameters Default => new(
+    public static QueueParameters Default => new QueueParameters(
         SmoothingAlpha: 0.1,
         DefaultBlockingCost: 100.0,   // $100 cost per missed opportunity
         DefaultHoldingCost: 1.0);     // $1 per position-day

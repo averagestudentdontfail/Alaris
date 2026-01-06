@@ -71,7 +71,7 @@ public sealed record STHD006A
     /// <summary>
     /// Gets the number of validation checks that passed.
     /// </summary>
-    public int PassedCheckCount => Checks.Count(c => c.Passed);
+    public int PassedCheckCount => CountPassed(Checks);
 
     /// <summary>
     /// Gets the total number of validation checks.
@@ -81,10 +81,7 @@ public sealed record STHD006A
     /// <summary>
     /// Gets the names of failed checks.
     /// </summary>
-    public IReadOnlyList<string> FailedChecks => Checks
-        .Where(c => !c.Passed)
-        .Select(c => c.Name)
-        .ToList();
+    public IReadOnlyList<string> FailedChecks => GetFailedChecks(Checks);
 
     /// <summary>
     /// Gets a human-readable summary of the validation result.
@@ -114,7 +111,7 @@ public sealed record STHD006A
     {
         get
         {
-            var lines = new List<string>
+            List<string> lines = new List<string>
             {
                 $"=== Production Validation Report: {BaseSignal.Symbol} ===",
                 $"Signal Strength: {BaseSignal.Strength}",
@@ -154,5 +151,34 @@ public sealed record STHD006A
 
             return string.Join(Environment.NewLine, lines);
         }
+    }
+
+    private static int CountPassed(IReadOnlyList<ValidationCheck> checks)
+    {
+        int passed = 0;
+        for (int i = 0; i < checks.Count; i++)
+        {
+            if (checks[i].Passed)
+            {
+                passed++;
+            }
+        }
+
+        return passed;
+    }
+
+    private static IReadOnlyList<string> GetFailedChecks(IReadOnlyList<ValidationCheck> checks)
+    {
+        List<string> failed = new List<string>();
+        for (int i = 0; i < checks.Count; i++)
+        {
+            ValidationCheck check = checks[i];
+            if (!check.Passed)
+            {
+                failed.Add(check.Name);
+            }
+        }
+
+        return failed;
     }
 }

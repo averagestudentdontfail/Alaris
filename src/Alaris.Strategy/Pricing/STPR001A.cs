@@ -9,12 +9,12 @@ public sealed class STPR001APricing
     /// <summary>
     /// Gets or sets the pricing details for the front-month (short) option.
     /// </summary>
-    public OptionPricing FrontOption { get; set; } = new();
+    public OptionPricing FrontOption { get; set; } = new OptionPricing();
 
     /// <summary>
     /// Gets or sets the pricing details for the back-month (long) option.
     /// </summary>
-    public OptionPricing BackOption { get; set; } = new();
+    public OptionPricing BackOption { get; set; } = new OptionPricing();
 
     /// <summary>
     /// Gets or sets the net cost of the calendar spread (debit paid).

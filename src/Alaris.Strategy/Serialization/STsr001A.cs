@@ -208,8 +208,9 @@ public static class STsr001A
         offset += 4;
 
         // Points
-        foreach (var (days, iv, oi) in points)
+        for (int i = 0; i < points.Length; i++)
         {
+            (int days, double iv, long oi) = points[i];
             int written = EncodeTermPoint(days, iv, oi, buffer[offset..]);
             offset += written;
         }
