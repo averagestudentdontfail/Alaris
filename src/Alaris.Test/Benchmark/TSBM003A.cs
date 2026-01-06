@@ -167,7 +167,7 @@ public class TSBM003A
             // Time it
             Stopwatch sw = Stopwatch.StartNew();
             double price = 0;
-            for (int i = 0; i < iterations; i++)
+            for (int j = 0; j < iterations; j++)
             {
                 price = engine.Price(100, 100, 1.0, 0.05, 0.02, 0.20, OptionType.Put);
             }

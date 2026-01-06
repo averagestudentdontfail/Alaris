@@ -1642,7 +1642,7 @@ internal static class SMSM001A
         return Math.Sqrt(variance * TradingCalendarDefaults.TradingDaysPerYear);
     }
 
-    private static OptionContract FindClosestStrike(IReadOnlyList<OptionContract> contracts, double targetStrike)
+    private static OptionContract FindClosestStrike(IList<OptionContract> contracts, double targetStrike)
     {
         if (contracts.Count == 0)
         {
@@ -1666,7 +1666,7 @@ internal static class SMSM001A
         return closest;
     }
 
-    private static OptionContract FindStrikeMatch(IReadOnlyList<OptionContract> contracts, double strike, double tolerance)
+    private static OptionContract FindStrikeMatch(IList<OptionContract> contracts, double strike, double tolerance)
     {
         for (int i = 0; i < contracts.Count; i++)
         {
