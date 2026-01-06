@@ -422,7 +422,7 @@ internal static class DependencyFactory
             .AddJsonFile("config.json", optional: true)
             .AddJsonFile("appsettings.local.json", optional: true)
             .AddJsonFile("appsettings.local.jsonc", optional: true)
-            .AddUserSecrets<Alaris.Host.Application.APap001A>(optional: true)
+            .AddUserSecrets<BacktestCreateCommand>(optional: true)
             .AddEnvironmentVariables("ALARIS_")
             .Build();
     }
@@ -717,7 +717,7 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.jsonc", optional: true)
             .AddJsonFile("appsettings.local.jsonc", optional: true)
-            .AddUserSecrets<Alaris.Host.Application.APap001A>(optional: true)
+            .AddUserSecrets<BacktestCreateCommand>(optional: true)
             .AddEnvironmentVariables("ALARIS_")
             .Build();
 

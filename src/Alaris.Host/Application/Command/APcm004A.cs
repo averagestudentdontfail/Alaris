@@ -434,7 +434,7 @@ public sealed class APcm004A : Command<UniverseSettings>
             .AddJsonFile("appsettings.json", optional: true)
             .AddJsonFile("config.json", optional: true)
             .AddJsonFile("appsettings.local.json", optional: true)
-            .AddUserSecrets<Alaris.Host.Application.APap001A>(optional: true)
+            .AddUserSecrets<UniverseSettings>(optional: true)
             .AddEnvironmentVariables("ALARIS_")
             .Build();
 
