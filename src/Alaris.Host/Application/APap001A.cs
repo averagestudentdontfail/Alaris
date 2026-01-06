@@ -8,6 +8,7 @@ using Alaris.Host.Application.Model;
 using Alaris.Host.Application.Cli.Commands;
 using Alaris.Host.Application.Cli.Infrastructure;
 using System.IO;
+using Microsoft.Extensions.Configuration;
 
 namespace Alaris.Host.Application;
 
@@ -729,8 +730,7 @@ public static class APap001A
             configOk ? "appsettings.jsonc found" : "Create appsettings.jsonc");
 
         // Check data directory
-        string dataDir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            ".project/Alaris/Alaris.Sessions");
+        string dataDir = GetSessionsRoot();
         bool dataOk = Directory.Exists(dataDir);
         table.AddRow("Sessions Directory",
             dataOk ? "[green]✓ OK[/]" : "[yellow]○ Empty[/]",
@@ -750,6 +750,31 @@ public static class APap001A
         AnsiConsole.Write(table);
 
         _isConnected = configOk && leanOk;
+    }
+
+    private static string GetSessionsRoot()
+    {
+        IConfiguration config = new ConfigurationBuilder()
+            .SetBasePath(System.IO.Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.jsonc", optional: true)
+            .AddJsonFile("config.json", optional: true)
+            .AddJsonFile("appsettings.local.jsonc", optional: true)
+            .AddJsonFile("appsettings.local.json", optional: true)
+            .AddEnvironmentVariables("ALARIS_")
+            .Build();
+
+        string? basePath = config["Alaris:Sessions:BasePath"];
+        if (string.IsNullOrWhiteSpace(basePath))
+        {
+            return System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "ses");
+        }
+
+        if (System.IO.Path.IsPathRooted(basePath))
+        {
+            return basePath;
+        }
+
+        return System.IO.Path.GetFullPath(System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), basePath));
     }
 
     private static void ViewLogs()

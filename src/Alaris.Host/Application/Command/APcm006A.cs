@@ -88,7 +88,7 @@ public sealed class BootstrapEarningsCommand : AsyncCommand<BootstrapEarningsSet
             ? (Environment.GetEnvironmentVariable("ALARIS_SESSION_DATA")
                ?? System.IO.Path.Combine(
                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                   ".project", "Alaris", "Alaris.Sessions", "earnings-cache"))
+                   ".project", "Alaris", "ses", "earnings-cache"))
             : settings.OutputPath;
 
         AnsiConsole.MarkupLine($"[grey]Date range: {startDate:yyyy-MM-dd} → {endDate:yyyy-MM-dd}[/]");

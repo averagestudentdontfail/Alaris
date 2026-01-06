@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Alaris.Host.Application.Model;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 using System.Text.Json.Serialization;
@@ -34,7 +35,7 @@ public sealed class APsv001A
     /// <summary>
     /// Initializes the session service.
     /// </summary>
-    /// <param name="sessionsRoot">Root directory for sessions (defaults to Alaris.Sessions/).</param>
+    /// <param name="sessionsRoot">Root directory for sessions (defaults to configured BasePath or ./ses).</param>
     /// <param name="logger">Logger instance.</param>
     public APsv001A(string? sessionsRoot = null, ILogger<APsv001A>? logger = null)
     {
@@ -327,18 +328,28 @@ public sealed class APsv001A
     /// </summary>
     private static string FindSessionsRoot()
     {
-        // Look for Alaris.Sessions in parent directories
+        string? configuredRoot = GetConfiguredSessionsRoot();
+        if (!string.IsNullOrWhiteSpace(configuredRoot))
+        {
+            return configuredRoot;
+        }
+
+        // Look for ses directory in parent directories
         string current = Directory.GetCurrentDirectory();
         
         for (int i = 0; i < 5; i++)
         {
-            string candidate = System.IO.Path.Combine(current, "Alaris.Sessions");
+            string sesPath = System.IO.Path.Combine(current, "ses");
+            if (Directory.Exists(sesPath))
+            {
+                return sesPath;
+            }
             string configPath = System.IO.Path.Combine(current, "config.json");
             
             // If we find config.json, this is likely the project root
             if (File.Exists(configPath))
             {
-                return candidate;
+                return sesPath;
             }
             
             DirectoryInfo? parent = Directory.GetParent(current);
@@ -347,7 +358,32 @@ public sealed class APsv001A
         }
 
         // Default to current directory
-        return System.IO.Path.Combine(Directory.GetCurrentDirectory(), "Alaris.Sessions");
+        return System.IO.Path.Combine(Directory.GetCurrentDirectory(), "ses");
+    }
+
+    private static string? GetConfiguredSessionsRoot()
+    {
+        IConfiguration config = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.jsonc", optional: true)
+            .AddJsonFile("config.json", optional: true)
+            .AddJsonFile("appsettings.local.jsonc", optional: true)
+            .AddJsonFile("appsettings.local.json", optional: true)
+            .AddEnvironmentVariables("ALARIS_")
+            .Build();
+
+        string? basePath = config["Alaris:Sessions:BasePath"];
+        if (string.IsNullOrWhiteSpace(basePath))
+        {
+            return null;
+        }
+
+        if (System.IO.Path.IsPathRooted(basePath))
+        {
+            return basePath;
+        }
+
+        return System.IO.Path.GetFullPath(System.IO.Path.Combine(Directory.GetCurrentDirectory(), basePath));
     }
 }
 

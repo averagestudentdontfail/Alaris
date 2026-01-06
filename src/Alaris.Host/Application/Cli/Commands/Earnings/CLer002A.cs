@@ -26,7 +26,7 @@ public sealed class CLer002A : AsyncCommand<EarningsUpcomingSettings>
 
         // Find cache directory
         string cachePath = Environment.GetEnvironmentVariable("ALARIS_SESSION_DATA") 
-            ?? System.IO.Path.Combine(Environment.CurrentDirectory, "Alaris.Sessions");
+            ?? System.IO.Path.Combine(Environment.CurrentDirectory, "ses");
         
         string nasdaqPath = System.IO.Path.Combine(cachePath, "earnings", "nasdaq");
         
