@@ -52,7 +52,7 @@ public sealed class STCR004A
     /// <summary>
     /// Gets the individual criteria results.
     /// </summary>
-    public Dictionary<string, bool> Criteria { get; } = new();
+    public Dictionary<string, bool> Criteria { get; } = new Dictionary<string, bool>();
 
     /// <summary>
     /// Gets or sets the volatility spread (put IV - call IV).

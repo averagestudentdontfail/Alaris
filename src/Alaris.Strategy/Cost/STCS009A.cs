@@ -102,7 +102,7 @@ public sealed record STCS009A
                        $"(Vol: {VolumeRatio:P2} ≤ {VolumeThreshold:P0}, OI: {OpenInterestRatio:P2} ≤ {OpenInterestThreshold:P0})";
             }
 
-            var failures = new List<string>();
+            List<string> failures = new List<string>();
             if (!PassesVolumeFilter)
             {
                 failures.Add($"Volume {VolumeRatio:P2} > {VolumeThreshold:P0}");

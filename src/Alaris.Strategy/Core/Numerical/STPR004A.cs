@@ -2,7 +2,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using MathNet.Numerics.LinearAlgebra;
 using MathNet.Numerics.Optimization;
 
@@ -70,7 +69,12 @@ public sealed class STPR004A
     {
         double[] finalParams = result.MinimizingPoint.ToArray();
         double[] finalResiduals = residuals(finalParams);
-        double sumSq = finalResiduals.Sum(r => r * r);
+        double sumSq = 0.0;
+        for (int i = 0; i < finalResiduals.Length; i++)
+        {
+            double residual = finalResiduals[i];
+            sumSq += residual * residual;
+        }
         
         return new OptimizationResult
         {

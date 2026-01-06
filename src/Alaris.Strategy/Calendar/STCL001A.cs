@@ -56,8 +56,9 @@ public sealed class STCL001A : ITradingCalendar
 
     // Pre-computed holidays cache for performance (Rule 5: avoid heap in hot paths)
     // Cache is lazily populated as needed
-    private readonly Dictionary<int, HashSet<DateTime>> _holidayCache = [];
-    private readonly object _cacheLock = new();
+    private readonly Dictionary<int, HashSet<DateTime>> _holidayCache =
+        new Dictionary<int, HashSet<DateTime>>();
+    private readonly object _cacheLock = new object();
 
     /// <summary>
     /// Initialises a new NYSE trading calendar.
@@ -165,10 +166,10 @@ public sealed class STCL001A : ITradingCalendar
     /// </remarks>
     private static HashSet<DateTime> ComputeNYSEHolidays(int year)
     {
-        HashSet<DateTime> holidays = [];
+        HashSet<DateTime> holidays = new HashSet<DateTime>();
 
         // 1. New Year's Day
-        DateTime newYears = new(year, 1, 1);
+        DateTime newYears = new DateTime(year, 1, 1);
         holidays.Add(AdjustWeekendHoliday(newYears));
 
         // 2. Martin Luther King Jr. Day (3rd Monday of January)
@@ -191,12 +192,12 @@ public sealed class STCL001A : ITradingCalendar
         // 6. Juneteenth (June 19) - Official NYSE holiday starting 2021
         if (year >= 2021)
         {
-            DateTime juneteenth = new(year, 6, 19);
+        DateTime juneteenth = new DateTime(year, 6, 19);
             holidays.Add(AdjustWeekendHoliday(juneteenth));
         }
 
         // 7. Independence Day (July 4)
-        DateTime independenceDay = new(year, 7, 4);
+        DateTime independenceDay = new DateTime(year, 7, 4);
         holidays.Add(AdjustWeekendHoliday(independenceDay));
 
         // 8. Labor Day (1st Monday of September)
@@ -208,7 +209,7 @@ public sealed class STCL001A : ITradingCalendar
         holidays.Add(thanksgiving);
 
         // 10. Christmas (December 25)
-        DateTime christmas = new(year, 12, 25);
+        DateTime christmas = new DateTime(year, 12, 25);
         holidays.Add(AdjustWeekendHoliday(christmas));
 
         return holidays;

@@ -142,7 +142,7 @@ public sealed class STCS008A
             recommendedContracts = Math.Max(1, Math.Min(maxByVolume, maxByOpenInterest));
         }
 
-        var result = new STCS009A
+        STCS009A result = new STCS009A
         {
             Symbol = symbol,
             RequestedContracts = proposedContracts,

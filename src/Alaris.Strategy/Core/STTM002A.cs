@@ -312,5 +312,5 @@ public sealed class RegimeModelConfig
     /// <summary>
     /// Default configuration.
     /// </summary>
-    public static RegimeModelConfig Default { get; } = new();
+    public static RegimeModelConfig Default { get; } = new RegimeModelConfig();
 }

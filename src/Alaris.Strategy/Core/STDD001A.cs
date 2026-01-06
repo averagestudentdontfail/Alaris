@@ -42,10 +42,20 @@ public sealed class STDD001A
     {
         ArgumentNullException.ThrowIfNull(dividendSchedule);
 
-        return dividendSchedule
-            .Where(d => d.ExDate >= windowStart && d.ExDate <= windowEnd)
-            .OrderBy(d => d.ExDate)
-            .ToList();
+        List<STDD002A> results = new List<STDD002A>();
+        for (int i = 0; i < dividendSchedule.Count; i++)
+        {
+            STDD002A entry = dividendSchedule[i];
+            if (entry.ExDate < windowStart || entry.ExDate > windowEnd)
+            {
+                continue;
+            }
+
+            results.Add(entry);
+        }
+
+        results.Sort(static (left, right) => left.ExDate.CompareTo(right.ExDate));
+        return results;
     }
 
     /// <summary>

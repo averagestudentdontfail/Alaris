@@ -81,8 +81,20 @@ public sealed class STIV005A
         }
 
         // Compute standard deviation of log-returns
-        double mean = historicalEarningsMoves.Average();
-        double sumSquaredDeviations = historicalEarningsMoves.Sum(x => (x - mean) * (x - mean));
+        double sum = 0.0;
+        for (int i = 0; i < historicalEarningsMoves.Length; i++)
+        {
+            sum += historicalEarningsMoves[i];
+        }
+
+        double mean = sum / historicalEarningsMoves.Length;
+
+        double sumSquaredDeviations = 0.0;
+        for (int i = 0; i < historicalEarningsMoves.Length; i++)
+        {
+            double diff = historicalEarningsMoves[i] - mean;
+            sumSquaredDeviations += diff * diff;
+        }
         double variance = sumSquaredDeviations / (historicalEarningsMoves.Length - 1); // Sample variance
         double sigmaE = Math.Sqrt(variance);
 
@@ -136,20 +148,22 @@ public sealed class STIV005A
     {
         // Optimization: Use a temporary dictionary but avoid GroupBy/Linq
         // Or if historicalPrices is sorted, we can use binary search
-        var priceByDate = new Dictionary<DateTime, PriceBar>(historicalPrices.Count);
+        Dictionary<DateTime, PriceBar> priceByDate = new Dictionary<DateTime, PriceBar>(historicalPrices.Count);
         for (int i = 0; i < historicalPrices.Count; i++)
         {
             DateTime date = historicalPrices[i].Date.Date;
-            if (!priceByDate.ContainsKey(date))
-            {
-                priceByDate.Add(date, historicalPrices[i]);
-            }
+            priceByDate.TryAdd(date, historicalPrices[i]);
         }
 
         // Process earnings dates (newest first)
         // Sort earnings dates descending if not already
-        Span<DateTime> sortedDates = earningsDates.ToArray();
-        sortedDates.Sort((a, b) => b.CompareTo(a));
+        DateTime[] sortedDates = new DateTime[earningsDates.Count];
+        for (int i = 0; i < earningsDates.Count; i++)
+        {
+            sortedDates[i] = earningsDates[i];
+        }
+
+        Array.Sort(sortedDates, static (left, right) => right.CompareTo(left));
 
         foreach (DateTime earningsDate in sortedDates)
         {
@@ -324,7 +338,8 @@ public sealed class STIV005A
             return 0;
         }
 
-        List<double> sorted = values.OrderBy(x => x).ToList();
+        List<double> sorted = new List<double>(values);
+        sorted.Sort();
         int mid = sorted.Count / 2;
 
         if (sorted.Count % 2 == 0)

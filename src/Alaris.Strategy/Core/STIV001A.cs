@@ -52,7 +52,7 @@ public sealed class HestonParameters
     /// </summary>
     public ValidationResult Validate()
     {
-        List<string> errors = new();
+        List<string> errors = new List<string>();
 
         if (V0 <= 0)
         {
@@ -114,7 +114,7 @@ public sealed class HestonParameters
     /// <summary>
     /// Default parameters calibrated to typical equity behavior.
     /// </summary>
-    public static HestonParameters DefaultEquity => new()
+    public static HestonParameters DefaultEquity => new HestonParameters
     {
         V0 = 0.04,         // Initial variance (20% vol)
         Theta = 0.04,      // Long-run variance (20% vol)
@@ -128,7 +128,7 @@ public sealed class HestonParameters
     /// <summary>
     /// Parameters for high volatility regime.
     /// </summary>
-    public static HestonParameters HighVolRegime => new()
+    public static HestonParameters HighVolRegime => new HestonParameters
     {
         V0 = 0.09,         // Initial variance (30% vol)
         Theta = 0.0625,    // Long-run variance (25% vol)
@@ -298,7 +298,8 @@ public sealed class STIV001A
     {
         ArgumentNullException.ThrowIfNull(dtePoints);
 
-        var result = new (int DTE, double TheoreticalIV)[dtePoints.Length];
+        (int DTE, double TheoreticalIV)[] result =
+            new (int DTE, double TheoreticalIV)[dtePoints.Length];
 
         // Parallel computation for independent DTE points
         Parallel.For(0, dtePoints.Length, i =>
@@ -327,7 +328,8 @@ public sealed class STIV001A
     {
         ArgumentNullException.ThrowIfNull(strikes);
 
-        var result = new (double Strike, double TheoreticalIV)[strikes.Length];
+        (double Strike, double TheoreticalIV)[] result =
+            new (double Strike, double TheoreticalIV)[strikes.Length];
 
         // Parallel computation for independent strikes
         Parallel.For(0, strikes.Length, i =>
@@ -356,7 +358,7 @@ public sealed class STIV001A
         }
 
         // Use Levenberg-Marquardt for production-grade calibration
-        var optimizer = new Numerical.STPR004A
+        Numerical.STPR004A optimizer = new Numerical.STPR004A
         {
             MaxIterations = 200,
             ParameterTolerance = 1e-8,
@@ -365,11 +367,20 @@ public sealed class STIV001A
 
         // Parameter vector: [v0, theta, kappa, sigmaV, rho]
         // Initial guess from ATM market data or defaults
-        double atmIV = marketData
-            .Where(x => Math.Abs(x.Strike - spot) / spot < 0.05)
-            .Select(x => x.MarketIV)
-            .DefaultIfEmpty(0.25)
-            .Average();
+        double atmSum = 0.0;
+        int atmCount = 0;
+        for (int i = 0; i < marketData.Count; i++)
+        {
+            (double strike, int dte, double marketIV) = marketData[i];
+            double moneyness = Math.Abs(strike - spot) / spot;
+            if (moneyness < 0.05)
+            {
+                atmSum += marketIV;
+                atmCount++;
+            }
+        }
+
+        double atmIV = atmCount > 0 ? atmSum / atmCount : 0.25;
 
         double[] initialGuess =
         {
@@ -387,7 +398,7 @@ public sealed class STIV001A
         // Residual function
         double[] Residuals(double[] x)
         {
-            HestonParameters candidateParams = new()
+            HestonParameters candidateParams = new HestonParameters
             {
                 V0 = x[0],
                 Theta = x[1],
@@ -402,10 +413,16 @@ public sealed class STIV001A
             if (!candidateParams.Validate().IsValid)
             {
                 // Return large residuals for invalid parameters
-                return Enumerable.Repeat(100.0, marketData.Count).ToArray();
+                double[] invalid = new double[marketData.Count];
+                for (int i = 0; i < invalid.Length; i++)
+                {
+                    invalid[i] = 100.0;
+                }
+
+                return invalid;
             }
 
-            STIV001A model = new(candidateParams);
+            STIV001A model = new STIV001A(candidateParams);
             double[] residuals = new double[marketData.Count];
 
             for (int i = 0; i < marketData.Count; i++)
@@ -465,7 +482,7 @@ public sealed class STIV001A
     {
         double bestError = double.MaxValue;
         HestonParameters? bestParams = null;
-        object lockObj = new();
+        object lockObj = new object();
 
         // Parameter grid (coarse grid for demo)
         double[] v0s = { 0.02, 0.04, 0.06, 0.09 };
@@ -475,18 +492,35 @@ public sealed class STIV001A
         double[] rhos = { -0.9, -0.7, -0.5, -0.3 };
 
         // Flatten parameter combinations for parallel processing
-        var combinations = from v0 in v0s
-                          from theta in thetas
-                          from kappa in kappas
-                          from sigmaV in sigmaVs
-                          from rho in rhos
-                          select (v0, theta, kappa, sigmaV, rho);
+        List<(double V0, double Theta, double Kappa, double SigmaV, double Rho)> combinations =
+            new List<(double V0, double Theta, double Kappa, double SigmaV, double Rho)>();
+        for (int v0Index = 0; v0Index < v0s.Length; v0Index++)
+        {
+            double v0 = v0s[v0Index];
+            for (int thetaIndex = 0; thetaIndex < thetas.Length; thetaIndex++)
+            {
+                double theta = thetas[thetaIndex];
+                for (int kappaIndex = 0; kappaIndex < kappas.Length; kappaIndex++)
+                {
+                    double kappa = kappas[kappaIndex];
+                    for (int sigmaIndex = 0; sigmaIndex < sigmaVs.Length; sigmaIndex++)
+                    {
+                        double sigmaV = sigmaVs[sigmaIndex];
+                        for (int rhoIndex = 0; rhoIndex < rhos.Length; rhoIndex++)
+                        {
+                            double rho = rhos[rhoIndex];
+                            combinations.Add((v0, theta, kappa, sigmaV, rho));
+                        }
+                    }
+                }
+            }
+        }
 
         // Parallel grid search over all parameter combinations
         Parallel.ForEach(combinations, combination =>
         {
-            var (v0, theta, kappa, sigmaV, rho) = combination;
-            HestonParameters candidateParams = new()
+            (double v0, double theta, double kappa, double sigmaV, double rho) = combination;
+            HestonParameters candidateParams = new HestonParameters
             {
                 V0 = v0,
                 Theta = theta,
@@ -502,7 +536,7 @@ public sealed class STIV001A
                 return;
             }
 
-            STIV001A model = new(candidateParams);
+            STIV001A model = new STIV001A(candidateParams);
             double error = ComputeCalibrationError(model, spot, marketData);
 
             lock (lockObj)

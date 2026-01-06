@@ -122,7 +122,7 @@ public sealed class STCS005A : STCS001A
         double exchangeFees = _exchangeFeePerContract * parameters.Contracts;
         double regulatoryFees = _regulatoryFeePerContract * parameters.Contracts;
 
-        var result = new STCS003A
+        STCS003A result = new STCS003A
         {
             Commission = commission,
             ExchangeFees = exchangeFees,
@@ -165,7 +165,7 @@ public sealed class STCS005A : STCS001A
         int contracts = Math.Min(frontLegParameters.Contracts, backLegParameters.Contracts);
         double contractMultiplier = frontLegParameters.ContractMultiplier;
 
-        var result = new STCS004A
+        STCS004A result = new STCS004A
         {
             FrontLegCost = frontCost,
             BackLegCost = backCost,

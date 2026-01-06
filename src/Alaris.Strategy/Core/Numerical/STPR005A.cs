@@ -253,7 +253,7 @@ public sealed class STPR005A
 #pragma warning disable CA5394 // Random is acceptable for optimization algorithms (no security context)
             int index = rng.Next(popSize);
 #pragma warning restore CA5394
-            if (!exclude.Contains(index))
+            if (!IsExcluded(index, exclude))
             {
                 return index;
             }
@@ -262,9 +262,35 @@ public sealed class STPR005A
 
     private static double ComputeStandardDeviation(double[] values)
     {
-        double mean = values.Average();
-        double sumSquaredDiff = values.Sum(x => (x - mean) * (x - mean));
+        double mean = 0.0;
+        for (int i = 0; i < values.Length; i++)
+        {
+            mean += values[i];
+        }
+
+        mean /= values.Length;
+
+        double sumSquaredDiff = 0.0;
+        for (int i = 0; i < values.Length; i++)
+        {
+            double diff = values[i] - mean;
+            sumSquaredDiff += diff * diff;
+        }
+
         return Math.Sqrt(sumSquaredDiff / values.Length);
+    }
+
+    private static bool IsExcluded(int index, int[] exclude)
+    {
+        for (int i = 0; i < exclude.Length; i++)
+        {
+            if (exclude[i] == index)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static OptimizationResult CreateResult(

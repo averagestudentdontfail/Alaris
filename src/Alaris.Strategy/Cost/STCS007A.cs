@@ -86,7 +86,7 @@ public sealed record STCS007A
     /// </summary>
     private string GenerateFailureSummary()
     {
-        var failures = new List<string>();
+        List<string> failures = new List<string>();
 
         if (!PassesRatioThreshold)
         {

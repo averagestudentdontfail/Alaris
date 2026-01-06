@@ -54,9 +54,29 @@ public sealed class STEJ001A
         }
 
         // Calculate statistics
-        List<double> absMoves = historicalMoves.Select(Math.Abs).ToList();
-        double mean = absMoves.Average();
-        double variance = absMoves.Average(m => (m - mean) * (m - mean));
+        List<double> absMoves = new List<double>(historicalMoves.Count);
+        double sumAbs = 0.0;
+        double maxObserved = 0.0;
+        for (int i = 0; i < historicalMoves.Count; i++)
+        {
+            double absMove = Math.Abs(historicalMoves[i]);
+            absMoves.Add(absMove);
+            sumAbs += absMove;
+            if (absMove > maxObserved)
+            {
+                maxObserved = absMove;
+            }
+        }
+
+        double mean = sumAbs / absMoves.Count;
+        double sumSquared = 0.0;
+        for (int i = 0; i < absMoves.Count; i++)
+        {
+            double diff = absMoves[i] - mean;
+            sumSquared += diff * diff;
+        }
+
+        double variance = sumSquared / absMoves.Count;
         double stdDev = Math.Sqrt(variance);
 
         // Estimate mixture parameters using method of moments
@@ -65,7 +85,18 @@ public sealed class STEJ001A
 
         // Count outliers (beyond 2 sigma) to estimate Laplace weight
         double outlierThreshold = mean + (2 * stdDev);
-        int outlierCount = absMoves.Count(m => m > outlierThreshold);
+        int outlierCount = 0;
+        double outlierSum = 0.0;
+        for (int i = 0; i < absMoves.Count; i++)
+        {
+            double absMove = absMoves[i];
+            if (absMove > outlierThreshold)
+            {
+                outlierCount++;
+                outlierSum += absMove;
+            }
+        }
+
         double empiricalOutlierRate = (double)outlierCount / absMoves.Count;
 
         // Normal distribution has ~2.3% beyond 2σ
@@ -77,9 +108,8 @@ public sealed class STEJ001A
         double mixtureWeight = 1.0 - estimatedLaplaceWeight;
 
         // Estimate Laplace scale from outliers
-        List<double> outlierMoves = absMoves.Where(m => m > outlierThreshold).ToList();
-        double laplaceScale = outlierMoves.Count > 0
-            ? outlierMoves.Average() - outlierThreshold
+        double laplaceScale = outlierCount > 0
+            ? (outlierSum / outlierCount) - outlierThreshold
             : DefaultLaplaceScale;
         laplaceScale = Math.Clamp(laplaceScale, 0.20, 1.0);
 
@@ -91,7 +121,7 @@ public sealed class STEJ001A
             LaplaceScale = laplaceScale,
             DataPointCount = historicalMoves.Count,
             MeanAbsoluteMove = mean,
-            MaxObservedMove = absMoves.Max(),
+            MaxObservedMove = maxObserved,
             CalibrationTime = DateTime.UtcNow
         };
     }
@@ -266,7 +296,7 @@ public sealed record STEJ002A
     public required DateTime CalibrationTime { get; init; }
 
     /// <summary>Creates default parameters when insufficient data.</summary>
-    public static STEJ002A DefaultParameters() => new()
+    public static STEJ002A DefaultParameters() => new STEJ002A
     {
         MixtureWeight = 0.70,
         LaplaceScale = 0.40,

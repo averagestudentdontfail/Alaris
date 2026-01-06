@@ -47,7 +47,7 @@ public sealed class STIV003A
         IReadOnlyList<RecommendedModel> candidates = GetCandidateModels(regime);
 
         // Evaluate each candidate
-        List<ModelEvaluation> evaluations = new();
+        List<ModelEvaluation> evaluations = new List<ModelEvaluation>();
 
         foreach (RecommendedModel candidate in candidates)
         {
@@ -84,19 +84,19 @@ public sealed class STIV003A
     {
         return regime.RegimeType switch
         {
-            STTM002AType.PreEarnings => new[]
+            STTM002AType.PreEarnings => new RecommendedModel[]
             {
                 RecommendedModel.LeungSantoli,
                 RecommendedModel.Kou,
                 RecommendedModel.HestonWithEarningsJump
             },
-            STTM002AType.PostEarningsTransition => new[]
+            STTM002AType.PostEarningsTransition => new RecommendedModel[]
             {
                 RecommendedModel.PostEarningsBlend,
                 RecommendedModel.Heston,
                 RecommendedModel.BlackScholes
             },
-            _ => new[]
+            _ => new RecommendedModel[]
             {
                 RecommendedModel.Heston,
                 RecommendedModel.Kou,
@@ -180,8 +180,20 @@ public sealed class STIV003A
         double mae = sumAbsError / n;
 
         // Compute R-squared
-        double meanIV = context.MarketIVs.Average(x => x.IV);
-        double totalSS = context.MarketIVs.Sum(x => (x.IV - meanIV) * (x.IV - meanIV));
+        double meanIV = 0.0;
+        for (int i = 0; i < context.MarketIVs.Count; i++)
+        {
+            meanIV += context.MarketIVs[i].IV;
+        }
+
+        meanIV /= context.MarketIVs.Count;
+
+        double totalSS = 0.0;
+        for (int i = 0; i < context.MarketIVs.Count; i++)
+        {
+            double diff = context.MarketIVs[i].IV - meanIV;
+            totalSS += diff * diff;
+        }
         double rSquared = totalSS > 0 ? 1 - (sumSquaredError / totalSS) : 0;
 
         return new FitMetrics
@@ -201,7 +213,7 @@ public sealed class STIV003A
         RecommendedModel modelType,
         ModelSelectionContext context)
     {
-        List<double> result = new();
+        List<double> result = new List<double>();
 
         if (context.MarketIVs == null)
         {
@@ -563,7 +575,7 @@ public sealed class FitMetrics
     /// <summary>
     /// Default metrics for missing data.
     /// </summary>
-    public static FitMetrics Default { get; } = new()
+    public static FitMetrics Default { get; } = new FitMetrics
     {
         MSE = 1.0,
         RMSE = 1.0,

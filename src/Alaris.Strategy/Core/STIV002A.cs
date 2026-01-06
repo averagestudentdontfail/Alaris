@@ -52,7 +52,7 @@ public sealed class KouParameters
     /// </summary>
     public ValidationResult Validate()
     {
-        List<string> errors = new();
+        List<string> errors = new List<string>();
 
         if (Sigma <= 0)
         {
@@ -110,7 +110,7 @@ public sealed class KouParameters
     /// <summary>
     /// Default parameters calibrated to typical equity index behavior.
     /// </summary>
-    public static KouParameters DefaultEquity => new()
+    public static KouParameters DefaultEquity => new KouParameters
     {
         Sigma = 0.20,      // 20% diffusion volatility
         Lambda = 3.0,      // ~3 jumps per year
@@ -282,7 +282,8 @@ public sealed class STIV002A
     {
         ArgumentNullException.ThrowIfNull(dtePoints);
 
-        var result = new (int DTE, double TheoreticalIV)[dtePoints.Length];
+        (int DTE, double TheoreticalIV)[] result =
+            new (int DTE, double TheoreticalIV)[dtePoints.Length];
 
         for (int i = 0; i < dtePoints.Length; i++)
         {
@@ -314,7 +315,8 @@ public sealed class STIV002A
     {
         ArgumentNullException.ThrowIfNull(strikes);
 
-        var result = new (double Strike, double TheoreticalIV)[strikes.Length];
+        (double Strike, double TheoreticalIV)[] result =
+            new (double Strike, double TheoreticalIV)[strikes.Length];
 
         for (int i = 0; i < strikes.Length; i++)
         {
@@ -350,7 +352,7 @@ public sealed class STIV002A
 
         // Use Differential Evolution for production-grade global optimization
         // Jump-diffusion models often have multi-modal error surfaces
-        var optimizer = new Numerical.STPR005A
+        Numerical.STPR005A optimizer = new Numerical.STPR005A
         {
             MaxGenerations = 500,
             PopulationSize = 50, // 10 * dimension (5 parameters)
@@ -367,7 +369,7 @@ public sealed class STIV002A
         // Objective function (mean squared error)
         double Objective(double[] x)
         {
-            KouParameters candidateParams = new()
+            KouParameters candidateParams = new KouParameters
             {
                 Sigma = x[0],
                 Lambda = x[1],
@@ -384,7 +386,7 @@ public sealed class STIV002A
                 return 1e10; // Large penalty for invalid parameters
             }
 
-            STIV002A model = new(candidateParams);
+            STIV002A model = new STIV002A(candidateParams);
 
             double sumSquaredError = 0;
             int validCount = 0;
@@ -465,7 +467,7 @@ public sealed class STIV002A
                     {
                         foreach (double eta2 in eta2s)
                         {
-                            KouParameters candidateParams = new()
+                            KouParameters candidateParams = new KouParameters
                             {
                                 Sigma = sigma,
                                 Lambda = lambda,
@@ -481,7 +483,7 @@ public sealed class STIV002A
                                 continue;
                             }
 
-                            STIV002A model = new(candidateParams);
+                            STIV002A model = new STIV002A(candidateParams);
                             double error = ComputeCalibrationError(model, spot, marketData);
 
                             if (error < bestError)

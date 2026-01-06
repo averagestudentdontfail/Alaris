@@ -173,7 +173,12 @@ public sealed class STCR001A
     /// </summary>
     private (List<PriceBar> priceHistory, STDT002A optionChain) FetchMarketData(string symbol, DateTime evaluationDate)
     {
-        List<PriceBar> priceHistory = _marketData.GetHistoricalPrices(symbol, 90).ToList();
+        IReadOnlyList<PriceBar> history = _marketData.GetHistoricalPrices(symbol, 90);
+        List<PriceBar> priceHistory = new List<PriceBar>(history.Count);
+        for (int i = 0; i < history.Count; i++)
+        {
+            priceHistory.Add(history[i]);
+        }
         STDT002A optionChain = _marketData.GetSTDT002A(symbol, evaluationDate);
         return (priceHistory, optionChain);
     }
@@ -375,7 +380,15 @@ public sealed class STCR001A
         List<STTM001APoint> points = new List<STTM001APoint>();
         double underlyingPrice = chain.UnderlyingPrice;
 
-        foreach (OptionExpiry expiry in chain.Expiries.OrderBy(e => e.ExpiryDate))
+        List<OptionExpiry> expiries = new List<OptionExpiry>(chain.Expiries.Count);
+        foreach (OptionExpiry expiry in chain.Expiries)
+        {
+            expiries.Add(expiry);
+        }
+
+        expiries.Sort(static (left, right) => left.ExpiryDate.CompareTo(right.ExpiryDate));
+
+        foreach (OptionExpiry expiry in expiries)
         {
             int dte = expiry.GetDaysToExpiry(evaluationDate);
             if ((dte < 1) || (dte > 60))
@@ -465,15 +478,32 @@ public sealed class STCR001A
             }
 
             // Match put-call pairs
-            IEnumerable<(double Strike, double Spread, double Weight)> pairs = from call in expiry.Calls
-                        join put in expiry.Puts on call.Strike equals put.Strike
-                        where (call.OpenInterest > 0) && (put.OpenInterest > 0)
-                           && (call.ImpliedVolatility > 0) && (put.ImpliedVolatility > 0)
-                        select (call.Strike, put.ImpliedVolatility - call.ImpliedVolatility, (call.OpenInterest + put.OpenInterest) / 2.0);
-
-            foreach ((double Strike, double Spread, double Weight) pair in pairs)
+            Dictionary<double, OptionContract> putsByStrike = new Dictionary<double, OptionContract>();
+            foreach (OptionContract put in expiry.Puts)
             {
-                spreads.Add((pair.Spread, pair.Weight));
+                if (put.OpenInterest <= 0 || put.ImpliedVolatility <= 0)
+                {
+                    continue;
+                }
+
+                putsByStrike.TryAdd(put.Strike, put);
+            }
+
+            foreach (OptionContract call in expiry.Calls)
+            {
+                if (call.OpenInterest <= 0 || call.ImpliedVolatility <= 0)
+                {
+                    continue;
+                }
+
+                if (!putsByStrike.TryGetValue(call.Strike, out OptionContract? put))
+                {
+                    continue;
+                }
+
+                double spread = put.ImpliedVolatility - call.ImpliedVolatility;
+                double weight = (call.OpenInterest + put.OpenInterest) / 2.0;
+                spreads.Add((spread, weight));
             }
         }
 
@@ -482,8 +512,15 @@ public sealed class STCR001A
             return 0;
         }
 
-        double totalWeight = spreads.Sum(s => s.weight);
-        return spreads.Sum(s => s.spread * s.weight) / totalWeight;
+        double totalWeight = 0;
+        double weightedSum = 0;
+        for (int i = 0; i < spreads.Count; i++)
+        {
+            totalWeight += spreads[i].weight;
+            weightedSum += spreads[i].spread * spreads[i].weight;
+        }
+
+        return weightedSum / totalWeight;
     }
 
     /// <summary>
@@ -492,16 +529,16 @@ public sealed class STCR001A
     /// </summary>
     private static bool HasValidIVData(STDT002A optionChain)
     {
-        foreach (var expiry in optionChain.Expiries)
+        foreach (OptionExpiry expiry in optionChain.Expiries)
         {
-            foreach (var call in expiry.Calls)
+            foreach (OptionContract call in expiry.Calls)
             {
                 if (call.ImpliedVolatility > 0.001)
                 {
                     return true;
                 }
             }
-            foreach (var put in expiry.Puts)
+            foreach (OptionContract put in expiry.Puts)
             {
                 if (put.ImpliedVolatility > 0.001)
                 {

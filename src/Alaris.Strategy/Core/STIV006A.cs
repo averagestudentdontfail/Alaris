@@ -66,9 +66,7 @@ public sealed class STIV006A
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(timeToExpiry);
 
         // Find ATM strike (closest to spot)
-        STIV008A atmQuote = chain
-            .OrderBy(q => Math.Abs(q.Strike - spotPrice))
-            .First();
+        STIV008A atmQuote = FindClosestStrike(chain, spotPrice);
 
         double atmIV = atmQuote.ImpliedVolatility;
 
@@ -202,25 +200,61 @@ public sealed class STIV006A
         double timeToExpiry)
     {
         // Find puts around 25-delta (≈ 0.85-0.90 moneyness) and calls around 25-delta (≈ 1.05-1.10 moneyness)
-        List<STIV008A> lowStrikes = chain
-            .Where(q => q.Strike < spotPrice * 0.95)
-            .OrderByDescending(q => q.Strike)
-            .Take(3)
-            .ToList();
+        List<STIV008A> lowCandidates = new List<STIV008A>();
+        List<STIV008A> highCandidates = new List<STIV008A>();
 
-        List<STIV008A> highStrikes = chain
-            .Where(q => q.Strike > spotPrice * 1.05)
-            .OrderBy(q => q.Strike)
-            .Take(3)
-            .ToList();
+        double lowThreshold = spotPrice * 0.95;
+        double highThreshold = spotPrice * 1.05;
+
+        for (int i = 0; i < chain.Count; i++)
+        {
+            STIV008A quote = chain[i];
+            if (quote.Strike < lowThreshold)
+            {
+                lowCandidates.Add(quote);
+            }
+            else if (quote.Strike > highThreshold)
+            {
+                highCandidates.Add(quote);
+            }
+        }
+
+        lowCandidates.Sort(static (left, right) => right.Strike.CompareTo(left.Strike));
+        highCandidates.Sort(static (left, right) => left.Strike.CompareTo(right.Strike));
+
+        int lowCount = lowCandidates.Count > 3 ? 3 : lowCandidates.Count;
+        int highCount = highCandidates.Count > 3 ? 3 : highCandidates.Count;
+
+        List<STIV008A> lowStrikes = new List<STIV008A>(lowCount);
+        for (int i = 0; i < lowCount; i++)
+        {
+            lowStrikes.Add(lowCandidates[i]);
+        }
+
+        List<STIV008A> highStrikes = new List<STIV008A>(highCount);
+        for (int i = 0; i < highCount; i++)
+        {
+            highStrikes.Add(highCandidates[i]);
+        }
 
         if (lowStrikes.Count == 0 || highStrikes.Count == 0)
         {
             return DefaultSkewCoefficient;
         }
 
-        double avgLowIV = lowStrikes.Average(q => q.ImpliedVolatility);
-        double avgHighIV = highStrikes.Average(q => q.ImpliedVolatility);
+        double avgLowIV = 0.0;
+        for (int i = 0; i < lowStrikes.Count; i++)
+        {
+            avgLowIV += lowStrikes[i].ImpliedVolatility;
+        }
+        avgLowIV /= lowStrikes.Count;
+
+        double avgHighIV = 0.0;
+        for (int i = 0; i < highStrikes.Count; i++)
+        {
+            avgHighIV += highStrikes[i].ImpliedVolatility;
+        }
+        avgHighIV /= highStrikes.Count;
 
         // Risk reversal = Vol(OTM puts) - Vol(OTM calls)
         double riskReversal = avgLowIV - avgHighIV;
@@ -230,6 +264,30 @@ public sealed class STIV006A
 
         // Clamp to reasonable range
         return Math.Clamp(skew, -0.50, 0.10);
+    }
+
+    private static STIV008A FindClosestStrike(IReadOnlyList<STIV008A> chain, double spotPrice)
+    {
+        if (chain.Count == 0)
+        {
+            throw new ArgumentException("Option chain is empty.", nameof(chain));
+        }
+
+        STIV008A closest = chain[0];
+        double minDistance = Math.Abs(closest.Strike - spotPrice);
+
+        for (int i = 1; i < chain.Count; i++)
+        {
+            STIV008A quote = chain[i];
+            double distance = Math.Abs(quote.Strike - spotPrice);
+            if (distance < minDistance)
+            {
+                minDistance = distance;
+                closest = quote;
+            }
+        }
+
+        return closest;
     }
 
     /// <summary>

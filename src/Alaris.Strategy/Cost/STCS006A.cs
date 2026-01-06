@@ -137,7 +137,7 @@ public sealed class STCS006A
 
             bool overallPass = passesRatioThreshold && passesSlippageThreshold && passesCostThreshold;
 
-            var result = new STCS007A
+            STCS007A result = new STCS007A
             {
                 Symbol = signal.Symbol,
                 PreCostIVRVRatio = preCostRatio,
@@ -199,7 +199,7 @@ public sealed class STCS006A
     {
         ArgumentNullException.ThrowIfNull(signalsWithParams);
 
-        var results = new List<STCS007A>(signalsWithParams.Count);
+        List<STCS007A> results = new List<STCS007A>(signalsWithParams.Count);
 
         foreach ((Signal? signal, STCS002A? frontParams, STCS002A? backParams) in signalsWithParams)
         {

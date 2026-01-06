@@ -224,12 +224,12 @@ public sealed class TimeConstraints
     /// <summary>
     /// Default constraints.
     /// </summary>
-    public static TimeConstraints Default { get; } = new();
+    public static TimeConstraints Default { get; } = new TimeConstraints();
 
     /// <summary>
     /// Strict constraints for short-dated options.
     /// </summary>
-    public static TimeConstraints ShortDated { get; } = new()
+    public static TimeConstraints ShortDated { get; } = new TimeConstraints
     {
         MinTimeToExpiry = 1.0 / STTM004A.TradingDaysPerYear, // 1 day
         MaxTimeToExpiry = 0.25, // ~63 days (quarterly)
@@ -240,7 +240,7 @@ public sealed class TimeConstraints
     /// <summary>
     /// Relaxed constraints for LEAPS.
     /// </summary>
-    public static TimeConstraints Leaps { get; } = new()
+    public static TimeConstraints Leaps { get; } = new TimeConstraints
     {
         MinTimeToExpiry = 0.25, // ~63 days
         MaxTimeToExpiry = 3.0, // 3 years
@@ -255,7 +255,7 @@ public sealed class TimeConstraints
     {
         ArgumentNullException.ThrowIfNull(timeParams);
 
-        var errors = new List<string>();
+        List<string> errors = new List<string>();
 
         if (!timeParams.IsPreEarnings)
         {
