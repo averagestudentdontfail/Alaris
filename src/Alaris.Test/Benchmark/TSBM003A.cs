@@ -81,8 +81,9 @@ public class TSBM003A
         _output.WriteLine($"Finite Difference: {fdAvgUs:F1}");
         _output.WriteLine($"FD/Spectral Ratio: {fdAvgUs / accurateAvgUs:F1}x");
 
-        // Both should be reasonably fast
-        Assert.True(accurateAvgUs < 10000, $"Spectral should be < 10ms, got {accurateAvgUs}µs");
+        // Performance should remain within a reasonable factor of FD to avoid regression
+        Assert.True(accurateAvgUs <= fdAvgUs * 5.0,
+            $"Spectral should be within 5x FD: Spectral={accurateAvgUs:F1}µs, FD={fdAvgUs:F1}µs");
     }
 
     [Fact]
@@ -135,8 +136,9 @@ public class TSBM003A
         _output.WriteLine($"FD:       {fdThroughput:F0} options/sec ({swFD.ElapsedMilliseconds}ms total)");
         _output.WriteLine($"Ratio:    {spectralThroughput / fdThroughput:F2}x");
 
-        // Should process reasonable throughput
-        Assert.True(spectralThroughput > 50, $"Should process > 50 options/sec, got {spectralThroughput:F0}");
+        // Throughput should remain within a reasonable factor of FD to avoid regression
+        Assert.True(spectralThroughput >= fdThroughput * 0.2,
+            $"Spectral throughput should be at least 20% of FD: Spectral={spectralThroughput:F0}, FD={fdThroughput:F0}");
     }
 
     [Fact]

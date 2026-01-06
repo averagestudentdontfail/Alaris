@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Alaris.Host.Application.Model;
 using Microsoft.Extensions.Logging;
@@ -18,6 +19,7 @@ namespace Alaris.Host.Application.Service;
 /// </summary>
 public sealed class APsv001A
 {
+    private static readonly SemaphoreSlim SessionCreateLock = new SemaphoreSlim(1, 1);
     private readonly string _sessionsRoot;
     private readonly string _indexPath;
     private readonly ILogger<APsv001A>? _logger;
@@ -58,42 +60,50 @@ public sealed class APsv001A
             throw new ArgumentException("End date must be after start date", nameof(endDate));
         }
 
-        // Generate session ID
-        string sessionId = await GenerateSessionIdAsync(startDate, endDate);
-        string sessionPath = System.IO.Path.Combine(_sessionsRoot, sessionId);
-
-        _logger?.LogInformation("Creating session {SessionId} at {Path}", sessionId, sessionPath);
-
-        // Create folder structure
-        Directory.CreateDirectory(sessionPath);
-        Directory.CreateDirectory(System.IO.Path.Combine(sessionPath, "universe"));
-        Directory.CreateDirectory(System.IO.Path.Combine(sessionPath, "data", "equity", "usa", "daily"));
-        Directory.CreateDirectory(System.IO.Path.Combine(sessionPath, "results"));
-        Directory.CreateDirectory(System.IO.Path.Combine(sessionPath, "earnings"));
-
-        List<string> symbolList = symbols is null ? new List<string>() : new List<string>(symbols);
-
-        APmd001A session = new APmd001A
+        await SessionCreateLock.WaitAsync();
+        try
         {
-            SessionId = sessionId,
-            StartDate = startDate,
-            EndDate = endDate,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow,
-            Status = SessionStatus.Created,
-            SessionPath = sessionPath,
-            Symbols = symbolList
-        };
+            // Generate session ID
+            string sessionId = await GenerateSessionIdAsync(startDate, endDate);
+            string sessionPath = System.IO.Path.Combine(_sessionsRoot, sessionId);
 
-        // Save session metadata
-        await SaveSessionMetadataAsync(session);
+            _logger?.LogInformation("Creating session {SessionId} at {Path}", sessionId, sessionPath);
 
-        // Update index
-        await AddToIndexAsync(session);
+            // Create folder structure
+            Directory.CreateDirectory(sessionPath);
+            Directory.CreateDirectory(System.IO.Path.Combine(sessionPath, "universe"));
+            Directory.CreateDirectory(System.IO.Path.Combine(sessionPath, "data", "equity", "usa", "daily"));
+            Directory.CreateDirectory(System.IO.Path.Combine(sessionPath, "results"));
+            Directory.CreateDirectory(System.IO.Path.Combine(sessionPath, "earnings"));
 
-        _logger?.LogInformation("Session {SessionId} created successfully", sessionId);
+            List<string> symbolList = symbols is null ? new List<string>() : new List<string>(symbols);
 
-        return session;
+            APmd001A session = new APmd001A
+            {
+                SessionId = sessionId,
+                StartDate = startDate,
+                EndDate = endDate,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                Status = SessionStatus.Created,
+                SessionPath = sessionPath,
+                Symbols = symbolList
+            };
+
+            // Save session metadata
+            await SaveSessionMetadataAsync(session);
+
+            // Update index
+            await AddToIndexAsync(session);
+
+            _logger?.LogInformation("Session {SessionId} created successfully", sessionId);
+
+            return session;
+        }
+        finally
+        {
+            SessionCreateLock.Release();
+        }
     }
 
     /// <summary>

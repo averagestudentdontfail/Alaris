@@ -588,7 +588,7 @@ public sealed class TSIN005A : IAsyncLifetime
     /// <summary>
     /// Creating multiple sessions concurrently should work correctly.
     /// </summary>
-    [Fact(Skip = "Concurrent session creation needs file locking")]
+    [Fact]
     public async Task APsv001A_ConcurrentCreation_AllSessionsCreated()
     {
         // Arrange
