@@ -48,3 +48,52 @@
 2026-01-07T04:04:06.6656170Z TRACE:: Config.Get(): Configuration key not found. Key: security-data-feeds - Using default value: 
 2026-01-07T04:04:06.8321307Z TRACE:: BacktestingResultHandler(): Sample Period Set: 252.00
 2026-01-07T04:04:06.8330907Z TRACE:: Config.GetValue(): forward-console-messages - Using default value: True
+2026-01-07T04:04:07.6397627Z ERROR:: Engine.Run(): During the algorithm initialization, the following exception has occurred: Polygon API key not configured in DTpr001A.cs:line 81 Polygon API key not configured
+2026-01-07T04:04:07.6404643Z TRACE:: JOB HANDLERS:
+         DataFeed:             QuantConnect.Lean.Engine.DataFeeds.FileSystemDataFeed
+         Setup:                QuantConnect.Lean.Engine.Setup.BacktestingSetupHandler
+         RealTime:             QuantConnect.Lean.Engine.RealTime.BacktestingRealTimeHandler
+         Results:              QuantConnect.Lean.Engine.Results.BacktestingResultHandler
+         Transactions:         QuantConnect.Lean.Engine.TransactionHandlers.BacktestingTransactionHandler
+         Object Store:         QuantConnect.Lean.Engine.Storage.LocalObjectStore
+         History Provider:     QuantConnect.Lean.Engine.HistoricalData.HistoryProviderManager
+         Brokerage:            QuantConnect.Brokerages.Backtesting.BacktestingBrokerage
+         Data Provider:        QuantConnect.Lean.Engine.DataFeeds.DefaultDataProvider
+
+2026-01-07T04:04:07.6413201Z TRACE:: FileSystemDataFeed.Exit(): Start. Setting cancellation token...
+2026-01-07T04:04:07.6420295Z TRACE:: FileSystemDataFeed.Exit(): Exit Finished.
+2026-01-07T04:04:07.6422717Z TRACE:: BacktestingResultHandler.Exit(): starting...
+2026-01-07T04:04:07.6509438Z TRACE:: BacktestingResultHandler.Exit(): Saving logs...
+2026-01-07T04:04:07.6519800Z ERROR:: During the algorithm initialization, the following exception has occurred: Polygon API key not configured in DTpr001A.cs:line 81 Polygon API key not configured
+ Polygon API key not configured in DTpr001A.cs:line 81 Polygon API key not configured
+2026-01-07T04:04:07.6520398Z TRACE:: StopSafely(): Waiting for 'Result Thread' thread to stop...
+2026-01-07T04:04:07.6520980Z TRACE:: Debug: Warning: SetBenchmark(SPY): no existing symbol found, benchmark security will be added with Equity type.
+2026-01-07T04:04:07.6522070Z TRACE:: Log: STLN001A: Pre-subscribed 10 session symbols for backtest validation
+2026-01-07T04:04:07.6522630Z TRACE:: Log: STLN001A: Logging initialised
+2026-01-07T04:04:07.6522776Z TRACE:: Debug: Your log was successfully created and can be retrieved from: ./Alaris.Output/Results/Alaris.Algorithm.STLN001A-log.txt
+2026-01-07T04:04:07.6522862Z TRACE:: BacktestingResultHandler.Run(): Ending Thread...
+2026-01-07T04:04:07.7306701Z TRACE:: 
+STATISTICS:: OrderListHash d41d8cd98f00b204e9800998ecf8427e
+2026-01-07T04:04:07.7307098Z TRACE:: BacktestingResultHandler.SendAnalysisResult(): Processed final packet
+2026-01-07T04:04:07.7309997Z TRACE:: Engine.Run(): Disconnecting from brokerage...
+2026-01-07T04:04:07.7311111Z TRACE:: Engine.Run(): Disposing of setup handler...
+2026-01-07T04:04:07.7312085Z TRACE:: Engine.Main(): Analysis Completed and Results Posted.
+2026-01-07T04:04:07.7318870Z TRACE:: DataMonitor.Exit(): start...
+2026-01-07T04:04:07.7319645Z TRACE:: StopSafely(): Waiting for '' thread to stop...
+2026-01-07T04:04:07.7331282Z TRACE:: DataMonitor.GenerateReport():
+DATA USAGE:: Total data requests 0
+DATA USAGE:: Succeeded data requests 0
+DATA USAGE:: Failed data requests 0
+DATA USAGE:: Failed data requests percentage 0%
+DATA USAGE:: Total universe data requests 0
+DATA USAGE:: Succeeded universe data requests 0
+DATA USAGE:: Failed universe data requests 0
+DATA USAGE:: Failed universe data requests percentage 0%
+2026-01-07T04:04:07.7373835Z TRACE:: DataMonitor.Exit(): end
+2026-01-07T04:04:07.7378027Z TRACE:: Engine.Main(): Packet removed from queue: Alaris.Algorithm.STLN001A
+2026-01-07T04:04:07.7379592Z TRACE:: LeanEngineSystemHandlers.Dispose(): start...
+2026-01-07T04:04:07.7385349Z TRACE:: LeanEngineSystemHandlers.Dispose(): Disposed of system handlers.
+2026-01-07T04:04:07.7387893Z TRACE:: LeanEngineAlgorithmHandlers.Dispose(): start...
+2026-01-07T04:04:07.7390127Z TRACE:: LocalObjectStore.Dispose(): start...
+2026-01-07T04:04:07.7392834Z TRACE:: LocalObjectStore.Dispose(): end
+2026-01-07T04:04:07.7395221Z TRACE:: LeanEngineAlgorithmHandlers.Dispose(): Disposed of algorithm handlers.
