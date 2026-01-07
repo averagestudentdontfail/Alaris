@@ -1,0 +1,50 @@
+2026-01-07T03:39:17.6965535Z TRACE:: Engine.Main(): LEAN ALGORITHMIC TRADING ENGINE v2.5.0.0 Mode: DEBUG (64bit) Host: Sunny
+2026-01-07T03:39:17.7062180Z TRACE:: Engine.Main(): Started 14:39
+2026-01-07T03:39:17.7086519Z TRACE:: Config.Get(): Configuration key not found. Key: lean-manager-type - Using default value: LocalLeanManager
+2026-01-07T03:39:17.7254669Z TRACE:: JobQueue.NextJob(): Selected Alaris.Algorithm/bin/Debug/net10.0/Alaris.Algorithm.dll
+2026-01-07T03:39:17.7372085Z TRACE:: Config.GetValue(): scheduled-event-leaky-bucket-capacity - Using default value: 120
+2026-01-07T03:39:17.7372753Z TRACE:: Config.GetValue(): scheduled-event-leaky-bucket-time-interval-minutes - Using default value: 1440
+2026-01-07T03:39:17.7373367Z TRACE:: Config.GetValue(): scheduled-event-leaky-bucket-refill-amount - Using default value: 18
+2026-01-07T03:39:17.7381367Z TRACE:: Config.GetValue(): storage-limit - Using default value: 10737418240
+2026-01-07T03:39:17.7382059Z TRACE:: Config.GetValue(): storage-file-count - Using default value: 10000
+2026-01-07T03:39:17.7389064Z TRACE:: Config.GetValue(): storage-permissions - Using default value: Read=True Write=True Delete=True
+2026-01-07T03:39:17.7389465Z TRACE:: Config.Get(): Configuration key not found. Key: algorithm-id - Using default value: Alaris.Algorithm.STLN001A
+2026-01-07T03:39:17.7390399Z TRACE:: Config.Get(): Configuration key not found. Key: optimization-id - Using default value: 
+2026-01-07T03:39:17.7391026Z TRACE:: Config.Get(): Configuration key not found. Key: backtest-name - Using default value: local
+2026-01-07T04:04:05.9238031Z TRACE:: Engine.Main(): LEAN ALGORITHMIC TRADING ENGINE v2.5.0.0 Mode: DEBUG (64bit) Host: Sunny
+2026-01-07T04:04:05.9317665Z TRACE:: Engine.Main(): Started 15:04
+2026-01-07T04:04:05.9338641Z TRACE:: Config.Get(): Configuration key not found. Key: lean-manager-type - Using default value: LocalLeanManager
+2026-01-07T04:04:05.9504285Z TRACE:: JobQueue.NextJob(): Selected src/Alaris.Algorithm/bin/Debug/net10.0/Alaris.Algorithm.dll
+2026-01-07T04:04:05.9614254Z TRACE:: Config.GetValue(): scheduled-event-leaky-bucket-capacity - Using default value: 120
+2026-01-07T04:04:05.9615309Z TRACE:: Config.GetValue(): scheduled-event-leaky-bucket-time-interval-minutes - Using default value: 1440
+2026-01-07T04:04:05.9615821Z TRACE:: Config.GetValue(): scheduled-event-leaky-bucket-refill-amount - Using default value: 18
+2026-01-07T04:04:05.9623892Z TRACE:: Config.GetValue(): storage-limit - Using default value: 10737418240
+2026-01-07T04:04:05.9624557Z TRACE:: Config.GetValue(): storage-file-count - Using default value: 10000
+2026-01-07T04:04:05.9631661Z TRACE:: Config.GetValue(): storage-permissions - Using default value: Read=True Write=True Delete=True
+2026-01-07T04:04:05.9632346Z TRACE:: Config.Get(): Configuration key not found. Key: algorithm-id - Using default value: Alaris.Algorithm.STLN001A
+2026-01-07T04:04:05.9633497Z TRACE:: Config.Get(): Configuration key not found. Key: optimization-id - Using default value: 
+2026-01-07T04:04:05.9634290Z TRACE:: Config.Get(): Configuration key not found. Key: backtest-name - Using default value: local
+2026-01-07T04:04:05.9649657Z TRACE:: Config.Get(): Configuration key not found. Key: data-channel - Using default value: 
+2026-01-07T04:04:05.9651826Z TRACE:: Config.Get(): Configuration key not found. Key: python-venv - Using default value: 
+2026-01-07T04:04:05.9653199Z TRACE:: Config.Get(): Configuration key not found. Key: out-of-sample-max-end-date - Using default value: 
+2026-01-07T04:04:05.9653850Z TRACE:: Config.GetValue(): out-of-sample-days - Using default value: 0
+2026-01-07T04:04:05.9662362Z TRACE:: Config.Get(): Configuration key not found. Key: data-permission-manager - Using default value: DataPermissionManager
+2026-01-07T04:04:05.9662784Z TRACE:: Config.Get(): Configuration key not found. Key: data-monitor - Using default value: QuantConnect.Data.DataMonitor
+2026-01-07T04:04:05.9744680Z TRACE:: Config.GetValue(): algorithm-creation-timeout - Using default value: 90
+2026-01-07T04:04:05.9804515Z TRACE:: Config.GetValue(): zip-data-cache-provider - Using default value: 10
+2026-01-07T04:04:05.9817107Z TRACE:: Config.Get(): Configuration key not found. Key: fundamental-data-provider - Using default value: CoarseFundamentalDataProvider
+2026-01-07T04:04:05.9838564Z TRACE:: AlgorithmManager.CreateTokenBucket(): Initializing LeakyBucket: Capacity: 120 RefillAmount: 18 TimeInterval: 1440
+2026-01-07T04:04:05.9842663Z TRACE:: Config.GetValue(): algorithm-manager-time-loop-maximum - Using default value: 20
+2026-01-07T04:04:05.9896366Z TRACE:: Engine.Run(): Resource limits '0' CPUs. 2147483647 MB RAM.
+2026-01-07T04:04:05.9900258Z TRACE:: TextSubscriptionDataSourceReader.SetCacheSize(): Setting cache size to 71582788 items
+2026-01-07T04:04:05.9908612Z TRACE:: Config.GetValue(): downloader-data-update-period - Using default value: 7
+2026-01-07T04:04:06.5505978Z TRACE:: Loader.TryCreateILAlgorithm(): Loading debug information with algorithm
+2026-01-07T04:04:06.5645191Z TRACE:: Config.Get(): Configuration key not found. Key: databases-refresh-period - Using default value: 1.00:00:00
+2026-01-07T04:04:06.6476661Z TRACE:: Loader.TryCreateILAlgorithm(): Loaded STLN001A
+2026-01-07T04:04:06.6506056Z TRACE:: LocalObjectStore.Initialize(): Storage Root: /home/sunny/.project/Alaris/Alaris.Output/Storage. StorageFileCount 10000. StorageLimit 10240MB. StoragePermissions Read=True Write=True Delete=True
+2026-01-07T04:04:06.6568117Z TRACE:: Config.GetValue(): zip-data-cache-provider - Using default value: 10
+2026-01-07T04:04:06.6600318Z TRACE:: HistoryProviderManager.Initialize(): history providers [SubscriptionDataReaderHistoryProvider]
+2026-01-07T04:04:06.6630352Z TRACE:: BaseSetupHandler.Setup(LocalPlatform): UID: 0, PID: 0, Version: 2.5.0.0, Source: WebIDE
+2026-01-07T04:04:06.6656170Z TRACE:: Config.Get(): Configuration key not found. Key: security-data-feeds - Using default value: 
+2026-01-07T04:04:06.8321307Z TRACE:: BacktestingResultHandler(): Sample Period Set: 252.00
+2026-01-07T04:04:06.8330907Z TRACE:: Config.GetValue(): forward-console-messages - Using default value: True
