@@ -577,24 +577,32 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
         fsm.Fire(BacktestEvent.CheckData);
 
         string dataPath = service.GetDataPath(session.SessionId);
-        (bool pricesMissing, bool earningsMissing, bool optionsMissing) = CheckDataAvailability(dataPath, session);
+        
+        // Build requirements model for unified data checking
+        Alaris.Core.Model.STDT010A requirements = new Alaris.Core.Model.STDT010A
+        {
+            StartDate = session.StartDate,
+            EndDate = session.EndDate,
+            Symbols = session.Symbols.Count > 0 ? session.Symbols : new List<string>()
+        };
+        
+        // Check if data exists using same patterns as unified bootstrap
+        bool dataMissing = CheckDataRequirements(dataPath, requirements);
 
-        if (pricesMissing || earningsMissing || optionsMissing)
+        if (dataMissing)
         {
             // FSM: DataChecking → DataBootstrapping
             fsm.Fire(BacktestEvent.DataMissing);
             
-            AnsiConsole.MarkupLine("[yellow]⚠ Missing data detected:[/]");
-            if (pricesMissing) AnsiConsole.MarkupLine("  [grey]• Price data not found[/]");
-            if (earningsMissing) AnsiConsole.MarkupLine("  [grey]• Earnings cache empty[/]");
-            if (optionsMissing) AnsiConsole.MarkupLine("  [grey]• Options data empty (mandatory)[/]");
+            AnsiConsole.MarkupLine("[yellow]⚠ Session data incomplete. Bootstrap required.[/]");
+            AnsiConsole.MarkupLine($"[grey]  Requirements: {requirements.GetSummary()}[/]");
             AnsiConsole.WriteLine();
 
             if (settings.AutoBootstrap)
             {
                 try
                 {
-                    await BootstrapDataAsync(session, service, dataPath);
+                    await BootstrapWithUnifiedServiceAsync(requirements, dataPath);
                     // FSM: DataBootstrapping → DataChecking (re-check after bootstrap)
                     fsm.Fire(BacktestEvent.BootstrapComplete);
                     // FSM: DataChecking → ExecutingLean (data should be ready now)
@@ -614,7 +622,7 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
                 {
                     try
                     {
-                        await BootstrapDataAsync(session, service, dataPath);
+                        await BootstrapWithUnifiedServiceAsync(requirements, dataPath);
                         fsm.Fire(BacktestEvent.BootstrapComplete);
                         fsm.Fire(BacktestEvent.DataReady);
                     }
@@ -627,8 +635,7 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
                 }
                 else
                 {
-                    AnsiConsole.MarkupLine("[red]Cannot proceed without mandatory market data.[/]");
-                    AnsiConsole.MarkupLine("[grey]Strategy requires historical options data with IV for backtesting.[/]");
+                    AnsiConsole.MarkupLine("[red]Cannot proceed without session data.[/]");
                     fsm.Fire(BacktestEvent.BootstrapFailed);
                     return 1;
                 }
@@ -642,6 +649,7 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
             AnsiConsole.MarkupLine("[green]✓[/] Data available for session");
             AnsiConsole.WriteLine();
         }
+
 
         // Update status to Running
         await service.UpdateAsync(session with { Status = SessionStatus.Running });
@@ -691,7 +699,11 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
         return exitCode;
     }
 
-    private static (bool pricesMissing, bool earningsMissing, bool optionsMissing) CheckDataAvailability(string dataPath, APmd001A session)
+    /// <summary>
+    /// Checks if session data requirements are met.
+    /// Returns true if any required data is missing.
+    /// </summary>
+    private static bool CheckDataRequirements(string dataPath, Alaris.Core.Model.STDT010A requirements)
     {
         // Check for price data (LEAN equity folder structure)
         string equityPath = System.IO.Path.Combine(dataPath, "equity", "usa", "daily");
@@ -701,164 +713,33 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
         string earningsPath = System.IO.Path.Combine(dataPath, "earnings", "nasdaq");
         bool hasEarnings = Directory.Exists(earningsPath) && Directory.GetFiles(earningsPath, "*.json").Length > 0;
 
-        // Check for options data (mandatory for strategy)
-        string optionsPath = System.IO.Path.Combine(dataPath, "options");
-        bool hasOptions = Directory.Exists(optionsPath) && Directory.GetFiles(optionsPath, "*.json").Length > 0;
-
-        return (!hasPrices, !hasEarnings, !hasOptions);
+        // If no prices or earnings, data is incomplete
+        return !hasPrices || !hasEarnings;
     }
 
-    private static async Task BootstrapDataAsync(APmd001A session, APsv001A service, string dataPath)
+    /// <summary>
+    /// Bootstraps session data using the unified APsv002A service.
+    /// This is the single entry point for all data downloads.
+    /// </summary>
+    private static async Task BootstrapWithUnifiedServiceAsync(
+        Alaris.Core.Model.STDT010A requirements,
+        string dataPath)
     {
-        AnsiConsole.MarkupLine("[blue]Downloading price data from Polygon...[/]");
-        AnsiConsole.WriteLine();
+        using APsv002A dataService = DependencyFactory.CreateAPsv002A();
         
-        // Create configuration
-        IConfiguration config = new ConfigurationBuilder()
-            .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.jsonc", optional: true)
-            .AddJsonFile("appsettings.local.jsonc", optional: true)
-            .AddUserSecrets<BacktestCreateCommand>(optional: true)
-            .AddEnvironmentVariables("ALARIS_")
-            .Build();
-
-        ILoggerFactory loggerFactory = LoggerFactory.Create(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Warning));
-        
-        // Create Polygon client for price data
-        HttpClient polygonHttpClient = new HttpClient { BaseAddress = new Uri("https://api.polygon.io") };
-        polygonHttpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Alaris/1.0");
-        IPolygonApi polygonApi = RestService.For<IPolygonApi>(polygonHttpClient);
-        PolygonApiClient polygonClient = new PolygonApiClient(polygonApi, config, loggerFactory.CreateLogger<PolygonApiClient>());
-
-        // Create NASDAQ client for earnings calendar
-        HttpClient nasdaqHttpClient = new HttpClient { BaseAddress = new Uri("https://api.nasdaq.com") };
-        nasdaqHttpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
-        nasdaqHttpClient.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
-        INasdaqCalendarApi nasdaqApi = RestService.For<INasdaqCalendarApi>(nasdaqHttpClient);
-        NasdaqEarningsProvider earningsProvider = new NasdaqEarningsProvider(nasdaqApi, loggerFactory.CreateLogger<NasdaqEarningsProvider>());
-
-        // Create data service with both providers
-        using APsv002A dataService = new APsv002A(
-            polygonClient, 
-            earningsProvider, 
-            null, 
-            loggerFactory.CreateLogger<APsv002A>());
-        
-        // Download price data
-        await dataService.DownloadEquityDataAsync(
-            dataPath,
-            session.Symbols,
-            session.StartDate,
-            session.EndDate);
-
-        AnsiConsole.MarkupLine("[green]✓[/] Price data download completed");
-        AnsiConsole.WriteLine();
-
-        // Bootstrap earnings calendar for the session date range
-        AnsiConsole.MarkupLine("[blue]Downloading earnings calendar from NASDAQ...[/]");
-        AnsiConsole.MarkupLine("[grey]  (Rate-limited: ~1 day/second to avoid blocking)[/]");
-        AnsiConsole.WriteLine();
-        
-        // Use data path so algorithm can find cached earnings at {data}/earnings/nasdaq/
-        int daysDownloaded = await dataService.BootstrapEarningsCalendarAsync(
-            session.StartDate,
-            session.EndDate.AddDays(120), // Fetch 120 days of future earnings for lookahead logic
+        BootstrapReport report = await dataService.BootstrapSessionDataAsync(
+            requirements,
             dataPath,
             CancellationToken.None);
+        
+        if (!report.Success)
+        {
+            throw new InvalidOperationException(report.ErrorMessage ?? "Bootstrap failed for unknown reason");
+        }
+        
+        AnsiConsole.MarkupLine($"[green]✓[/] {report.GetSummary()}");
+    }
 
-        AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine($"[green]✓[/] Earnings calendar bootstrap completed ({daysDownloaded} days downloaded)");
-        AnsiConsole.WriteLine();
-        
-        // Bootstrap options data for evaluation dates around earnings
-        // Parse earnings dates from cached calendar to determine which dates need options
-        AnsiConsole.MarkupLine("[blue]Downloading historical options data with IV...[/]");
-        AnsiConsole.MarkupLine("[grey]  (Uses market prices to calculate Black-Scholes IV)[/]");
-        AnsiConsole.WriteLine();
-        
-        List<DateTime> earningsDates = GetEarningsDatesFromCache(dataPath, session.StartDate, session.EndDate);
-        if (earningsDates.Count > 0)
-        {
-            // For each earnings date, get options for evaluation dates 7-21 days before (strategy entry window)
-            HashSet<DateTime> evaluationDates = new HashSet<DateTime>();
-            foreach (DateTime earningsDate in earningsDates)
-            {
-                // Strategy evaluates 7-21 days before earnings
-                for (int daysBeforeEarnings = 7; daysBeforeEarnings <= 21; daysBeforeEarnings += 7)
-                {
-                    DateTime evalDate = earningsDate.AddDays(-daysBeforeEarnings).Date;
-                    if (evalDate >= session.StartDate && evalDate <= session.EndDate)
-                    {
-                        evaluationDates.Add(evalDate);
-                    }
-                }
-            }
-            
-            if (evaluationDates.Count > 0)
-            {
-                List<DateTime> orderedDates = new List<DateTime>(evaluationDates);
-                orderedDates.Sort();
-                int optionsDownloaded = await dataService.BootstrapOptionsDataAsync(
-                    session.Symbols,
-                    orderedDates,
-                    dataPath,
-                    CancellationToken.None);
-                    
-                AnsiConsole.WriteLine();
-                AnsiConsole.MarkupLine($"[green]✓[/] Options data bootstrap completed ({optionsDownloaded} chains downloaded for {evaluationDates.Count} dates)");
-            }
-            else
-            {
-                AnsiConsole.MarkupLine("[grey]No evaluation dates in range for options bootstrap[/]");
-            }
-        }
-        else
-        {
-            AnsiConsole.MarkupLine("[grey]No earnings dates found in cache for options bootstrap[/]");
-        }
-        AnsiConsole.WriteLine();
-    }
-    
-    /// <summary>
-    /// Parses earnings dates from cached calendar files.
-    /// </summary>
-    private static List<DateTime> GetEarningsDatesFromCache(string dataPath, DateTime startDate, DateTime endDate)
-    {
-        List<DateTime> earningsDates = new List<DateTime>();
-        string earningsPath = System.IO.Path.Combine(dataPath, "earnings", "nasdaq");
-        
-        if (!Directory.Exists(earningsPath))
-        {
-            return earningsDates;
-        }
-        
-        string[] files = Directory.GetFiles(earningsPath, "*.json");
-        foreach (string file in files)
-        {
-            string filename = System.IO.Path.GetFileNameWithoutExtension(file);
-            if (DateTime.TryParseExact(filename, "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out DateTime date))
-            {
-                if (date >= startDate && date <= endDate)
-                {
-                    // Check if file has any earnings events
-                    try
-                    {
-                        string content = File.ReadAllText(file);
-                        if (content.Length > 10 && !content.Contains("[]")) // Not empty
-                        {
-                            earningsDates.Add(date);
-                        }
-                    }
-                    catch
-                    {
-                        // Skip files that can't be read
-                    }
-                }
-            }
-        }
-        
-        return earningsDates;
-    }
 
     private static async Task<int> ExecuteLeanWithMonitoringAsync(APmd001A session, APsv001A service)
     {

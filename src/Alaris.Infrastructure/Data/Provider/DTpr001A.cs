@@ -34,7 +34,7 @@ namespace Alaris.Infrastructure.Data.Provider.Polygon;
 /// Resilience provided by Microsoft.Extensions.Http.Resilience standard handler.
 /// </para>
 /// </remarks>
-public sealed class PolygonApiClient : DTpr003A
+public sealed class PolygonApiClient : DTpr003A, IDisposable
 {
     private readonly IPolygonApi _api;
     private readonly ILogger<PolygonApiClient> _logger;
@@ -294,7 +294,7 @@ public sealed class PolygonApiClient : DTpr003A
 
             // 3. Fetch daily bars for each contract - WITH PARALLELISM and LIMITS
             ConcurrentBag<OptionContract> contracts = new ConcurrentBag<OptionContract>();
-            volatile bool subscriptionLimitHit = false;
+            int subscriptionLimitHit = 0;
             
             // Use semaphore to limit concurrent requests (Polygon rate limits apply)
             using SemaphoreSlim semaphore = new(_maxConcurrentRequests);
@@ -309,7 +309,7 @@ public sealed class PolygonApiClient : DTpr003A
 
             async Task FetchContractAsync(PolygonOptionContract refContract)
             {
-                if (subscriptionLimitHit)
+                if (Volatile.Read(ref subscriptionLimitHit) == 1)
                 {
                     return;
                 }
@@ -370,7 +370,7 @@ public sealed class PolygonApiClient : DTpr003A
                     _logger.LogWarning(
                         "Options data for {Date} is outside the 2-year historical data window. Skipping remaining contracts.",
                         dateStr);
-                    subscriptionLimitHit = true;
+                    Interlocked.Exchange(ref subscriptionLimitHit, 1);
                 }
                 catch (Exception ex)
                 {
@@ -649,7 +649,7 @@ public sealed class PolygonApiClient : DTpr003A
             return false;
         }
 
-        if (_contractCache.TryGetValue(symbol, out ContractCacheEntry entry))
+        if (_contractCache.TryGetValue(symbol, out ContractCacheEntry? entry) && entry != null)
         {
             if (entry.AsOfDate <= asOfDate.Date &&
                 (asOfDate.Date - entry.AsOfDate).TotalDays <= _optionsContractListCacheDays)
@@ -762,7 +762,7 @@ public sealed class PolygonApiClient : DTpr003A
                 }
 
                 EndpointKind kind = (EndpointKind)selected;
-                if (TryDequeueForEndpoint(kind, out RequestTicket? ticket))
+                if (TryDequeueForEndpoint(kind, out RequestTicket? ticket) && ticket != null)
                 {
                     ticket.Gate.TrySetResult(true);
                 }
@@ -912,6 +912,17 @@ public sealed class PolygonApiClient : DTpr003A
     {
         public required DateTime AsOfDate { get; init; }
         public required PolygonOptionContract[] Contracts { get; init; }
+    }
+
+    public void Dispose()
+    {
+        _schedulerCts.Cancel();
+        _schedulerCts.Dispose();
+
+        foreach (KeyValuePair<string, SemaphoreSlim> entry in _contractCacheLocks)
+        {
+            entry.Value.Dispose();
+        }
     }
 
 

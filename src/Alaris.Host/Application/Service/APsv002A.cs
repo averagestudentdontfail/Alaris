@@ -30,7 +30,11 @@ public sealed class APsv002A : IDisposable
     private readonly NasdaqEarningsProvider? _earningsClient;
     private readonly TreasuryDirectRateProvider? _treasuryClient;
     private readonly ILogger<APsv002A>? _logger;
-    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions JsonOptions = new() 
+    { 
+        WriteIndented = true,
+        PropertyNameCaseInsensitive = true 
+    };
 
     public APsv002A(
         PolygonApiClient polygonClient, 
@@ -771,7 +775,7 @@ public sealed class APsv002A : IDisposable
             try
             {
                 string json = File.ReadAllText(file);
-                CachedEarningsDay? cached = JsonSerializer.Deserialize<CachedEarningsDay>(json);
+                CachedEarningsDay? cached = JsonSerializer.Deserialize<CachedEarningsDay>(json, JsonOptions);
                 
                 if (cached?.Earnings == null)
                     continue;
@@ -891,7 +895,7 @@ public sealed class APsv002A : IDisposable
                     continue;
                 }
 
-                if (!int.TryParse(datePart.Substring(0, 8), NumberStyles.Integer, CultureInfo.InvariantCulture, out int dateKey))
+                if (!int.TryParse(datePart.AsSpan(0, 8), NumberStyles.Integer, CultureInfo.InvariantCulture, out int dateKey))
                 {
                     continue;
                 }
