@@ -182,8 +182,13 @@ public sealed class APsv002A : IDisposable
                                 sb.AppendLine($"{rateDate:yyyyMMdd},{rates[rateDate]}");
                             }
                             await File.WriteAllTextAsync(csvPath, sb.ToString());
+                            _logger?.LogInformation("Saved {Count} interest rate observations to {Path}", rates.Count, csvPath);
                         }
-                        taskRates.Description = "[green]Interest Rates Downloaded[/]";
+                        else
+                        {
+                            _logger?.LogWarning("Treasury API returned 0 interest rate observations for date range");
+                        }
+                        taskRates.Description = $"[green]Interest Rates: {rates.Count} observations[/]";
                         taskRates.Value = 100;
                     }
                     catch (Exception ex)

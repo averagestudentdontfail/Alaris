@@ -111,12 +111,14 @@ public sealed class TreasuryDirectRateProvider : DTpr005A
                     }
                 }
                 
-                decimal fallbackRate = ParseRate(anyBill.InterestRate);
+                string? fallbackRateStr = anyBill.HighInvestmentRate ?? anyBill.HighDiscountRate ?? anyBill.InterestRate;
+                decimal fallbackRate = ParseRate(fallbackRateStr);
                 _logger.LogInformation("Using fallback rate from {Term}: {Rate:P4}", anyBill.Term, fallbackRate);
                 return fallbackRate;
             }
 
-            decimal rate = ParseRate(threeMonthBill.InterestRate);
+            string? rateStr = threeMonthBill.HighInvestmentRate ?? threeMonthBill.HighDiscountRate ?? threeMonthBill.InterestRate;
+            decimal rate = ParseRate(rateStr);
             
             _logger.LogInformation(
                 "Current 3-month T-bill rate: {Rate:P4} (issue date: {IssueDate:yyyy-MM-dd})",
@@ -164,6 +166,15 @@ public sealed class TreasuryDirectRateProvider : DTpr005A
                 _logger.LogError("Treasury API returned no data for range {Start} to {End}. Check Date Range or API Status.", startDate, endDate);
                 throw new InvalidOperationException($"No Treasury data found for {startDate:d}-{endDate:d}");
             }
+            
+            // Debug: Log API response details
+            _logger.LogInformation("Treasury API returned {Count} securities", securities.Length);
+            if (securities.Length > 0)
+            {
+                var first = securities[0];
+                _logger.LogInformation("First security: issueDate={IssueDate}, HighInvestmentRate='{HIR}', HighDiscountRate='{HDR}', InterestRate='{IR}'",
+                    first.IssueDate, first.HighInvestmentRate ?? "(null)", first.HighDiscountRate ?? "(null)", first.InterestRate ?? "(null)");
+            }
 
             // Group by issue date, prefer 3-month bills
             Dictionary<DateTime, (decimal Rate, bool IsPreferred)> ratesByDate =
@@ -171,14 +182,23 @@ public sealed class TreasuryDirectRateProvider : DTpr005A
             for (int i = 0; i < securities.Length; i++)
             {
                 TreasurySecurityDto security = securities[i];
-                if (string.IsNullOrWhiteSpace(security.InterestRate))
+                
+                // T-bills use discount/investment rates, not interest rates
+                // Prefer HighInvestmentRate (equivalent yield), fallback to HighDiscountRate
+                string? rateString = security.HighInvestmentRate ?? security.HighDiscountRate ?? security.InterestRate;
+                if (string.IsNullOrWhiteSpace(rateString))
                 {
                     continue;
                 }
 
                 DateTime issueDate = security.IssueDate.Date;
                 bool isPreferred = security.Term != null && security.Term.Contains("91");
-                decimal rate = ParseRate(security.InterestRate);
+                decimal rate = ParseRate(rateString);
+                
+                if (rate <= 0)
+                {
+                    continue;
+                }
 
                 if (ratesByDate.TryGetValue(issueDate, out (decimal Rate, bool IsPreferred) current))
                 {

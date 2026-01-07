@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -1093,7 +1094,7 @@ public sealed class AlarisDataBridge
 
     /// <summary>
     /// Gets historical bars from cached price data.
-    /// Reads from pre-downloaded equity CSV files.
+    /// Reads from pre-downloaded equity data (ZIP or CSV files).
     /// </summary>
     /// <param name="symbol">The symbol to get bars for.</param>
     /// <param name="startDate">Start date (inclusive).</param>
@@ -1107,22 +1108,49 @@ public sealed class AlarisDataBridge
         }
 
         string symbolLower = symbol.ToLowerInvariant();
-        string csvPath = Path.Combine(_sessionDataPath, "equity", "usa", "daily", $"{symbolLower}.csv");
+        string dailyDir = Path.Combine(_sessionDataPath, "equity", "usa", "daily");
         
-        if (!File.Exists(csvPath))
+        // LEAN stores equity data as ZIP files (e.g., aapl.zip containing aapl.csv)
+        string zipPath = Path.Combine(dailyDir, $"{symbolLower}.zip");
+        string csvPath = Path.Combine(dailyDir, $"{symbolLower}.csv");
+        
+        string[]? lines = null;
+        
+        // Try ZIP first (LEAN format)
+        if (File.Exists(zipPath))
         {
-            _logger.LogDebug("Price cache not found for {Symbol} at {Path}", symbol, csvPath);
+            try
+            {
+                using var archive = System.IO.Compression.ZipFile.OpenRead(zipPath);
+                var entry = archive.GetEntry($"{symbolLower}.csv");
+                if (entry != null)
+                {
+                    using var stream = entry.Open();
+                    using var reader = new StreamReader(stream);
+                    lines = reader.ReadToEnd().Split(Environment.NewLine.ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
+                    _logger.LogDebug("Loaded {Count} lines from ZIP cache for {Symbol}", lines.Length, symbol);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error reading ZIP cache for {Symbol}", symbol);
+            }
+        }
+        
+        // Fallback to direct CSV
+        if (lines == null && File.Exists(csvPath))
+        {
+            lines = File.ReadAllLines(csvPath);
+        }
+        
+        if (lines == null || lines.Length == 0)
+        {
+            _logger.LogDebug("Price cache not found for {Symbol} at {Path}", symbol, dailyDir);
             return null;
         }
 
         try
         {
-            string[] lines = File.ReadAllLines(csvPath);
-            if (lines.Length == 0)
-            {
-                return null;
-            }
-
             List<PriceBar> bars = new List<PriceBar>();
 
             foreach (string line in lines)

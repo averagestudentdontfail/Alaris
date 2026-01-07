@@ -53,6 +53,19 @@ public sealed class TreasurySecurityDto
     [JsonPropertyName("interestRate")]
     public string? InterestRate { get; init; }
 
+    /// <summary>
+    /// High discount rate for T-bills (discount instruments).
+    /// This is the rate to use for T-bills since they don't have interest rates.
+    /// </summary>
+    [JsonPropertyName("highDiscountRate")]
+    public string? HighDiscountRate { get; init; }
+
+    /// <summary>
+    /// High investment rate (equivalent yield) for T-bills.
+    /// </summary>
+    [JsonPropertyName("highInvestmentRate")]
+    public string? HighInvestmentRate { get; init; }
+
     [JsonPropertyName("term")]
     public string? Term { get; init; }
 
