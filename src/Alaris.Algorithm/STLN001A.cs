@@ -255,8 +255,14 @@ public sealed class STLN001A : QCAlgorithm
     /// </summary>
     private void InitialiseDataProviders()
     {
-        // Initialise market data provider (Polygon) with Refit
         var configuration = _configuration ?? BuildConfiguration();
+        
+        // Check if we have a session data path (backtest with pre-downloaded data)
+        var sessionDataPath = Environment.GetEnvironmentVariable("ALARIS_SESSION_DATA");
+        bool hasSessionData = !string.IsNullOrEmpty(sessionDataPath) && System.IO.Directory.Exists(sessionDataPath);
+        
+        // Initialise market data provider (Polygon) with Refit
+        // API key is passed via ALARIS_Polygon__ApiKey environment variable from Host when running backtests
         var polygonHttpClient = new HttpClient { BaseAddress = _dataProviderSettings.PolygonBaseUri, Timeout = _dataProviderSettings.PolygonTimeout };
         polygonHttpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Alaris/1.0 (Quantitative Trading System)");
         IPolygonApi polygonApi = RestService.For<IPolygonApi>(polygonHttpClient);
@@ -311,17 +317,16 @@ public sealed class STLN001A : QCAlgorithm
         
         // Create unified data bridge
         _dataBridge = new AlarisDataBridge(
-            _marketDataProvider,
+            _marketDataProvider,  // May be null in backtest mode with cached data
             _earningsProvider,
             _riskFreeRateProvider,
             validators,
             _loggerFactory!.CreateLogger<AlarisDataBridge>());
         
         // Set session data path for cached data access (options, etc.)
-        var sessionDataPath = Environment.GetEnvironmentVariable("ALARIS_SESSION_DATA");
-        if (!string.IsNullOrEmpty(sessionDataPath))
+        if (hasSessionData)
         {
-            _dataBridge.SetSessionDataPath(sessionDataPath);
+            _dataBridge.SetSessionDataPath(sessionDataPath!);
             Log($"STLN001A: Session data path set for cache: {sessionDataPath}");
         }
         

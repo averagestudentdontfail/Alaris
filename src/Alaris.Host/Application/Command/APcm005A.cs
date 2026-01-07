@@ -414,7 +414,7 @@ internal static class DependencyFactory
     private static HttpClient? _httpClient;
     private static ILoggerFactory? _loggerFactory;
     
-    private static IConfiguration GetConfig()
+    internal static IConfiguration GetConfig()
     {
         return _config ??= new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
@@ -794,6 +794,16 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
         psi.Environment["ALARIS_SESSION_RESULTS"] = service.GetResultsPath(session.SessionId);
         psi.Environment["ALARIS_BACKTEST_STARTDATE"] = session.StartDate.ToString("yyyy-MM-dd");
         psi.Environment["ALARIS_BACKTEST_ENDDATE"] = session.EndDate.ToString("yyyy-MM-dd");
+        
+        // Pass Polygon API key so algorithm can use it for market data (required for historical bars, volume)
+        // Uses double underscore to match Microsoft.Extensions.Configuration environment variable binding convention
+        // e.g., ALARIS_Polygon__ApiKey maps to Polygon:ApiKey in IConfiguration
+        IConfiguration config = DependencyFactory.GetConfig();
+        string? polygonApiKey = config["Polygon:ApiKey"];
+        if (!string.IsNullOrEmpty(polygonApiKey))
+        {
+            psi.Environment["ALARIS_Polygon__ApiKey"] = polygonApiKey;
+        }
 
         using Process? process = Process.Start(psi);
         if (process == null)

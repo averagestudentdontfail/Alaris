@@ -58,18 +58,30 @@ public sealed class PriceReasonablenessValidator : DTqc002A
             }
         }
 
-        // Check 2: Option bid/ask validity
+        // Check 2: Option bid/ask validity (only for near-ATM options within ±20% of spot)
+        // OTM options often have bid=0 which is normal market behavior
+        decimal atmLowerBound = snapshot.SpotPrice * 0.80m;
+        decimal atmUpperBound = snapshot.SpotPrice * 1.20m;
+        
         foreach (OptionContract contract in snapshot.OptionChain.Contracts)
         {
+            bool isNearAtm = contract.Strike >= atmLowerBound && contract.Strike <= atmUpperBound;
+            
             if (contract.Bid <= 0)
             {
-                return new DataQualityResult
+                if (isNearAtm)
                 {
-                    ValidatorId = ComponentId,
-                    Status = ValidationStatus.Failed,
-                    Message = $"Invalid bid price: {contract.OptionSymbol} bid={contract.Bid}",
-                    DataElement = "OptionChain.Contracts"
-                };
+                    // Near-ATM options with 0 bid is suspicious - fail
+                    return new DataQualityResult
+                    {
+                        ValidatorId = ComponentId,
+                        Status = ValidationStatus.Failed,
+                        Message = $"Invalid bid price for ATM option: {contract.OptionSymbol} bid={contract.Bid}",
+                        DataElement = "OptionChain.Contracts"
+                    };
+                }
+                // OTM options with 0 bid is normal - just log as debug (don't even warn)
+                continue;
             }
 
             if (contract.Ask <= contract.Bid)
@@ -105,17 +117,24 @@ public sealed class PriceReasonablenessValidator : DTqc002A
             }
         }
 
-        // Check 3: Data freshness
-        Duration dataAge = now - _timeProvider.ToInstant(snapshot.Timestamp);
-        if (dataAge > Duration.FromHours(1))
+        // Check 3: Data freshness - skip for historical data (backtesting)
+        // Only check freshness if evaluation date is within 1 day of real time
+        Duration timeDiff = now - _timeProvider.ToInstant(snapshot.Timestamp);
+        bool isHistoricalData = timeDiff > Duration.FromDays(1) || timeDiff < Duration.FromDays(-1);
+        
+        if (!isHistoricalData)
         {
-            return new DataQualityResult
+            Duration dataAge = now - _timeProvider.ToInstant(snapshot.Timestamp);
+            if (dataAge > Duration.FromHours(1))
             {
-                ValidatorId = ComponentId,
-                Status = ValidationStatus.Failed,
-                Message = $"Stale data: age={dataAge.TotalMinutes:F1} minutes",
-                DataElement = "Timestamp"
-            };
+                return new DataQualityResult
+                {
+                    ValidatorId = ComponentId,
+                    Status = ValidationStatus.Failed,
+                    Message = $"Stale data: age={dataAge.TotalMinutes:F1} minutes",
+                    DataElement = "Timestamp"
+                };
+            }
         }
 
         ValidationStatus status = warnings.Count > 0 ? ValidationStatus.PassedWithWarnings : ValidationStatus.Passed;

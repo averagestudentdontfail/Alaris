@@ -30,7 +30,7 @@ namespace Alaris.Infrastructure.Data.Bridge;
 /// </remarks>
 public sealed class AlarisDataBridge
 {
-    private readonly DTpr003A _marketDataProvider;
+    private readonly DTpr003A? _marketDataProvider;
     private readonly DTpr004A _earningsProvider;
     private readonly DTpr005A _riskFreeRateProvider;
     private readonly IReadOnlyList<DTqc002A> _validators;
@@ -44,23 +44,34 @@ public sealed class AlarisDataBridge
     /// <summary>
     /// Initializes a new instance of the <see cref="AlarisDataBridge"/> class.
     /// </summary>
-    /// <param name="marketDataProvider">Market data provider (Polygon).</param>
+    /// <param name="marketDataProvider">Market data provider (Polygon). Can be null in backtest mode with cached data.</param>
     /// <param name="earningsProvider">Earnings calendar provider.</param>
     /// <param name="riskFreeRateProvider">Risk-free rate provider.</param>
     /// <param name="validators">Data quality validators.</param>
     /// <param name="logger">Logger instance.</param>
     public AlarisDataBridge(
-        DTpr003A marketDataProvider,
+        DTpr003A? marketDataProvider,
         DTpr004A earningsProvider,
         DTpr005A riskFreeRateProvider,
         IReadOnlyList<DTqc002A> validators,
         ILogger<AlarisDataBridge> logger)
     {
-        _marketDataProvider = marketDataProvider ?? throw new ArgumentNullException(nameof(marketDataProvider));
+        _marketDataProvider = marketDataProvider; // Can be null for backtest with cached data
         _earningsProvider = earningsProvider ?? throw new ArgumentNullException(nameof(earningsProvider));
         _riskFreeRateProvider = riskFreeRateProvider ?? throw new ArgumentNullException(nameof(riskFreeRateProvider));
         _validators = validators ?? throw new ArgumentNullException(nameof(validators));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+
+    /// <summary>
+    /// Gets the market data provider or throws if not available.
+    /// Used for operations that require live API access.
+    /// </summary>
+    private DTpr003A RequireMarketDataProvider()
+    {
+        return _marketDataProvider ?? throw new InvalidOperationException(
+            "Market data provider is not available. In backtest mode with cached data, " +
+            "ensure all required data is pre-downloaded or configure the Polygon API key.");
     }
 
     /// <summary>
@@ -104,21 +115,21 @@ public sealed class AlarisDataBridge
                 GetOptionChainWithCacheFallbackAsync(symbol, effectiveDate, cancellationToken);
             Task<(EarningsEvent? next, IReadOnlyList<EarningsEvent> historical)> earningsTask =
                 GetEarningsDataAsync(symbol, effectiveDate, cancellationToken);
-            Task<decimal> avgVolumeTask = _marketDataProvider.GetAverageVolume30DayAsync(
-                symbol,
-                effectiveDate,
-                cancellationToken);
+            
+            // Note: Average volume will be computed from historical bars (cache-friendly)
+            // rather than making a separate API call
 
             await Task.WhenAll(
                 historicalBarsTask,
                 optionChainTask,
-                earningsTask,
-                avgVolumeTask);
+                earningsTask);
 
             IReadOnlyList<PriceBar> historicalBars = await historicalBarsTask;
             OptionChainSnapshot optionChain = await optionChainTask;
             (EarningsEvent? nextEarnings, IReadOnlyList<EarningsEvent> historicalEarnings) = await earningsTask;
-            decimal avgVolume = await avgVolumeTask;
+            
+            // Compute average volume from historical bars (avoids separate API call)
+            decimal avgVolume = ComputeAverageVolumeFromBars(historicalBars, symbol, effectiveDate);
             
             // Derive spot price from the most recent bar's close price
             // This works for both live (recent bars) and backtesting (historical bars)
@@ -147,22 +158,35 @@ public sealed class AlarisDataBridge
             else
             {
                 // Fallback to live spot price only if no historical data
-                spotPrice = await _marketDataProvider.GetSpotPriceAsync(symbol, cancellationToken);
+                spotPrice = await RequireMarketDataProvider().GetSpotPriceAsync(symbol, cancellationToken);
             }
-            
-            // For backtesting, use a reasonable historical risk-free rate
-            // The Treasury API returns 0% for future dates, so we use a sensible default
+            // Get risk-free rate from cache first (backtest mode), then live API
             decimal riskFreeRate;
-            if (evaluationDate.HasValue && evaluationDate.Value > DateTime.UtcNow.Date)
+            decimal? cachedRate = GetRiskFreeRateFromCache(effectiveDate);
+            
+            if (cachedRate.HasValue && cachedRate.Value > 0)
             {
-                // Future date in backtest - use typical historical rate
-                riskFreeRate = 0.05m; // 5% typical for 2023-2024
-                _logger.LogDebug("Using default risk-free rate {Rate}% for backtest date {Date}", 
-                    riskFreeRate * 100, effectiveDate);
+                riskFreeRate = cachedRate.Value;
+                _logger.LogDebug("Using cached risk-free rate {Rate:P4} for {Date:yyyy-MM-dd}", 
+                    riskFreeRate, effectiveDate);
             }
             else
             {
-                riskFreeRate = await _riskFreeRateProvider.GetCurrentRateAsync(cancellationToken);
+                // Try live API if no cache
+                try
+                {
+                    riskFreeRate = await _riskFreeRateProvider.GetCurrentRateAsync(cancellationToken);
+                    if (riskFreeRate <= 0)
+                    {
+                        riskFreeRate = 0.045m; // Fallback: typical 2024 rate
+                        _logger.LogDebug("Treasury returned 0%, using fallback rate {Rate:P4}", riskFreeRate);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to fetch risk-free rate, using fallback");
+                    riskFreeRate = 0.045m; // Fallback: typical 2024 rate
+                }
             }
 
             decimal dividendYield = EstimateDividendYield(optionChain, spotPrice, riskFreeRate, effectiveDate);
@@ -603,7 +627,7 @@ public sealed class AlarisDataBridge
 
         // Fetch from provider (Live or Historical On-Demand)
         _logger.LogDebug("Fetching option chain for {Symbol} as of {Date}", symbol, evaluationDate);
-        return await _marketDataProvider.GetOptionChainAsync(symbol, evaluationDate, cancellationToken);
+        return await RequireMarketDataProvider().GetOptionChainAsync(symbol, evaluationDate, cancellationToken);
     }
     
     /// <summary>
@@ -764,6 +788,7 @@ public sealed class AlarisDataBridge
 
     /// <summary>
     /// Gets historical bars for Yang-Zhang RV calculation (minimum 30 days).
+    /// Uses cached data first, falls back to live API if needed.
     /// </summary>
     private async Task<IReadOnlyList<PriceBar>> GetHistoricalBarsForRvCalculationAsync(
         string symbol,
@@ -774,7 +799,16 @@ public sealed class AlarisDataBridge
         DateTime endDate = evaluationDate.Date;
         DateTime startDate = endDate.AddDays(-45); // 45 days to ensure 30 trading days
 
-        IReadOnlyList<PriceBar> bars = await _marketDataProvider.GetHistoricalBarsAsync(
+        // Try cache first (backtest mode with pre-downloaded data)
+        IReadOnlyList<PriceBar>? cachedBars = GetHistoricalBarsFromCache(symbol, startDate, endDate);
+        if (cachedBars != null && cachedBars.Count >= 30)
+        {
+            _logger.LogDebug("Using {Count} cached historical bars for {Symbol}", cachedBars.Count, symbol);
+            return cachedBars;
+        }
+
+        // Fall back to live API
+        IReadOnlyList<PriceBar> bars = await RequireMarketDataProvider().GetHistoricalBarsAsync(
             symbol,
             startDate,
             endDate,
@@ -956,7 +990,7 @@ public sealed class AlarisDataBridge
             }
 
             // Check 2: Sufficient average volume (Atilgan threshold: 1.5M)
-            decimal avgVolume = await _marketDataProvider.GetAverageVolume30DayAsync(
+            decimal avgVolume = await RequireMarketDataProvider().GetAverageVolume30DayAsync(
                 symbol,
                 null, // Use current date for live pre-filtering
                 cancellationToken);
@@ -975,5 +1009,254 @@ public sealed class AlarisDataBridge
             _logger.LogWarning(ex, "Error checking basic criteria for {Symbol}", symbol);
             return false;
         }
+    }
+
+    /// <summary>
+    /// Gets risk-free rate from cached interest rate data.
+    /// Reads from pre-downloaded interest-rate.csv file.
+    /// </summary>
+    /// <param name="evaluationDate">The evaluation date to get rate for.</param>
+    /// <returns>Risk-free rate, or null if no cache available.</returns>
+    private decimal? GetRiskFreeRateFromCache(DateTime evaluationDate)
+    {
+        if (string.IsNullOrEmpty(_sessionDataPath))
+        {
+            return null;
+        }
+
+        string ratePath = Path.Combine(_sessionDataPath, "alternative", "interest-rate", "usa", "interest-rate.csv");
+        if (!File.Exists(ratePath))
+        {
+            _logger.LogDebug("Interest rate cache not found at {Path}", ratePath);
+            return null;
+        }
+
+        try
+        {
+            string[] lines = File.ReadAllLines(ratePath);
+            if (lines.Length == 0)
+            {
+                return null;
+            }
+
+            // Parse CSV: format is "yyyyMMdd,rate" where rate is decimal (e.g., 0.05 for 5%)
+            DateTime targetDate = evaluationDate.Date;
+            decimal? closestRate = null;
+            DateTime closestDate = DateTime.MinValue;
+
+            foreach (string line in lines)
+            {
+                if (string.IsNullOrWhiteSpace(line))
+                {
+                    continue;
+                }
+
+                string[] parts = line.Split(',');
+                if (parts.Length < 2)
+                {
+                    continue;
+                }
+
+                if (!DateTime.TryParseExact(parts[0], "yyyyMMdd", null, 
+                    System.Globalization.DateTimeStyles.None, out DateTime rateDate))
+                {
+                    continue;
+                }
+
+                if (!decimal.TryParse(parts[1], out decimal rate))
+                {
+                    continue;
+                }
+
+                // Find the closest date <= evaluation date
+                if (rateDate <= targetDate && rateDate > closestDate)
+                {
+                    closestDate = rateDate;
+                    closestRate = rate;
+                }
+            }
+
+            if (closestRate.HasValue)
+            {
+                _logger.LogDebug("Loaded interest rate {Rate:P4} from cache (date: {Date:yyyy-MM-dd})", 
+                    closestRate.Value, closestDate);
+            }
+
+            return closestRate;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error reading interest rate cache");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Gets historical bars from cached price data.
+    /// Reads from pre-downloaded equity CSV files.
+    /// </summary>
+    /// <param name="symbol">The symbol to get bars for.</param>
+    /// <param name="startDate">Start date (inclusive).</param>
+    /// <param name="endDate">End date (inclusive).</param>
+    /// <returns>List of price bars, or null if no cache available.</returns>
+    private IReadOnlyList<PriceBar>? GetHistoricalBarsFromCache(string symbol, DateTime startDate, DateTime endDate)
+    {
+        if (string.IsNullOrEmpty(_sessionDataPath))
+        {
+            return null;
+        }
+
+        string symbolLower = symbol.ToLowerInvariant();
+        string csvPath = Path.Combine(_sessionDataPath, "equity", "usa", "daily", $"{symbolLower}.csv");
+        
+        if (!File.Exists(csvPath))
+        {
+            _logger.LogDebug("Price cache not found for {Symbol} at {Path}", symbol, csvPath);
+            return null;
+        }
+
+        try
+        {
+            string[] lines = File.ReadAllLines(csvPath);
+            if (lines.Length == 0)
+            {
+                return null;
+            }
+
+            List<PriceBar> bars = new List<PriceBar>();
+
+            foreach (string line in lines)
+            {
+                if (string.IsNullOrWhiteSpace(line))
+                {
+                    continue;
+                }
+
+                // LEAN CSV format: Date,Open,High,Low,Close,Volume
+                // Date format: yyyyMMdd HH:mm or yyyyMMdd
+                string[] parts = line.Split(',');
+                if (parts.Length < 6)
+                {
+                    continue;
+                }
+
+                // Parse date - try both formats
+                string datePart = parts[0].Split(' ')[0]; // Get just the date part
+                if (!DateTime.TryParseExact(datePart, "yyyyMMdd", null, 
+                    System.Globalization.DateTimeStyles.None, out DateTime barDate))
+                {
+                    continue;
+                }
+
+                // Filter by date range
+                if (barDate < startDate || barDate > endDate)
+                {
+                    continue;
+                }
+
+                // Parse OHLCV - LEAN uses scaled prices (divide by 10000)
+                if (!decimal.TryParse(parts[1], out decimal openRaw) ||
+                    !decimal.TryParse(parts[2], out decimal highRaw) ||
+                    !decimal.TryParse(parts[3], out decimal lowRaw) ||
+                    !decimal.TryParse(parts[4], out decimal closeRaw) ||
+                    !long.TryParse(parts[5], out long volume))
+                {
+                    continue;
+                }
+
+                // LEAN stores prices scaled by 10000
+                decimal scaleFactor = 10000m;
+                bars.Add(new PriceBar
+                {
+                    Symbol = symbol,
+                    Timestamp = barDate,
+                    Open = openRaw / scaleFactor,
+                    High = highRaw / scaleFactor,
+                    Low = lowRaw / scaleFactor,
+                    Close = closeRaw / scaleFactor,
+                    Volume = volume
+                });
+            }
+
+            if (bars.Count > 0)
+            {
+                // Sort by date ascending
+                bars.Sort((a, b) => a.Timestamp.CompareTo(b.Timestamp));
+                _logger.LogDebug("Loaded {Count} bars from cache for {Symbol}", bars.Count, symbol);
+            }
+
+            return bars.Count > 0 ? bars : null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error reading price cache for {Symbol}", symbol);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Computes 30-day average volume from cached price bars.
+    /// </summary>
+    /// <param name="symbol">The symbol to compute volume for.</param>
+    /// <param name="evaluationDate">The evaluation date.</param>
+    /// <returns>Average 30-day volume, or null if insufficient data.</returns>
+    private decimal? GetAverageVolumeFromCache(string symbol, DateTime evaluationDate)
+    {
+        DateTime endDate = evaluationDate.Date;
+        DateTime startDate = endDate.AddDays(-45); // 45 days to ensure 30 trading days
+
+        IReadOnlyList<PriceBar>? bars = GetHistoricalBarsFromCache(symbol, startDate, endDate);
+        if (bars == null || bars.Count < 20) // Need at least 20 days for a reasonable average
+        {
+            return null;
+        }
+
+        // Take last 30 bars (or all if less)
+        int takeCount = Math.Min(30, bars.Count);
+        long totalVolume = 0;
+        for (int i = bars.Count - takeCount; i < bars.Count; i++)
+        {
+            totalVolume += bars[i].Volume;
+        }
+
+        decimal avgVolume = (decimal)totalVolume / takeCount;
+        _logger.LogDebug("Computed 30d avg volume {Volume:N0} from {Count} cached bars for {Symbol}", 
+            avgVolume, takeCount, symbol);
+        return avgVolume;
+    }
+
+    /// <summary>
+    /// Computes 30-day average volume from provided historical bars.
+    /// Used to avoid separate API call for volume data.
+    /// </summary>
+    /// <param name="historicalBars">Historical price bars with volume data.</param>
+    /// <param name="symbol">Symbol for logging.</param>
+    /// <param name="evaluationDate">Evaluation date for logging.</param>
+    /// <returns>Average 30-day volume.</returns>
+    private decimal ComputeAverageVolumeFromBars(
+        IReadOnlyList<PriceBar> historicalBars, 
+        string symbol, 
+        DateTime evaluationDate)
+    {
+        if (historicalBars.Count == 0)
+        {
+            _logger.LogWarning("No historical bars available to compute average volume for {Symbol}", symbol);
+            return 0m;
+        }
+
+        // Take last 30 bars (or all available if less)
+        int takeCount = Math.Min(30, historicalBars.Count);
+        long totalVolume = 0;
+        
+        for (int i = historicalBars.Count - takeCount; i < historicalBars.Count; i++)
+        {
+            totalVolume += historicalBars[i].Volume;
+        }
+
+        decimal avgVolume = (decimal)totalVolume / takeCount;
+        _logger.LogDebug("Computed 30d avg volume {Volume:N0} from {Count} bars for {Symbol} @ {Date:yyyy-MM-dd}", 
+            avgVolume, takeCount, symbol, evaluationDate);
+        
+        return avgVolume;
     }
 }
