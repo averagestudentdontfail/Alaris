@@ -577,7 +577,7 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
         fsm.Fire(BacktestEvent.CheckData);
 
         string dataPath = service.GetDataPath(session.SessionId);
-        
+
         // Build requirements model for unified data checking
         Alaris.Core.Model.STDT010A requirements = new Alaris.Core.Model.STDT010A
         {
@@ -585,60 +585,73 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
             EndDate = session.EndDate,
             Symbols = session.Symbols.Count > 0 ? session.Symbols : new List<string>()
         };
-        
-        // Check if data exists using same patterns as unified bootstrap
-        bool dataMissing = CheckDataRequirements(dataPath, requirements);
 
-        if (dataMissing)
+        // Run comprehensive pre-flight validation
+        AnsiConsole.MarkupLine("[blue]Running pre-flight validation...[/]");
+        AnsiConsole.WriteLine();
+
+        APsv002A dataService = CreateDataService();
+        Alaris.Core.Model.STDT011A validation = await dataService.ValidatePreflightAsync(
+            requirements, dataPath, CancellationToken.None);
+
+        // Display initial validation status
+        DisplayPreflightStatus(validation);
+
+        if (!validation.IsReady)
         {
             // FSM: DataChecking → DataBootstrapping
             fsm.Fire(BacktestEvent.DataMissing);
-            
-            AnsiConsole.MarkupLine("[yellow]⚠ Session data incomplete. Bootstrap required.[/]");
-            AnsiConsole.MarkupLine($"[grey]  Requirements: {requirements.GetSummary()}[/]");
-            AnsiConsole.WriteLine();
 
-            if (settings.AutoBootstrap)
+            if (!validation.CanAutoRemediate)
+            {
+                AnsiConsole.MarkupLine("[red]Some issues require manual intervention.[/]");
+                fsm.Fire(BacktestEvent.BootstrapFailed);
+                return 1;
+            }
+
+            bool shouldRemediate = settings.AutoBootstrap ||
+                AnsiConsole.Confirm(
+                    $"[yellow]Auto-remediate {validation.RemediationActions.Count} issue(s)?[/]",
+                    defaultValue: true);
+
+            if (shouldRemediate)
             {
                 try
                 {
-                    await BootstrapWithUnifiedServiceAsync(requirements, dataPath);
+                    AnsiConsole.WriteLine();
+                    AnsiConsole.MarkupLine("[blue]Starting auto-remediation...[/]");
+
+                    validation = await dataService.RemediateAsync(
+                        requirements, dataPath, validation, CancellationToken.None);
+
                     // FSM: DataBootstrapping → DataChecking (re-check after bootstrap)
                     fsm.Fire(BacktestEvent.BootstrapComplete);
+
+                    AnsiConsole.WriteLine();
+                    DisplayPreflightStatus(validation);
+
+                    if (!validation.IsReady)
+                    {
+                        AnsiConsole.MarkupLine("[red]Remediation incomplete. Some issues remain.[/]");
+                        fsm.Fire(BacktestEvent.BootstrapFailed);
+                        return 1;
+                    }
+
                     // FSM: DataChecking → ExecutingLean (data should be ready now)
                     fsm.Fire(BacktestEvent.DataReady);
                 }
                 catch (Exception ex)
                 {
-                    AnsiConsole.MarkupLine($"[red]Bootstrap failed: {ex.Message}[/]");
+                    AnsiConsole.MarkupLine($"[red]Remediation failed: {ex.Message}[/]");
                     fsm.Fire(BacktestEvent.BootstrapFailed);
                     return 1;
                 }
             }
             else
             {
-                bool download = AnsiConsole.Confirm("Download missing data now?", defaultValue: true);
-                if (download)
-                {
-                    try
-                    {
-                        await BootstrapWithUnifiedServiceAsync(requirements, dataPath);
-                        fsm.Fire(BacktestEvent.BootstrapComplete);
-                        fsm.Fire(BacktestEvent.DataReady);
-                    }
-                    catch (Exception ex)
-                    {
-                        AnsiConsole.MarkupLine($"[red]Bootstrap failed: {ex.Message}[/]");
-                        fsm.Fire(BacktestEvent.BootstrapFailed);
-                        return 1;
-                    }
-                }
-                else
-                {
-                    AnsiConsole.MarkupLine("[red]Cannot proceed without session data.[/]");
-                    fsm.Fire(BacktestEvent.BootstrapFailed);
-                    return 1;
-                }
+                AnsiConsole.MarkupLine("[red]Cannot proceed without remediation.[/]");
+                fsm.Fire(BacktestEvent.BootstrapFailed);
+                return 1;
             }
             AnsiConsole.WriteLine();
         }
@@ -646,7 +659,6 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
         {
             // FSM: DataChecking → ExecutingLean
             fsm.Fire(BacktestEvent.DataReady);
-            AnsiConsole.MarkupLine("[green]✓[/] Data available for session");
             AnsiConsole.WriteLine();
         }
 
@@ -860,8 +872,8 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
 
     private static string? FindLeanLauncher()
     {
-        string[] paths = new[] 
-        { 
+        string[] paths = new[]
+        {
             "lib/Alaris.Lean/Launcher/QuantConnect.Lean.Launcher.csproj",
             "../lib/Alaris.Lean/Launcher/QuantConnect.Lean.Launcher.csproj",
             "../../lib/Alaris.Lean/Launcher/QuantConnect.Lean.Launcher.csproj",
@@ -877,6 +889,66 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
             }
         }
         return null;
+    }
+
+    /// <summary>
+    /// Creates a data service instance for pre-flight validation and remediation.
+    /// </summary>
+    private static APsv002A CreateDataService()
+    {
+        // Reuse the existing factory method from DependencyFactory
+        return DependencyFactory.CreateAPsv002A();
+    }
+
+    /// <summary>
+    /// Displays pre-flight validation status to console.
+    /// </summary>
+    private static void DisplayPreflightStatus(Alaris.Core.Model.STDT011A validation)
+    {
+        string statusColor = validation.Status switch
+        {
+            Alaris.Core.Model.PreflightStatus.Ready => "green",
+            Alaris.Core.Model.PreflightStatus.Warning => "yellow",
+            _ => "red"
+        };
+
+        AnsiConsole.MarkupLine($"[{statusColor}]Pre-flight Status: {validation.Status}[/]");
+        AnsiConsole.MarkupLine($"  {validation.Summary}");
+
+        // Coverage stats
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine("[blue]Data Coverage:[/]");
+        AnsiConsole.MarkupLine($"  Price Data:    {validation.Coverage.SymbolsWithPriceData}/{validation.Coverage.TotalSymbols} symbols ({validation.Coverage.PriceCoveragePercent:F0}%)");
+        AnsiConsole.MarkupLine($"  Earnings Data: {validation.Coverage.EarningsDatesWithData}/{validation.Coverage.TotalEarningsDates} dates ({validation.Coverage.EarningsCoveragePercent:F0}%)");
+        AnsiConsole.MarkupLine($"  Options Data:  {validation.Coverage.ValidOptionsSymbolDates}/{validation.Coverage.TotalOptionsSymbolDates} valid ({validation.Coverage.OptionsValidCoveragePercent:F0}%)");
+
+        // Show issues if any
+        List<Alaris.Core.Model.PreflightCheck> issues = validation.Checks
+            .Where(c => c.Status != Alaris.Core.Model.CheckStatus.Passed)
+            .ToList();
+
+        if (issues.Count > 0)
+        {
+            AnsiConsole.WriteLine();
+            AnsiConsole.MarkupLine("[yellow]Issues:[/]");
+            foreach (Alaris.Core.Model.PreflightCheck check in issues)
+            {
+                string checkColor = check.Status == Alaris.Core.Model.CheckStatus.Failed ? "red" : "yellow";
+                AnsiConsole.MarkupLine($"  [{checkColor}][{check.Status}][/] {check.Name}: {check.Message}");
+            }
+        }
+
+        // Show remediation actions if any
+        if (validation.RemediationActions.Count > 0)
+        {
+            AnsiConsole.WriteLine();
+            AnsiConsole.MarkupLine("[blue]Remediation Actions:[/]");
+            foreach (Alaris.Core.Model.RemediationAction action in validation.RemediationActions)
+            {
+                string autoTag = action.CanAutomate ? "[auto]" : "[manual]";
+                AnsiConsole.MarkupLine($"  {autoTag} {action.Description} (~{action.EstimatedSeconds}s)");
+            }
+        }
     }
 }
 

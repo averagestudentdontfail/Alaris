@@ -278,7 +278,7 @@ public sealed class STCS006A
     /// Computes the post-cost IV/RV ratio.
     /// </summary>
     /// <param name="preCostRatio">The original IV/RV ratio from signal generation.</param>
-    /// <param name="spreadCost">The computed spread execution cost.</param>
+    /// <param name="executionCostPercent">Execution cost as a percentage of capital.</param>
     /// <returns>The adjusted IV/RV ratio accounting for costs.</returns>
     
     private static double ComputePostCostRatio(double preCostRatio, decimal executionCostPercent)

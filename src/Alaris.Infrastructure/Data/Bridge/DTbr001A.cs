@@ -550,7 +550,7 @@ public sealed class AlarisDataBridge
             
             // Strategy 1: Try exact date-specific cache files (from earnings-based bootstrap)
             string dateSuffix = evaluationDate.ToString("yyyyMMdd");
-            
+
             string dateSpecificBinaryPath = System.IO.Path.Combine(optionsDir, $"{symbolLower}_{dateSuffix}.sbe");
             if (File.Exists(dateSpecificBinaryPath))
             {
@@ -559,9 +559,16 @@ public sealed class AlarisDataBridge
                     OptionChainSnapshot? cached = await LoadBinaryCacheAsync(dateSpecificBinaryPath, cancellationToken);
                     if (cached != null && cached.Contracts.Count > 0)
                     {
-                        _logger.LogDebug("Loaded {Count} options from date-specific binary cache for {Symbol} @ {Date}", 
-                            cached.Contracts.Count, symbol, evaluationDate);
-                        return cached;
+                        // Validate cache before use (Rule 7 - Fail Fast)
+                        CacheValidationResult validation = ValidateCacheForTermStructure(cached, evaluationDate);
+                        if (validation.IsValid)
+                        {
+                            _logger.LogDebug("Loaded {Count} options from date-specific binary cache for {Symbol} @ {Date}",
+                                cached.Contracts.Count, symbol, evaluationDate);
+                            return cached;
+                        }
+                        _logger.LogDebug("Date-specific binary cache rejected for {Symbol} @ {Date}: {Reason}",
+                            symbol, evaluationDate, validation.Reason);
                     }
                 }
                 catch (Exception ex)
@@ -569,7 +576,7 @@ public sealed class AlarisDataBridge
                     _logger.LogWarning(ex, "Failed to load date-specific binary cache for {Symbol}", symbol);
                 }
             }
-            
+
             string dateSpecificJsonPath = System.IO.Path.Combine(optionsDir, $"{symbolLower}_{dateSuffix}.json");
             if (File.Exists(dateSpecificJsonPath))
             {
@@ -579,9 +586,16 @@ public sealed class AlarisDataBridge
                     OptionChainSnapshot? cached = JsonSerializer.Deserialize<OptionChainSnapshot>(json, JsonOptions);
                     if (cached != null && cached.Contracts.Count > 0)
                     {
-                        _logger.LogDebug("Loaded {Count} options from date-specific JSON cache for {Symbol} @ {Date}", 
-                            cached.Contracts.Count, symbol, evaluationDate);
-                        return cached;
+                        // Validate cache before use (Rule 7 - Fail Fast)
+                        CacheValidationResult validation = ValidateCacheForTermStructure(cached, evaluationDate);
+                        if (validation.IsValid)
+                        {
+                            _logger.LogDebug("Loaded {Count} options from date-specific JSON cache for {Symbol} @ {Date}",
+                                cached.Contracts.Count, symbol, evaluationDate);
+                            return cached;
+                        }
+                        _logger.LogDebug("Date-specific JSON cache rejected for {Symbol} @ {Date}: {Reason}",
+                            symbol, evaluationDate, validation.Reason);
                     }
                 }
                 catch (JsonException ex)
@@ -589,8 +603,8 @@ public sealed class AlarisDataBridge
                     _logger.LogWarning(ex, "Failed to deserialize date-specific JSON cache for {Symbol}", symbol);
                 }
             }
-            
-            // Strategy 2: Find nearest earlier dated cache file
+
+            // Strategy 2: Find nearest earlier dated cache file (with validation)
             if (Directory.Exists(optionsDir))
             {
                 OptionChainSnapshot? nearestCache = await FindNearestCacheAsync(optionsDir, symbolLower, evaluationDate, cancellationToken);
@@ -599,7 +613,7 @@ public sealed class AlarisDataBridge
                     return nearestCache;
                 }
             }
-            
+
             // Strategy 3: Fall back to single-file cache (legacy format - date-agnostic)
             string binaryCachePath = System.IO.Path.Combine(optionsDir, $"{symbolLower}.sbe");
             if (File.Exists(binaryCachePath))
@@ -609,9 +623,16 @@ public sealed class AlarisDataBridge
                     OptionChainSnapshot? cached = await LoadBinaryCacheAsync(binaryCachePath, cancellationToken);
                     if (cached != null && cached.Contracts.Count > 0)
                     {
-                        _logger.LogDebug("Loaded {Count} options from legacy binary cache for {Symbol} (using as fallback)", 
-                            cached.Contracts.Count, symbol);
-                        return cached;
+                        // Validate cache before use (Rule 7 - Fail Fast)
+                        CacheValidationResult validation = ValidateCacheForTermStructure(cached, evaluationDate);
+                        if (validation.IsValid)
+                        {
+                            _logger.LogDebug("Loaded {Count} options from legacy binary cache for {Symbol} (using as fallback)",
+                                cached.Contracts.Count, symbol);
+                            return cached;
+                        }
+                        _logger.LogDebug("Legacy binary cache rejected for {Symbol} @ {Date}: {Reason}",
+                            symbol, evaluationDate, validation.Reason);
                     }
                 }
                 catch (Exception ex)
@@ -627,12 +648,19 @@ public sealed class AlarisDataBridge
                 {
                     string json = await File.ReadAllTextAsync(jsonCachePath, cancellationToken);
                     OptionChainSnapshot? cached = JsonSerializer.Deserialize<OptionChainSnapshot>(json, JsonOptions);
-                    
+
                     if (cached != null && cached.Contracts.Count > 0)
                     {
-                        _logger.LogDebug("Loaded {Count} options from legacy JSON cache for {Symbol} (using as fallback)", 
-                            cached.Contracts.Count, symbol);
-                        return cached;
+                        // Validate cache before use (Rule 7 - Fail Fast)
+                        CacheValidationResult validation = ValidateCacheForTermStructure(cached, evaluationDate);
+                        if (validation.IsValid)
+                        {
+                            _logger.LogDebug("Loaded {Count} options from legacy JSON cache for {Symbol} (using as fallback)",
+                                cached.Contracts.Count, symbol);
+                            return cached;
+                        }
+                        _logger.LogDebug("Legacy JSON cache rejected for {Symbol} @ {Date}: {Reason}",
+                            symbol, evaluationDate, validation.Reason);
                     }
                 }
                 catch (JsonException ex)
@@ -640,8 +668,8 @@ public sealed class AlarisDataBridge
                     _logger.LogWarning(ex, "Failed to deserialize legacy JSON cache for {Symbol}", symbol);
                 }
             }
-            
-            _logger.LogDebug("No options cache found for {Symbol} @ {Date}", symbol, evaluationDate);
+
+            _logger.LogDebug("No valid options cache found for {Symbol} @ {Date}", symbol, evaluationDate);
         }
 
         if (!_allowOptionChainFallback)
@@ -663,6 +691,7 @@ public sealed class AlarisDataBridge
     
     /// <summary>
     /// Finds the nearest earlier cached options file for a symbol.
+    /// Validates that the cache has usable data (future expirations, valid IVs, put-call coverage).
     /// </summary>
     private async Task<OptionChainSnapshot?> FindNearestCacheAsync(
         string optionsDir,
@@ -677,11 +706,11 @@ public sealed class AlarisDataBridge
             string[] binaryFiles = Directory.GetFiles(optionsDir, pattern);
             string jsonPattern = $"{symbolLower}_*.json";
             string[] jsonFiles = Directory.GetFiles(optionsDir, jsonPattern);
-            
+
             // Parse dates from filenames and find nearest earlier date
             List<(DateTime date, string path, bool isBinary)> availableDates =
                 new List<(DateTime date, string path, bool isBinary)>();
-            
+
             foreach (string file in binaryFiles)
             {
                 string filename = Path.GetFileNameWithoutExtension(file);
@@ -691,7 +720,7 @@ public sealed class AlarisDataBridge
                     availableDates.Add((date, file, true));
                 }
             }
-            
+
             foreach (string file in jsonFiles)
             {
                 string filename = Path.GetFileNameWithoutExtension(file);
@@ -714,62 +743,223 @@ public sealed class AlarisDataBridge
                     }
                 }
             }
-            
+
             if (availableDates.Count == 0)
             {
                 return null;
             }
-            
-            // Find nearest date <= evaluationDate, or if none, nearest date > evaluationDate
-            bool hasEarlier = false;
-            DateTime nearestEarlierDate = DateTime.MinValue;
-            (DateTime date, string path, bool isBinary) selected = availableDates[0];
 
-            for (int i = 0; i < availableDates.Count; i++)
+            // Sort by date descending (most recent first) to prioritize fresher data
+            availableDates.Sort((a, b) => b.date.CompareTo(a.date));
+
+            // Try caches in order of preference: nearest earlier date first, then validate
+            // This ensures we use the freshest valid cache
+            foreach ((DateTime cacheDate, string path, bool isBinary) candidate in availableDates)
             {
-                (DateTime date, string path, bool isBinary) entry = availableDates[i];
-                if (entry.date <= evaluationDate)
+                // Skip caches from the future relative to evaluation date
+                if (candidate.cacheDate > evaluationDate)
                 {
-                    if (!hasEarlier || entry.date > nearestEarlierDate)
+                    continue;
+                }
+
+                // Load the cache
+                OptionChainSnapshot? snapshot;
+                try
+                {
+                    if (candidate.isBinary)
                     {
-                        hasEarlier = true;
-                        nearestEarlierDate = entry.date;
-                        selected = entry;
+                        snapshot = await LoadBinaryCacheAsync(candidate.path, cancellationToken);
+                    }
+                    else
+                    {
+                        string json = await File.ReadAllTextAsync(candidate.path, cancellationToken);
+                        snapshot = JsonSerializer.Deserialize<OptionChainSnapshot>(json, JsonOptions);
                     }
                 }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to load cache from {Path}", candidate.path);
+                    continue;
+                }
+
+                if (snapshot == null || snapshot.Contracts.Count == 0)
+                {
+                    _logger.LogDebug("Cache {Path} is empty, skipping", candidate.path);
+                    continue;
+                }
+
+                // Validate cache validity for term structure analysis
+                CacheValidationResult validation = ValidateCacheForTermStructure(snapshot, evaluationDate);
+
+                if (!validation.IsValid)
+                {
+                    _logger.LogDebug(
+                        "Cache from {CacheDate} rejected for {EvalDate}: {Reason}",
+                        candidate.cacheDate.ToString("yyyy-MM-dd"),
+                        evaluationDate.ToString("yyyy-MM-dd"),
+                        validation.Reason);
+                    continue;
+                }
+
+                int delta = Math.Abs((evaluationDate - candidate.cacheDate).Days);
+                _logger.LogDebug(
+                    "Using validated cache from {CacheDate} for {EvalDate} (delta: {Days} days, " +
+                    "future expiries: {FutureExpiries}, valid IVs: {ValidIVs}, has calls: {HasCalls}, has puts: {HasPuts})",
+                    candidate.cacheDate.ToString("yyyy-MM-dd"),
+                    evaluationDate.ToString("yyyy-MM-dd"),
+                    delta,
+                    validation.FutureExpirationCount,
+                    validation.ValidIVCount,
+                    validation.HasCalls,
+                    validation.HasPuts);
+
+                return snapshot;
             }
 
-            if (!hasEarlier)
-            {
-                DateTime earliestDate = availableDates[0].date;
-                selected = availableDates[0];
-                for (int i = 1; i < availableDates.Count; i++)
-                {
-                    if (availableDates[i].date < earliestDate)
-                    {
-                        earliestDate = availableDates[i].date;
-                        selected = availableDates[i];
-                    }
-                }
-            }
-            
-            _logger.LogDebug("Using cached options from {CacheDate} for {EvalDate} (delta: {Days} days)", 
-                selected.date, evaluationDate, Math.Abs((evaluationDate - selected.date).Days));
-            
-            if (selected.isBinary)
-            {
-                return await LoadBinaryCacheAsync(selected.path, cancellationToken);
-            }
-            else
-            {
-                string json = await File.ReadAllTextAsync(selected.path, cancellationToken);
-                return JsonSerializer.Deserialize<OptionChainSnapshot>(json, JsonOptions);
-            }
+            // No valid cache found
+            _logger.LogDebug(
+                "No valid cache found for {Symbol} @ {EvalDate} (checked {Count} candidates)",
+                symbolLower,
+                evaluationDate.ToString("yyyy-MM-dd"),
+                availableDates.Count);
+            return null;
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Error finding nearest cache for {Symbol}", symbolLower);
             return null;
+        }
+    }
+
+    /// <summary>
+    /// Validates that a cached option chain is usable for term structure analysis.
+    /// </summary>
+    /// <remarks>
+    /// Governance compliance (Rule 7 - Fail Fast):
+    /// Invalid state should be detected and rejected as early as possible.
+    /// This method enforces:
+    /// - At least 2 future expirations (required for term structure regression)
+    /// - At least some contracts with valid IV (non-null, > 0)
+    /// - Both calls AND puts present (required for ATM IV averaging)
+    /// </remarks>
+    private CacheValidationResult ValidateCacheForTermStructure(
+        OptionChainSnapshot snapshot,
+        DateTime evaluationDate)
+    {
+        if (snapshot.Contracts.Count == 0)
+        {
+            return new CacheValidationResult(false, "No contracts in cache");
+        }
+
+        HashSet<DateTime> futureExpirations = new HashSet<DateTime>();
+        int validIVCount = 0;
+        bool hasCalls = false;
+        bool hasPuts = false;
+        int callsWithValidIV = 0;
+        int putsWithValidIV = 0;
+
+        foreach (OptionContract contract in snapshot.Contracts)
+        {
+            // Check for future expirations (relative to evaluation date)
+            if (contract.Expiration.Date > evaluationDate.Date)
+            {
+                futureExpirations.Add(contract.Expiration.Date);
+            }
+
+            // Check for valid IV (Rule 3: 0% < IV ≤ 500%)
+            bool hasValidIV = contract.ImpliedVolatility.HasValue &&
+                              contract.ImpliedVolatility.Value > 0m &&
+                              contract.ImpliedVolatility.Value <= 5.0m;
+
+            if (hasValidIV)
+            {
+                validIVCount++;
+            }
+
+            // Track put-call coverage
+            if (contract.Right == OptionRight.Call)
+            {
+                hasCalls = true;
+                if (hasValidIV)
+                {
+                    callsWithValidIV++;
+                }
+            }
+            else if (contract.Right == OptionRight.Put)
+            {
+                hasPuts = true;
+                if (hasValidIV)
+                {
+                    putsWithValidIV++;
+                }
+            }
+        }
+
+        // Validation rules
+        if (futureExpirations.Count < 2)
+        {
+            return new CacheValidationResult(
+                false,
+                $"Insufficient future expirations: {futureExpirations.Count} (need ≥2)",
+                futureExpirations.Count, validIVCount, hasCalls, hasPuts);
+        }
+
+        if (validIVCount == 0)
+        {
+            return new CacheValidationResult(
+                false,
+                "No contracts with valid implied volatility",
+                futureExpirations.Count, validIVCount, hasCalls, hasPuts);
+        }
+
+        if (!hasCalls || !hasPuts)
+        {
+            return new CacheValidationResult(
+                false,
+                $"Missing put-call coverage (calls: {hasCalls}, puts: {hasPuts})",
+                futureExpirations.Count, validIVCount, hasCalls, hasPuts);
+        }
+
+        if (callsWithValidIV == 0 || putsWithValidIV == 0)
+        {
+            return new CacheValidationResult(
+                false,
+                $"Put-call IV coverage incomplete (calls with IV: {callsWithValidIV}, puts with IV: {putsWithValidIV})",
+                futureExpirations.Count, validIVCount, hasCalls, hasPuts);
+        }
+
+        return new CacheValidationResult(
+            true,
+            "Cache is valid for term structure analysis",
+            futureExpirations.Count, validIVCount, hasCalls, hasPuts);
+    }
+
+    /// <summary>
+    /// Result of cache validation for term structure analysis.
+    /// </summary>
+    private readonly struct CacheValidationResult
+    {
+        public bool IsValid { get; }
+        public string Reason { get; }
+        public int FutureExpirationCount { get; }
+        public int ValidIVCount { get; }
+        public bool HasCalls { get; }
+        public bool HasPuts { get; }
+
+        public CacheValidationResult(
+            bool isValid,
+            string reason,
+            int futureExpirationCount = 0,
+            int validIVCount = 0,
+            bool hasCalls = false,
+            bool hasPuts = false)
+        {
+            IsValid = isValid;
+            Reason = reason;
+            FutureExpirationCount = futureExpirationCount;
+            ValidIVCount = validIVCount;
+            HasCalls = hasCalls;
+            HasPuts = hasPuts;
         }
     }
 

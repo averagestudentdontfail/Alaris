@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 using Alaris.Infrastructure.Data.Provider.Nasdaq; // For NasdaqEarningsProvider
 using Alaris.Infrastructure.Data.Provider.Polygon; // For PolygonApiClient
 using Alaris.Infrastructure.Data.Provider.Treasury; // For TreasuryDirectRateProvider
-using Alaris.Infrastructure.Data.Model; // For PriceBar
+using Alaris.Infrastructure.Data.Model; // For PriceBar, OptionChainSnapshot
 using System.Text.Json; // For JSON serialization
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -1058,6 +1058,350 @@ public sealed class APsv002A : IDisposable
         {
             string destSubDir = Path.Combine(destDir, Path.GetFileName(subDir));
             CopyDirectory(subDir, destSubDir);
+        }
+    }
+
+    /// <summary>
+    /// Performs comprehensive pre-flight validation for a backtest session.
+    /// Returns detailed diagnostics and remediation actions.
+    /// </summary>
+    /// <param name="requirements">Session data requirements.</param>
+    /// <param name="sessionDataPath">Path to session data directory.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Pre-flight validation result with remediation actions.</returns>
+    public async Task<Alaris.Core.Model.STDT011A> ValidatePreflightAsync(
+        Alaris.Core.Model.STDT010A requirements,
+        string sessionDataPath,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(requirements);
+        ArgumentException.ThrowIfNullOrWhiteSpace(sessionDataPath);
+
+        Alaris.Infrastructure.Data.Validation.DTpf001A validator = new(_logger);
+        return await validator.ValidateAsync(requirements, sessionDataPath, cancellationToken);
+    }
+
+    /// <summary>
+    /// Executes automatic remediation for all actionable issues.
+    /// </summary>
+    /// <param name="requirements">Session data requirements.</param>
+    /// <param name="sessionDataPath">Path to session data directory.</param>
+    /// <param name="validation">Pre-flight validation result containing remediation actions.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Updated validation result after remediation.</returns>
+    public async Task<Alaris.Core.Model.STDT011A> RemediateAsync(
+        Alaris.Core.Model.STDT010A requirements,
+        string sessionDataPath,
+        Alaris.Core.Model.STDT011A validation,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(requirements);
+        ArgumentException.ThrowIfNullOrWhiteSpace(sessionDataPath);
+        ArgumentNullException.ThrowIfNull(validation);
+
+        if (validation.IsReady)
+        {
+            _logger?.LogInformation("Session is already ready, no remediation needed");
+            return validation;
+        }
+
+        if (!validation.CanAutoRemediate)
+        {
+            _logger?.LogWarning("Some issues require manual intervention");
+        }
+
+        _logger?.LogInformation(
+            "Starting auto-remediation: {ActionCount} action(s), estimated time: {Time}",
+            validation.RemediationActions.Count,
+            validation.EstimatedRemediationTime);
+
+        foreach (Alaris.Core.Model.RemediationAction action in validation.RemediationActions)
+        {
+            if (!action.CanAutomate)
+            {
+                AnsiConsole.MarkupLine($"[yellow]Skipping manual action:[/] {action.Description}");
+                continue;
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            AnsiConsole.MarkupLine($"[blue]Remediating:[/] {action.Description}");
+
+            try
+            {
+                await ExecuteRemediationActionAsync(requirements, sessionDataPath, action, cancellationToken);
+                AnsiConsole.MarkupLine($"[green]  Completed[/]");
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Remediation action failed: {ActionId}", action.ActionId);
+                AnsiConsole.MarkupLine($"[red]  Failed: {ex.Message}[/]");
+            }
+        }
+
+        // Re-validate after remediation
+        _logger?.LogInformation("Re-validating after remediation...");
+        return await ValidatePreflightAsync(requirements, sessionDataPath, cancellationToken);
+    }
+
+    /// <summary>
+    /// Executes a single remediation action.
+    /// </summary>
+    private async Task ExecuteRemediationActionAsync(
+        Alaris.Core.Model.STDT010A requirements,
+        string sessionDataPath,
+        Alaris.Core.Model.RemediationAction action,
+        CancellationToken cancellationToken)
+    {
+        switch (action.Type)
+        {
+            case Alaris.Core.Model.RemediationType.CopySystemFiles:
+                CopySystemFiles(sessionDataPath);
+                break;
+
+            case Alaris.Core.Model.RemediationType.DownloadPriceData:
+                await DownloadPriceDataForSymbolsAsync(
+                    action.Symbols, requirements.PriceDataStart, requirements.EndDate,
+                    sessionDataPath, cancellationToken);
+                break;
+
+            case Alaris.Core.Model.RemediationType.DownloadEarningsData:
+                if (_earningsClient != null)
+                {
+                    await BootstrapEarningsCalendarAsync(
+                        requirements.PriceDataStart, requirements.EarningsLookaheadEnd,
+                        sessionDataPath, cancellationToken);
+                }
+                break;
+
+            case Alaris.Core.Model.RemediationType.DownloadOptionsData:
+            case Alaris.Core.Model.RemediationType.RedownloadOptionsData:
+                await BootstrapOptionsForSymbolDatesAsync(
+                    action.Symbols, action.Dates, sessionDataPath, cancellationToken);
+                break;
+
+            case Alaris.Core.Model.RemediationType.DownloadRatesData:
+                if (_treasuryClient != null)
+                {
+                    await DownloadInterestRatesAsync(requirements, sessionDataPath, cancellationToken);
+                }
+                break;
+
+            case Alaris.Core.Model.RemediationType.ManualIntervention:
+                _logger?.LogWarning("Manual intervention required for: {Description}", action.Description);
+                break;
+
+            default:
+                _logger?.LogWarning("Unknown remediation type: {Type}", action.Type);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Downloads price data for specific symbols (incremental).
+    /// </summary>
+    private async Task DownloadPriceDataForSymbolsAsync(
+        IReadOnlyList<string> symbols,
+        DateTime startDate,
+        DateTime endDate,
+        string sessionDataPath,
+        CancellationToken cancellationToken)
+    {
+        string dailyPath = Path.Combine(sessionDataPath, "equity", "usa", "daily");
+        Directory.CreateDirectory(dailyPath);
+
+        string mapFilesPath = Path.Combine(sessionDataPath, "equity", "usa", "map_files");
+        Directory.CreateDirectory(mapFilesPath);
+
+        string factorFilesPath = Path.Combine(sessionDataPath, "equity", "usa", "factor_files");
+        Directory.CreateDirectory(factorFilesPath);
+
+        DateTime minAllowedDate = DateTime.UtcNow.AddYears(-2).Date;
+        DateTime requestStart = startDate < minAllowedDate ? minAllowedDate : startDate;
+
+        foreach (string symbol in symbols)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            try
+            {
+                await GenerateMapFileAsync(symbol, mapFilesPath);
+                await GenerateFactorFileAsync(symbol, factorFilesPath);
+
+                IReadOnlyList<PriceBar> bars = await _polygonClient.GetHistoricalBarsAsync(
+                    symbol, requestStart, endDate, cancellationToken);
+
+                if (bars.Count > 0)
+                {
+                    await SaveAsLeanZipAsync(symbol, bars, dailyPath);
+                    _logger?.LogDebug("Downloaded price data for {Symbol}: {Count} bars", symbol, bars.Count);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to download prices for {Symbol}", symbol);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Downloads options data for specific symbol-date combinations (incremental).
+    /// </summary>
+    private async Task BootstrapOptionsForSymbolDatesAsync(
+        IReadOnlyList<string> symbols,
+        IReadOnlyList<DateTime> dates,
+        string sessionDataPath,
+        CancellationToken cancellationToken)
+    {
+        string optionsPath = Path.Combine(sessionDataPath, "options");
+        Directory.CreateDirectory(optionsPath);
+
+        int total = symbols.Count * dates.Count;
+        int current = 0;
+
+        foreach (string symbol in symbols)
+        {
+            foreach (DateTime date in dates)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                current++;
+
+                string symbolLower = symbol.ToLowerInvariant();
+                string jsonPath = Path.Combine(optionsPath, $"{symbolLower}_{date:yyyyMMdd}.json");
+
+                // Delete existing invalid file if re-downloading
+                if (File.Exists(jsonPath))
+                {
+                    File.Delete(jsonPath);
+                }
+
+                try
+                {
+                    OptionChainSnapshot? chain = await _polygonClient.GetOptionChainAsync(symbol, date, cancellationToken);
+
+                    if (chain != null && chain.Contracts.Count > 0)
+                    {
+                        string json = JsonSerializer.Serialize(chain, JsonOptions);
+                        await File.WriteAllTextAsync(jsonPath, json, cancellationToken);
+                        _logger?.LogDebug(
+                            "Downloaded options for {Symbol} @ {Date}: {Count} contracts",
+                            symbol, date.ToString("yyyy-MM-dd"), chain.Contracts.Count);
+                    }
+                    else
+                    {
+                        _logger?.LogDebug("No options data for {Symbol} @ {Date}", symbol, date.ToString("yyyy-MM-dd"));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Failed to download options for {Symbol} @ {Date}", symbol, date);
+                }
+
+                // Rate limiting
+                if (current % 5 == 0)
+                {
+                    await Task.Delay(100, cancellationToken);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Validates and optionally remediates a session before running.
+    /// Returns the final validation status after any remediation.
+    /// </summary>
+    /// <param name="requirements">Session data requirements.</param>
+    /// <param name="sessionDataPath">Path to session data directory.</param>
+    /// <param name="autoRemediate">Whether to automatically remediate issues.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Final validation result.</returns>
+    public async Task<Alaris.Core.Model.STDT011A> ValidateAndRemediateAsync(
+        Alaris.Core.Model.STDT010A requirements,
+        string sessionDataPath,
+        bool autoRemediate = true,
+        CancellationToken cancellationToken = default)
+    {
+        // Initial validation
+        Alaris.Core.Model.STDT011A validation = await ValidatePreflightAsync(
+            requirements, sessionDataPath, cancellationToken);
+
+        // Display validation summary
+        DisplayValidationSummary(validation);
+
+        if (validation.IsReady)
+        {
+            return validation;
+        }
+
+        if (!autoRemediate)
+        {
+            AnsiConsole.MarkupLine("[yellow]Auto-remediation disabled. Fix issues manually and re-run.[/]");
+            return validation;
+        }
+
+        if (!validation.CanAutoRemediate)
+        {
+            AnsiConsole.MarkupLine("[red]Some issues require manual intervention.[/]");
+        }
+
+        // Execute remediation
+        AnsiConsole.MarkupLine("");
+        AnsiConsole.MarkupLine($"[blue]Starting auto-remediation ({validation.RemediationActions.Count} actions)...[/]");
+
+        validation = await RemediateAsync(requirements, sessionDataPath, validation, cancellationToken);
+
+        // Display final status
+        AnsiConsole.MarkupLine("");
+        DisplayValidationSummary(validation);
+
+        return validation;
+    }
+
+    /// <summary>
+    /// Displays validation summary to console.
+    /// </summary>
+    private static void DisplayValidationSummary(Alaris.Core.Model.STDT011A validation)
+    {
+        string statusColor = validation.Status switch
+        {
+            Alaris.Core.Model.PreflightStatus.Ready => "green",
+            Alaris.Core.Model.PreflightStatus.Warning => "yellow",
+            _ => "red"
+        };
+
+        AnsiConsole.MarkupLine($"[{statusColor}]Pre-flight Status: {validation.Status}[/]");
+        AnsiConsole.MarkupLine($"  {validation.Summary}");
+
+        // Coverage stats
+        AnsiConsole.MarkupLine("");
+        AnsiConsole.MarkupLine("[blue]Data Coverage:[/]");
+        AnsiConsole.MarkupLine($"  Price Data:    {validation.Coverage.SymbolsWithPriceData}/{validation.Coverage.TotalSymbols} symbols ({validation.Coverage.PriceCoveragePercent:F0}%)");
+        AnsiConsole.MarkupLine($"  Earnings Data: {validation.Coverage.EarningsDatesWithData}/{validation.Coverage.TotalEarningsDates} dates ({validation.Coverage.EarningsCoveragePercent:F0}%)");
+        AnsiConsole.MarkupLine($"  Options Data:  {validation.Coverage.ValidOptionsSymbolDates}/{validation.Coverage.TotalOptionsSymbolDates} valid ({validation.Coverage.OptionsValidCoveragePercent:F0}%)");
+
+        // Show issues if any
+        List<Alaris.Core.Model.PreflightCheck> issues = validation.Checks.Where(c => c.Status != Alaris.Core.Model.CheckStatus.Passed).ToList();
+        if (issues.Count > 0)
+        {
+            AnsiConsole.MarkupLine("");
+            AnsiConsole.MarkupLine("[yellow]Issues:[/]");
+            foreach (Alaris.Core.Model.PreflightCheck check in issues)
+            {
+                string checkColor = check.Status == Alaris.Core.Model.CheckStatus.Failed ? "red" : "yellow";
+                AnsiConsole.MarkupLine($"  [{checkColor}][{check.Status}][/] {check.Name}: {check.Message}");
+            }
+        }
+
+        // Show remediation actions if any
+        if (validation.RemediationActions.Count > 0)
+        {
+            AnsiConsole.MarkupLine("");
+            AnsiConsole.MarkupLine("[blue]Remediation Actions:[/]");
+            foreach (Alaris.Core.Model.RemediationAction action in validation.RemediationActions)
+            {
+                string autoTag = action.CanAutomate ? "[auto]" : "[manual]";
+                AnsiConsole.MarkupLine($"  {autoTag} {action.Description} (~{action.EstimatedSeconds}s)");
+            }
         }
     }
 }

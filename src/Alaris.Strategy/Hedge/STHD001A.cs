@@ -51,6 +51,9 @@ public sealed class STHD001A
     /// <param name="minimumObservations">
     /// Minimum observations required. Default: 20.
     /// </param>
+    /// <param name="allowInsufficientData">
+    /// Allows validation to pass when observations are insufficient.
+    /// </param>
     /// <param name="logger">Optional logger instance.</param>
     /// <exception cref="ArgumentOutOfRangeException">
     /// Thrown when correlation threshold is not in [-1, 1] or observations &lt; 3.
@@ -139,8 +142,8 @@ public sealed class STHD001A
                 _minimumObservations,
                 null));
 
-            bool passesFilter = _allowInsufficientData;
-            string interpretation = _allowInsufficientData
+            bool passesFilterForInsufficient = _allowInsufficientData;
+            string interpretationForInsufficient = _allowInsufficientData
                 ? "Insufficient data for correlation analysis - proceeding with caution."
                 : "Insufficient data for correlation analysis - failing validation.";
 
@@ -151,9 +154,9 @@ public sealed class STHD001A
                 Threshold = _maxAcceptableCorrelation,
                 Observations = observations,
                 MinimumObservations = _minimumObservations,
-                PassesFilter = passesFilter,
+                PassesFilter = passesFilterForInsufficient,
                 HasSufficientData = false,
-                Interpretation = interpretation
+                Interpretation = interpretationForInsufficient
             };
         }
 
