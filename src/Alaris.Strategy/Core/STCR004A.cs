@@ -126,6 +126,12 @@ public sealed class STCR004A
     /// </summary>
     public bool UsingSyntheticIV { get; set; }
 
+    /// <summary>
+    /// Gets or sets whether evaluation was skipped due to no cached options data.
+    /// This is expected on non-earnings-window days in backtesting mode.
+    /// </summary>
+    public bool SkippedNoOptions { get; set; }
+
     // Calendar Spread Position Properties
 
     /// <summary>

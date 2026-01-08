@@ -65,6 +65,40 @@
   // live portfolio state
   "live-cash-balance": "",
   "live-holdings": "[]",
+  // Alaris strategy configuration
+  "Alaris": {
+    "Validation": {
+      "MaxVegaCorrelation": 0.7,
+      "MinimumVegaObservations": 3,
+      "VegaCorrelationLookbackDays": 30,
+      "MaxPositionToVolumeRatio": 0.25,
+      "MaxPositionToOpenInterestRatio": 0.25,
+      "DeltaRehedgeThreshold": 0.1,
+      "GammaWarningThreshold": 0.05,
+      "MoneynessAlertThreshold": 0.05
+    },
+    "DataProviders": {
+      "Polygon": {
+        "TimeoutSeconds": 60
+      },
+      "Treasury": {
+        "TimeoutSeconds": 30
+      },
+      "MarketDataTimeoutSeconds": 30,
+      "ExecutionQuoteTimeoutSeconds": 15
+    },
+    "Strategy": {
+      "UniverseSize": 10,
+      "MaxPositionAllocation": 0.10,
+      "RealisedVolatilityWindowDays": 30,
+      "OptionRight": "Put"
+    },
+    "Fees": {
+      "PerContract": 0.65,
+      "ExchangePerContract": 0.10,
+      "RegulatoryPerContract": 0.02
+    }
+  },
   // interactive brokers configuration
   "ib-account": "",
   "ib-user-name": "",

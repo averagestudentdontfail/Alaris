@@ -131,9 +131,14 @@ public sealed class STUN001B : UniverseSelectionModel
 
         algorithm.Debug($"STUN001B: {date:yyyy-MM-dd} - {_cachedUniverse.Count} stocks → {withEarnings.Count} with earnings");
 
-        // Convert to LEAN symbols
         return withEarnings
-            .Select(u => algorithm.AddEquity(u.Ticker, Resolution.Daily).Symbol);
+            .Select(u => {
+                var equity = algorithm.AddEquity(u.Ticker, Resolution.Daily);
+#pragma warning disable CS0618 // SetDataNormalizationMode is obsolete but required for options trading
+                equity.SetDataNormalizationMode(DataNormalizationMode.Raw);
+#pragma warning restore CS0618
+                return equity.Symbol;
+            });
     }
 
     /// <summary>

@@ -765,16 +765,28 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
             return 1;
         }
 
+        // Generate unique run ID and create per-run output directory
+        string runId = $"run-{DateTime.Now:yyyyMMdd-HHmmss}";
+        string runPath = System.IO.Path.Combine(service.GetSessionPath(session.SessionId), "runs", runId);
+        Directory.CreateDirectory(runPath);
+        
+        AnsiConsole.MarkupLine($"[dim]Run output: {runPath}[/]");
+
         // CRITICAL: Inject session data path into LEAN config before engine starts
         // Environment variables (QC_DATA_FOLDER) do NOT work - LEAN reads from config.json only
         // Config.Set() also doesn't work because it only affects THIS process, not the subprocess
-        // Solution: Pass --data-folder as a command-line argument to the LEAN subprocess
+        // Solution: Pass paths as command-line arguments to LEAN subprocess
+        // Note: LEAN only supports: --data-folder, --results-destination-folder, --close-automatically
+        // Object store and log paths must be set via config.json (updated to use session paths)
         string sessionDataPath = service.GetDataPath(session.SessionId);
 
         ProcessStartInfo psi = new ProcessStartInfo
         {
             FileName = "dotnet",
-            Arguments = $"run --project \"{launcherPath}\" -- --data-folder \"{sessionDataPath}\" --close-automatically true",
+            Arguments = $"run --project \"{launcherPath}\" -- " +
+                        $"--data-folder \"{sessionDataPath}\" " +
+                        $"--results-destination-folder \"{runPath}\" " +
+                        $"--close-automatically true",
             WorkingDirectory = System.IO.Path.GetDirectoryName(configPath),
             UseShellExecute = false,
             RedirectStandardOutput = true,
@@ -791,7 +803,8 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
         psi.Environment["ALARIS_SESSION_ID"] = session.SessionId;
         psi.Environment["ALARIS_SESSION_PATH"] = session.SessionPath;
         psi.Environment["ALARIS_SESSION_DATA"] = service.GetDataPath(session.SessionId);
-        psi.Environment["ALARIS_SESSION_RESULTS"] = service.GetResultsPath(session.SessionId);
+        psi.Environment["ALARIS_SESSION_RESULTS"] = runPath;
+        psi.Environment["ALARIS_RUN_ID"] = runId;
         psi.Environment["ALARIS_BACKTEST_STARTDATE"] = session.StartDate.ToString("yyyy-MM-dd");
         psi.Environment["ALARIS_BACKTEST_ENDDATE"] = session.EndDate.ToString("yyyy-MM-dd");
         

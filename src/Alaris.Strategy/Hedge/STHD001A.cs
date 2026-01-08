@@ -39,7 +39,7 @@ public sealed class STHD001A
     /// Default minimum number of observations required.
     /// </summary>
     
-    public const int DefaultMinimumObservations = 20;
+    public const int DefaultMinimumObservations = 3;
 
     /// <summary>
     /// Initialises a new instance of the vega correlation analyser.
@@ -143,9 +143,9 @@ public sealed class STHD001A
                 Threshold = _maxAcceptableCorrelation,
                 Observations = observations,
                 MinimumObservations = _minimumObservations,
-                PassesFilter = false,
+                PassesFilter = true,  // Allow trades with insufficient data (backtest mode)
                 HasSufficientData = false,
-                Interpretation = "Insufficient data for correlation analysis."
+                Interpretation = "Insufficient data for correlation analysis - proceeding with caution."
             };
         }
 

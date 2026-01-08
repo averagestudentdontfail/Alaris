@@ -119,3 +119,4 @@ storage/
 
 # Simulation Output (may contain sensitive data in logs)
 src/Alaris.Simulation/out/
+Alaris.Output/

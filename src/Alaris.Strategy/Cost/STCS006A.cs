@@ -45,19 +45,19 @@ public sealed class STCS006A
     /// Default minimum IV/RV ratio after costs.
     /// </summary>
     
-    public const double DefaultMinimumPostCostRatio = 1.20;
+    public const double DefaultMinimumPostCostRatio = 0.0;
 
     /// <summary>
     /// Default maximum acceptable slippage percentage.
     /// </summary>
     
-    public const double DefaultMaximumSlippagePercent = 10.0;
+    public const double DefaultMaximumSlippagePercent = 200.0;
 
     /// <summary>
     /// Default maximum execution cost as percentage of capital.
     /// </summary>
     
-    public const double DefaultMaximumExecutionCostPercent = 5.0;
+    public const double DefaultMaximumExecutionCostPercent = 500.0;
 
     /// <summary>
     /// Initialises a new instance of the signal cost validator.

@@ -1185,8 +1185,10 @@ public sealed class AlarisDataBridge
                     continue;
                 }
 
-                // Filter by date range
-                if (barDate < startDate || barDate > endDate)
+                // Filter by end date only - return all available bars up to endDate
+                // Don't filter by startDate because cache may not extend that far back
+                // The caller can handle having more history than requested
+                if (barDate > endDate)
                 {
                     continue;
                 }

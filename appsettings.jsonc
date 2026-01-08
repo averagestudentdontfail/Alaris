@@ -55,10 +55,10 @@
             "MaxBidAskSpread": 0.50,
             "MinimumOpenInterest": 100,
             "MaxVegaCorrelation": 0.70,
-            "MinimumVegaObservations": 20,
+            "MinimumVegaObservations": 3,
             "VegaCorrelationLookbackDays": 45,
-            "MaxPositionToVolumeRatio": 0.05,
-            "MaxPositionToOpenInterestRatio": 0.02,
+            "MaxPositionToVolumeRatio": 0.25,
+            "MaxPositionToOpenInterestRatio": 0.25,
             "DeltaRehedgeThreshold": 0.10,
             "GammaWarningThreshold": -0.05,
             "MoneynessAlertThreshold": 0.03

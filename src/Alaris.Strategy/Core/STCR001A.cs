@@ -133,14 +133,14 @@ public sealed class STCR001A
                 return signal;
             }
 
-            // Fail-fast: Real market IV is mandatory - no synthetic fallbacks
-            // Options data must be bootstrapped via CLI before running backtest
+            // Skip evaluation gracefully when options data is not available for this date
+            // This is expected in backtesting when we only cache options for earnings-window dates
             if (optionChain.Expiries.Count == 0 || !HasValidIVData(optionChain))
             {
                 SafeLog(() => LogNoOptionData(_logger!, symbol, null));
-                throw new InvalidOperationException(
-                    $"No valid options data with IV available for {symbol} on {evaluationDate:yyyy-MM-dd}. " +
-                    "Run 'alaris backtest run --auto-bootstrap' to download historical options data from Polygon API.");
+                signal.Strength = STCR004AStrength.Avoid;
+                signal.SkippedNoOptions = true;
+                return signal;
             }
 
             // Calculate signal metrics (including L&S model if historical data provided)

@@ -211,6 +211,15 @@ public sealed class APsv001A
     }
 
     /// <summary>
+    /// Gets the session root folder path.
+    /// </summary>
+    public string GetSessionPath(string sessionId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(sessionId);
+        return System.IO.Path.Combine(_sessionsRoot, sessionId);
+    }
+
+    /// <summary>
     /// Gets the next available sequence number for session IDs.
     /// </summary>
     private async Task<int> GetNextSequenceAsync()

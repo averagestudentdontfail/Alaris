@@ -48,10 +48,10 @@
   // limits the amount of data points per chart series. Applies only for backte
   "maximum-data-points-per-chart-series": 1000000,
   "maximum-chart-series": 30,
-  // Alaris Output Directories (keep root clean)
-  "results-destination-folder": "./Alaris.Output/Results",
-  "object-store-root": "./Alaris.Output/Storage",
-  "log-file-path": "./Alaris.Output/Logs/lean.log",
+  // LEAN temporary directories (results go to session run directories via command-line override)
+  "results-destination-folder": "/tmp/alaris-lean",
+  "object-store-root": "/tmp/alaris-lean/storage",
+  "log-file-path": "/tmp/alaris-lean/lean.log",
   // if one uses true in following token, market hours will remain open all hours and all days.
   // if one uses false will make lean operate only during regular market hours.
   "force-exchange-always-open": false,

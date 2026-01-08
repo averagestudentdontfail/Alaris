@@ -184,7 +184,10 @@ public sealed class STLN001A : QCAlgorithm
             
             foreach (var ticker in testSymbols)
             {
-                AddEquity(ticker.Trim(), Resolution.Daily);
+                var equity = AddEquity(ticker.Trim(), Resolution.Daily);
+#pragma warning disable CS0618 // SetDataNormalizationMode is obsolete but required for options trading
+                equity.SetDataNormalizationMode(DataNormalizationMode.Raw);
+#pragma warning restore CS0618
             }
             Log($"STLN001A: Pre-subscribed {testSymbols.Length} session symbols for backtest validation");
         }
@@ -1610,11 +1613,11 @@ public sealed class STLN001A : QCAlgorithm
             AddOptionContract(frontOption);
             AddOptionContract(backOption);
 
-            // Create combo order legs
+            // Create combo order legs using ratio format (1:-1) - global quantity controls sizing
             var legs = new List<QuantConnect.Orders.Leg>
             {
-                QuantConnect.Orders.Leg.Create(frontOption, -contracts),  // Sell front month
-                QuantConnect.Orders.Leg.Create(backOption, contracts)     // Buy back month
+                QuantConnect.Orders.Leg.Create(frontOption, -1),  // Sell front month (ratio)
+                QuantConnect.Orders.Leg.Create(backOption, 1)      // Buy back month (ratio)
             };
 
             // Submit combo limit order at mid price

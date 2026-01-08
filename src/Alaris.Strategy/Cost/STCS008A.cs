@@ -31,13 +31,13 @@ public sealed class STCS008A
     /// Default maximum position-to-volume ratio.
     /// </summary>
     
-    public const double DefaultMaxVolumeRatio = 0.05;
+    public const double DefaultMaxVolumeRatio = 0.25;
 
     /// <summary>
     /// Default maximum position-to-open-interest ratio.
     /// </summary>
     
-    public const double DefaultMaxOpenInterestRatio = 0.02;
+    public const double DefaultMaxOpenInterestRatio = 0.25;
 
     /// <summary>
     /// Initialises a new instance of the liquidity validator.

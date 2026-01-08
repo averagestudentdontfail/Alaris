@@ -569,31 +569,32 @@ public sealed class APsv002A : IDisposable
             report.PricesDownloaded = await DownloadPriceDataWithBenchmarkAsync(
                 requirements, sessionDataPath, cancellationToken);
             
-            // Phase 3: Earnings calendar with lookahead
-            AnsiConsole.MarkupLine("[blue]Phase 3:[/] Downloading earnings calendar (with lookahead)...");
-            AnsiConsole.MarkupLine($"[grey]  Range: {requirements.StartDate:yyyy-MM-dd} to {requirements.EarningsLookaheadEnd:yyyy-MM-dd}[/]");
+            // Phase 3: Earnings calendar with lookahead (and warmup lookback)
+            AnsiConsole.MarkupLine("[blue]Phase 3:[/] Downloading earnings calendar...");
+            AnsiConsole.MarkupLine($"[grey]  Range: {requirements.PriceDataStart:yyyy-MM-dd} to {requirements.EarningsLookaheadEnd:yyyy-MM-dd}[/]");
             
             if (_earningsClient != null)
             {
                 report.EarningsDaysDownloaded = await BootstrapEarningsCalendarAsync(
-                    requirements.StartDate,
+                    requirements.PriceDataStart,  // Include warmup period
                     requirements.EarningsLookaheadEnd, // Critical: includes lookahead
                     sessionDataPath,
                     cancellationToken);
             }
             
             // Phase 4: Compute options-required dates from earnings
-            AnsiConsole.MarkupLine("[blue]Phase 4:[/] Computing options-required dates...");
+            // CRITICAL: Use PriceDataStart to include warmup period, not just StartDate
+            AnsiConsole.MarkupLine("[blue]Phase 4:[/] Computing options-required dates (including warmup)...");
             IReadOnlyList<DateTime> optionsDates = ComputeOptionsRequiredDates(
                 sessionDataPath,
                 requirements.Symbols,
-                requirements.StartDate,
+                requirements.PriceDataStart,  // Use warmup start, not session start
                 requirements.EndDate,
                 requirements.SignalWindowMinDays,
                 requirements.SignalWindowMaxDays);
             
             report.OptionsRequiredDatesComputed = optionsDates.Count;
-            AnsiConsole.MarkupLine($"[grey]  Found {optionsDates.Count} dates requiring options data[/]");
+            AnsiConsole.MarkupLine($"[grey]  Found {optionsDates.Count} dates requiring options data (from {requirements.PriceDataStart:yyyy-MM-dd})[/]");
             
             // Phase 5: Bootstrap options for each required date
             if (optionsDates.Count > 0)

@@ -69,9 +69,9 @@ public sealed record STCS004A
     /// Gets the slippage as a percentage of theoretical debit.
     /// </summary>
     
-    public double SlippagePercent => TheoreticalDebit > 0
+    public double SlippagePercent => TheoreticalDebit > 0.10
         ? (ExecutionDebit - TheoreticalDebit) / TheoreticalDebit * 100.0
-        : 0.0;
+        : (ExecutionDebit - TheoreticalDebit) * 100.0;  // Absolute cents for small debits
 
     /// <summary>
     /// Gets the total dollar amount required to enter the position.

@@ -88,7 +88,7 @@ public sealed class PolygonApiClient : DTpr003A, IDisposable
         _requestsPerSecond = Math.Max(1, configuration.GetValue("Polygon:RequestsPerSecond", 100));
         _optionsContractLimit = Math.Max(1, configuration.GetValue("Polygon:OptionsContractLimit", 20));
         _optionsContractsPerExpiryRight = Math.Max(1, configuration.GetValue("Polygon:OptionsContractsPerExpiryRight", 2));
-        _optionsMaxExpirations = Math.Max(1, configuration.GetValue("Polygon:OptionsMaxExpirations", 3));
+        _optionsMaxExpirations = Math.Max(1, configuration.GetValue("Polygon:OptionsMaxExpirations", 5));
         _optionsChainParallelism = Math.Max(1, configuration.GetValue("Polygon:OptionsChainParallelism", 4));
         _optionsChainDelayMs = Math.Max(0, configuration.GetValue("Polygon:OptionsChainDelayMs", 0));
         _optionsBootstrapStrideDays = Math.Max(1, configuration.GetValue("Polygon:OptionsBootstrapStrideDays", 1));
