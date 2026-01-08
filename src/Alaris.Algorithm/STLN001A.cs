@@ -78,9 +78,11 @@ public sealed class STLN001A : QCAlgorithm
     // Configuration Settings
     private StrategySettings _strategySettings = StrategySettings.Empty;
     private BacktestSettings _backtestSettings = BacktestSettings.Empty;
+    private ForwardtestSettings _forwardtestSettings = ForwardtestSettings.Empty;
     private DataProviderSettings _dataProviderSettings = DataProviderSettings.Empty;
     private ValidationSettings _validationSettings = ValidationSettings.Empty;
     private FeeSettings _feeSettings = FeeSettings.Empty;
+    private bool _requireOptionChainCache;
 
     // Alaris Components (Instance-Based)
     
@@ -139,6 +141,10 @@ public sealed class STLN001A : QCAlgorithm
         var config = BuildConfiguration();
         LoadSettings(config);
         _configuration = config;
+
+        _requireOptionChainCache = LiveMode
+            ? _forwardtestSettings.RequireOptionChainCache
+            : _backtestSettings.RequireOptionChainCache;
         
         var startDate = _backtestSettings.StartDate;
         var endDate = _backtestSettings.EndDate;
@@ -325,12 +331,18 @@ public sealed class STLN001A : QCAlgorithm
             _riskFreeRateProvider,
             validators,
             _loggerFactory!.CreateLogger<AlarisDataBridge>());
+        _dataBridge.SetOptionChainFallbackEnabled(!_requireOptionChainCache);
         
         // Set session data path for cached data access (options, etc.)
         if (hasSessionData)
         {
             _dataBridge.SetSessionDataPath(sessionDataPath!);
             Log($"STLN001A: Session data path set for cache: {sessionDataPath}");
+        }
+
+        if (_requireOptionChainCache)
+        {
+            Log("STLN001A: Option chain cache required (no live fallback).");
         }
         
         Log("STLN001A: Data providers initialised");
@@ -357,6 +369,9 @@ public sealed class STLN001A : QCAlgorithm
             _marketDataAdapter,
             _yangZhangEstimator,
             _termStructureAnalyzer,
+            minimumIvRvRatio: _strategySettings.MinIvRvRatio,
+            maximumTermSlope: _strategySettings.MaxTermSlope,
+            minimumAverageVolume: _strategySettings.MinimumAverageVolume,
             earningsCalibrator: null,  // Use default calibration
             logger: _loggerFactory!.CreateLogger<STCR001A>());
         
@@ -374,20 +389,27 @@ public sealed class STLN001A : QCAlgorithm
     {
         // Fee model for IBKR
         _feeModel = new STCS005A(
-            feePerContract: Convert.ToDouble(_feeSettings.PerContract),
-            exchangeFeePerContract: Convert.ToDouble(_feeSettings.ExchangePerContract),
-            regulatoryFeePerContract: Convert.ToDouble(_feeSettings.RegulatoryPerContract),
+            feePerContract: _feeSettings.PerContract,
+            exchangeFeePerContract: _feeSettings.ExchangePerContract,
+            regulatoryFeePerContract: _feeSettings.RegulatoryPerContract,
             logger: _loggerFactory!.CreateLogger<STCS005A>());
         
         // Cost validator (signal survives costs)
         _costValidator = new STCS006A(
             _feeModel,
+            minimumPostCostRatio: _validationSettings.MinimumPostCostRatio,
+            maximumSlippagePercent: _validationSettings.MaxSlippagePercent,
+            maximumExecutionCostPercent: _validationSettings.MaxExecutionCostPercent,
+            maximumSlippagePerSpread: _validationSettings.MaxSlippagePerSpread,
+            maximumExecutionCostPerSpread: _validationSettings.MaxExecutionCostPerSpread,
+            minimumCapitalForCostPercent: _validationSettings.MinimumCapitalForCostPercent,
             logger: _loggerFactory!.CreateLogger<STCS006A>());
         
         // Vega correlation analyser
         _vegaAnalyser = new STHD001A(
             maxAcceptableCorrelation: _validationSettings.MaxVegaCorrelation,
             minimumObservations: _validationSettings.MinimumVegaObservations,
+            allowInsufficientData: _validationSettings.AllowInsufficientVegaData,
             logger: _loggerFactory!.CreateLogger<STHD001A>());
         
         // Liquidity validator
@@ -563,6 +585,9 @@ public sealed class STLN001A : QCAlgorithm
             EvaluationTimeMinute: GetRequiredInt(configuration, "Alaris:Strategy:EvaluationTimeMinute"),
             OptionRight: GetRequiredOptionRight(configuration, "Alaris:Strategy:OptionRight"),
             RealisedVolatilityWindowDays: GetRequiredInt(configuration, "Alaris:Strategy:RealisedVolatilityWindowDays"),
+            MinIvRvRatio: GetRequiredDouble(configuration, "Alaris:Strategy:MinIvRvRatio"),
+            MaxTermSlope: GetRequiredDouble(configuration, "Alaris:Strategy:MaxTermSlope"),
+            MinimumAverageVolume: GetRequiredLong(configuration, "Alaris:Strategy:MinimumAverageVolume"),
             DefaultImpliedVolatility: GetRequiredDouble(configuration, "Alaris:Strategy:DefaultImpliedVolatility"));
         _strategySettings.Validate();
 
@@ -574,10 +599,15 @@ public sealed class STLN001A : QCAlgorithm
             HistoryLookbackDays: GetRequiredInt(configuration, "Alaris:Backtest:HistoryLookbackDays"),
             EarningsLookaheadDays: GetRequiredInt(configuration, "Alaris:Backtest:EarningsLookaheadDays"),
             EarningsLookbackDays: GetRequiredInt(configuration, "Alaris:Backtest:EarningsLookbackDays"),
-            EarningsQueryTimeout: TimeSpan.FromSeconds(GetRequiredInt(configuration, "Alaris:Backtest:EarningsQueryTimeoutSeconds")));
+            EarningsQueryTimeout: TimeSpan.FromSeconds(GetRequiredInt(configuration, "Alaris:Backtest:EarningsQueryTimeoutSeconds")),
+            RequireOptionChainCache: GetRequiredBool(configuration, "Alaris:Backtest:RequireOptionChainCache"));
         _backtestSettings.Validate();
         if (_backtestSettings.HistoryLookbackDays <= _strategySettings.RealisedVolatilityWindowDays)
             throw new InvalidOperationException("HistoryLookbackDays must exceed RealisedVolatilityWindowDays.");
+
+        _forwardtestSettings = new ForwardtestSettings(
+            RequireOptionChainCache: GetRequiredBool(configuration, "Alaris:Forwardtest:RequireOptionChainCache"));
+        _forwardtestSettings.Validate();
 
         _dataProviderSettings = new DataProviderSettings(
             PolygonBaseUri: GetRequiredUri(configuration, "Alaris:DataProviders:Polygon:BaseUrl"),
@@ -590,15 +620,8 @@ public sealed class STLN001A : QCAlgorithm
             ExecutionQuoteTimeout: TimeSpan.FromSeconds(GetRequiredInt(configuration, "Alaris:DataProviders:ExecutionQuoteTimeoutSeconds")));
         _dataProviderSettings.Validate();
 
-        _validationSettings = new ValidationSettings(
-            MaxVegaCorrelation: GetRequiredDouble(configuration, "Alaris:Validation:MaxVegaCorrelation"),
-            MinimumVegaObservations: GetRequiredInt(configuration, "Alaris:Validation:MinimumVegaObservations"),
-            VegaCorrelationLookbackDays: GetRequiredInt(configuration, "Alaris:Validation:VegaCorrelationLookbackDays"),
-            MaxPositionToVolumeRatio: GetRequiredDouble(configuration, "Alaris:Validation:MaxPositionToVolumeRatio"),
-            MaxPositionToOpenInterestRatio: GetRequiredDouble(configuration, "Alaris:Validation:MaxPositionToOpenInterestRatio"),
-            DeltaRehedgeThreshold: GetRequiredDouble(configuration, "Alaris:Validation:DeltaRehedgeThreshold"),
-            GammaWarningThreshold: GetRequiredDouble(configuration, "Alaris:Validation:GammaWarningThreshold"),
-            MoneynessAlertThreshold: GetRequiredDouble(configuration, "Alaris:Validation:MoneynessAlertThreshold"));
+        string validationKey = LiveMode ? "Alaris:ForwardValidation" : "Alaris:BackValidation";
+        _validationSettings = LoadValidationSettings(configuration, validationKey);
         _validationSettings.Validate();
 
         _feeSettings = new FeeSettings(
@@ -606,6 +629,26 @@ public sealed class STLN001A : QCAlgorithm
             ExchangePerContract: GetRequiredDecimal(configuration, "Alaris:Fees:ExchangePerContract"),
             RegulatoryPerContract: GetRequiredDecimal(configuration, "Alaris:Fees:RegulatoryPerContract"));
         _feeSettings.Validate();
+    }
+
+    private static ValidationSettings LoadValidationSettings(IConfiguration configuration, string baseKey)
+    {
+        return new ValidationSettings(
+            MaxVegaCorrelation: GetRequiredDouble(configuration, $"{baseKey}:MaxVegaCorrelation"),
+            MinimumVegaObservations: GetRequiredInt(configuration, $"{baseKey}:MinimumVegaObservations"),
+            VegaCorrelationLookbackDays: GetRequiredInt(configuration, $"{baseKey}:VegaCorrelationLookbackDays"),
+            MaxPositionToVolumeRatio: GetRequiredDouble(configuration, $"{baseKey}:MaxPositionToVolumeRatio"),
+            MaxPositionToOpenInterestRatio: GetRequiredDouble(configuration, $"{baseKey}:MaxPositionToOpenInterestRatio"),
+            DeltaRehedgeThreshold: GetRequiredDouble(configuration, $"{baseKey}:DeltaRehedgeThreshold"),
+            GammaWarningThreshold: GetRequiredDouble(configuration, $"{baseKey}:GammaWarningThreshold"),
+            MoneynessAlertThreshold: GetRequiredDouble(configuration, $"{baseKey}:MoneynessAlertThreshold"),
+            MinimumPostCostRatio: GetRequiredDouble(configuration, $"{baseKey}:MinimumPostCostRatio"),
+            MaxSlippagePercent: GetRequiredDecimal(configuration, $"{baseKey}:MaxSlippagePercent"),
+            MaxExecutionCostPercent: GetRequiredDecimal(configuration, $"{baseKey}:MaxExecutionCostPercent"),
+            MaxSlippagePerSpread: GetRequiredDecimal(configuration, $"{baseKey}:MaxSlippagePerSpread"),
+            MaxExecutionCostPerSpread: GetRequiredDecimal(configuration, $"{baseKey}:MaxExecutionCostPerSpread"),
+            MinimumCapitalForCostPercent: GetRequiredDecimal(configuration, $"{baseKey}:MinimumCapitalForCostPercent"),
+            AllowInsufficientVegaData: GetRequiredBool(configuration, $"{baseKey}:AllowInsufficientVegaData"));
     }
 
     // Main Strategy Logic
@@ -741,6 +784,12 @@ public sealed class STLN001A : QCAlgorithm
         catch (InvalidOperationException ex)
         {
             Log($"  {ticker}: Data quality validation failed - {ex.Message}");
+            return result;
+        }
+
+        if (_requireOptionChainCache && snapshot.OptionChain.Contracts.Count == 0)
+        {
+            Log($"  {ticker}: No cached options data available (backtest mode), skipping evaluation");
             return result;
         }
         
@@ -1327,18 +1376,14 @@ public sealed class STLN001A : QCAlgorithm
         string symbol,
         int contracts)
     {
-        var bid = (double)contract.Bid;
-        var ask = (double)contract.Ask;
-        var mid = (double)contract.Mid;
-
         return new STCS002A
         {
             Contracts = contracts,
-            MidPrice = mid,
-            BidPrice = bid,
-            AskPrice = ask,
+            MidPrice = contract.Mid,
+            BidPrice = contract.Bid,
+            AskPrice = contract.Ask,
             Direction = direction,
-            Premium = mid,
+            Premium = contract.Mid,
             Symbol = symbol
         };
     }
@@ -1743,10 +1788,13 @@ public sealed class STLN001A : QCAlgorithm
         int EvaluationTimeMinute,
         AlarisOptionRight OptionRight,
         int RealisedVolatilityWindowDays,
+        double MinIvRvRatio,
+        double MaxTermSlope,
+        long MinimumAverageVolume,
         double DefaultImpliedVolatility)
     {
         public static StrategySettings Empty => new(
-            0, 0, 0m, 0m, 0m, 0m, 0, 0, 0, 0, 0, AlarisOptionRight.Call, 0, 0.0);
+            0, 0, 0m, 0m, 0m, 0m, 0, 0, 0, 0, 0, AlarisOptionRight.Call, 0, 0.0, 0.0, 0, 0.0);
 
         public void Validate()
         {
@@ -1778,6 +1826,12 @@ public sealed class STLN001A : QCAlgorithm
                 throw new InvalidOperationException("OptionRight must be Call or Put.");
             if (RealisedVolatilityWindowDays <= 0)
                 throw new InvalidOperationException("RealisedVolatilityWindowDays must be positive.");
+            if (MinIvRvRatio < 1.0 || MinIvRvRatio > 3.0)
+                throw new InvalidOperationException("MinIvRvRatio must be between 1.0 and 3.0.");
+            if (MaxTermSlope >= 0)
+                throw new InvalidOperationException("MaxTermSlope must be negative.");
+            if (MinimumAverageVolume <= 0)
+                throw new InvalidOperationException("MinimumAverageVolume must be positive.");
             if (DefaultImpliedVolatility <= 0)
                 throw new InvalidOperationException("DefaultImpliedVolatility must be positive.");
         }
@@ -1791,7 +1845,8 @@ public sealed class STLN001A : QCAlgorithm
         int HistoryLookbackDays,
         int EarningsLookaheadDays,
         int EarningsLookbackDays,
-        TimeSpan EarningsQueryTimeout)
+        TimeSpan EarningsQueryTimeout,
+        bool RequireOptionChainCache)
     {
         public static BacktestSettings Empty => new(
             DateTime.MinValue,
@@ -1801,7 +1856,8 @@ public sealed class STLN001A : QCAlgorithm
             0,
             0,
             0,
-            TimeSpan.Zero);
+            TimeSpan.Zero,
+            false);
 
         public void Validate()
         {
@@ -1821,6 +1877,15 @@ public sealed class STLN001A : QCAlgorithm
                 throw new InvalidOperationException("EarningsLookbackDays must be positive.");
             if (EarningsQueryTimeout <= TimeSpan.Zero)
                 throw new InvalidOperationException("EarningsQueryTimeout must be positive.");
+        }
+    }
+
+    private sealed record ForwardtestSettings(bool RequireOptionChainCache)
+    {
+        public static ForwardtestSettings Empty => new(false);
+
+        public void Validate()
+        {
         }
     }
 
@@ -1873,9 +1938,16 @@ public sealed class STLN001A : QCAlgorithm
         double MaxPositionToOpenInterestRatio,
         double DeltaRehedgeThreshold,
         double GammaWarningThreshold,
-        double MoneynessAlertThreshold)
+        double MoneynessAlertThreshold,
+        double MinimumPostCostRatio,
+        decimal MaxSlippagePercent,
+        decimal MaxExecutionCostPercent,
+        decimal MaxSlippagePerSpread,
+        decimal MaxExecutionCostPerSpread,
+        decimal MinimumCapitalForCostPercent,
+        bool AllowInsufficientVegaData)
     {
-        public static ValidationSettings Empty => new(0, 0, 0, 0, 0, 0, 0, 0);
+        public static ValidationSettings Empty => new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, false);
 
         public void Validate()
         {
@@ -1895,6 +1967,18 @@ public sealed class STLN001A : QCAlgorithm
                 throw new InvalidOperationException("GammaWarningThreshold must be negative.");
             if (MoneynessAlertThreshold <= 0)
                 throw new InvalidOperationException("MoneynessAlertThreshold must be positive.");
+            if (MinimumPostCostRatio < 0)
+                throw new InvalidOperationException("MinimumPostCostRatio must be non-negative.");
+            if (MaxSlippagePercent <= 0)
+                throw new InvalidOperationException("MaxSlippagePercent must be positive.");
+            if (MaxExecutionCostPercent <= 0)
+                throw new InvalidOperationException("MaxExecutionCostPercent must be positive.");
+            if (MaxSlippagePerSpread <= 0)
+                throw new InvalidOperationException("MaxSlippagePerSpread must be positive.");
+            if (MaxExecutionCostPerSpread <= 0)
+                throw new InvalidOperationException("MaxExecutionCostPerSpread must be positive.");
+            if (MinimumCapitalForCostPercent <= 0)
+                throw new InvalidOperationException("MinimumCapitalForCostPercent must be positive.");
         }
     }
 
@@ -1932,11 +2016,27 @@ public sealed class STLN001A : QCAlgorithm
         return parsed;
     }
 
+    private static long GetRequiredLong(IConfiguration configuration, string key)
+    {
+        var value = GetRequiredValue(configuration, key);
+        if (!long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed))
+            throw new InvalidOperationException($"Invalid long for {key}: {value}");
+        return parsed;
+    }
+
     private static double GetRequiredDouble(IConfiguration configuration, string key)
     {
         var value = GetRequiredValue(configuration, key);
         if (!double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed))
             throw new InvalidOperationException($"Invalid double for {key}: {value}");
+        return parsed;
+    }
+
+    private static bool GetRequiredBool(IConfiguration configuration, string key)
+    {
+        var value = GetRequiredValue(configuration, key);
+        if (!bool.TryParse(value, out var parsed))
+            throw new InvalidOperationException($"Invalid boolean for {key}: {value}");
         return parsed;
     }
 

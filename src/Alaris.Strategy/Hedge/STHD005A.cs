@@ -170,7 +170,7 @@ public sealed class STHD005A
             int recommendedContracts = liquidityResult.RecommendedContracts;
 
             // Compute adjusted debit
-            double adjustedDebit = costResult.SpreadCost.ExecutionDebit;
+            decimal adjustedDebit = costResult.SpreadCost.ExecutionDebit;
 
             STHD006A result = new STHD006A
             {
@@ -213,7 +213,7 @@ public sealed class STHD005A
                 BaseSignal = signal,
                 Checks = checks,
                 OverallPass = false,
-                AdjustedDebit = 0,
+                AdjustedDebit = 0.0m,
                 RecommendedContracts = 0,
                 ProductionReady = false,
                 CostValidation = null,

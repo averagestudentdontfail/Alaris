@@ -19,8 +19,11 @@ public sealed class STCS006A
     private readonly STCS001A _costModel;
     private readonly ILogger<STCS006A>? _logger;
     private readonly double _minimumPostCostIVRVRatio;
-    private readonly double _maximumSlippagePercent;
-    private readonly double _maximumExecutionCostPercent;
+    private readonly decimal _maximumSlippagePercent;
+    private readonly decimal _maximumExecutionCostPercent;
+    private readonly decimal _maximumSlippagePerSpread;
+    private readonly decimal _maximumExecutionCostPerSpread;
+    private readonly decimal _minimumCapitalForCostPercent;
 
     // LoggerMessage delegates
     private static readonly Action<ILogger, string, double, double, bool, Exception?> LogValidationResult =
@@ -29,48 +32,90 @@ public sealed class STCS006A
             new EventId(1, nameof(LogValidationResult)),
             "Cost validation for {Symbol}: pre-cost IV/RV={PreCostRatio:F3}, post-cost={PostCostRatio:F3}, passed={Passed}");
 
-    private static readonly Action<ILogger, string, double, double, Exception?> LogSlippageWarning =
-        LoggerMessage.Define<string, double, double>(
+    private static readonly Action<ILogger, string, decimal, decimal, Exception?> LogSlippageWarning =
+        LoggerMessage.Define<string, decimal, decimal>(
             LogLevel.Warning,
             new EventId(2, nameof(LogSlippageWarning)),
             "High slippage for {Symbol}: {SlippagePercent:F2}% exceeds threshold {Threshold:F2}%");
 
+    private static readonly Action<ILogger, string, decimal, decimal, Exception?> LogSlippageAbsoluteWarning =
+        LoggerMessage.Define<string, decimal, decimal>(
+            LogLevel.Warning,
+            new EventId(3, nameof(LogSlippageAbsoluteWarning)),
+            "High slippage for {Symbol}: ${SlippagePerSpread:F2} per spread exceeds ${Threshold:F2}");
+
+    private static readonly Action<ILogger, string, decimal, decimal, decimal, Exception?> LogExecutionCostWarning =
+        LoggerMessage.Define<string, decimal, decimal, decimal>(
+            LogLevel.Warning,
+            new EventId(4, nameof(LogExecutionCostWarning)),
+            "High execution cost for {Symbol}: {CostPercent:F2}% (basis ${Basis:F2}) exceeds {Threshold:F2}%");
+
+    private static readonly Action<ILogger, string, decimal, decimal, Exception?> LogExecutionCostAbsoluteWarning =
+        LoggerMessage.Define<string, decimal, decimal>(
+            LogLevel.Warning,
+            new EventId(5, nameof(LogExecutionCostAbsoluteWarning)),
+            "High execution cost for {Symbol}: ${CostPerSpread:F2} per spread exceeds ${Threshold:F2}");
+
     private static readonly Action<ILogger, string, Exception?> LogValidationError =
         LoggerMessage.Define<string>(
             LogLevel.Error,
-            new EventId(3, nameof(LogValidationError)),
+            new EventId(6, nameof(LogValidationError)),
             "Error validating costs for {Symbol}");
 
     /// <summary>
     /// Default minimum IV/RV ratio after costs.
     /// </summary>
     
-    public const double DefaultMinimumPostCostRatio = 0.0;
+    public const double DefaultMinimumPostCostRatio = 1.25;
 
     /// <summary>
     /// Default maximum acceptable slippage percentage.
     /// </summary>
     
-    public const double DefaultMaximumSlippagePercent = 200.0;
+    public const decimal DefaultMaximumSlippagePercent = 2.0m;
 
     /// <summary>
     /// Default maximum execution cost as percentage of capital.
     /// </summary>
     
-    public const double DefaultMaximumExecutionCostPercent = 500.0;
+    public const decimal DefaultMaximumExecutionCostPercent = 5.0m;
+
+    /// <summary>
+    /// Default maximum slippage per spread (dollars).
+    /// </summary>
+    public const decimal DefaultMaximumSlippagePerSpread = 10.0m;
+
+    /// <summary>
+    /// Default maximum execution cost per spread (dollars).
+    /// </summary>
+    public const decimal DefaultMaximumExecutionCostPerSpread = 15.0m;
+
+    /// <summary>
+    /// Default minimum capital basis for cost percentage (dollars).
+    /// </summary>
+    public const decimal DefaultMinimumCapitalForCostPercent = 10.0m;
 
     /// <summary>
     /// Initialises a new instance of the signal cost validator.
     /// </summary>
     /// <param name="costModel">The execution cost model to use.</param>
     /// <param name="minimumPostCostRatio">
-    /// Minimum IV/RV ratio after costs. Default: 1.20.
+    /// Minimum IV/RV ratio after costs. Default: 1.25.
     /// </param>
     /// <param name="maximumSlippagePercent">
-    /// Maximum acceptable slippage percentage. Default: 10%.
+    /// Maximum acceptable slippage percentage. Default: 2%.
     /// </param>
     /// <param name="maximumExecutionCostPercent">
     /// Maximum execution cost as percentage of capital. Default: 5%.
+    /// </param>
+    /// <param name="maximumSlippagePerSpread">
+    /// Maximum slippage per spread in dollars. Default: $10.00.
+    /// </param>
+    /// <param name="maximumExecutionCostPerSpread">
+    /// Maximum execution cost per spread in dollars. Default: $15.00.
+    /// </param>
+    /// <param name="minimumCapitalForCostPercent">
+    /// Minimum capital basis for cost percentage calculations. Default: $10.00.
     /// </param>
     /// <param name="logger">Optional logger instance.</param>
     /// <exception cref="ArgumentNullException">
@@ -79,14 +124,20 @@ public sealed class STCS006A
     public STCS006A(
         STCS001A costModel,
         double minimumPostCostRatio = DefaultMinimumPostCostRatio,
-        double maximumSlippagePercent = DefaultMaximumSlippagePercent,
-        double maximumExecutionCostPercent = DefaultMaximumExecutionCostPercent,
+        decimal maximumSlippagePercent = DefaultMaximumSlippagePercent,
+        decimal maximumExecutionCostPercent = DefaultMaximumExecutionCostPercent,
+        decimal maximumSlippagePerSpread = DefaultMaximumSlippagePerSpread,
+        decimal maximumExecutionCostPerSpread = DefaultMaximumExecutionCostPerSpread,
+        decimal minimumCapitalForCostPercent = DefaultMinimumCapitalForCostPercent,
         ILogger<STCS006A>? logger = null)
     {
         _costModel = costModel ?? throw new ArgumentNullException(nameof(costModel));
         _minimumPostCostIVRVRatio = minimumPostCostRatio;
         _maximumSlippagePercent = maximumSlippagePercent;
         _maximumExecutionCostPercent = maximumExecutionCostPercent;
+        _maximumSlippagePerSpread = maximumSlippagePerSpread;
+        _maximumExecutionCostPerSpread = maximumExecutionCostPerSpread;
+        _minimumCapitalForCostPercent = minimumCapitalForCostPercent;
         _logger = logger;
     }
 
@@ -117,15 +168,24 @@ public sealed class STCS006A
             // Compute post-cost IV/RV ratio
             // The execution cost degrades the effective edge
             double preCostRatio = signal.IVRVRatio;
-            double postCostRatio = ComputePostCostRatio(preCostRatio, spreadCost);
+            decimal executionCostPercent = ComputeExecutionCostPercent(spreadCost, out decimal executionCostBasis);
+            double postCostRatio = ComputePostCostRatio(preCostRatio, executionCostPercent);
 
             // Validate against thresholds
             bool passesRatioThreshold = postCostRatio >= _minimumPostCostIVRVRatio;
-            bool passesSlippageThreshold = spreadCost.SlippagePercent <= _maximumSlippagePercent;
-            bool passesCostThreshold = spreadCost.ExecutionCostPercent <= _maximumExecutionCostPercent;
+            decimal debitMagnitude = Math.Abs(spreadCost.TheoreticalDebit);
+            bool enforceSlippagePercent = debitMagnitude >= STCS004A.MinimumDebitForPercent;
+            bool passesSlippagePercent = !enforceSlippagePercent
+                || spreadCost.SlippagePercent <= _maximumSlippagePercent;
+            bool passesSlippageAbsolute = spreadCost.SlippagePerSpread <= _maximumSlippagePerSpread;
+            decimal capitalMagnitude = Math.Abs(spreadCost.TheoreticalCapitalRequired);
+            bool enforceCostPercent = capitalMagnitude >= _minimumCapitalForCostPercent;
+            bool passesCostPercent = !enforceCostPercent
+                || executionCostPercent <= _maximumExecutionCostPercent;
+            bool passesCostAbsolute = spreadCost.CostPerSpread <= _maximumExecutionCostPerSpread;
 
             // Check for high slippage warning
-            if (!passesSlippageThreshold)
+            if (enforceSlippagePercent && !passesSlippagePercent)
             {
                 SafeLog(() => LogSlippageWarning(
                     _logger!,
@@ -135,7 +195,42 @@ public sealed class STCS006A
                     null));
             }
 
-            bool overallPass = passesRatioThreshold && passesSlippageThreshold && passesCostThreshold;
+            if (!passesSlippageAbsolute)
+            {
+                SafeLog(() => LogSlippageAbsoluteWarning(
+                    _logger!,
+                    signal.Symbol,
+                    spreadCost.SlippagePerSpread,
+                    _maximumSlippagePerSpread,
+                    null));
+            }
+
+            if (enforceCostPercent && !passesCostPercent)
+            {
+                SafeLog(() => LogExecutionCostWarning(
+                    _logger!,
+                    signal.Symbol,
+                    executionCostPercent,
+                    executionCostBasis,
+                    _maximumExecutionCostPercent,
+                    null));
+            }
+
+            if (!passesCostAbsolute)
+            {
+                SafeLog(() => LogExecutionCostAbsoluteWarning(
+                    _logger!,
+                    signal.Symbol,
+                    spreadCost.CostPerSpread,
+                    _maximumExecutionCostPerSpread,
+                    null));
+            }
+
+            bool overallPass = passesRatioThreshold
+                && passesSlippagePercent
+                && passesSlippageAbsolute
+                && passesCostPercent
+                && passesCostAbsolute;
 
             STCS007A result = new STCS007A
             {
@@ -145,8 +240,19 @@ public sealed class STCS006A
                 MinimumRequiredRatio = _minimumPostCostIVRVRatio,
                 SpreadCost = spreadCost,
                 PassesRatioThreshold = passesRatioThreshold,
-                PassesSlippageThreshold = passesSlippageThreshold,
-                PassesCostThreshold = passesCostThreshold,
+                SlippagePercent = spreadCost.SlippagePercent,
+                SlippagePerSpread = spreadCost.SlippagePerSpread,
+                SlippagePercentThreshold = _maximumSlippagePercent,
+                SlippagePerSpreadThreshold = _maximumSlippagePerSpread,
+                PassesSlippagePercent = passesSlippagePercent,
+                PassesSlippageAbsolute = passesSlippageAbsolute,
+                ExecutionCostPercent = executionCostPercent,
+                ExecutionCostPercentBasis = executionCostBasis,
+                ExecutionCostPerSpread = spreadCost.CostPerSpread,
+                ExecutionCostPercentThreshold = _maximumExecutionCostPercent,
+                ExecutionCostPerSpreadThreshold = _maximumExecutionCostPerSpread,
+                PassesExecutionCostPercent = passesCostPercent,
+                PassesExecutionCostAbsolute = passesCostAbsolute,
                 OverallPass = overallPass,
                 CostModel = _costModel.ModelName
             };
@@ -175,16 +281,31 @@ public sealed class STCS006A
     /// <param name="spreadCost">The computed spread execution cost.</param>
     /// <returns>The adjusted IV/RV ratio accounting for costs.</returns>
     
-    private static double ComputePostCostRatio(double preCostRatio, STCS004A spreadCost)
+    private static double ComputePostCostRatio(double preCostRatio, decimal executionCostPercent)
     {
         // Execution cost degrades the ratio proportionally
         // If costs are 5% of capital, the effective ratio is reduced by 5%
-        double costFactor = 1.0 - (spreadCost.ExecutionCostPercent / 100.0);
+        double costFactor = 1.0 - ((double)executionCostPercent / 100.0);
 
         // Ensure factor is non-negative
         costFactor = Math.Max(0.0, costFactor);
 
         return preCostRatio * costFactor;
+    }
+
+    private decimal ComputeExecutionCostPercent(STCS004A spreadCost, out decimal basis)
+    {
+        decimal theoreticalCapital = Math.Abs(spreadCost.TheoreticalCapitalRequired);
+        basis = theoreticalCapital >= _minimumCapitalForCostPercent
+            ? theoreticalCapital
+            : _minimumCapitalForCostPercent;
+
+        if (basis <= 0.0m)
+        {
+            return 0.0m;
+        }
+
+        return spreadCost.TotalExecutionCost / basis * 100.0m;
     }
 
     /// <summary>

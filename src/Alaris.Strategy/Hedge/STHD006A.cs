@@ -34,7 +34,7 @@ public sealed record STHD006A
     /// <summary>
     /// Gets the execution-adjusted spread debit.
     /// </summary>
-    public required double AdjustedDebit { get; init; }
+    public required decimal AdjustedDebit { get; init; }
 
     /// <summary>
     /// Gets the recommended number of contracts.

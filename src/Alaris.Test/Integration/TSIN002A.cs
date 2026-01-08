@@ -17,6 +17,10 @@ namespace Alaris.Test.Integration;
 /// </summary>
 public class StrategyIntegrationTests
 {
+    private const double MinIvRvRatio = 1.25;
+    private const double MaxTermSlope = -0.00406;
+    private const long MinimumAverageVolume = 1_500_000;
+
     [Fact]
     public void STCR003A_CalculatesVolatilityCorrectly()
     {
@@ -110,7 +114,13 @@ public class StrategyIntegrationTests
         MockMarketDataProvider mockMarketData = new MockMarketDataProvider();
         STCR003A yangZhang = new STCR003A();
         STTM001A termAnalyzer = new STTM001A();
-        STCR001A generator = new STCR001A(mockMarketData, yangZhang, termAnalyzer);
+        STCR001A generator = new STCR001A(
+            mockMarketData,
+            yangZhang,
+            termAnalyzer,
+            MinIvRvRatio,
+            MaxTermSlope,
+            MinimumAverageVolume);
 
         DateTime earningsDate = new DateTime(2024, 1, 25);
         DateTime evaluationDate = new DateTime(2024, 1, 24);
@@ -181,7 +191,13 @@ public class StrategyIntegrationTests
         MockMarketDataProvider mockMarketData = new MockMarketDataProvider();
         STCR003A yangZhang = new STCR003A();
         STTM001A termAnalyzer = new STTM001A();
-        STCR001A signalGenerator = new STCR001A(mockMarketData, yangZhang, termAnalyzer);
+        STCR001A signalGenerator = new STCR001A(
+            mockMarketData,
+            yangZhang,
+            termAnalyzer,
+            MinIvRvRatio,
+            MaxTermSlope,
+            MinimumAverageVolume);
         MockPricingEngine mockPricing = new MockPricingEngine();
         STRK001A sizer = new STRK001A();
         STCT001A control = new STCT001A(signalGenerator, mockPricing, sizer);
@@ -336,7 +352,13 @@ public class StrategyIntegrationTests
         MockMarketDataProvider mockMarketData = new MockMarketDataProvider();
         STCR003A yangZhang = new STCR003A();
         STTM001A termAnalyzer = new STTM001A();
-        STCR001A signalGenerator = new STCR001A(mockMarketData, yangZhang, termAnalyzer);
+        STCR001A signalGenerator = new STCR001A(
+            mockMarketData,
+            yangZhang,
+            termAnalyzer,
+            MinIvRvRatio,
+            MaxTermSlope,
+            MinimumAverageVolume);
 
         // Use real STBR001A instead of mock
         using STBR001A pricingEngine = new STBR001A();

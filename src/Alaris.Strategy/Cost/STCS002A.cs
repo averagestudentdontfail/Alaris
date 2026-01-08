@@ -18,17 +18,17 @@ public sealed record STCS002A
     /// Gets the mid-price of the option.
     /// </summary>
     
-    public required double MidPrice { get; init; }
+    public required decimal MidPrice { get; init; }
 
     /// <summary>
     /// Gets the bid price of the option.
     /// </summary>
-    public required double BidPrice { get; init; }
+    public required decimal BidPrice { get; init; }
 
     /// <summary>
     /// Gets the ask price of the option.
     /// </summary>
-    public required double AskPrice { get; init; }
+    public required decimal AskPrice { get; init; }
 
     /// <summary>
     /// Gets the order direction.
@@ -39,12 +39,12 @@ public sealed record STCS002A
     /// Gets the option premium per share (for tiered fee calculation).
     /// </summary>
     
-    public required double Premium { get; init; }
+    public required decimal Premium { get; init; }
 
     /// <summary>
     /// Gets the contract multiplier (typically 100 for equity options).
     /// </summary>
-    public double ContractMultiplier { get; init; } = 100.0;
+    public decimal ContractMultiplier { get; init; } = 100.0m;
 
     /// <summary>
     /// Gets the underlying symbol for reference.
@@ -54,12 +54,12 @@ public sealed record STCS002A
     /// <summary>
     /// Gets the bid-ask spread.
     /// </summary>
-    public double BidAskSpread => AskPrice - BidPrice;
+    public decimal BidAskSpread => AskPrice - BidPrice;
 
     /// <summary>
     /// Gets the half-spread (single-side slippage).
     /// </summary>
-    public double HalfSpread => BidAskSpread / 2.0;
+    public decimal HalfSpread => BidAskSpread / 2.0m;
 
     /// <summary>
     /// Validates the order parameters.

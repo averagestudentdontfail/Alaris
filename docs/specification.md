@@ -400,6 +400,8 @@ The system MUST compute the following Greeks:
 - Maximum order size: 1% of average daily volume
 - Minimum price improvement attempt: $0.05
 - Maximum slippage from mid: 2%
+- Absolute slippage per spread MUST be capped in dollars; percent checks MAY be bypassed when debit basis is below the configured minimum.
+- Execution cost percent MUST use a minimum capital basis; absolute execution cost per spread MUST be capped in dollars.
 
 ---
 
@@ -442,6 +444,10 @@ Every trade MUST record:
 | `daily_loss_limit` | decimal | 0.02 | [0.01, 0.10] |
 | `weekly_loss_limit` | decimal | 0.05 | [0.02, 0.20] |
 | `vol_lookback_days` | integer | 30 | [10, 60] |
+
+Validation thresholds MUST be configured per run mode under `ForwardValidation` and `BackValidation` in `appsettings.jsonc`.
+These settings include slippage percent, slippage dollars per spread, execution cost percent, execution cost dollars per spread,
+minimum capital basis for percent calculations, and vega data policy.
 
 ### 12.2 Configuration Validation
 
@@ -525,4 +531,3 @@ All configuration MUST be validated at startup. Invalid configuration MUST preve
 ---
 
 *End of Specification*
-

@@ -15,6 +15,9 @@
             "EvaluationTimeMinute": 31,
             "OptionRight": "Call",
             "RealisedVolatilityWindowDays": 30,
+            "MinIvRvRatio": 1.25,
+            "MaxTermSlope": -0.00406,
+            "MinimumAverageVolume": 1500000,
             "DefaultImpliedVolatility": 0.20
         },
         // Backtest Configuration
@@ -26,7 +29,12 @@
             "HistoryLookbackDays": 45,
             "EarningsLookaheadDays": 90,
             "EarningsLookbackDays": 730,
-            "EarningsQueryTimeoutSeconds": 5
+            "EarningsQueryTimeoutSeconds": 5,
+            "RequireOptionChainCache": true
+        },
+        // Forwardtest Configuration (live/paper)
+        "Forwardtest": {
+            "RequireOptionChainCache": false
         },
         // Data Provider Settings
         "DataProviders": {
@@ -49,8 +57,29 @@
             }
         },
         // Production Validation Thresholds
-        "Validation": {
-            "IvRvRatioThreshold": 1.20,
+        "ForwardValidation": {
+            "IvRvRatioThreshold": 1.25,
+            "MinimumOtmPercent": 10,
+            "MaxBidAskSpread": 0.50,
+            "MinimumOpenInterest": 100,
+            "MaxVegaCorrelation": 0.70,
+            "MinimumVegaObservations": 20,
+            "VegaCorrelationLookbackDays": 45,
+            "MaxPositionToVolumeRatio": 0.01,
+            "MaxPositionToOpenInterestRatio": 0.02,
+            "DeltaRehedgeThreshold": 0.10,
+            "GammaWarningThreshold": -0.05,
+            "MoneynessAlertThreshold": 0.03,
+            "MinimumPostCostRatio": 1.25,
+            "MaxSlippagePercent": 2.0,
+            "MaxExecutionCostPercent": 5.0,
+            "MaxSlippagePerSpread": 10.0,
+            "MaxExecutionCostPerSpread": 15.0,
+            "MinimumCapitalForCostPercent": 10.0,
+            "AllowInsufficientVegaData": false
+        },
+        "BackValidation": {
+            "IvRvRatioThreshold": 1.25,
             "MinimumOtmPercent": 10,
             "MaxBidAskSpread": 0.50,
             "MinimumOpenInterest": 100,
@@ -61,7 +90,14 @@
             "MaxPositionToOpenInterestRatio": 0.25,
             "DeltaRehedgeThreshold": 0.10,
             "GammaWarningThreshold": -0.05,
-            "MoneynessAlertThreshold": 0.03
+            "MoneynessAlertThreshold": 0.03,
+            "MinimumPostCostRatio": 0.0,
+            "MaxSlippagePercent": 200.0,
+            "MaxExecutionCostPercent": 500.0,
+            "MaxSlippagePerSpread": 25.0,
+            "MaxExecutionCostPerSpread": 40.0,
+            "MinimumCapitalForCostPercent": 10.0,
+            "AllowInsufficientVegaData": true
         },
         // Execution Fees
         "Fees": {

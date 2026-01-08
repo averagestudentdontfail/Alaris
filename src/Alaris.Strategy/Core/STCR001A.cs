@@ -18,6 +18,9 @@ public sealed class STCR001A
     private readonly STTM001A _termAnalyzer;
     private readonly STIV005A _earningsCalibrator;
     private readonly ILogger<STCR001A>? _logger;
+    private readonly double _minimumIvRvRatio;
+    private readonly double _maximumTermSlope;
+    private readonly long _minimumAverageVolume;
 
     // LoggerMessage delegates
     private static readonly Action<ILogger, string, DateTime, Exception?> LogGeneratingSTCR004A =
@@ -62,29 +65,54 @@ public sealed class STCR001A
             new EventId(7, nameof(LogLeungSantoliMetrics)),
             "L&S model for {Symbol}: sigmaE={SigmaE:P2}, theoreticalIV={TheoreticalIV:P2}, mispricing={Mispricing:P2}");
 
-    // Strategy thresholds from research
-    private const double MinIvRvRatio = 1.25;
-    private const double MaxTermSlope = -0.00406;
-    private const long MinAverageVolume = 1_500_000;
-
     /// <summary>
     /// Initializes a new instance of the STCR001A class.
     /// </summary>
     /// <param name="marketData">Market data provider for prices and options.</param>
     /// <param name="yangZhang">Yang-Zhang volatility estimator.</param>
     /// <param name="termAnalyzer">Term structure analyzer.</param>
+    /// <param name="minimumIvRvRatio">Minimum IV/RV ratio threshold.</param>
+    /// <param name="maximumTermSlope">Maximum allowed term structure slope.</param>
+    /// <param name="minimumAverageVolume">Minimum average daily volume.</param>
     /// <param name="earningsCalibrator">Optional L&amp;S earnings jump calibrator.</param>
     /// <param name="logger">Optional logger instance.</param>
     public STCR001A(
         STDT001A marketData,
         STCR003A yangZhang,
         STTM001A termAnalyzer,
+        double minimumIvRvRatio,
+        double maximumTermSlope,
+        long minimumAverageVolume,
         STIV005A? earningsCalibrator = null,
         ILogger<STCR001A>? logger = null)
     {
         _marketData = marketData ?? throw new ArgumentNullException(nameof(marketData));
         _yangZhang = yangZhang ?? throw new ArgumentNullException(nameof(yangZhang));
         _termAnalyzer = termAnalyzer ?? throw new ArgumentNullException(nameof(termAnalyzer));
+        if (minimumIvRvRatio <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(minimumIvRvRatio),
+                minimumIvRvRatio,
+                "Minimum IV/RV ratio must be positive.");
+        }
+        if (maximumTermSlope >= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(maximumTermSlope),
+                maximumTermSlope,
+                "Maximum term slope must be negative.");
+        }
+        if (minimumAverageVolume <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(minimumAverageVolume),
+                minimumAverageVolume,
+                "Minimum average volume must be positive.");
+        }
+        _minimumIvRvRatio = minimumIvRvRatio;
+        _maximumTermSlope = maximumTermSlope;
+        _minimumAverageVolume = minimumAverageVolume;
         _earningsCalibrator = earningsCalibrator ?? new STIV005A();
         _logger = logger;
     }
@@ -234,9 +262,9 @@ public sealed class STCR001A
         CalculateLeungSantoliMetrics(signal, priceHistory, optionChain, earningsDate, evaluationDate, historicalEarningsDates);
 
         // Evaluate criteria
-        signal.Criteria["Volume"] = signal.AverageVolume >= MinAverageVolume;
-        signal.Criteria["IV/RV"] = signal.IVRVRatio >= MinIvRvRatio;
-        signal.Criteria["TermSlope"] = signal.STTM001ASlope <= MaxTermSlope;
+        signal.Criteria["Volume"] = signal.AverageVolume >= _minimumAverageVolume;
+        signal.Criteria["IV/RV"] = signal.IVRVRatio >= _minimumIvRvRatio;
+        signal.Criteria["TermSlope"] = signal.STTM001ASlope <= _maximumTermSlope;
 
         signal.EvaluateStrength();
     }

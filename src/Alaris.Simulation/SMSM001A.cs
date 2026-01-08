@@ -1466,13 +1466,26 @@ internal static class SMSM001A
         STCS005A costModel = new STCS005A(logger: costModelLogger);
 
         ILogger<STCS006A>? costValidatorLogger = loggerFactory.CreateLogger<STCS006A>();
-        STCS006A costValidator = new STCS006A(costModel, logger: costValidatorLogger);
+        STCS006A costValidator = new STCS006A(
+            costModel,
+            minimumPostCostRatio: 0.0,
+            maximumSlippagePercent: 200.0m,
+            maximumExecutionCostPercent: 500.0m,
+            maximumSlippagePerSpread: 25.0m,
+            maximumExecutionCostPerSpread: 40.0m,
+            minimumCapitalForCostPercent: 10.0m,
+            logger: costValidatorLogger);
 
         ILogger<STHD001A>? vegaAnalyserLogger = loggerFactory.CreateLogger<STHD001A>();
-        STHD001A vegaAnalyser = new STHD001A(logger: vegaAnalyserLogger);
+        STHD001A vegaAnalyser = new STHD001A(
+            allowInsufficientData: true,
+            logger: vegaAnalyserLogger);
 
         ILogger<STCS008A>? liquidityValidatorLogger = loggerFactory.CreateLogger<STCS008A>();
-        STCS008A liquidityValidator = new STCS008A(logger: liquidityValidatorLogger);
+        STCS008A liquidityValidator = new STCS008A(
+            maxPositionToVolumeRatio: 0.25,
+            maxPositionToOpenInterestRatio: 0.25,
+            logger: liquidityValidatorLogger);
 
         ILogger<STHD003A>? gammaManagerLogger = loggerFactory.CreateLogger<STHD003A>();
         STHD003A gammaManager = new STHD003A(logger: gammaManagerLogger);
@@ -1499,10 +1512,10 @@ internal static class SMSM001A
             Symbol = SimulationSymbol,
             Contracts = 1,
             Direction = OrderDirection.Sell,
-            BidPrice = frontCall.Bid,
-            AskPrice = frontCall.Ask,
-            MidPrice = frontCall.LastPrice,
-            Premium = frontCall.LastPrice
+            BidPrice = (decimal)frontCall.Bid,
+            AskPrice = (decimal)frontCall.Ask,
+            MidPrice = (decimal)frontCall.LastPrice,
+            Premium = (decimal)frontCall.LastPrice
         };
 
         STCS002A backLegParams = new STCS002A
@@ -1510,10 +1523,10 @@ internal static class SMSM001A
             Symbol = SimulationSymbol,
             Contracts = 1,
             Direction = OrderDirection.Buy,
-            BidPrice = backCall.Bid,
-            AskPrice = backCall.Ask,
-            MidPrice = backCall.LastPrice,
-            Premium = backCall.LastPrice
+            BidPrice = (decimal)backCall.Bid,
+            AskPrice = (decimal)backCall.Ask,
+            MidPrice = (decimal)backCall.LastPrice,
+            Premium = (decimal)backCall.LastPrice
         };
 
         Alaris.Strategy.Hedge.SpreadGreeks spreadGreeks = new Alaris.Strategy.Hedge.SpreadGreeks

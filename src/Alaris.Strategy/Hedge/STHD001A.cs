@@ -15,6 +15,7 @@ public sealed class STHD001A
     private readonly ILogger<STHD001A>? _logger;
     private readonly double _maxAcceptableCorrelation;
     private readonly int _minimumObservations;
+    private readonly bool _allowInsufficientData;
 
     // LoggerMessage delegates
     private static readonly Action<ILogger, string, double, string, Exception?> LogCorrelationResult =
@@ -57,6 +58,7 @@ public sealed class STHD001A
     public STHD001A(
         double maxAcceptableCorrelation = DefaultMaxCorrelation,
         int minimumObservations = DefaultMinimumObservations,
+        bool allowInsufficientData = false,
         ILogger<STHD001A>? logger = null)
     {
         if (maxAcceptableCorrelation < -1.0 || maxAcceptableCorrelation > 1.0)
@@ -77,6 +79,7 @@ public sealed class STHD001A
 
         _maxAcceptableCorrelation = maxAcceptableCorrelation;
         _minimumObservations = minimumObservations;
+        _allowInsufficientData = allowInsufficientData;
         _logger = logger;
     }
 
@@ -136,6 +139,11 @@ public sealed class STHD001A
                 _minimumObservations,
                 null));
 
+            bool passesFilter = _allowInsufficientData;
+            string interpretation = _allowInsufficientData
+                ? "Insufficient data for correlation analysis - proceeding with caution."
+                : "Insufficient data for correlation analysis - failing validation.";
+
             return new STHD002A
             {
                 Symbol = symbol,
@@ -143,9 +151,9 @@ public sealed class STHD001A
                 Threshold = _maxAcceptableCorrelation,
                 Observations = observations,
                 MinimumObservations = _minimumObservations,
-                PassesFilter = true,  // Allow trades with insufficient data (backtest mode)
+                PassesFilter = passesFilter,
                 HasSufficientData = false,
-                Interpretation = "Insufficient data for correlation analysis - proceeding with caution."
+                Interpretation = interpretation
             };
         }
 

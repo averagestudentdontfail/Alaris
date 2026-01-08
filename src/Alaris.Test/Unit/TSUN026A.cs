@@ -36,25 +36,25 @@ public sealed class TSUN026A
     private static STCS002A CreateValidBuyOrderParams() => new STCS002A
     {
         Contracts = 5,
-        MidPrice = 2.50,
-        BidPrice = 2.45,
-        AskPrice = 2.55,
+        MidPrice = 2.50m,
+        BidPrice = 2.45m,
+        AskPrice = 2.55m,
         Direction = OrderDirection.Buy,
-        Premium = 2.50,
+        Premium = 2.50m,
         Symbol = "AAPL",
-        ContractMultiplier = 100.0
+        ContractMultiplier = 100.0m
     };
 
     private static STCS002A CreateValidSellOrderParams() => new STCS002A
     {
         Contracts = 5,
-        MidPrice = 1.20,
-        BidPrice = 1.15,
-        AskPrice = 1.25,
+        MidPrice = 1.20m,
+        BidPrice = 1.15m,
+        AskPrice = 1.25m,
         Direction = OrderDirection.Sell,
-        Premium = 1.20,
+        Premium = 1.20m,
         Symbol = "AAPL",
-        ContractMultiplier = 100.0
+        ContractMultiplier = 100.0m
     };
 
     private static STCS005A CreateDefaultCostModel() => new STCS005A();
@@ -101,7 +101,7 @@ public sealed class TSUN026A
     public void STCS002A_Validate_NegativeMidPrice_Throws()
     {
         // Arrange
-        STCS002A parameters = CreateValidBuyOrderParams() with { MidPrice = -0.01 };
+        STCS002A parameters = CreateValidBuyOrderParams() with { MidPrice = -0.01m };
 
         // Act & Assert
         Action act = () => parameters.Validate();
@@ -118,8 +118,8 @@ public sealed class TSUN026A
         // Arrange
         STCS002A parameters = CreateValidBuyOrderParams() with
         {
-            BidPrice = 2.60,
-            AskPrice = 2.55
+            BidPrice = 2.60m,
+            AskPrice = 2.55m
         };
 
         // Act & Assert
@@ -138,12 +138,12 @@ public sealed class TSUN026A
         STCS002A parameters = CreateValidBuyOrderParams();
 
         // Act
-        double spread = parameters.BidAskSpread;
+        decimal spread = parameters.BidAskSpread;
 
         // Assert
         spread.Should().BeApproximately(
             parameters.AskPrice - parameters.BidPrice,
-            1e-10);
+            0.0000000001m);
     }
 
     /// <summary>
@@ -156,12 +156,12 @@ public sealed class TSUN026A
         STCS002A parameters = CreateValidBuyOrderParams();
 
         // Act
-        double halfSpread = parameters.HalfSpread;
+        decimal halfSpread = parameters.HalfSpread;
 
         // Assert
         halfSpread.Should().BeApproximately(
-            parameters.BidAskSpread / 2.0,
-            1e-10);
+            parameters.BidAskSpread / 2.0m,
+            0.0000000001m);
     }
 
     // STCS005A: Constant Fee Model Tests
@@ -190,7 +190,7 @@ public sealed class TSUN026A
         double fee, double exchange, double regulatory)
     {
         // Act & Assert
-        Action act = () => _ = new STCS005A(fee, exchange, regulatory);
+        Action act = () => _ = new STCS005A((decimal)fee, (decimal)exchange, (decimal)regulatory);
         act.Should().Throw<ArgumentOutOfRangeException>();
     }
 
@@ -210,9 +210,9 @@ public sealed class TSUN026A
         STCS003A result = model.ComputeOptionCost(parameters);
 
         // Assert
-        double expectedTotal = result.Commission + result.ExchangeFees +
-                               result.RegulatoryFees + result.Slippage;
-        result.TotalCost.Should().BeApproximately(expectedTotal, 1e-10);
+        decimal expectedTotal = result.Commission + result.ExchangeFees +
+                                result.RegulatoryFees + result.Slippage;
+        result.TotalCost.Should().BeApproximately(expectedTotal, 0.0000000001m);
     }
 
     /// <summary>
@@ -229,11 +229,11 @@ public sealed class TSUN026A
         STCS003A result = model.ComputeOptionCost(parameters);
 
         // Assert
-        result.Commission.Should().BeGreaterThanOrEqualTo(0);
-        result.ExchangeFees.Should().BeGreaterThanOrEqualTo(0);
-        result.RegulatoryFees.Should().BeGreaterThanOrEqualTo(0);
-        result.Slippage.Should().BeGreaterThanOrEqualTo(0);
-        result.TotalCost.Should().BeGreaterThanOrEqualTo(0);
+        result.Commission.Should().BeGreaterThanOrEqualTo(0.0m);
+        result.ExchangeFees.Should().BeGreaterThanOrEqualTo(0.0m);
+        result.RegulatoryFees.Should().BeGreaterThanOrEqualTo(0.0m);
+        result.Slippage.Should().BeGreaterThanOrEqualTo(0.0m);
+        result.TotalCost.Should().BeGreaterThanOrEqualTo(0.0m);
     }
 
     /// <summary>
@@ -255,8 +255,8 @@ public sealed class TSUN026A
         STCS003A result2 = model.ComputeOptionCost(params2);
 
         // Assert - Cost per contract should be identical
-        double ratio = (double)contracts2 / contracts1;
-        result2.TotalCost.Should().BeApproximately(result1.TotalCost * ratio, 1e-6);
+        decimal ratio = (decimal)contracts2 / contracts1;
+        result2.TotalCost.Should().BeApproximately(result1.TotalCost * ratio, 0.000001m);
     }
 
     /// <summary>
@@ -273,7 +273,7 @@ public sealed class TSUN026A
         STCS003A result = model.ComputeOptionCost(parameters);
 
         // Assert
-        result.ExecutionPrice.Should().BeApproximately(parameters.AskPrice, 1e-10);
+        result.ExecutionPrice.Should().BeApproximately(parameters.AskPrice, 0.0000000001m);
     }
 
     /// <summary>
@@ -290,7 +290,7 @@ public sealed class TSUN026A
         STCS003A result = model.ComputeOptionCost(parameters);
 
         // Assert
-        result.ExecutionPrice.Should().BeApproximately(parameters.BidPrice, 1e-10);
+        result.ExecutionPrice.Should().BeApproximately(parameters.BidPrice, 0.0000000001m);
     }
 
     /// <summary>
@@ -307,10 +307,10 @@ public sealed class TSUN026A
         STCS003A result = model.ComputeOptionCost(parameters);
 
         // Assert
-        double expectedSlippage = Math.Abs(parameters.AskPrice - parameters.MidPrice)
-                                  * parameters.Contracts
-                                  * parameters.ContractMultiplier;
-        result.Slippage.Should().BeApproximately(expectedSlippage, 1e-10);
+        decimal expectedSlippage = Math.Abs(parameters.AskPrice - parameters.MidPrice)
+                                   * parameters.Contracts
+                                   * parameters.ContractMultiplier;
+        result.Slippage.Should().BeApproximately(expectedSlippage, 0.0000000001m);
     }
 
     /// <summary>
@@ -329,7 +329,7 @@ public sealed class TSUN026A
         // Assert
         result.CostPerContract.Should().BeApproximately(
             result.TotalCost / result.Contracts,
-            1e-10);
+            0.0000000001m);
     }
 
     // STCS004A: Spread Cost Aggregation Tests
@@ -349,8 +349,8 @@ public sealed class TSUN026A
         STCS004A result = model.ComputeSpreadCost(frontParams, backParams);
 
         // Assert
-        double expectedTotal = result.FrontLegCost.TotalCost + result.BackLegCost.TotalCost;
-        result.TotalExecutionCost.Should().BeApproximately(expectedTotal, 1e-10);
+        decimal expectedTotal = result.FrontLegCost.TotalCost + result.BackLegCost.TotalCost;
+        result.TotalExecutionCost.Should().BeApproximately(expectedTotal, 0.0000000001m);
     }
 
     /// <summary>
@@ -368,8 +368,8 @@ public sealed class TSUN026A
         STCS004A result = model.ComputeSpreadCost(frontParams, backParams);
 
         // Assert
-        double expectedSlippage = result.FrontLegCost.Slippage + result.BackLegCost.Slippage;
-        result.TotalSlippage.Should().BeApproximately(expectedSlippage, 1e-10);
+        decimal expectedSlippage = result.FrontLegCost.Slippage + result.BackLegCost.Slippage;
+        result.TotalSlippage.Should().BeApproximately(expectedSlippage, 0.0000000001m);
     }
 
     /// <summary>
@@ -387,8 +387,8 @@ public sealed class TSUN026A
         STCS004A result = model.ComputeSpreadCost(frontParams, backParams);
 
         // Assert
-        double expectedDebit = backParams.MidPrice - frontParams.MidPrice;
-        result.TheoreticalDebit.Should().BeApproximately(expectedDebit, 1e-10);
+        decimal expectedDebit = backParams.MidPrice - frontParams.MidPrice;
+        result.TheoreticalDebit.Should().BeApproximately(expectedDebit, 0.0000000001m);
     }
 
     /// <summary>
@@ -406,8 +406,8 @@ public sealed class TSUN026A
         STCS004A result = model.ComputeSpreadCost(frontParams, backParams);
 
         // Assert
-        double expectedDebit = backParams.AskPrice - frontParams.BidPrice;
-        result.ExecutionDebit.Should().BeApproximately(expectedDebit, 1e-10);
+        decimal expectedDebit = backParams.AskPrice - frontParams.BidPrice;
+        result.ExecutionDebit.Should().BeApproximately(expectedDebit, 0.0000000001m);
     }
 
     /// <summary>
@@ -443,9 +443,9 @@ public sealed class TSUN026A
         STCS004A result = model.ComputeSpreadCost(frontParams, backParams);
 
         // Assert
-        double expectedCapital = (result.ExecutionDebit * result.Contracts * result.ContractMultiplier)
-                                 + result.TotalFees;
-        result.TotalCapitalRequired.Should().BeApproximately(expectedCapital, 1e-10);
+        decimal expectedCapital = (result.ExecutionDebit * result.Contracts * result.ContractMultiplier)
+                                  + result.TotalFees;
+        result.TotalCapitalRequired.Should().BeApproximately(expectedCapital, 0.0000000001m);
     }
 
     // Edge Cases and Boundary Tests
@@ -460,16 +460,16 @@ public sealed class TSUN026A
         STCS005A model = CreateDefaultCostModel();
         STCS002A parameters = CreateValidBuyOrderParams() with
         {
-            BidPrice = 2.50,
-            AskPrice = 2.50,
-            MidPrice = 2.50
+            BidPrice = 2.50m,
+            AskPrice = 2.50m,
+            MidPrice = 2.50m
         };
 
         // Act
         STCS003A result = model.ComputeOptionCost(parameters);
 
         // Assert
-        result.Slippage.Should().BeApproximately(0, 1e-10);
+        result.Slippage.Should().BeApproximately(0.0m, 0.0000000001m);
     }
 
     /// <summary>
@@ -480,19 +480,19 @@ public sealed class TSUN026A
     {
         // Arrange
         STCS005A model = new STCS005A(
-            feePerContract: 0.65,
-            exchangeFeePerContract: 0.30,
-            regulatoryFeePerContract: 0.02);
+            feePerContract: 0.65m,
+            exchangeFeePerContract: 0.30m,
+            regulatoryFeePerContract: 0.02m);
         STCS002A parameters = CreateValidBuyOrderParams() with { Contracts = 1 };
 
         // Act
         STCS003A result = model.ComputeOptionCost(parameters);
 
         // Assert
-        result.Commission.Should().BeApproximately(0.65, 1e-10);
-        result.ExchangeFees.Should().BeApproximately(0.30, 1e-10);
-        result.RegulatoryFees.Should().BeApproximately(0.02, 1e-10);
-        result.TotalFees.Should().BeApproximately(0.97, 1e-10);
+        result.Commission.Should().BeApproximately(0.65m, 0.0000000001m);
+        result.ExchangeFees.Should().BeApproximately(0.30m, 0.0000000001m);
+        result.RegulatoryFees.Should().BeApproximately(0.02m, 0.0000000001m);
+        result.TotalFees.Should().BeApproximately(0.97m, 0.0000000001m);
     }
 
     /// <summary>
@@ -503,18 +503,18 @@ public sealed class TSUN026A
     {
         // Arrange
         STCS005A model = new STCS005A(
-            feePerContract: 0.0,
-            exchangeFeePerContract: 0.0,
-            regulatoryFeePerContract: 0.0);
+            feePerContract: 0.0m,
+            exchangeFeePerContract: 0.0m,
+            regulatoryFeePerContract: 0.0m);
         STCS002A parameters = CreateValidBuyOrderParams();
 
         // Act
         STCS003A result = model.ComputeOptionCost(parameters);
 
         // Assert
-        result.TotalFees.Should().BeApproximately(0, 1e-10);
-        result.TotalCost.Should().BeApproximately(result.Slippage, 1e-10);
-        result.Slippage.Should().BeGreaterThan(0);  // Still has spread slippage
+        result.TotalFees.Should().BeApproximately(0.0m, 0.0000000001m);
+        result.TotalCost.Should().BeApproximately(result.Slippage, 0.0000000001m);
+        result.Slippage.Should().BeGreaterThan(0.0m);  // Still has spread slippage
     }
 
     // Interface Compliance Tests
@@ -579,37 +579,37 @@ public sealed class TSUN026A
         STCS002A frontParams = new STCS002A
         {
             Contracts = 10,
-            MidPrice = 2.10,
-            BidPrice = 2.05,
-            AskPrice = 2.15,
+            MidPrice = 2.10m,
+            BidPrice = 2.05m,
+            AskPrice = 2.15m,
             Direction = OrderDirection.Sell,
-            Premium = 2.10,
+            Premium = 2.10m,
             Symbol = "AAPL",
-            ContractMultiplier = 100.0
+            ContractMultiplier = 100.0m
         };
 
         STCS002A backParams = new STCS002A
         {
             Contracts = 10,
-            MidPrice = 3.50,
-            BidPrice = 3.45,
-            AskPrice = 3.55,
+            MidPrice = 3.50m,
+            BidPrice = 3.45m,
+            AskPrice = 3.55m,
             Direction = OrderDirection.Buy,
-            Premium = 3.50,
+            Premium = 3.50m,
             Symbol = "AAPL",
-            ContractMultiplier = 100.0
+            ContractMultiplier = 100.0m
         };
 
         // Act
         STCS004A result = model.ComputeSpreadCost(frontParams, backParams);
 
         // Assert - Sanity checks for realistic values
-        result.TheoreticalDebit.Should().BeApproximately(1.40, 0.01);  // 3.50 - 2.10
-        result.ExecutionDebit.Should().BeApproximately(1.50, 0.01);   // 3.55 - 2.05
+        result.TheoreticalDebit.Should().BeApproximately(1.40m, 0.01m);  // 3.50 - 2.10
+        result.ExecutionDebit.Should().BeApproximately(1.50m, 0.01m);   // 3.55 - 2.05
         result.Contracts.Should().Be(10);
-        result.TotalExecutionCost.Should().BeGreaterThan(10);  // At least $1 per contract
-        result.TotalExecutionCost.Should().BeLessThan(200);    // Not unreasonably high
-        result.ExecutionCostPercent.Should().BeGreaterThan(0);
+        result.TotalExecutionCost.Should().BeGreaterThan(10.0m);  // At least $1 per contract
+        result.TotalExecutionCost.Should().BeLessThan(200.0m);    // Not unreasonably high
+        result.ExecutionCostPercent.Should().BeGreaterThan(0.0m);
     }
 
     /// <summary>
@@ -623,16 +623,16 @@ public sealed class TSUN026A
 
         STCS002A narrowSpread = CreateValidBuyOrderParams() with
         {
-            BidPrice = 2.48,
-            AskPrice = 2.52,
-            MidPrice = 2.50
+            BidPrice = 2.48m,
+            AskPrice = 2.52m,
+            MidPrice = 2.50m
         };
 
         STCS002A wideSpread = CreateValidBuyOrderParams() with
         {
-            BidPrice = 2.30,
-            AskPrice = 2.70,
-            MidPrice = 2.50
+            BidPrice = 2.30m,
+            AskPrice = 2.70m,
+            MidPrice = 2.50m
         };
 
         // Act

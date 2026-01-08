@@ -11,19 +11,19 @@ namespace Alaris.Strategy.Cost;
 public sealed class STCS005A : STCS001A
 {
     private readonly ILogger<STCS005A>? _logger;
-    private readonly double _feePerContract;
-    private readonly double _exchangeFeePerContract;
-    private readonly double _regulatoryFeePerContract;
+    private readonly decimal _feePerContract;
+    private readonly decimal _exchangeFeePerContract;
+    private readonly decimal _regulatoryFeePerContract;
 
     // LoggerMessage delegates (Rule 5: avoid allocation in hot paths)
-    private static readonly Action<ILogger, string, int, double, Exception?> LogCostComputed =
-        LoggerMessage.Define<string, int, double>(
+    private static readonly Action<ILogger, string, int, decimal, Exception?> LogCostComputed =
+        LoggerMessage.Define<string, int, decimal>(
             LogLevel.Debug,
             new EventId(1, nameof(LogCostComputed)),
             "Cost computed for {Symbol}: {Contracts} contracts, total cost ${TotalCost:F4}");
 
-    private static readonly Action<ILogger, double, double, double, Exception?> LogSpreadCostComputed =
-        LoggerMessage.Define<double, double, double>(
+    private static readonly Action<ILogger, decimal, decimal, decimal, Exception?> LogSpreadCostComputed =
+        LoggerMessage.Define<decimal, decimal, decimal>(
             LogLevel.Debug,
             new EventId(2, nameof(LogSpreadCostComputed)),
             "Spread cost: theoretical ${TheoreticalDebit:F4}, execution ${ExecutionDebit:F4}, slippage {SlippagePercent:F2}%");
@@ -32,19 +32,19 @@ public sealed class STCS005A : STCS001A
     /// Default commission fee per contract (conservative estimate).
     /// </summary>
     
-    public const double DefaultFeePerContract = 0.65;
+    public const decimal DefaultFeePerContract = 0.65m;
 
     /// <summary>
     /// Default exchange fee per contract.
     /// </summary>
     
-    public const double DefaultExchangeFee = 0.30;
+    public const decimal DefaultExchangeFee = 0.30m;
 
     /// <summary>
     /// Default regulatory fee per contract.
     /// </summary>
     
-    public const double DefaultRegulatoryFee = 0.02;
+    public const decimal DefaultRegulatoryFee = 0.02m;
 
     /// <summary>
     /// Initialises a new instance of the constant fee model.
@@ -63,9 +63,9 @@ public sealed class STCS005A : STCS001A
     /// Thrown when any fee is negative.
     /// </exception>
     public STCS005A(
-        double feePerContract = DefaultFeePerContract,
-        double exchangeFeePerContract = DefaultExchangeFee,
-        double regulatoryFeePerContract = DefaultRegulatoryFee,
+        decimal feePerContract = DefaultFeePerContract,
+        decimal exchangeFeePerContract = DefaultExchangeFee,
+        decimal regulatoryFeePerContract = DefaultRegulatoryFee,
         ILogger<STCS005A>? logger = null)
     {
         if (feePerContract < 0)
@@ -108,19 +108,19 @@ public sealed class STCS005A : STCS001A
         parameters.Validate();
 
         // Compute execution price based on direction
-        double executionPrice = parameters.Direction == OrderDirection.Buy
+        decimal executionPrice = parameters.Direction == OrderDirection.Buy
             ? parameters.AskPrice
             : parameters.BidPrice;
 
         // Compute slippage (difference from mid to execution price)
-        double slippagePerContract = Math.Abs(executionPrice - parameters.MidPrice)
+        decimal slippagePerContract = Math.Abs(executionPrice - parameters.MidPrice)
             * parameters.ContractMultiplier;
-        double totalSlippage = slippagePerContract * parameters.Contracts;
+        decimal totalSlippage = slippagePerContract * parameters.Contracts;
 
         // Compute fees
-        double commission = _feePerContract * parameters.Contracts;
-        double exchangeFees = _exchangeFeePerContract * parameters.Contracts;
-        double regulatoryFees = _regulatoryFeePerContract * parameters.Contracts;
+        decimal commission = _feePerContract * parameters.Contracts;
+        decimal exchangeFees = _exchangeFeePerContract * parameters.Contracts;
+        decimal regulatoryFees = _regulatoryFeePerContract * parameters.Contracts;
 
         STCS003A result = new STCS003A
         {
@@ -156,14 +156,14 @@ public sealed class STCS005A : STCS001A
         STCS003A backCost = ComputeOptionCost(adjustedBackParams);
 
         // Theoretical debit (mid-price based)
-        double theoreticalDebit = backLegParameters.MidPrice - frontLegParameters.MidPrice;
+        decimal theoreticalDebit = backLegParameters.MidPrice - frontLegParameters.MidPrice;
 
         // Execution debit (bid-ask adjusted)
         // Buy back at ask, sell front at bid
-        double executionDebit = backLegParameters.AskPrice - frontLegParameters.BidPrice;
+        decimal executionDebit = backLegParameters.AskPrice - frontLegParameters.BidPrice;
 
         int contracts = Math.Min(frontLegParameters.Contracts, backLegParameters.Contracts);
-        double contractMultiplier = frontLegParameters.ContractMultiplier;
+        decimal contractMultiplier = frontLegParameters.ContractMultiplier;
 
         STCS004A result = new STCS004A
         {

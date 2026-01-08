@@ -36,6 +36,7 @@ public sealed class AlarisDataBridge
     private readonly DTpr005A _riskFreeRateProvider;
     private readonly IReadOnlyList<DTqc002A> _validators;
     private readonly ILogger<AlarisDataBridge> _logger;
+    private bool _allowOptionChainFallback = true;
     
     // Session data path for loading cached data (options, etc.)
     private string? _sessionDataPath;
@@ -84,6 +85,14 @@ public sealed class AlarisDataBridge
     {
         _sessionDataPath = sessionDataPath;
         _logger.LogInformation("Session data path set to: {Path}", sessionDataPath);
+    }
+
+    /// <summary>
+    /// Enables or disables live option chain fallback when cache is missing.
+    /// </summary>
+    public void SetOptionChainFallbackEnabled(bool enabled)
+    {
+        _allowOptionChainFallback = enabled;
     }
 
     /// <summary>
@@ -624,6 +633,18 @@ public sealed class AlarisDataBridge
             }
             
             _logger.LogDebug("No options cache found for {Symbol} @ {Date}", symbol, evaluationDate);
+        }
+
+        if (!_allowOptionChainFallback)
+        {
+            _logger.LogDebug("Option chain fallback disabled for {Symbol} @ {Date}", symbol, evaluationDate);
+            return new OptionChainSnapshot
+            {
+                Symbol = symbol,
+                SpotPrice = 0m,
+                Timestamp = evaluationDate,
+                Contracts = Array.Empty<OptionContract>()
+            };
         }
 
         // Fetch from provider (Live or Historical On-Demand)

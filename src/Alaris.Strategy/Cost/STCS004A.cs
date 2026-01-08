@@ -22,13 +22,13 @@ public sealed record STCS004A
     /// Gets the theoretical spread debit (mid-price based).
     /// </summary>
     
-    public required double TheoreticalDebit { get; init; }
+    public required decimal TheoreticalDebit { get; init; }
 
     /// <summary>
     /// Gets the execution-adjusted spread debit.
     /// </summary>
     
-    public required double ExecutionDebit { get; init; }
+    public required decimal ExecutionDebit { get; init; }
 
     /// <summary>
     /// Gets the number of spread contracts.
@@ -38,59 +38,80 @@ public sealed record STCS004A
     /// <summary>
     /// Gets the contract multiplier (typically 100).
     /// </summary>
-    public double ContractMultiplier { get; init; } = 100.0;
+    public decimal ContractMultiplier { get; init; } = 100.0m;
 
     /// <summary>
     /// Gets the total slippage across both legs.
     /// </summary>
-    public double TotalSlippage => FrontLegCost.Slippage + BackLegCost.Slippage;
+    public decimal TotalSlippage => FrontLegCost.Slippage + BackLegCost.Slippage;
 
     /// <summary>
     /// Gets the total commissions across both legs.
     /// </summary>
-    public double TotalCommission => FrontLegCost.Commission + BackLegCost.Commission;
+    public decimal TotalCommission => FrontLegCost.Commission + BackLegCost.Commission;
 
     /// <summary>
     /// Gets the total fees across both legs.
     /// </summary>
-    public double TotalFees => FrontLegCost.TotalFees + BackLegCost.TotalFees;
+    public decimal TotalFees => FrontLegCost.TotalFees + BackLegCost.TotalFees;
 
     /// <summary>
     /// Gets the total execution cost (fees + slippage).
     /// </summary>
-    public double TotalExecutionCost => FrontLegCost.TotalCost + BackLegCost.TotalCost;
+    public decimal TotalExecutionCost => FrontLegCost.TotalCost + BackLegCost.TotalCost;
 
     /// <summary>
     /// Gets the cost per spread.
     /// </summary>
-    public double CostPerSpread => Contracts > 0 ? TotalExecutionCost / Contracts : 0.0;
+    public decimal CostPerSpread => Contracts > 0 ? TotalExecutionCost / Contracts : 0.0m;
+
+    /// <summary>
+    /// Gets the slippage per spread (total slippage divided by contracts).
+    /// </summary>
+    public decimal SlippagePerSpread => Contracts > 0 ? TotalSlippage / Contracts : 0.0m;
+
+    /// <summary>
+    /// Minimum debit used as a slippage percentage basis.
+    /// </summary>
+    public const decimal MinimumDebitForPercent = 0.10m;
 
     /// <summary>
     /// Gets the slippage as a percentage of theoretical debit.
+    /// Uses a minimum debit basis to avoid extreme percentages on tiny debits.
     /// </summary>
-    
-    public double SlippagePercent => TheoreticalDebit > 0.10
-        ? (ExecutionDebit - TheoreticalDebit) / TheoreticalDebit * 100.0
-        : (ExecutionDebit - TheoreticalDebit) * 100.0;  // Absolute cents for small debits
+    public decimal SlippagePercent
+    {
+        get
+        {
+            decimal debitMagnitude = Math.Abs(TheoreticalDebit);
+            if (debitMagnitude <= 0.0m)
+            {
+                return 0.0m;
+            }
+
+            decimal basis = Math.Max(debitMagnitude, MinimumDebitForPercent);
+            return Math.Abs(ExecutionDebit - TheoreticalDebit) / basis * 100.0m;
+        }
+    }
 
     /// <summary>
     /// Gets the total dollar amount required to enter the position.
     /// </summary>
     
-    public double TotalCapitalRequired =>
+    public decimal TotalCapitalRequired =>
         (ExecutionDebit * Contracts * ContractMultiplier) + TotalFees;
 
     /// <summary>
     /// Gets the theoretical capital requirement (mid-price, no fees).
     /// </summary>
-    public double TheoreticalCapitalRequired =>
+    public decimal TheoreticalCapitalRequired =>
         TheoreticalDebit * Contracts * ContractMultiplier;
 
     /// <summary>
     /// Gets the execution cost as a percentage of theoretical capital.
     /// </summary>
     
-    public double ExecutionCostPercent => TheoreticalCapitalRequired > 0
-        ? TotalExecutionCost / TheoreticalCapitalRequired * 100.0
-        : 0.0;
+    public decimal ExecutionCostPercent => TheoreticalCapitalRequired > 0m
+        ? TotalExecutionCost / TheoreticalCapitalRequired * 100.0m
+        : 0.0m;
 }

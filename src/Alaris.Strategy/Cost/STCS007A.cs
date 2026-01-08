@@ -41,14 +41,69 @@ public sealed record STCS007A
     public required bool PassesRatioThreshold { get; init; }
 
     /// <summary>
-    /// Gets whether slippage is within acceptable bounds.
+    /// Gets the slippage percentage.
     /// </summary>
-    public required bool PassesSlippageThreshold { get; init; }
+    public required decimal SlippagePercent { get; init; }
 
     /// <summary>
-    /// Gets whether total execution cost is within acceptable bounds.
+    /// Gets the slippage per spread in dollars.
     /// </summary>
-    public required bool PassesCostThreshold { get; init; }
+    public required decimal SlippagePerSpread { get; init; }
+
+    /// <summary>
+    /// Gets the slippage percent threshold.
+    /// </summary>
+    public required decimal SlippagePercentThreshold { get; init; }
+
+    /// <summary>
+    /// Gets the slippage per spread threshold (dollars).
+    /// </summary>
+    public required decimal SlippagePerSpreadThreshold { get; init; }
+
+    /// <summary>
+    /// Gets whether slippage percent is within acceptable bounds.
+    /// </summary>
+    public required bool PassesSlippagePercent { get; init; }
+
+    /// <summary>
+    /// Gets whether slippage per spread is within acceptable bounds.
+    /// </summary>
+    public required bool PassesSlippageAbsolute { get; init; }
+
+    /// <summary>
+    /// Gets the execution cost percentage (using minimum capital basis).
+    /// </summary>
+    public required decimal ExecutionCostPercent { get; init; }
+
+    /// <summary>
+    /// Gets the execution cost percentage basis in dollars.
+    /// </summary>
+    public required decimal ExecutionCostPercentBasis { get; init; }
+
+    /// <summary>
+    /// Gets the execution cost per spread in dollars.
+    /// </summary>
+    public required decimal ExecutionCostPerSpread { get; init; }
+
+    /// <summary>
+    /// Gets the execution cost percent threshold.
+    /// </summary>
+    public required decimal ExecutionCostPercentThreshold { get; init; }
+
+    /// <summary>
+    /// Gets the execution cost per spread threshold (dollars).
+    /// </summary>
+    public required decimal ExecutionCostPerSpreadThreshold { get; init; }
+
+    /// <summary>
+    /// Gets whether execution cost percent is within acceptable bounds.
+    /// </summary>
+    public required bool PassesExecutionCostPercent { get; init; }
+
+    /// <summary>
+    /// Gets whether execution cost per spread is within acceptable bounds.
+    /// </summary>
+    public required bool PassesExecutionCostAbsolute { get; init; }
 
     /// <summary>
     /// Gets whether all validation criteria are satisfied.
@@ -93,14 +148,24 @@ public sealed record STCS007A
             failures.Add($"IV/RV {PostCostIVRVRatio:F3} < {MinimumRequiredRatio:F3}");
         }
 
-        if (!PassesSlippageThreshold)
+        if (!PassesSlippagePercent)
         {
-            failures.Add($"Slippage {SpreadCost.SlippagePercent:F2}% exceeds limit");
+            failures.Add($"Slippage {SlippagePercent:F2}% > {SlippagePercentThreshold:F2}%");
         }
 
-        if (!PassesCostThreshold)
+        if (!PassesSlippageAbsolute)
         {
-            failures.Add($"Execution cost {SpreadCost.ExecutionCostPercent:F2}% exceeds limit");
+            failures.Add($"Slippage ${SlippagePerSpread:F2} > ${SlippagePerSpreadThreshold:F2} per spread");
+        }
+
+        if (!PassesExecutionCostPercent)
+        {
+            failures.Add($"Execution cost {ExecutionCostPercent:F2}% (basis ${ExecutionCostPercentBasis:F2}) > {ExecutionCostPercentThreshold:F2}%");
+        }
+
+        if (!PassesExecutionCostAbsolute)
+        {
+            failures.Add($"Execution cost ${ExecutionCostPerSpread:F2} > ${ExecutionCostPerSpreadThreshold:F2} per spread");
         }
 
         return $"{Symbol}: FAIL - {string.Join("; ", failures)}";

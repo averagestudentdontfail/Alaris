@@ -12,35 +12,35 @@ public sealed record STCS003A
     /// Gets the brokerage commission in dollars.
     /// </summary>
     
-    public required double Commission { get; init; }
+    public required decimal Commission { get; init; }
 
     /// <summary>
     /// Gets the exchange fees in dollars.
     /// </summary>
     
-    public double ExchangeFees { get; init; }
+    public decimal ExchangeFees { get; init; }
 
     /// <summary>
     /// Gets the regulatory fees in dollars (e.g., SEC, FINRA).
     /// </summary>
-    public double RegulatoryFees { get; init; }
+    public decimal RegulatoryFees { get; init; }
 
     /// <summary>
     /// Gets the estimated slippage cost in dollars.
     /// </summary>
     
-    public required double Slippage { get; init; }
+    public required decimal Slippage { get; init; }
 
     /// <summary>
     /// Gets the theoretical fill price (mid-price).
     /// </summary>
-    public required double TheoreticalPrice { get; init; }
+    public required decimal TheoreticalPrice { get; init; }
 
     /// <summary>
     /// Gets the execution-adjusted fill price.
     /// </summary>
     
-    public required double ExecutionPrice { get; init; }
+    public required decimal ExecutionPrice { get; init; }
 
     /// <summary>
     /// Gets the number of contracts.
@@ -50,22 +50,22 @@ public sealed record STCS003A
     /// <summary>
     /// Gets the total execution cost (all components).
     /// </summary>
-    public double TotalCost => Commission + ExchangeFees + RegulatoryFees + Slippage;
+    public decimal TotalCost => Commission + ExchangeFees + RegulatoryFees + Slippage;
 
     /// <summary>
     /// Gets the cost per contract.
     /// </summary>
-    public double CostPerContract => Contracts > 0 ? TotalCost / Contracts : 0.0;
+    public decimal CostPerContract => Contracts > 0 ? TotalCost / Contracts : 0.0m;
 
     /// <summary>
     /// Gets the slippage as a percentage of theoretical value.
     /// </summary>
-    public double SlippagePercent => TheoreticalPrice > 0
-        ? Slippage / (TheoreticalPrice * Contracts * 100.0) * 100.0
-        : 0.0;
+    public decimal SlippagePercent => TheoreticalPrice > 0m
+        ? Slippage / (TheoreticalPrice * Contracts * 100.0m) * 100.0m
+        : 0.0m;
 
     /// <summary>
     /// Gets the total fees (excluding slippage).
     /// </summary>
-    public double TotalFees => Commission + ExchangeFees + RegulatoryFees;
+    public decimal TotalFees => Commission + ExchangeFees + RegulatoryFees;
 }
