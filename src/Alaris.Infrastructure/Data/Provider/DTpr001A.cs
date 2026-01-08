@@ -86,8 +86,11 @@ public sealed class PolygonApiClient : DTpr003A, IDisposable
 
         _maxConcurrentRequests = Math.Max(1, configuration.GetValue("Polygon:MaxConcurrentRequests", 25));
         _requestsPerSecond = Math.Max(1, configuration.GetValue("Polygon:RequestsPerSecond", 100));
-        _optionsContractLimit = Math.Max(1, configuration.GetValue("Polygon:OptionsContractLimit", 20));
-        _optionsContractsPerExpiryRight = Math.Max(1, configuration.GetValue("Polygon:OptionsContractsPerExpiryRight", 2));
+        // Increase contract limit to ensure coverage across multiple expirations
+        // Further-out expirations trade less frequently, so we need more contracts to get valid data
+        _optionsContractLimit = Math.Max(1, configuration.GetValue("Polygon:OptionsContractLimit", 50));
+        // Increase contracts per expiration to get more data points for IV calculation
+        _optionsContractsPerExpiryRight = Math.Max(1, configuration.GetValue("Polygon:OptionsContractsPerExpiryRight", 5));
         _optionsMaxExpirations = Math.Max(1, configuration.GetValue("Polygon:OptionsMaxExpirations", 5));
         _optionsChainParallelism = Math.Max(1, configuration.GetValue("Polygon:OptionsChainParallelism", 4));
         _optionsChainDelayMs = Math.Max(0, configuration.GetValue("Polygon:OptionsChainDelayMs", 0));
@@ -235,7 +238,8 @@ public sealed class PolygonApiClient : DTpr003A, IDisposable
 
         _logger.LogInformation("Fetching historical option chain for {Symbol} as of {Date:yyyy-MM-dd}", symbol, effectiveDate);
 
-        // 1. Get historical spot price
+        // 1. Get historical spot price (unadjusted to match option prices)
+        // We use unadjusted prices for consistency with option bars which are also fetched unadjusted
         decimal spotPrice = spotPriceOverride.GetValueOrDefault();
         if (spotPrice <= 0m)
         {
@@ -243,8 +247,19 @@ public sealed class PolygonApiClient : DTpr003A, IDisposable
             {
                 DateTime spotStart = effectiveDate.AddDays(-5);
                 if (spotStart < twoYearsAgo) spotStart = twoYearsAgo;
-                IReadOnlyList<PriceBar> bars = await GetHistoricalBarsAsync(symbol, spotStart, effectiveDate, cancellationToken);
-                spotPrice = bars.Count > 0 ? bars[bars.Count - 1].Close : 0m;
+                await WaitForRateLimitAsync(EndpointKind.DailyBars, cancellationToken);
+                PolygonAggregatesResponse spotResponse = await _api.GetDailyBarsAsync(
+                    symbol,
+                    spotStart.ToString("yyyy-MM-dd"),
+                    effectiveDate.ToString("yyyy-MM-dd"),
+                    adjusted: false,  // Use unadjusted to match option prices
+                    sort: "asc",
+                    apiKey: _apiKey,
+                    cancellationToken);
+                if (spotResponse?.Results != null && spotResponse.Results.Length > 0)
+                {
+                    spotPrice = spotResponse.Results[^1].Close;
+                }
             }
             catch (Exception ex)
             {
@@ -259,8 +274,11 @@ public sealed class PolygonApiClient : DTpr003A, IDisposable
         }
 
         // 2. Fetch option contracts using Reference API
+        // Use expirationMin = effectiveDate + 1 to exclude 0-DTE options (same-day expiry)
+        // 0-DTE options have timeToExpiry=0, which causes Black-Scholes IV calculation to fail
+        // Term structure analysis requires ≥2 FUTURE expirations, not same-day
         string dateStr = effectiveDate.ToString("yyyy-MM-dd");
-        string expirationMin = effectiveDate.ToString("yyyy-MM-dd");
+        string expirationMin = effectiveDate.AddDays(1).ToString("yyyy-MM-dd");
         string expirationMax = effectiveDate.AddDays(60).ToString("yyyy-MM-dd");
         
         _logger.LogDebug("Fetching reference contracts for {Symbol}", symbol);
@@ -318,20 +336,27 @@ public sealed class PolygonApiClient : DTpr003A, IDisposable
                 try
                 {
                     await WaitForRateLimitAsync(EndpointKind.OptionAggregates, cancellationToken, symbol);
+
+                    // Fetch bars for last 5 trading days to capture contracts that don't trade every day
+                    // Further-out expirations are less liquid and may not have trades on every date
+                    // Use adjusted=false for options - split-adjusted option prices cause IV calculation issues
+                    // (option prices don't split-adjust the same way as underlying prices)
+                    string lookbackStart = effectiveDate.AddDays(-7).ToString("yyyy-MM-dd");
                     PolygonAggregatesResponse aggResponse = await _api.GetTickerAggregatesAsync(
                         refContract.Ticker,
+                        lookbackStart,
                         dateStr,
-                        dateStr,
-                        adjusted: true,
+                        adjusted: false,
                         apiKey: _apiKey,
                         cancellationToken);
-                    
+
                     if (aggResponse?.Results == null || aggResponse.Results.Length == 0)
                     {
                         return;
                     }
 
-                    PolygonBar bar = aggResponse.Results[0];
+                    // Use the most recent bar (last in array) as the price reference
+                    PolygonBar bar = aggResponse.Results[^1];
                     
                     // Parse contract details from OCC ticker format
                     (string underlying, decimal strike, DateTime expiration, OptionRight right) = ParseOptionTicker(refContract.Ticker);
@@ -491,7 +516,8 @@ public sealed class PolygonApiClient : DTpr003A, IDisposable
                 continue;
             }
 
-            if (expiration.Date < effectiveDate.Date)
+            // Exclude same-day (0-DTE) and past expirations - need future expirations for IV calculation
+            if (expiration.Date <= effectiveDate.Date)
             {
                 continue;
             }

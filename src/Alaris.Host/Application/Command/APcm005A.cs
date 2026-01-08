@@ -934,7 +934,8 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
             foreach (Alaris.Core.Model.PreflightCheck check in issues)
             {
                 string checkColor = check.Status == Alaris.Core.Model.CheckStatus.Failed ? "red" : "yellow";
-                AnsiConsole.MarkupLine($"  [{checkColor}][{check.Status}][/] {check.Name}: {check.Message}");
+                string statusLabel = check.Status == Alaris.Core.Model.CheckStatus.Failed ? "FAIL" : "WARN";
+                AnsiConsole.MarkupLine($"  [{checkColor}]{statusLabel}[/] {check.Name}: {check.Message}");
             }
         }
 
@@ -945,7 +946,7 @@ public sealed class BacktestRunCommand : AsyncCommand<BacktestRunSettings>
             AnsiConsole.MarkupLine("[blue]Remediation Actions:[/]");
             foreach (Alaris.Core.Model.RemediationAction action in validation.RemediationActions)
             {
-                string autoTag = action.CanAutomate ? "[auto]" : "[manual]";
+                string autoTag = action.CanAutomate ? "[green]AUTO[/]" : "[yellow]MANUAL[/]";
                 AnsiConsole.MarkupLine($"  {autoTag} {action.Description} (~{action.EstimatedSeconds}s)");
             }
         }

@@ -635,7 +635,15 @@ public sealed class DTpf001A
                     string json = File.ReadAllText(file);
                     using JsonDocument doc = JsonDocument.Parse(json);
 
-                    foreach (JsonElement item in doc.RootElement.EnumerateArray())
+                    // The earnings file has structure: { "date": ..., "earnings": [...] }
+                    // Get the "earnings" array from the root object
+                    if (!doc.RootElement.TryGetProperty("earnings", out JsonElement earningsArray) ||
+                        earningsArray.ValueKind != JsonValueKind.Array)
+                    {
+                        continue;
+                    }
+
+                    foreach (JsonElement item in earningsArray.EnumerateArray())
                     {
                         if (item.TryGetProperty("symbol", out JsonElement symEl) &&
                             symEl.GetString()?.ToUpperInvariant() == symbolUpper &&
