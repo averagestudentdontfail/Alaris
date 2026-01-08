@@ -1,0 +1,11 @@
+/equity/usa/daily/avgo.zip
+/equity/usa/daily/tsla.zip
+/equity/usa/daily/msft.zip
+/equity/usa/daily/nvda.zip
+/equity/usa/daily/brk.b.zip
+/equity/usa/daily/aapl.zip
+/equity/usa/daily/meta.zip
+/equity/usa/daily/googl.zip
+/equity/usa/daily/amzn.zip
+/equity/usa/daily/lly.zip
+/equity/usa/daily/spy.zip

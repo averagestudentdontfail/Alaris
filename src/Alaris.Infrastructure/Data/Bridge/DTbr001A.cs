@@ -836,7 +836,16 @@ public sealed class AlarisDataBridge
         DateTime evaluationDate,
         CancellationToken cancellationToken)
     {
-        // Fetch upcoming and historical concurrently
+        // Try cache first (backtest mode)
+        (EarningsEvent? cachedNext, List<EarningsEvent> cachedHistorical) = GetEarningsFromCache(symbol, evaluationDate);
+        if (cachedNext != null || cachedHistorical.Count > 0)
+        {
+            _logger.LogDebug("Using cached earnings for {Symbol}: Next={NextDate}, Historical={Count}",
+                symbol, cachedNext?.Date.ToString("yyyy-MM-dd") ?? "None", cachedHistorical.Count);
+            return (cachedNext, cachedHistorical);
+        }
+
+        // Fall back to live API
         Task<IReadOnlyList<EarningsEvent>> upcomingTask = _earningsProvider.GetUpcomingEarningsAsync(
             symbol,
             daysAhead: 90,
@@ -1286,5 +1295,117 @@ public sealed class AlarisDataBridge
             avgVolume, takeCount, symbol, evaluationDate);
         
         return avgVolume;
+    }
+
+    /// <summary>
+    /// Gets earnings data from cached files.
+    /// Cached earnings are stored by date in earnings/nasdaq/YYYY-MM-DD.json
+    /// </summary>
+    private (EarningsEvent? next, List<EarningsEvent> historical) GetEarningsFromCache(
+        string symbol,
+        DateTime evaluationDate)
+    {
+        if (string.IsNullOrEmpty(_sessionDataPath))
+        {
+            return (null, new List<EarningsEvent>());
+        }
+
+        string earningsDir = Path.Combine(_sessionDataPath, "earnings", "nasdaq");
+        if (!Directory.Exists(earningsDir))
+        {
+            _logger.LogDebug("Earnings cache directory not found: {Path}", earningsDir);
+            return (null, new List<EarningsEvent>());
+        }
+
+        try
+        {
+            EarningsEvent? nextEarnings = null;
+            List<EarningsEvent> historicalEarnings = new List<EarningsEvent>();
+            string symbolUpper = symbol.ToUpperInvariant();
+
+            // Scan earnings files for this symbol
+            // Search from evaluation date back 2 years for historical, and forward 90 days for next
+            DateTime searchStart = evaluationDate.AddYears(-2);
+            DateTime searchEnd = evaluationDate.AddDays(90);
+
+            string[] files = Directory.GetFiles(earningsDir, "????-??-??.json");
+            foreach (string file in files)
+            {
+                string filename = Path.GetFileNameWithoutExtension(file);
+                if (!DateTime.TryParseExact(filename, "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out DateTime fileDate))
+                {
+                    continue;
+                }
+
+                if (fileDate < searchStart || fileDate > searchEnd)
+                {
+                    continue;
+                }
+
+                // Read and parse the file
+                string json = File.ReadAllText(file);
+                using JsonDocument doc = JsonDocument.Parse(json);
+                
+                if (!doc.RootElement.TryGetProperty("earnings", out JsonElement earningsArray))
+                {
+                    continue;
+                }
+
+                foreach (JsonElement earningElem in earningsArray.EnumerateArray())
+                {
+                    if (!earningElem.TryGetProperty("symbol", out JsonElement symbolElem))
+                    {
+                        continue;
+                    }
+                    
+                    if (!string.Equals(symbolElem.GetString(), symbolUpper, StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    // Parse the earnings event
+                    EarningsEvent earning = new EarningsEvent
+                    {
+                        Symbol = symbolUpper,
+                        Date = fileDate,
+                        FiscalQuarter = earningElem.TryGetProperty("fiscalQuarter", out JsonElement fq) ? fq.GetString() ?? "" : "",
+                        EpsEstimate = earningElem.TryGetProperty("epsEstimate", out JsonElement est) && est.ValueKind == JsonValueKind.Number ? est.GetDecimal() : null,
+                        EpsActual = earningElem.TryGetProperty("epsActual", out JsonElement act) && act.ValueKind == JsonValueKind.Number ? act.GetDecimal() : null,
+                        Source = "Cached",
+                        FetchedAt = DateTime.UtcNow
+                    };
+
+                    if (fileDate > evaluationDate)
+                    {
+                        // Future earnings
+                        if (nextEarnings == null || earning.Date < nextEarnings.Date)
+                        {
+                            nextEarnings = earning;
+                        }
+                    }
+                    else
+                    {
+                        // Historical earnings
+                        historicalEarnings.Add(earning);
+                    }
+                }
+            }
+
+            // Sort historical by date descending (most recent first)
+            historicalEarnings.Sort((a, b) => b.Date.CompareTo(a.Date));
+
+            if (nextEarnings != null || historicalEarnings.Count > 0)
+            {
+                _logger.LogDebug("Found cached earnings for {Symbol}: Next={Next}, Historical={Count}",
+                    symbol, nextEarnings?.Date.ToString("yyyy-MM-dd") ?? "None", historicalEarnings.Count);
+            }
+
+            return (nextEarnings, historicalEarnings);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error reading earnings cache for {Symbol}", symbol);
+            return (null, new List<EarningsEvent>());
+        }
     }
 }

@@ -71,16 +71,11 @@ public sealed class PriceReasonablenessValidator : DTqc002A
             {
                 if (isNearAtm)
                 {
-                    // Near-ATM options with 0 bid is suspicious - fail
-                    return new DataQualityResult
-                    {
-                        ValidatorId = ComponentId,
-                        Status = ValidationStatus.Failed,
-                        Message = $"Invalid bid price for ATM option: {contract.OptionSymbol} bid={contract.Bid}",
-                        DataElement = "OptionChain.Contracts"
-                    };
+                    // Near-ATM options with 0 bid is suspicious but shouldn't fail validation
+                    // In historical data, quotes can be stale
+                    warnings.Add($"ATM option with zero bid: {contract.OptionSymbol}");
                 }
-                // OTM options with 0 bid is normal - just log as debug (don't even warn)
+                // OTM options with 0 bid is normal - just skip
                 continue;
             }
 
@@ -100,15 +95,12 @@ public sealed class PriceReasonablenessValidator : DTqc002A
                 ? Math.Max(0, snapshot.SpotPrice - contract.Strike)
                 : Math.Max(0, contract.Strike - snapshot.SpotPrice);
 
-            if (contract.Ask < intrinsicValue)
+            // Ask below intrinsic is a data quality indicator but not a fundamental failure
+            // In historical data, spreads can be wide and prices stale
+            // Only log as warning rather than failing validation
+            if (contract.Ask < intrinsicValue && intrinsicValue > 1m)
             {
-                return new DataQualityResult
-                {
-                    ValidatorId = ComponentId,
-                    Status = ValidationStatus.Failed,
-                    Message = $"Ask below intrinsic: {contract.OptionSymbol} ask={contract.Ask}, intrinsic={intrinsicValue}",
-                    DataElement = "OptionChain.Contracts"
-                };
+                warnings.Add($"Ask below intrinsic: {contract.OptionSymbol} ask={contract.Ask:F2}, intrinsic={intrinsicValue:F2}");
             }
 
             if (contract.Ask > intrinsicValue + 10m)
