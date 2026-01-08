@@ -37,6 +37,7 @@ public sealed class AlarisDataBridge
     private readonly IReadOnlyList<DTqc002A> _validators;
     private readonly ILogger<AlarisDataBridge> _logger;
     private bool _allowOptionChainFallback = true;
+    private bool _allowEarningsFallback = true;
     
     // Session data path for loading cached data (options, etc.)
     private string? _sessionDataPath;
@@ -93,6 +94,14 @@ public sealed class AlarisDataBridge
     public void SetOptionChainFallbackEnabled(bool enabled)
     {
         _allowOptionChainFallback = enabled;
+    }
+
+    /// <summary>
+    /// Enables or disables live earnings fallback when cache is missing.
+    /// </summary>
+    public void SetEarningsFallbackEnabled(bool enabled)
+    {
+        _allowEarningsFallback = enabled;
     }
 
     /// <summary>
@@ -864,6 +873,12 @@ public sealed class AlarisDataBridge
             _logger.LogDebug("Using cached earnings for {Symbol}: Next={NextDate}, Historical={Count}",
                 symbol, cachedNext?.Date.ToString("yyyy-MM-dd") ?? "None", cachedHistorical.Count);
             return (cachedNext, cachedHistorical);
+        }
+
+        if (!_allowEarningsFallback)
+        {
+            _logger.LogDebug("Earnings fallback disabled for {Symbol} @ {Date}", symbol, evaluationDate);
+            return (null, Array.Empty<EarningsEvent>());
         }
 
         // Fall back to live API

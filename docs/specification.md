@@ -448,6 +448,8 @@ Every trade MUST record:
 Validation thresholds MUST be configured per run mode under `ForwardValidation` and `BackValidation` in `appsettings.jsonc`.
 These settings include slippage percent, slippage dollars per spread, execution cost percent, execution cost dollars per spread,
 minimum capital basis for percent calculations, and vega data policy.
+Backtests MUST disable live fallback for options and earnings by setting
+`Alaris:Backtest:RequireOptionChainCache` and `Alaris:Backtest:RequireEarningsCache` to true.
 
 ### 12.2 Configuration Validation
 

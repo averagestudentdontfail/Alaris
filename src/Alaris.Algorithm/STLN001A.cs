@@ -83,6 +83,7 @@ public sealed class STLN001A : QCAlgorithm
     private ValidationSettings _validationSettings = ValidationSettings.Empty;
     private FeeSettings _feeSettings = FeeSettings.Empty;
     private bool _requireOptionChainCache;
+    private bool _requireEarningsCache;
 
     // Alaris Components (Instance-Based)
     
@@ -145,6 +146,9 @@ public sealed class STLN001A : QCAlgorithm
         _requireOptionChainCache = LiveMode
             ? _forwardtestSettings.RequireOptionChainCache
             : _backtestSettings.RequireOptionChainCache;
+        _requireEarningsCache = LiveMode
+            ? _forwardtestSettings.RequireEarningsCache
+            : _backtestSettings.RequireEarningsCache;
         
         var startDate = _backtestSettings.StartDate;
         var endDate = _backtestSettings.EndDate;
@@ -269,6 +273,10 @@ public sealed class STLN001A : QCAlgorithm
         // Check if we have a session data path (backtest with pre-downloaded data)
         var sessionDataPath = Environment.GetEnvironmentVariable("ALARIS_SESSION_DATA");
         bool hasSessionData = !string.IsNullOrEmpty(sessionDataPath) && System.IO.Directory.Exists(sessionDataPath);
+        if (_requireEarningsCache && !hasSessionData)
+        {
+            Log("STLN001A: Earnings cache required but no session data path was provided.");
+        }
         
         // Initialise market data provider (Polygon) with Refit
         // API key is passed via ALARIS_Polygon__ApiKey environment variable from Host when running backtests
@@ -332,6 +340,7 @@ public sealed class STLN001A : QCAlgorithm
             validators,
             _loggerFactory!.CreateLogger<AlarisDataBridge>());
         _dataBridge.SetOptionChainFallbackEnabled(!_requireOptionChainCache);
+        _dataBridge.SetEarningsFallbackEnabled(!_requireEarningsCache);
         
         // Set session data path for cached data access (options, etc.)
         if (hasSessionData)
@@ -343,6 +352,10 @@ public sealed class STLN001A : QCAlgorithm
         if (_requireOptionChainCache)
         {
             Log("STLN001A: Option chain cache required (no live fallback).");
+        }
+        if (_requireEarningsCache)
+        {
+            Log("STLN001A: Earnings cache required (no live fallback).");
         }
         
         Log("STLN001A: Data providers initialised");
@@ -600,13 +613,15 @@ public sealed class STLN001A : QCAlgorithm
             EarningsLookaheadDays: GetRequiredInt(configuration, "Alaris:Backtest:EarningsLookaheadDays"),
             EarningsLookbackDays: GetRequiredInt(configuration, "Alaris:Backtest:EarningsLookbackDays"),
             EarningsQueryTimeout: TimeSpan.FromSeconds(GetRequiredInt(configuration, "Alaris:Backtest:EarningsQueryTimeoutSeconds")),
-            RequireOptionChainCache: GetRequiredBool(configuration, "Alaris:Backtest:RequireOptionChainCache"));
+            RequireOptionChainCache: GetRequiredBool(configuration, "Alaris:Backtest:RequireOptionChainCache"),
+            RequireEarningsCache: GetRequiredBool(configuration, "Alaris:Backtest:RequireEarningsCache"));
         _backtestSettings.Validate();
         if (_backtestSettings.HistoryLookbackDays <= _strategySettings.RealisedVolatilityWindowDays)
             throw new InvalidOperationException("HistoryLookbackDays must exceed RealisedVolatilityWindowDays.");
 
         _forwardtestSettings = new ForwardtestSettings(
-            RequireOptionChainCache: GetRequiredBool(configuration, "Alaris:Forwardtest:RequireOptionChainCache"));
+            RequireOptionChainCache: GetRequiredBool(configuration, "Alaris:Forwardtest:RequireOptionChainCache"),
+            RequireEarningsCache: GetRequiredBool(configuration, "Alaris:Forwardtest:RequireEarningsCache"));
         _forwardtestSettings.Validate();
 
         _dataProviderSettings = new DataProviderSettings(
@@ -1846,7 +1861,8 @@ public sealed class STLN001A : QCAlgorithm
         int EarningsLookaheadDays,
         int EarningsLookbackDays,
         TimeSpan EarningsQueryTimeout,
-        bool RequireOptionChainCache)
+        bool RequireOptionChainCache,
+        bool RequireEarningsCache)
     {
         public static BacktestSettings Empty => new(
             DateTime.MinValue,
@@ -1857,6 +1873,7 @@ public sealed class STLN001A : QCAlgorithm
             0,
             0,
             TimeSpan.Zero,
+            false,
             false);
 
         public void Validate()
@@ -1880,9 +1897,9 @@ public sealed class STLN001A : QCAlgorithm
         }
     }
 
-    private sealed record ForwardtestSettings(bool RequireOptionChainCache)
+    private sealed record ForwardtestSettings(bool RequireOptionChainCache, bool RequireEarningsCache)
     {
-        public static ForwardtestSettings Empty => new(false);
+        public static ForwardtestSettings Empty => new(false, false);
 
         public void Validate()
         {

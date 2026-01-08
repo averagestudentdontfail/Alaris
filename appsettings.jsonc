@@ -30,11 +30,13 @@
             "EarningsLookaheadDays": 90,
             "EarningsLookbackDays": 730,
             "EarningsQueryTimeoutSeconds": 5,
-            "RequireOptionChainCache": true
+            "RequireOptionChainCache": true,
+            "RequireEarningsCache": true
         },
         // Forwardtest Configuration (live/paper)
         "Forwardtest": {
-            "RequireOptionChainCache": false
+            "RequireOptionChainCache": false,
+            "RequireEarningsCache": false
         },
         // Data Provider Settings
         "DataProviders": {
@@ -58,10 +60,6 @@
         },
         // Production Validation Thresholds
         "ForwardValidation": {
-            "IvRvRatioThreshold": 1.25,
-            "MinimumOtmPercent": 10,
-            "MaxBidAskSpread": 0.50,
-            "MinimumOpenInterest": 100,
             "MaxVegaCorrelation": 0.70,
             "MinimumVegaObservations": 20,
             "VegaCorrelationLookbackDays": 45,
@@ -79,10 +77,6 @@
             "AllowInsufficientVegaData": false
         },
         "BackValidation": {
-            "IvRvRatioThreshold": 1.25,
-            "MinimumOtmPercent": 10,
-            "MaxBidAskSpread": 0.50,
-            "MinimumOpenInterest": 100,
             "MaxVegaCorrelation": 0.70,
             "MinimumVegaObservations": 3,
             "VegaCorrelationLookbackDays": 45,
