@@ -38,6 +38,7 @@ using Alaris.Strategy.Cost;
 using Alaris.Strategy.Hedge;
 using Alaris.Algorithm.Universe;
 using Alaris.Infrastructure.Events.Infrastructure;
+using Alaris.Infrastructure.Http;
 
 using QCOptionRight = QuantConnect.OptionRight;
 using AlarisOptionRight = Alaris.Infrastructure.Data.Model.OptionRight;
@@ -115,6 +116,9 @@ public sealed class STLN001A : QCAlgorithm
     // Audit & Events
     private EVIF001A? _eventStore;
     private EVIF002A? _auditLogger;
+    
+    // Rate Limiting
+    private ApiRateLimiter? _nasdaqRateLimiter;
     
     // Logging
     private ILogger<STLN001A>? _logger;
@@ -298,13 +302,28 @@ public sealed class STLN001A : QCAlgorithm
         nasdaqHttpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
         nasdaqHttpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         INasdaqCalendarApi nasdaqApi = RestService.For<INasdaqCalendarApi>(nasdaqHttpClient);
+        
+        // Create rate limiter for live mode (100 req/s, 25 concurrent)
+        ApiRateLimiter? nasdaqRateLimiter = null;
+        if (LiveMode)
+        {
+            nasdaqRateLimiter = new ApiRateLimiter(
+                "NASDAQ",
+                requestsPerSecond: 100,
+                maxConcurrentRequests: 25,
+                _loggerFactory!.CreateLogger<ApiRateLimiter>());
+            _nasdaqRateLimiter = nasdaqRateLimiter;
+            Log("STLN001A: NASDAQ rate limiter initialized (100 req/s, 25 concurrent)");
+        }
+        
         _earningsProvider = new NasdaqEarningsProvider(
             nasdaqApi,
-            _loggerFactory!.CreateLogger<NasdaqEarningsProvider>());
+            _loggerFactory!.CreateLogger<NasdaqEarningsProvider>(),
+            cacheDataPath: null,
+            rateLimiter: nasdaqRateLimiter);
         
         // Enable cache-only mode ONLY for backtests where cached data is pre-downloaded
-        // Live mode: attempt NASDAQ API (may work with proper User-Agent headers)
-        // If NASDAQ returns 403, universe selection will gracefully degrade to 0 symbols
+        // Live mode: attempt NASDAQ API with rate limiting
         if (!LiveMode)
         {
             _earningsProvider.EnableCacheOnlyMode();
@@ -312,7 +331,7 @@ public sealed class STLN001A : QCAlgorithm
         }
         else
         {
-            Log("STLN001A: Earnings provider will attempt live NASDAQ API calls");
+            Log("STLN001A: Earnings provider will use rate-limited live NASDAQ API calls");
         }
         // Initialise risk-free rate provider (Treasury Direct) with Refit
         var treasuryHttpClient = new HttpClient { BaseAddress = _dataProviderSettings.TreasuryBaseUri, Timeout = _dataProviderSettings.TreasuryTimeout };
