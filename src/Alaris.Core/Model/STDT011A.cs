@@ -46,9 +46,10 @@ public sealed record STDT011A
     public DateTime ValidatedAt { get; init; } = DateTime.UtcNow;
 
     /// <summary>
-    /// Whether the session is ready to run without remediation.
+    /// Whether the session is ready to run (Ready or Warning status).
+    /// Warning status indicates partial data coverage but backtest can proceed.
     /// </summary>
-    public bool IsReady => Status == PreflightStatus.Ready;
+    public bool IsReady => Status == PreflightStatus.Ready || Status == PreflightStatus.Warning;
 
     /// <summary>
     /// Whether automatic remediation can fix all issues.
