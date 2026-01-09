@@ -302,11 +302,17 @@ public sealed class STLN001A : QCAlgorithm
             nasdaqApi,
             _loggerFactory!.CreateLogger<NasdaqEarningsProvider>());
         
-        // Enable cache-only mode for backtests (prevents 403 errors from NASDAQ)
+        // Enable cache-only mode ONLY for backtests where cached data is pre-downloaded
+        // Live mode: attempt NASDAQ API (may work with proper User-Agent headers)
+        // If NASDAQ returns 403, universe selection will gracefully degrade to 0 symbols
         if (!LiveMode)
         {
             _earningsProvider.EnableCacheOnlyMode();
             Log("STLN001A: Earnings provider set to cache-only mode (backtest)");
+        }
+        else
+        {
+            Log("STLN001A: Earnings provider will attempt live NASDAQ API calls");
         }
         // Initialise risk-free rate provider (Treasury Direct) with Refit
         var treasuryHttpClient = new HttpClient { BaseAddress = _dataProviderSettings.TreasuryBaseUri, Timeout = _dataProviderSettings.TreasuryTimeout };

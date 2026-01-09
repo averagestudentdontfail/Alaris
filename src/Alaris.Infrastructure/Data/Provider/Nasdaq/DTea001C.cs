@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Alaris.Infrastructure.Data.Model;
 using Alaris.Infrastructure.Data.Http.Contracts;
+using Alaris.Infrastructure.Http;
 
 namespace Alaris.Infrastructure.Data.Provider.Nasdaq;
 
@@ -42,7 +43,11 @@ public sealed class NasdaqEarningsProvider : DTpr004A
     private readonly INasdaqCalendarApi _api;
     private readonly ILogger<NasdaqEarningsProvider> _logger;
     private readonly string? _cacheDataPath;
+    private readonly ApiRateLimiter? _rateLimiter;
     private bool _cacheOnlyMode;
+    
+    // In-memory cache for API responses to reduce NASDAQ rate limiting
+    private readonly Dictionary<DateTime, IReadOnlyList<EarningsEvent>> _memoryCache = new();
 
     private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions
     {
@@ -57,14 +62,17 @@ public sealed class NasdaqEarningsProvider : DTpr004A
     /// <param name="api">NASDAQ Calendar Refit API client.</param>
     /// <param name="logger">Logger instance.</param>
     /// <param name="cacheDataPath">Optional cache data path for backtest mode.</param>
+    /// <param name="rateLimiter">Optional rate limiter for API calls.</param>
     public NasdaqEarningsProvider(
         INasdaqCalendarApi api,
         ILogger<NasdaqEarningsProvider> logger,
-        string? cacheDataPath = null)
+        string? cacheDataPath = null,
+        ApiRateLimiter? rateLimiter = null)
     {
         _api = api ?? throw new ArgumentNullException(nameof(api));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _cacheDataPath = cacheDataPath ?? Environment.GetEnvironmentVariable("ALARIS_SESSION_DATA");
+        _rateLimiter = rateLimiter;
     }
 
     /// <summary>
@@ -252,8 +260,15 @@ public sealed class NasdaqEarningsProvider : DTpr004A
             }
             catch (HttpRequestException ex)
             {
+                // Check if it's a 403 rate limit error
+                if (ex.Message.Contains("403") || ex.Message.Contains("Forbidden"))
+                {
+                    _logger.LogWarning("NASDAQ rate limit (403) for {Date:yyyy-MM-dd}, skipping", date);
+                    // Graceful degradation: continue with other dates
+                    continue;
+                }
                 _logger.LogWarning(ex, "Failed to fetch earnings for {Date:yyyy-MM-dd}", date);
-                // Fail-fast: rethrow to caller
+                // Non-403 errors: rethrow to caller
                 throw;
             }
         }
@@ -274,6 +289,14 @@ public sealed class NasdaqEarningsProvider : DTpr004A
         DateTime date,
         CancellationToken cancellationToken)
     {
+        // 0. Check in-memory cache first (reduces API calls during session)
+        DateTime cacheKey = date.Date;
+        if (_memoryCache.TryGetValue(cacheKey, out IReadOnlyList<EarningsEvent>? cached))
+        {
+            _logger.LogDebug("Using in-memory cached earnings for {Date:yyyy-MM-dd}", date);
+            return cached;
+        }
+        
         // 1. Check for cached data (backtest mode)
         if (!string.IsNullOrEmpty(_cacheDataPath))
         {
@@ -286,7 +309,9 @@ public sealed class NasdaqEarningsProvider : DTpr004A
             if (File.Exists(cachePath))
             {
                 _logger.LogDebug("Loading earnings for {Date:yyyy-MM-dd} from cache", date);
-                return await LoadFromCacheAsync(cachePath, cancellationToken);
+                IReadOnlyList<EarningsEvent> fileResult = await LoadFromCacheAsync(cachePath, cancellationToken);
+                _memoryCache[cacheKey] = fileResult;
+                return fileResult;
             }
             
             // Cache-only mode: skip API call on cache miss (prevents 403 in backtests)
@@ -303,13 +328,24 @@ public sealed class NasdaqEarningsProvider : DTpr004A
             return Array.Empty<EarningsEvent>();
         }
 
-        // 2. Live mode: Call NASDAQ API
+        // 2. Live mode: Call NASDAQ API (rate-limited if limiter configured)
         _logger.LogDebug("Fetching earnings for {Date:yyyy-MM-dd} from NASDAQ API", date);
         string dateString = date.ToString("yyyy-MM-dd");
-        NasdaqEarningsResponse response = await _api.GetEarningsAsync(dateString, cancellationToken);
+        
+        NasdaqEarningsResponse response;
+        if (_rateLimiter != null)
+        {
+            using IDisposable _ = await _rateLimiter.AcquireAsync(cancellationToken);
+            response = await _api.GetEarningsAsync(dateString, cancellationToken);
+        }
+        else
+        {
+            response = await _api.GetEarningsAsync(dateString, cancellationToken);
+        }
 
         if (response.Data?.Rows == null || response.Data.Rows.Count == 0)
         {
+            _memoryCache[cacheKey] = Array.Empty<EarningsEvent>();
             return Array.Empty<EarningsEvent>();
         }
 
@@ -325,6 +361,9 @@ public sealed class NasdaqEarningsProvider : DTpr004A
         }
 
         _logger.LogDebug("Fetched {Count} earnings for {Date:yyyy-MM-dd}", earnings.Count, date);
+        
+        // Cache successful API response
+        _memoryCache[cacheKey] = earnings;
         return earnings;
     }
 

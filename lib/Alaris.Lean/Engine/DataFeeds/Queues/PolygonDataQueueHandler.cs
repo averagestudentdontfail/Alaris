@@ -89,11 +89,26 @@ namespace QuantConnect.Lean.Engine.DataFeeds.Queues
             _aggregator = dataAggregator ?? throw new ArgumentNullException(nameof(dataAggregator));
             _cts = new CancellationTokenSource();
             
-            // Get API key from LEAN config
+            // Get API key from multiple sources:
+            // 1. LEAN config (polygon-api-key in config.json)
+            // 2. Environment variable ALARIS_Polygon__ApiKey (.NET secrets format)
+            // 3. Environment variable POLYGON_API_KEY (standard format)
             _apiKey = Config.Get("polygon-api-key");
             if (string.IsNullOrEmpty(_apiKey))
             {
-                throw new InvalidOperationException("Polygon API key not configured. Set 'polygon-api-key' in config.json or secrets.");
+                _apiKey = Environment.GetEnvironmentVariable("ALARIS_Polygon__ApiKey");
+            }
+            if (string.IsNullOrEmpty(_apiKey))
+            {
+                _apiKey = Environment.GetEnvironmentVariable("POLYGON_API_KEY");
+            }
+            if (string.IsNullOrEmpty(_apiKey))
+            {
+                throw new InvalidOperationException(
+                    "Polygon API key not configured. Set one of: " +
+                    "'polygon-api-key' in config.json, " +
+                    "ALARIS_Polygon__ApiKey env var, or " +
+                    "POLYGON_API_KEY env var.");
             }
             
             var maskedKey = _apiKey.Length > 4 ? _apiKey[..4] + new string('*', _apiKey.Length - 4) : "****";

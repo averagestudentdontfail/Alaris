@@ -230,7 +230,7 @@
   "coinapi-product": "free", // free, startup, streamer, professional, enterprise
   // Required for streaming Polygon.io data
   // To get your access token go to https://polygon.io
-  "polygon-api-key": "",
+  "polygon-api-key": "oCcQqp35kogzoFbMmUYpehZjGaiEvHhp",
   // zerodha configuration goto https://kite.trade
   "zerodha-access-token": "",
   "zerodha-api-key": "",
