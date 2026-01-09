@@ -172,7 +172,12 @@ public sealed class STLN001A : QCAlgorithm
         
         SetStartDate(startDate);
         SetEndDate(endDate);
-        SetCash(initialCash);
+        
+        // Only set cash for backtests; live/paper mode uses actual IBKR account balance
+        if (!LiveMode)
+        {
+            SetCash(initialCash);
+        }
         
         // Use Interactive Brokers as brokerage
         SetBrokerageModel(BrokerageName.InteractiveBrokersBrokerage);
@@ -312,8 +317,13 @@ public sealed class STLN001A : QCAlgorithm
             _loggerFactory!.CreateLogger<TreasuryDirectRateProvider>());
         
         // Initialise execution quote provider (IBKR Snapshots)
-        _executionQuoteProvider = new InteractiveBrokersSnapshotProvider(
-            _loggerFactory!.CreateLogger<InteractiveBrokersSnapshotProvider>());
+        // Live/paper mode connects to IBKR Gateway; backtest uses simulated quotes
+        _executionQuoteProvider = LiveMode
+            ? new InteractiveBrokersSnapshotProvider(
+                _configuration!,
+                _loggerFactory!.CreateLogger<InteractiveBrokersSnapshotProvider>())
+            : new InteractiveBrokersSnapshotProvider(
+                _loggerFactory!.CreateLogger<InteractiveBrokersSnapshotProvider>());
         
         // Create time provider for backtest-aware validation
         // Use LEAN's Time property as the simulated time source
@@ -541,17 +551,32 @@ public sealed class STLN001A : QCAlgorithm
 
     /// <summary>
     /// Builds configuration from appsettings files.
-    /// Loads appsettings.jsonc (base) then appsettings.local.jsonc (secrets).
+    /// Loads appsettings.jsonc (base) then appsettings.local.jsonc (secrets) then user-secrets.
     /// </summary>
     private IConfiguration BuildConfiguration()
     {
         // Find the repository root (where appsettings.jsonc lives)
         var basePath = FindRepositoryRoot();
         
-        return new ConfigurationBuilder()
+        // Load user-secrets from Host's secrets file (shared UserSecretsId)
+        // Path: ~/.microsoft/usersecrets/{UserSecretsId}/secrets.json
+        const string HostUserSecretsId = "71fcddd5-6de5-41ed-b500-b64783facdab";
+        var userSecretsPath = System.IO.Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            ".microsoft", "usersecrets", HostUserSecretsId, "secrets.json");
+        
+        var builder = new ConfigurationBuilder()
             .SetBasePath(basePath)
             .AddJsonFile("appsettings.jsonc", optional: false, reloadOnChange: false)
-            .AddJsonFile("appsettings.local.jsonc", optional: true, reloadOnChange: false)
+            .AddJsonFile("appsettings.local.jsonc", optional: true, reloadOnChange: false);
+        
+        // Add user secrets if the file exists (when running standalone via LEAN)
+        if (System.IO.File.Exists(userSecretsPath))
+        {
+            builder.AddJsonFile(userSecretsPath, optional: true, reloadOnChange: false);
+        }
+        
+        return builder
             .AddEnvironmentVariables("ALARIS_")
             .Build();
     }

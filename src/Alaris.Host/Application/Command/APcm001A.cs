@@ -132,18 +132,16 @@ public sealed class APcm001A : Command<RunSettings>
         AnsiConsole.MarkupLine($"[grey]Launcher: {launcherPath}[/]");
 
         // Start LEAN process
+        // CRITICAL: LEAN reads environment from --environment CLI argument, not env vars
         ProcessStartInfo psi = new ProcessStartInfo
         {
             FileName = "dotnet",
-            Arguments = $"run --project \"{launcherPath}\"",
+            Arguments = $"run --project \"{launcherPath}\" -- --environment \"{environment}\"",
             WorkingDirectory = System.IO.Path.GetDirectoryName(configPath),
             UseShellExecute = false,
             RedirectStandardOutput = true,
             RedirectStandardError = true
         };
-
-        // Override environment in config
-        psi.Environment["QC_ENVIRONMENT"] = environment;
         
         // Pass backtest dates to algorithm via environment variables
         if (settings.StartDate is not null)

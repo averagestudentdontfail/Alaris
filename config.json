@@ -70,13 +70,14 @@
   "live-cash-balance": "",
   "live-holdings": "[]",
   // interactive brokers configuration
-  "ib-account": "",
+  "ib-account": "DUE407919",
   "ib-user-name": "",
   "ib-password": "",
-  "ib-host": "10.255.255.254",
+  "ib-host": "172.31.16.1",
   "ib-port": "4002",
   "ib-agent-description": "Individual",
-  "ib-tws-dir": "C:\\Jts",
+  "ib-tws-dir": "",
+  "ib-client-id": 741,
   "ib-trading-mode": "paper",
   "ib-enable-delayed-streaming-data": false,
   "ib-weekly-restart-utc-time": "22:00:00",
@@ -279,18 +280,22 @@
       "transaction-handler": "QuantConnect.Lean.Engine.TransactionHandlers.BacktestingTransactionHandler"
     },
     // defines the 'live-paper' environment
+    // Uses IBKR paper account (port 4002) for market data AND order execution
     "live-paper": {
       "live-mode": true,
-      // the paper brokerage requires the BacktestingTransactionHandler
-      "live-mode-brokerage": "PaperBrokerage",
+      "live-mode-brokerage": "InteractiveBrokersBrokerage",
       "setup-handler": "QuantConnect.Lean.Engine.Setup.BrokerageSetupHandler",
       "result-handler": "QuantConnect.Lean.Engine.Results.LiveTradingResultHandler",
       "data-feed-handler": "QuantConnect.Lean.Engine.DataFeeds.LiveTradingDataFeed",
       "data-queue-handler": [
-        "QuantConnect.Lean.Engine.DataFeeds.Queues.LiveDataQueue"
+        "QuantConnect.Lean.Engine.DataFeeds.Queues.PolygonDataQueueHandler"
       ],
       "real-time-handler": "QuantConnect.Lean.Engine.RealTime.LiveTradingRealTimeHandler",
-      "transaction-handler": "QuantConnect.Lean.Engine.TransactionHandlers.BacktestingTransactionHandler"
+      "transaction-handler": "QuantConnect.Lean.Engine.TransactionHandlers.BrokerageTransactionHandler",
+      "history-provider": [
+        "BrokerageHistoryProvider",
+        "SubscriptionDataReaderHistoryProvider"
+      ]
     },
     // defines 'live-zerodha' environment
     "live-zerodha": {
